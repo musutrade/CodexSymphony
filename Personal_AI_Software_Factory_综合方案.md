@@ -1,7 +1,7 @@
 # Personal AI Software Factory 综合方案
 
-> 面向个人开发者的多项目、多仓库、多 Agent 软件研发自动化平台
-> 版本：V7 Draft
+> 首版：面向个人开发者、电脑与手机可用的远程开发控制台；长期演进为多仓库、多 Agent 软件工厂
+> 版本：V8.1 Draft — 手机可用优先，三端统一审批
 > 日期：2026-09-05
 > 状态：设计规格；实施范围和验收条件以第 22～24 章为准
 
@@ -11,7 +11,7 @@
 
 本方案吸收 OpenAI Symphony 的核心设计，但不把 Symphony 当前“单进程、单 Tracker Scope”的参考实现直接当作平台边界。
 
-目标系统必须支持：
+长期目标系统必须支持（不是首版交付前提）：
 
 ```text
 一个个人账户
@@ -25,8 +25,8 @@
 
 其中：
 
-- 平台可以同时处理多个 Project 和多个 Repository。
-- 一个 Requirement 在 Phase 1 绑定一个 Repository。
+- 平台从 Phase 2 起可以同时处理多个 Project 和多个 Repository。
+- 一个 Requirement 从 Phase 0 起绑定一个 Repository。
 - 同一个 Requirement 同时修改多个 Repository，留到后续版本。
 - 一个 Agent Runtime 可以同时运行多个 Agent Run。
 - CI Recovery 和 ReviewFix 默认复用原 PR 分支，不创建无关的新 PR。
@@ -43,11 +43,19 @@ AgentRun 状态是执行事实
 GitHub / CI / Review 是外部观察事实
 ```
 
-V1 采用 MVP 先行策略：
+V1 采用“先每天用起来，再减少人工介入”的策略：
 
 - 数据模型保留多 Project、多 Repository，但 MVP 只用一个 Project / 一个 Repository 跑最小闭环；
+- 复用已有 Cloudflare 域名与连接器，通过 Cloudflare Tunnel + Access 访问局域网开发机；
+- 手机和电脑共用响应式 Web：提交需求、确认执行、审批、回答问题、查看进度和失败原因；
+- 首版终端提供轻量平台 CLI，与电脑/手机 Web 共用审批 API；不是原生 Codex TUI，
+  不接管用户自行启动且未纳入平台管理的 `codex` 会话。原生 `--remote` 接入须另行验证；
+- 首页是“需要我处理的事”，单一外部通知渠道在首版启用；完整 PWA 和离线能力不阻塞交付；
 - MVP（Phase 0）状态机核心 5 态：`Draft → Ready → Running → Submitted / Failed`；`Submitted` 表示 PR 已创建并交接给 GitHub；
-- 调度：全局并发 4 + 同 Repository 串行 + FIFO（priority 排序），公平调度与 Project 容量推迟；
+- MVP 同步 PR、CI 和基础 Review 外部事实；用户跳转 GitHub 审查与合并，合并结果回显，
+  但不以“PR 已合并”冒充已通过完整验收的 `Done`；
+- Phase 0 / Phase 1 只运行一个写入型 Agent，FIFO（priority 排序）；多仓并行从 Phase 2 启用；
+- 浏览器和 GitHub 状态先轮询；Webhook、SSE、自建 diff 审查器和平台内合并不阻塞首版；
 - `context_input_digest`（Contract + AC + WORKFLOW.md + 实际读取知识文件的
   path + blob_oid；本地未提交例外为 content_hash + source）进入 MVP；
 - CodexRuntime 直接实现，参考 Symphony 的 `codex/app_server.ex`，协议类型用 schema codegen。
@@ -62,14 +70,27 @@ V1 采用 MVP 先行策略：
 
 ```text
 MVP / Phase 0 = 单 Project、单 Repository，完成 PR 创建并进入 Submitted
-V1 = Phase 0 + Phase 1，增加 CI、Review、Webhook、手动 Merge 后的完整 Done 闭环
-Phase 2        = CI Recovery、ReviewFix 和完整输入对账
+                + 手机需求/通知 + 电脑/手机/平台 CLI 审批 + PR/CI/Review 摘要与 GitHub 合并回显
+V1 = Phase 0 + Phase 1，增加完整 Done 验收、平台内人工合并与有限 CI/Review 修复
+Phase 2        = 多仓并行、扩展修复策略和完整输入对账
+Phase 3        = 可选 Planner、子任务依赖编排与公平调度
+Phase 4 / 5    = 模型/PWA 增强与分布式扩展
 ```
 
 本文不把“V1”当作独立实施阶段名称；V1 只是 `Phase 0 + Phase 1` 的交付标签，所有实施
-范围以 `Phase 0`、`Phase 1`、`Phase 2` 为准。
+范围以第 23 章的 `Phase 0`～`Phase 5` 为准；第 24 章只定义首版交付门槛。
 
-平台的第一目标不是“做一个很大的 AI 管理后台”，而是稳定完成：
+首版优先稳定完成以下真实使用路径：
+
+```text
+手机或电脑 → Cloudflare Access → 需求草稿 → 确认执行
+    → Agent 编码 → 通知待审批/待回答 → 登录平台处理 → 继续执行
+    → Gate / 受控提交 / 平台创建 PR
+    → 手机查看 PR 与 CI → 跳转 GitHub 审查并人工合并
+    → 回到平台看到合并事实和最后同步时间
+```
+
+代码与业务状态的分期边界如下：
 
 ```text
 Requirement
@@ -85,11 +106,12 @@ Requirement
     → Done（Phase 1）
 ```
 
-上图是 Phase 1 之后的完整目标路径；MVP 在 `Pull Request → Submitted` 交接处结束。
+上图是 Phase 1 之后的完整业务目标路径；MVP 的内部成功态在 `Submitted` 结束，但产品交付
+必须继续覆盖外部状态同步与 GitHub 合并回显，不能只交付“后台能创建 PR”。
 MVP 的 `Submitted` 判定由平台完成：Agent 只产生本地 commit，GitHub Adapter 通过 outbox
 执行 push、查找/创建 PR，并在 PR 关联持久化后推进状态。
 
-失败和评审意见进入同一个可审计的修复闭环：
+Phase 1 起，失败和经授权的评审意见进入有限、可审计的修复闭环：
 
 ```text
 CI Failure / Review Comment
@@ -105,7 +127,9 @@ CI Failure / Review Comment
 
 ### 1.1 一句话定义
 
-Personal AI Software Factory 是一个以 Requirement 为核心、以 GitHub 为代码协作基础设施、以 Codex Agent 为第一执行引擎的个人软件工厂。
+Personal AI Software Factory 首先是一个可通过电脑和手机控制局域网开发机的个人远程开发
+控制台：人负责需求确认、权限审批和合并决策，Agent 负责执行，平台负责调度、安全和交接。
+长期演进为以 Requirement 为核心、GitHub 为代码协作基础设施的个人软件工厂。
 
 它把以下工作串成一个可恢复的系统：
 
@@ -137,6 +161,12 @@ V1 不做：
 
 “Single User”只表示领域模型不引入租户层，不表示 HTTP API 可以无认证暴露。
 
+首版不做自建代码审查器、平台内 Merge、独立移动 App、完整 PWA/offline、多 Agent
+协作、自动需求拆分或多仓并发；这些不能成为手机实际使用的前置条件。
+首版“编排”指排队、启动、等待审批、继续、停止、重试和交接，不承诺 Planner/DAG 能力。
+三端同权的前提是 Agent 会话由平台控制面启动并登记；独立 Codex CLI/IDE 会话不属于
+平台的 AgentRun，不能自动共享审批、租约、上下文或 PR 交接。
+
 ### 1.3 GitHub 的角色
 
 GitHub 负责：
@@ -164,6 +194,18 @@ GitHub 负责：
 - 可选 Discussion 和仓库 Git 文档输入
 
 GitHub Repository 不是 Requirement 的唯一数据源。平台自己的 Requirement 数据库才是调度真相。
+
+### 1.4 首版使用边界
+
+- 开发机常驻局域网，执行不依赖浏览器在线；手机切后台或关闭页面不取消任务。
+- 首版接受平台与 GitHub 间一次跳转，不要求所有操作都在同一个界面完成。
+- 审批可在三个入口任选其一：电脑浏览器、手机浏览器、轻量平台 CLI；
+  任一入口的决策写入同一 `runtime_request`，其余入口同步已处理结果，不再提交第二次批准。
+- “在终端审批”首版指调用平台命令处理待办，不是直接操作原生 Codex 的交互提示；
+  三端同权只涵盖平台托管 Run 的审批/回答，首版不要求 CLI 复刻全部 Web 功能。
+- GitHub 合并是人工决策；权限审批、需求确认和 PR 合并是三个独立授权，不互相替代。
+- 第一条真实需求跑通后即可开始日常使用；不等待后续 Phase 的全部架构能力。
+- 不为赶进度降低 OS 隔离、凭证保护、受控提交、审批幂等或重启防重复执行要求。
 
 ---
 
@@ -386,7 +428,7 @@ none
 `source_ref` 可以是 Discussion 消息 ID、仓库内相对路径 + commit SHA、外部事件 ID 或
 空值。它只用于追溯，不参与 Requirement 的执行判定。
 
-Phase 1 中每个 Requirement 必须绑定一个 Repository：
+从 Phase 0 起每个 Requirement 必须绑定一个 Repository：
 
 ```text
 Requirement → exactly one Repository
@@ -559,8 +601,8 @@ WebhookDelivery
 | 阶段 | 启用状态 | 成功终点 |
 |---|---|---|
 | MVP / Phase 0 | `Draft`、`Ready`、`Running`、`Submitted`、`Failed`、`Cancelled`、`NeedsRevalidation` | `Submitted` |
-| Phase 1 | 增加 `Queued`、`WaitingCI`、`WaitingReview`、`Done`、`Blocked` 和人工 `Unblock`；`Merging` 仅自动 Merge 开启时使用 | `Done` |
-| Phase 2 | 增加 Recovery / ReviewFix，复用已有 `Blocked` / `Unblock` | 根任务恢复或 `Blocked` |
+| Phase 1 | 增加 `Queued`、`WaitingCI`、`WaitingReview`、`Done`、`Blocked`、人工 `Unblock` 和有限 Recovery / ReviewFix；`Merging` 仅自动 Merge 开启时使用 | `Done` |
+| Phase 2 | 扩展多仓调度与修复策略，复用现有状态 | 根任务恢复或 `Blocked` |
 
 推荐状态：
 
@@ -640,9 +682,11 @@ MVP / Phase 0：
 generation、当前输入资格、受信 Gate 与远端 head 校验全部通过
 ```
 
-`Submitted` 不表示 CI、Review 或 Merge 已完成；这些事实在 Phase 1 通过 Webhook / Reconciler
-驱动后续 `WaitingCI → WaitingReview → Done`。收到 `PullRequestMerged` 事件前，不能进入
-`Done`。
+`Submitted` 不表示 CI、Review 或 Merge 已完成。Phase 0 即轮询并展示这些外部事实，
+但不据此转换为尚未启用的内部状态。UI 分别显示“平台：已交接”“GitHub：开放/关闭/已合并”
+和“CI：等待/运行/成功/失败/未知”，并显示最后同步时间。
+Phase 1 通过 Reconciler（可选 Webhook 加速）驱动后续 `WaitingCI → WaitingReview → Done`。
+收到 `PullRequestMerged` 事实前不能进入 `Done`；收到后仍必须满足 7.6 的最终验收。
 
 重新执行规则：
 
@@ -670,7 +714,8 @@ NeedsRevalidation  最小 digest 漂移（Contract / AC / WORKFLOW.md 变化）
 
 `Queued`、`WaitingCI`、`WaitingReview`、`Done`、`Blocked` 从 Phase 1 启用；
 `Merging` 仅未来自动 Merge 使用：
-MVP 不读 CI / Review、不自动 Merge；Phase 1 恢复 GitHub 闭环后按上面的完整状态机回归。
+MVP 读取 PR/CI/基础 Review 摘要，仅作外部事实展示；不自动修复、不提供平台内 Merge，
+用户在 GitHub 人工合并。Phase 1 启用完整业务状态机和最终验收。
 `Submitted` 是 MVP 的终态交接，不是最终业务完成。`Running` 同时覆盖 Agent 执行和平台交接，
 UI 从 active Run / HandoffOperation 派生 `execution_phase`，不得用“没有活跃进程”判定失败。
 
@@ -689,8 +734,8 @@ Phase 1 启用独立的持久化 `Blocked` 状态及其人工恢复命令。
 | 阶段 | 成功终点 | 需要人工处理的失败 |
 |---|---|---|
 | MVP / Phase 0 | `Submitted` | `Failed + failure_code + manual_action_required=true` |
-| Phase 1 | `Done` | `Blocked + failure_code + manual_action_required=true` |
-| Phase 2 | Recovery / ReviewFix 成功后回到根任务流程 | 超过修复上限进入 `Blocked` |
+| Phase 1 | `Done`；有限修复成功后回到根任务流程 | `Blocked + failure_code + manual_action_required=true` |
+| Phase 2 | `Done`；扩展修复成功后回到根任务流程 | 超过冻结修复上限进入 `Blocked` |
 
 ### 4.2 AgentRun 状态
 
@@ -755,10 +800,10 @@ ReviewApproved
 
 ```text
 ┌─────────────────────────────────────────────┐
-│ Angular Web / PWA                           │
+│ Responsive Angular Web（PWA 后续增强）      │
 │ Requirement / Project / Agent / PR / CI     │
 └──────────────────────┬──────────────────────┘
-                       │ HTTP + SSE
+                       │ HTTP 轮询（SSE 后续可选）
                        ▼
 ┌─────────────────────────────────────────────┐
 │ Axum API                                    │
@@ -807,9 +852,10 @@ ReviewApproved
        └── Failure → Recovery / ReviewFix Requirement
 ```
 
-上图是目标形态；MVP 只启用单 Project / 单 Repository，调度采用第 6 章的简化模型，Reconciler 只运行
-Process + Workspace 两个组件（见 5.1）。MVP 的输入漂移检查由 Scheduler / Supervisor
-在关键时机同步执行，不依赖独立 DigestReconciler。
+上图是目标形态；访问入口另见第 21 章的 Cloudflare Tunnel + Access。MVP 只启用单 Project /
+单 Repository / 单 Agent，运行 Process、Workspace 和只读 GitHub 状态轮询三个组件，
+加一个消费数据库 outbox 的通知发送器；它们均可在一个控制面进程内实现。
+MVP 的输入漂移检查由 Scheduler / Supervisor 在关键时机同步执行，不依赖独立 DigestReconciler。
 
 ### 5.1 组件职责
 
@@ -819,14 +865,15 @@ Process + Workspace 两个组件（见 5.1）。MVP 的输入漂移检查由 Sch
 - Project / Repository / Requirement CRUD
 - 启动、停止、重试、取消命令
 - Discussion 和文档接口
-- GitHub webhook 接收
-- SSE 订阅
+- 待办聚合、权限审批和人工输入
+- PR/CI/Review 摘要与同步时间
+- GitHub webhook 接收和 SSE 订阅（Phase 1 可选增强）
 
 #### Global Scheduler
 
 - 扫描所有 `Ready` / `Queued` Requirement
 - 检查依赖
-- 检查全局容量（Phase 0 / Phase 1 默认 4）与同 Repository 串行约束
+- 检查全局容量（Phase 0 / Phase 1 固定 1；Phase 2 默认 1，可配置到 4）与同 Repository 串行约束
 - FIFO + priority 排序（Phase 0 / Phase 1）
 - 创建 AgentRun
 - 维护 claim lease
@@ -849,15 +896,16 @@ Phase 0 / Phase 1 不实现 Project 级容量和 weighted round-robin 公平调�
 ```text
 ProcessReconciler       每 30 秒   执行组、完成声明与交接状态对账；隔离旧写入者后恢复
 WorkspaceReconciler     每 5 分钟  清理孤儿 workspace / worktree / branch
-GitHubReconciler        每 1 分钟  同步 PR / CI / Review 外部状态
+GitHubReconciler        默认 60 秒 同步已关联 PR / CI / Review 摘要；Phase 0 只读，Phase 1 驱动闭环
 DigestReconciler        事件触发   处理 InputSnapshotChanged，重算 context digest
 ResourceCleaner         每 1 小时  清理过期 workspace 和历史数据
 ```
 
-Phase 0 只实现 `ProcessReconciler` 和 `WorkspaceReconciler`；GitHub 对账随 Phase 1
-增加。MVP 的最小输入 digest 检查由 Scheduler / Supervisor 在 `Ready`、Agent start、
-提交/终态判定前执行，不依赖独立 DigestReconciler。完整 DigestReconciler 与资源清理随
-Phase 2 增加。
+Phase 0 实现 `ProcessReconciler`、`WorkspaceReconciler` 和最小 `GitHubReconciler`；
+后者不创建修复任务或将 Requirement 标记 Done，轮询范围和限流规则见 11.5。
+MVP 的最小输入 digest 检查由 Scheduler / Supervisor 在 `Ready`、Agent start、
+提交/终态判定前执行。完整 DigestReconciler 与自动保留期清理随 Phase 2 增加；
+基本磁盘告警、备份和人工清理入口从 Phase 0 提供（21.5）。
 
 ProcessReconciler 的冷启动规则：
 
@@ -868,7 +916,9 @@ ProcessReconciler 的冷启动规则：
    incarnation 不同只说明失联，不能说明已停止。终止整个执行组并确认所有子进程退出。
 3. 无法确认退出或隔离成功时，保留恢复屏障和容量占用，记录人工处理原因；不得过期接管。
 4. 没有持久化 CompletionDeclaration：中间 commit 只归档，不 push、不补建 PR；
-   旧 Run 结束后按执行重试预算创建新的 Run，必要时复用已验证来源的中间 commit。
+   若失联时尚有待回答的审批/人工输入或未确认送达的决策，先使旧请求失效并转人工，
+   不自动重试绕过待定决策。其余旧 Run 结束后按执行重试预算创建新的 Run，
+   必要时复用已验证来源的中间 commit。
 5. 有声明但没有 manifest：校验声明的 generation/revision/digest/HEAD，恢复平台验证和封存；
    HEAD 不同、声明失效或 Gate 不通过时拒绝交接，不以现存 PR 替代这些检查。
 6. 有有效 manifest 或未完成 HandoffOperation：只恢复交接步骤，不创建新的编码 Run；
@@ -919,11 +969,19 @@ MVP 不恢复原 app-server 的 thread/session；`thread_id` 和 `turn_id` 仅�
 - Webhook
 - GitHub App 认证
 
+#### Notification Dispatcher
+
+- 从 Phase 0 启用，仅实现并配置一个外部通知渠道，不建设多渠道路由系统。
+- 消费数据库 outbox，发送待审批、待回答、执行失败和 PR 待处理的脱敏提醒。
+- 通知只带受 Access 保护的平台链接，不携带批准令牌，不支持从通知直接执行危险操作。
+- 通知失败独立重试，不阻塞 Agent 事件落库，也不产生新的编码 Run；详见 19.5。
+
 ---
 
 ## 6. 调度与容量（Phase 0 / Phase 1 简化）
 
-Phase 0 / Phase 1 采用全局容量与同仓串行的简化模型。多 Project 公平容量管理推迟到 Phase 3
+Phase 0 / Phase 1 固定单 Project、单 Repository、单 Agent 执行。Phase 2 才开放多仓并行；
+同仓串行约束继续保留。多 Project 公平容量管理推迟到 Phase 3
 （见第 23 章）。
 
 ### 6.1 全局容量与 Repository 串行
@@ -931,7 +989,7 @@ Phase 0 / Phase 1 采用全局容量与同仓串行的简化模型。多 Project
 调度一个 Requirement 必须同时满足：
 
 ```text
-global_capacity_available（默认 4 个并发 AgentRun）
+global_capacity_available（Phase 0 / Phase 1 固定 1；Phase 2 默认 1、可配置上限 4）
 AND repository_serial_available（同一 Repository 同时最多 1 个执行/交接写入者）
 AND runtime_capacity_available
 AND dependency_satisfied
@@ -973,7 +1031,10 @@ heartbeat_at
 启动 Agent 前必须原子地取得 lease。MVP 没有 `Queued` 态，`Ready` 即可领取；Phase 1+
 可在领取前先经过 `Queued`。
 
-Repository lease 持有者可以是 Run 或 HandoffOperation。branch reservation 使用独立的
+Phase 0 的 Repository lease 持有者可以是 Run 或 HandoffOperation；
+Phase 1 增加人工 MergeOperation（`holder_kind=merge`），同样核对 generation/dispatch_epoch，
+恢复时先对账未完成合并结果，禁止结果未知时向该分支发放新写入权。
+branch reservation 使用独立的
 `worktree_leases` 记录，其寿命覆盖执行、封存和交接；它不会随短租约释放或超时而自动消失。
 所有 claim 路径统一使用事务级 advisory lock，避免“容量检查”和“lease 占用”之间出现竞态。
 active 数量从 `agent_runs` 事实派生，不维护会因 crash 泄漏的 `active_count`：
@@ -995,7 +1056,7 @@ FROM repositories WHERE id = $repository_id FOR UPDATE;
 SELECT count(*) AS active_count
 FROM agent_runs
 WHERE status IN ('created', 'preparing_workspace', 'starting_runtime', 'running', 'finishing');
--- 应用必须实际比较 active_count < $global_limit（MVP 默认 4）；
+-- 应用必须实际比较 active_count < $global_limit（Phase 0 / Phase 1 固定 1）；
 -- 不满足时 ROLLBACK，并记录 scheduler_capacity_unavailable。
 -- 等价伪代码：IF active_count >= $global_limit THEN RAISE capacity_unavailable;
 
@@ -1129,7 +1190,8 @@ LocalGitBroker 使用当前 Run 的租约，不另发并行写入权。等待重
 
 ### 7.1 Phase 0 / Phase 1 直接录入
 
-Phase 0 必须提供可用的直接入口：
+Phase 0 必须提供电脑和手机都能完成的直接入口。单 Project / Repository 自动选中，
+类型默认为 Feature、优先级默认为普通；非必要配置收进高级选项：
 
 ```text
 选择 Project
@@ -1152,16 +1214,17 @@ Phase 0 必须提供可用的直接入口：
 最小 Requirement 表单：
 
 ```text
-Project
-Repository
 Title
 Description
-Acceptance Criteria
-Type
-Priority
-Related Requirements（Phase 0 仅信息关联；Phase 1 启用执行性依赖）
-Model Policy（可选）
+Acceptance Criteria（逐条填写，至少一条）
+高级选项：Project / Repository / Type / Priority / Related Requirements / Model Policy
 ```
+
+用户不直接编辑 Contract JSON。API 由表单生成 Contract，AC ID 自动生成；
+验证方法默认 `manual_review`，关联平台预置的“仓库所有者对目标 SHA 逐项验收”规则，
+不能默认伪造 automated_test 或验证成功；首版未实施的人工验收证据保持 pending。
+`problem` 来自描述、`goal` 默认来自标题，范围和验证计划按模板生成并在确认页可见、可修改。
+简单表单不降低 7.2 的 schema/AC 校验；自动需求澄清与拆分不作为首版前提。
 
 Requirement 不能在创建时直接启动 Agent，除非用户显式选择 `Start`。
 
@@ -1235,8 +1298,8 @@ CHECK (contract ? 'acceptance_criteria')
 ```text
 1. Contract 创建时，平台自动生成 AC ID（AC-001、AC-002…）
 2. Agent 执行完成后，平台按 verification_method 逐项记录验证状态
-3. MVP 对尚未具备 CI / Review 事实源的 AC 写入 `pending`；可在本地完成的 gate/test
-   写入 `verified` 或 `failed`
+3. MVP 的 CI / Review 摘要只用于展示，不自动转为 AC 证据；`ci_check` / `manual_review`
+   保持 `pending`；可在本地完成的 gate/test 写入 `verified` 或 `failed`
 4. 每次验证追加到 requirement_acceptance_checks，绑定验证批次和目标 commit，不覆盖旧证据
 5. MVP：有效完成声明 + 封存产出 + 平台交接成功 → Submitted；AC pending 不等于 Gate 可跳过
 6. Phase 1：PR 合并后建立最终验证批次，所有 AC 有合格证据或经授权豁免，且 CI/Review 满足 → Done
@@ -1260,7 +1323,8 @@ AC ID 生命周期规则：
 - Phase 1 启用同 Repository 的执行性依赖，统一规范化为“下游依赖上游”并检测环。
   领取下游前，上游必须 `Done`，且其已验证 `merged_commit_sha` 必须是下游候选
   `base_commit_sha` 的祖先；fetch 后仍不满足则不领取、不消耗 retry。
-- Phase 1 跨 Repository 仅支持 `related_to`；跨仓交付物、部署版本等执行性依赖另行定义，
+- Phase 0 / Phase 1 只使用一个 Repository；Phase 2 开放多仓后，跨 Repository 仍只支持
+  `related_to`。跨仓交付物、部署版本等执行性依赖另行定义，
   不以另一个仓库的 Submitted/Done 推断代码或服务已可用。
 
 每次 Contract 修改都生成新的 `requirement_revision`，不能原地覆盖。AgentRun 绑定创建时的
@@ -1602,7 +1666,8 @@ source_evidence_id
 verified_at
 ```
 
-`manual_review` 与未接入事实源的 `ci_check` 在 MVP 保持 pending。当前验收视图按
+`manual_review` 与 `ci_check` 在 MVP 保持 pending；只读 PR/CI 摘要不等于合格验收证据。
+当前验收视图按
 `revision + criterion + 目标 SHA + 所选验证批次` 派生，不能选取另一个 Run/SHA 的最近成功结果。
 
 ---
@@ -1651,7 +1716,7 @@ pub type RuntimeEventStream =
 ```
 
 Supervisor 从该流读取一次后 fan-out 到三个下游：`agent_events` 持久化、Supervisor 状态机
-以及 Phase 1 的 SSE broadcaster。其他组件不直接向 Runtime 重复订阅，避免单消费者
+以及 Phase 1 可选的 SSE broadcaster。其他组件不直接向 Runtime 重复订阅，避免单消费者
 `mpsc::Receiver` 导致事件丢失或互相抢消费。
 
 Phase 0 只实现：
@@ -1737,9 +1802,38 @@ filters；Gate hook 由独立隔离验证器执行。Broker 不持有 GitHub 凭
 force push 或其他仓库写入接口。Agent 可请求提交，但不能直接修改共享 refs 或 canonical clone。
 
 审批/人工输入请求写入 `runtime_requests`，保存平台 UUID 与原始协议 request ID、Run/thread/turn、
-generation、请求类型、内容摘要、过期时间及状态。回答先做 CAS 决策落库，再回复准确的原请求；
+generation、请求类型、不可变操作内容及摘要、过期时间、request_version 与状态；
+决策记录 actor_id、client_kind（web/cli）、received_at 和幂等键，其中来源标签不是身份凭据。
+回答先做 CAS 决策落库，再回复准确的原请求；
 重复相同回答幂等，冲突回答、超时回答、取消后回答及旧 incarnation 的回答拒绝。
-API 和 UI 从 Phase 0 起支持该闭环；尚无 UI 时也必须可通过鉴权 API 回答。
+API、手机/桌面 UI 和轻量平台 CLI 从 Phase 0 起支持该闭环；只提供 API 可以用于联调，
+不能视为三端交付完成。统一待办视图见 18.4，终端命令见 16.8。
+Supervisor 是向 Runtime 回答该请求的唯一出口；三个客户端都不直连 app-server、
+不写其 stdin、不修改 runtime_requests 表，也不自行执行获准的删除/网络等操作。
+
+#### 三端人工等待规则（Phase 0 必须）
+
+- UI 从持久化请求派生 `execution_phase=waiting_approval / waiting_input`，
+  Requirement 仍为 Running、AgentRun 仍为 Running，不为此增加业务主状态。
+- 只有持久化且当前仍 Pending 的运行时请求能够使普通 turn silence/stall 计时暂停；
+  停止主动推进新 turn，未获批准的操作不得执行；已有并行调用仍受冻结策略和执行资源边界限制。
+  通信丢失、进程退出、安全撤销和 lease 失效始终检测，不因“正在等人”而豁免。
+- 人工等待单独使用 `human_wait_timeout`，首版默认 2 小时，按请求冻结 `expires_at`；
+  active execution deadline 排除经验证的等待时长，但 Run 另有默认 8 小时绝对寿命上限。
+  这些是平台默认值，不是对 Runtime 协议的假设，部署时须通过真实等待测试。
+  等待策略绑定 Run 快照，不通过热更新延长已有请求；多请求并行等待时，各自独立过期，
+  有效工作时长扣除等待区间的并集，不能重复扣除同一段时间。
+- 等待时继续续租并保留 Agent 容量、Repository 写入权和 branch reservation；
+  不为提高吞吐释放锁后继续使用原 session。首版队列明确显示“被人工等待占用”。
+- 手机锁屏、断网、切后台、刷新、关闭页面、平台 CLI 退出或 Access 会话到期不等于拒绝/取消；
+  登录并返回后从服务器重新拉取待办。客户端不离线排队批准，也不自动重放写请求。
+- 审批单次生效，不扩展为全局允许；同一请求的第一次有效 CAS 决策胜出，其他设备显示已处理。
+  接收决策与向 Runtime 回复分别记状态；回复结果不确定时按原 request ID 对账，
+  不重发工具动作，也不把“决策已保存”假称为“执行已恢复”。
+- 请求过期或 Run 绝对寿命耗尽后停止执行组、使所有未答请求失效并转人工，
+  不自动批准、不自动新建 Run。重启不恢复旧 session：旧请求失效并提示人工重试，
+  新 Run 必须产生新请求，历史批准不能复用。
+
 
 Agent 运行完成必须有显式完成信号：
 
@@ -1836,6 +1930,25 @@ CodexRuntime 验收标准：
 https://developers.openai.com/codex/app-server/
 https://learn.chatgpt.com/codex/agent-approvals-security
 ```
+
+#### 本次兼容性核实范围（2026-09-05）
+
+本机 `codex-cli 0.153.4` 的只读检查结果：
+
+- `codex --help` 和 `codex resume --help` 均列出 `--remote`，用于将 TUI 连接到远端 app-server；
+  `codex app-server --help` 列出 stdio、Unix socket 和 WebSocket 传输选项。
+- `codex app-server generate-json-schema --experimental` 生成的 ServerRequest 包含
+  `item/commandExecution/requestApproval`、`item/fileChange/requestApproval`、
+  `item/permissions/requestApproval` 和 `item/tool/requestUserInput`。
+- 这些本机证据确认参数和请求类型存在，不证明原生 TUI 与平台可安全共同答复同一个请求，
+  也不证明能直接接管任意已有 CLI 会话。本次未运行真实多客户端审批测试。
+- 本次官方文档页面读取未成功，以上不声称为最新官方在线规格或所有版本的保证；
+  部署仍须锁定并复核实际版本，不能只凭参数名就宣布兼容。
+
+首版沿用平台独占的 app-server 控制连接；不把用户终端连接到该 Run 的原始控制 socket。
+原生 TUI 直连若能绕过平台 CAS 落库、撤销检查或审计，即使能显示/处理审批也不符合本方案。
+未来接入需验证同一 thread/turn 的请求归属、重复回答、断线/取消、权限与工具路由、
+以及平台先落库再回复的顺序；如需实现协议代理，另行评估，不作为首版前提。
 
 ### 8.4 Agent Context
 
@@ -1939,7 +2052,7 @@ Project B / api      → api/WORKFLOW.md
 允许动态更新：
 
 - 调度间隔
-- 全局并发限制（Phase 0 / Phase 1）
+- 全局并发限制（Phase 0 / Phase 1 固定 1；Phase 2 起可配置）
 - 项目并发限制（Phase 3）
 - Repository 并发限制（Phase 3）
 - retry 上限
@@ -1950,7 +2063,7 @@ Project B / api      → api/WORKFLOW.md
 MVP 仅启用以下动态更新：
 
 ```text
-全局并发限制、retry 上限、Prompt 版本、hooks 和模型策略
+retry 上限、Prompt 版本、hooks 和模型策略（仍受安全审批和运行快照约束）
 ```
 
 Project / Repository 容量与公平调度在 Phase 3 启用；运行中的 AgentRun 继续使用其启动时
@@ -2117,7 +2230,12 @@ commit_statuses: write（仅当需要设置 commit status 时）
 deployments: write（Phase 5 自动部署时）
 ```
 
-Webhook 不是普通 repository permission，而是 GitHub App 的事件订阅配置。Phase 1 至少订阅：
+Phase 0 / Phase 1 的 GitHub App 只安装到首个指定的个人仓库，Phase 2 才扩展安装范围。
+首版只做 push/PR 交接和已关联 PR 的只读同步；不请求合并绕过或 Actions 重跑能力。
+如仓库使用 legacy commit statuses，显式申请 `commit_statuses: read`，不为只读同步申请 write。
+
+Webhook 不是普通 repository permission，而是 GitHub App 的事件订阅配置。Phase 0 不接入；
+Phase 1 可选开启且不能替代周期对账。启用时至少订阅：
 
 ```text
 push
@@ -2129,9 +2247,12 @@ workflow_run
 check_suite
 ```
 
-Phase 1 安装范围为用户个人仓库；组织仓库权限留到后续版本。
+组织仓库权限留到后续版本。
 
 ### 11.2 Webhook 路由
+
+本节仅在显式开启 Webhook 时适用，首版不需要暴露该入口。Cloudflare 路由隔离见 21.4；
+GitHub 回调不经过交互式 Access 登录，独立入口仅接受经过 HMAC 验证的 webhook。
 
 所有 Repository 可以共用一个 webhook endpoint：
 
@@ -2204,13 +2325,42 @@ PR body 是不可信输入，只能作为第 3 优先级的关联线索；数据
 解析 metadata 时必须校验 UUID 格式、Repository 匹配和签名上下文，不能仅凭 body 改写
 Requirement 状态。
 
+### 11.5 首版只读同步与 GitHub 交接
+
+Phase 0 的 GitHubReconciler 只轮询数据库已关联的 PR，不扫描整个账户：
+
+- 默认每 60 秒批次读取开放 PR 的状态、head/base SHA、Checks/Actions 摘要和基础 Review 摘要；
+  UI 的“刷新”先读取本地缓存，显式远端刷新按仓库节流并合并请求。
+- GitHub 请求由后端持有 installation token 执行；手机不直接持有 GitHub App 凭证。
+- 支持条件请求、分页、指数退避和服务端限流时间；持续失败显示 `stale/unknown`、
+  `last_synced_at`、`sync_error`，不能把“读不到”当作 CI 成功、无评审意见或 PR 已关闭。
+- PR head 改变后旧 CI 结果保留历史，但不展示成新 head 的通过结果；缺失检查显示 unknown/pending，
+  skipped/neutral 不能无条件视为满足必需检查。
+- PR URL 来自适配器校验过的 GitHub 仓库/PR 关联，不从不可信需求文本任意打开外部链接。
+- PR 创建、需要人工审查或发现合并/关闭时更新外部事实；重复轮询不会重复生成待办或通知。
+  合并/关闭确认归档后停止高频轮询；首版每日至少低频复查一次终结 PR，也允许人工刷新，
+  以发现重新打开。重开不自动启动 Agent，后续授权仍按 Requirement 状态机处理。
+- 首版用户在 GitHub 网页审查和人工合并，平台只提供安全跳转；不提交平台内 Merge 请求，
+  不触发自动合并，也不绕过仓库规则。
+
+用户合并后，Phase 0 保留 `Requirement=Submitted`，同时显示
+`PR=MERGED + merged_commit_sha + merged_at` 和“已合并，平台最终验收尚未启用”。
+关闭但未合并明确显示“PR 已关闭，未交付”，不伪造 Done；后续修改需显式重新授权，
+已合并的 PR 只能关联 follow-up Requirement。Phase 1 升级后由完整验证流程决定是否 Done。
+
+Phase 0 的 CI 失败/Review 修改意见不自动把 Submitted 改为 Failed，也不假装已有自动修复。
+用户可在手机修改需求并重新确认：生成新 Revision，按 7.6 经 NeedsRevalidation 撤销旧授权、
+对账交接并重新 Ready；PR 仍开放时按 3.4 复用原分支。普通 Retry 按失败阶段恢复，
+不用于绕过 Submitted 的重新授权。关闭但未合并的 PR 不自动重开，首版可创建新的显式需求。
+
 ---
 
 ## 12. CI 闭环
 
-### 12.1 Phase 1 CI 目标
+### 12.1 分期 CI 目标
 
-Phase 1 先读取 GitHub Checks / Actions 的结构化结果：
+Phase 0 读取已关联 PR 的 CI 状态和 GitHub 链接，供手机查看，不把它自动转成 AC 证据，
+不分析完整日志、不生成修复任务。Phase 1 再接入精确 SHA 的验证与有限修复，按需读取：
 
 ```text
 job
@@ -2224,6 +2374,8 @@ annotations
 不一开始实现“理解所有 CI 系统”的通用分析器。
 
 ### 12.2 CI 状态流
+
+以下业务状态流从 Phase 1 启用；Phase 0 只显示外部 CI 状态。
 
 ```text
 PR Open
@@ -2266,7 +2418,7 @@ CiFailureSummary
 
 ### 12.4 Recovery Requirement
 
-CI Failure 生成 Recovery Requirement：
+Phase 1 起，显式启用修复策略的 CI Failure 才生成 Recovery Requirement：
 
 ```text
 CiRecovery Requirement
@@ -2297,13 +2449,22 @@ Recovery 默认：
 
 ### 12.5 修复次数上限
 
-本节只在 Phase 2 启用；MVP 不创建 Recovery / ReviewFix。
+MVP 不创建 Recovery / ReviewFix。Phase 1 先采用可控的有限修复策略：
 
-每个 root Requirement 的总修复次数硬上限为 3：
+- 默认不开启自动修复；用户在 Repository Policy 中明确开启后才生效。
+- 每个根需求最多一次 CiRecovery、一次 ReviewFix，合计硬上限 2；失败后转人工，
+  不实现无限重试，也不把每条 Review 评论都变成一个任务。
+- ReviewFix 首版由用户选择一条意见并确认“按此修改”触发，或使用事先明确授权的精确指令；
+  不对普通评论被动自动编码。不另开 PR。
+- Phase 2 才允许更丰富的意见聚合和修复配置，总硬上限仍为 3。
+
+从 Phase 1 起使用统一 root 计数；创建根需求时冻结其修复 policy 与限额，升级平台不自动
+放宽历史需求的预算，也不清零已有次数：
 
 ```text
 total_recovery_attempts = CiRecovery 次数 + ReviewFix 次数
-                        <= 3
+Phase 1：CiRecovery <= 1、ReviewFix <= 1、total <= 2
+Phase 2：按显式 policy 分配，total <= 3
 ```
 
 ReviewFix 必须等 CI 通过后才运行：先修 CI，再修 Review，避免同时处理两类问题。
@@ -2523,8 +2684,8 @@ gate_invocation_id
 ```
 
 本项目门禁失败不应直接生成新的普通 Feature。MVP / Phase 0 不生成 `CiRecovery`；
-Phase 2 只有满足 `gate_recovery_policy` 且错误属于 fixable 白名单时，才生成关联原 PR
-的 `CiRecovery` Requirement。
+Phase 1 起仅外部仓库在满足 `gate_recovery_policy`、错误属于 fixable 白名单且已有 PR 时，
+才允许生成关联原 PR 的 `CiRecovery` Requirement。本项目自身门禁仍按下述例外转人工。
 
 #### 门禁失败后的处理策略
 
@@ -2546,7 +2707,7 @@ Phase 2 只有满足 `gate_recovery_policy` 且错误属于 fixable 白名单时
   不重开已结束的 session，不生成 CiRecovery；
   纯验证基础设施超时仅重试同一固定 SHA 的验证步骤，次数见第 28 章
 
-Phase 2 外部仓库：
+Phase 1+ 外部仓库（遵守 12.5 的阶段限额）：
   由 Repository Policy 的 gate_recovery_policy 显式配置，默认 blocked
   显式启用后，仅 fixable 类失败（test_failed / lint_failed / build_failed）
   可自动生成 CiRecovery
@@ -2554,7 +2715,9 @@ Phase 2 外部仓库：
   不因任何配置自动修复
 ```
 
-Phase 2 的 CiRecovery 只针对已有 PR；本项目自身仓库仍不自动生成门禁修复任务。
+Phase 1+ 的 CiRecovery 只针对已有 PR；本项目自身仓库仍不自动生成门禁修复任务。
+本项目 dogfood 的普通 CI 代码问题是否允许修复需另行显式 policy 授权，不能借用该入口
+自动修复门禁失败或修改受信 Gate/workflow。
 阶段内 hook 反馈与新的 Recovery Requirement 是两条不同路径，均不能覆盖失败事实。
 
 #### 12.6.5 与 Symphony 的职责边界
@@ -2586,6 +2749,9 @@ sandbox。
 
 ### 13.1 Review 事件
 
+Phase 0 只展示基础 Review 摘要和 GitHub 链接；以下逐条意见、修复触发和线程状态处理
+从 Phase 1 启用。完整 diff 审查仍可交给 GitHub，不要求首版自建审查器。
+
 必须区分：
 
 ```text
@@ -2608,6 +2774,8 @@ Human comment
 - 评论没有被标记为 ignored
 - PR 仍然开放
 - 没有其他 Recovery / ReviewFix 正在修改同一 branch
+- Phase 1 已由用户明确选择并授权这条意见，且当前需求的 ReviewFix 次数尚未耗尽
+- 生成时核对意见来源 SHA 与当前 head；意见过时需重新确认，不能静默套用到新版本
 
 ReviewFix 记录：
 
@@ -2635,7 +2803,8 @@ PR Review Comment
     → 重新 Review
 ```
 
-ReviewFix 与 CiRecovery 共享 root 级 `total_recovery_attempts` 计数（上限 3，见 12.5），
+ReviewFix 与 CiRecovery 共享 root 级 `total_recovery_attempts` 计数（Phase 1 合计最多 2，
+Phase 2 合计最多 3，且遵守冻结的分类上限；见 12.5），
 超限后 root Requirement 进入 `Blocked`，需要人工 Unblock。ReviewFix 必须等 CI 通过后才能运行。
 
 ---
@@ -2644,9 +2813,9 @@ ReviewFix 与 CiRecovery 共享 root 级 `total_recovery_attempts` 计数（上�
 
 ### 14.1 PostgreSQL
 
-在多 Project、多 Repository、多 Agent 和重启恢复场景下，PostgreSQL 是合理的 Phase 1 选择。
+从 Phase 0 起使用 PostgreSQL 保存状态、审批请求和恢复事实，不为首版另建临时存储实现。
 
-Redis 和 MQ 不作为 Phase 1 必需依赖：
+Redis 和独立 MQ 不作为 Phase 0 / Phase 1 必需依赖：
 
 - PostgreSQL 负责状态、锁、租约、事件历史和 retry。
 - SSE 可以由应用进程通过数据库事件和 Pub/Sub 推送。
@@ -2676,6 +2845,7 @@ completion_declarations
 artifact_manifests
 runtime_requests
 handoff_operations
+merge_operations            # Phase 1，人工合并的调用意图与结果，Phase 0 不迁移
 
 workspaces
 worktree_leases
@@ -2692,6 +2862,7 @@ ci_failures
 
 webhook_events
 outbox_events
+notification_deliveries
 
 model_providers
 models
@@ -2699,6 +2870,11 @@ model_policies
 
 settings
 ```
+
+上表是目标模型目录，不要求首版一次创建所有表。Phase 0 仅迁移实际使用的领域、执行、
+交接、外部摘要、通知和配置表；Discussion、逐条 ReviewFix 和高级模型表随对应阶段启用。
+待办是对 `runtime_requests`、失败 Requirement 和 PR 外部事实的聚合视图，不另建第二份
+审批状态。通知交付记录不是业务状态真相。
 
 `requirements` 的执行授权与当前视图字段：
 
@@ -2729,6 +2905,7 @@ requirement_acceptance_checks(verification_batch_id, criterion_id, producer_even
 completion_declarations(agent_run_id) UNIQUE
 artifact_manifests(agent_run_id) UNIQUE
 runtime_requests(agent_run_id, worker_incarnation_id, protocol_request_id) UNIQUE
+notification_deliveries(channel_id, source_event_id, notification_kind) UNIQUE
 outbox_events(handoff_operation_id, action_key) UNIQUE
 webhook_events(provider, delivery_id) UNIQUE
 worktree_leases(repository_id, branch) UNIQUE
@@ -2768,8 +2945,8 @@ ON requirements (recovery_source_type, recovery_source_id)
 WHERE recovery_source_id IS NOT NULL;
 ```
 
-`total_recovery_attempts <= 3` 只在 Phase 2 启用 Recovery / ReviewFix 时作为领域命令的
-事务性检查，不作为 MVP 的全局表约束。
+从 Phase 1 起，Recovery / ReviewFix 创建命令在 root 行锁内检查冻结的分类限额和总额，
+Phase 1 总额最多 2，Phase 2 最多 3；不作为 MVP 的全局表约束。
 
 另需约束：
 
@@ -2829,9 +3006,9 @@ Git 对象和证据先写入平台私有的不可变存储并确认可读取，�
 
 ## 15. Model System
 
-### 15.1 Phase 1
+### 15.1 Phase 0 / Phase 1
 
-Phase 1 只需要支持：
+Phase 0 / Phase 1 只需要支持：
 
 ```text
 Runtime: Codex
@@ -2887,7 +3064,9 @@ requirement_budget
 agent_run_budget
 ```
 
-但 Phase 1 先记录 Token 和成本，不强制自动封锁，除非预算是产品的核心卖点。
+Phase 0 即记录 Token 和估算成本，并启用并发、max_turns、执行时长、人工等待时长和阶段
+重试次数上限，提供“暂停领取新任务”和“停止当前任务”。Phase 1 的有限修复另有 root 硬上限。
+金额预算和准确计费集成推迟到 Phase 4，不以“尚未做预算”允许无上限执行。
 
 ---
 
@@ -2986,13 +3165,36 @@ GET    /api/pull-requests
 GET    /api/pull-requests/:id
 GET    /api/ci/runs
 GET    /api/ci/failures
+POST   /api/pull-requests/:id/refresh        # Phase 0，节流后的只读远端同步请求
+POST   /api/pull-requests/:id/merge          # Phase 1，人工确认，非自动 Merge
+POST   /api/pull-requests/:id/review-fixes   # Phase 1，选择意见并授权一次修复
 
-POST   /webhooks/github
+POST   /webhooks/github                     # Phase 1，可选，默认不开放
 ```
+
+Phase 0 的 GET 只返回最小外部事实、已校验的 GitHub URL、`last_synced_at`、`stale` 和同步错误；
+`ci/failures` 首版只提供失败摘要，不承诺逐 step 诊断。`refresh` 不触发编码、修复或合并。
+Phase 1 的 Merge 命令携带 `expected_head_sha`、当前 Requirement state_version、
+明确 merge method 与幂等键。服务端保存调用意图，重新读取 head/必需检查/Review/规则、
+检查无活动写入者/修复/交接，并绑定当前授权；不符合则拒绝。
+检查到调用期间保留与执行/交接互斥的 Repository lease 和 branch reservation；
+人工 Merge 的未知结果未对账前不发放同分支新写入权。
+记录使用 Phase 1 的 MergeOperation，绑定 PR、generation、expected head、操作者、
+幂等键和操作状态；取消仅撤销尚未发出的调用，已发送的请求需读远端结果，不能承诺撤销合并。
+按 expected SHA 调用 GitHub；结果未知先对账，不能以网络超时直接重复 merge。
+人工 Merge 也不能绕过保护规则；操作记录不使用只供未来自动合并的 `Merging` 主状态。
+已合并只启动 7.6 的最终验证，不直接 Done。人工验收证据仍通过 Requirement API 独立提交。
 
 Webhook endpoint 不提供通用写入 API，所有外部写入必须经过签名验证、去重和事件解析。
 
-### 16.6 SSE
+### 16.6 更新通道：首版轮询，后续可选 SSE
+
+Phase 0 前台每 5 秒轮询待办/运行摘要，列表页可放宽到 15 秒；事件按游标分页，
+不反复传输完整日志。切后台允许降频/停止，回到前台立即读取服务器状态。
+显示“最后刷新时间”和断线提示，不能把连接断开显示为 Agent 已失败。
+手机、电脑和平台 CLI 轮询同一平台数据库视图，不因客户端数量增加而重复调用 GitHub。
+
+SSE 从 Phase 1 作为可选增强，不阻塞完整闭环：
 
 ```http
 GET /api/events
@@ -3009,6 +3211,68 @@ SSE 必须支持：
 - 权限过滤
 - 心跳
 - 慢客户端丢弃策略
+
+### 16.7 待办、通知与控制面健康（Phase 0）
+
+```http
+GET    /api/inbox
+GET    /api/notifications/status
+POST   /api/notifications/test
+GET    /api/system/health
+POST   /api/scheduler/pause
+POST   /api/scheduler/resume
+```
+
+`inbox` 聚合未过期权限请求、待回答问题、失败项和待人工处理 PR，并返回来源实体与版本；
+回答仍调用 Run API，不在 inbox 维护另一份审批。通知测试只向已批准的接收端发送脱敏测试消息，
+API 不接受任意目的 URL。通知凭证通过 secret provider 配置。
+健康视图只对已认证用户开放，包含 executor、数据库、GitHub 同步、通知、磁盘和最近备份状态，
+不回传凭证。暂停调度只停止新的领取，不暗中取消正在执行的 Run；停止当前任务需单独确认。
+
+### 16.8 轻量平台 CLI 与三端审批（Phase 0）
+
+`factory` 是拟实现的平台命令名，以下是接口设计，不是已有 Codex 命令：
+
+```bash
+factory inbox
+factory requests show <request-id>
+factory requests approve <request-id>
+factory requests deny <request-id>
+factory requests answer <request-id>
+factory watch <run-id>
+```
+
+CLI 只提供待办、请求详情、批准/拒绝、回答和运行摘要，是现有 Run API 的客户端；
+不另建调度器、运行时或审批数据库。`answer` 按请求的结构收集输入，不修改原问题。
+默认交互式确认，先显示仓库/Run、真实操作与范围、请求理由、过期时间，再让用户决定。
+删除请求应显示明确的目标路径、是否目录/递归以及可得的变更信息，不能只显示“允许删除”；
+无法界定范围时不提供笼统批准，应拒绝或要求 Agent 重新提交明确请求。
+
+统一规则：
+
+- 三个入口都从服务器获取相同 request_id、request_version、generation 和操作摘要；
+  操作内容不可原地替换，需要变更就使旧请求失效并产生新请求。
+- 决策带请求版本、操作摘要和 Idempotency-Key；沿用 Requirement 授权版本检查，
+  服务端核对当前 Run、租约、有效期和状态，再原子写入唯一决定。无效请求不自动改为批准。
+- 完全相同的决策重试返回已保存结果；不同决定、旧版本或过期请求拒绝。终端看到旧详情时
+  不自动刷新后代用户再次批准，必须重新展示并确认。
+- CLI、手机和桌面同时操作时，第一个有效决定生效，其余显示“已处理”及可见的审计来源；
+  来源和身份由服务端认证确定，客户端自报 `client_kind` 不增加权限。
+- 网络结果未知先读服务器决策状态，不更换幂等键重发；只允许恢复相同的已确认请求，
+  不因响应丢失重新运行文件删除。区分“决定已保存”和“Runtime 已收到”。
+- `watch` 先用有游标的轮询，Ctrl-C/SSH 断开只关闭观察客户端，不取消 Run 或待办。
+- 首版不提供无人确认的批量批准、`approve --all` 或自动喂入 `yes`；非交互输入不能隐式批准。
+  自助网页已可用时也不能以“终端输出网页链接”冒充 CLI 决策闭环。
+
+传输与认证见 17.6。首版终端支持开发机上的人工账号以及经批准 SSH 登录后的同一命令；
+不以“终端在局域网”为由免认证，不要求为原生 Codex TUI 开放公网 WebSocket。
+
+删除文件的边界：
+
+本节处理的是 Runtime 已发出、且平台允许人工裁决的审批请求；它不保证每次 unlink、rm、
+脚本删除或 patch 删除都会自动产生一个请求。若产品将来要求“任何删除都必须预先批准”，
+需另行设计覆盖所有写入路径的工具/OS 强制策略并验证，不能靠提示词或匹配 `rm` 字符串实现。
+审批也不允许访问平台凭证、其他 workspace 或越过不可授权的硬边界。
 
 ---
 
@@ -3042,7 +3306,7 @@ Agent Context 必须包含来源和边界信息，不能默认相信其中的指
 上述路径规则不替代操作系统隔离。从 Phase 0 起，Agent 工具、after_create/before_run/after_run、
 依赖安装脚本以及 Gate/test 子进程都在低权限执行环境运行，不继承 API/调度器的执行身份。
 必须限制可读挂载和可写目录、网络出口、进程/CPU/内存额度；禁止挂载 Docker socket、
-平台数据库凭证、GitHub App 私钥、API Bearer Token 和 evidence store 的写权限。
+平台数据库凭证、GitHub App 私钥、Cloudflare Tunnel 凭证、通知密钥和 evidence store 的写权限。
 
 受信控制进程负责判定和归档，仓库代码只提供不可信输出。执行组以 cgroup、容器或等价可验证
 的 OS 边界标识并完整终止，不能仅按 PID 杀单进程。生产就绪检查必须实际验证凭证不可读、
@@ -3056,6 +3320,8 @@ Agent Context 必须包含来源和边界信息，不能默认相信其中的指
 GitHub App credential provider
 Model secret provider
 Runtime host environment
+Cloudflare connector secret store（仅 cloudflared 可读）
+Notification credential provider（仅通知发送器可读）
 ```
 
 不得：
@@ -3073,26 +3339,35 @@ hooks 和验证步骤均不持有。日志脱敏不是凭证隔离的替代品�
 
 ### 17.4 API 和 Webhook
 
-必须：
+Phase 0 使用 Cloudflare Access 保护整个管理域名，浏览器不保存长期静态 Bearer Token：
 
-- MVP 使用静态 Bearer Token：请求必须携带
-  `Authorization: Bearer <token>`；
-- Token 只从 Runtime host 的 secret provider 读取，不写入仓库、`WORKFLOW.md`、数据库明文
-  或日志；
-- 生产环境通过 secret provider 轮换 Token，并拒绝缺少或格式错误的 Authorization；
-- CSRF 防护
-- GitHub webhook HMAC 验证
-- webhook replay 防护
-- 请求体大小限制
-- API rate limit
-- 敏感字段脱敏
+- Access 只允许明确的个人身份，不以“拥有域名”或“能打开 Tunnel”视为登录成功。
+- API 校验 `Cf-Access-Jwt-Assertion` 的签名、允许的算法、固定 issuer、应用 audience、
+  有效期和绑定的用户 subject；邮箱头本身不作为身份凭据。JWKS 来源为部署时固定的受信域名，
+  支持按 key ID 刷新缓存；不能从未校验的 JWT 接受任意 issuer/JWKS 地址。
+- 首版浏览器直接使用 Access 会话，不另建账号密码、设备配对或双重登录系统；会话期建议配置为
+  8 小时。到期要求重新登录，平台待办不丢失，写请求不在登录后自动重放。
+- cookie 登录仍需 CSRF 防护：写 API 检查 Origin、仅接受预期 JSON 类型和自定义请求头，
+  使用同源部署和严格 CORS；GET 不产生审批/合并等副作用。
+- 管理 API 设置请求体/速率限制、日志脱敏；敏感 API 响应 `Cache-Control: no-store`，
+  不通过边缘缓存或未来 service worker 缓存审批、日志、凭证和私人数据。
+- 仅允许 Tunnel 连接器访问 Web 源站入口；Agent 网络不可访问控制面，源站不开放绕过 Access
+  的 LAN/公网端口。内部健康检查使用独立受限通道，不作为管理 API 鉴权后门。
+- 丢失手机时先撤销 Access 会话/身份授权，必要时在源站禁用该用户；首次部署必须验证撤销后
+  请求确实被拒绝，不把清除浏览器 cookie 当作服务端撤销。恢复访问通过宿主机管理通道执行。
 
-Phase 0 只开放 API；Webhook 的签名、重放和 inbox 处理随 Phase 1 开启。生产 API 使用
-TLS、受限监听地址和明确的 CORS allowlist；Agent 执行环境不能访问该管理入口。
+Phase 0 不开放 Webhook；Phase 1 如启用，另用精确路由执行 GitHub HMAC、原始请求体校验、
+delivery 去重和重放防护。该入口只能写入 webhook inbox，不能访问管理命令。
+若其路径配置 Access bypass，范围仅限该回调路径，绝不能豁免整个管理域名。
+Cloudflare Access 与 webhook HMAC 是两套独立信任边界，不能用其中一套替代另一套。
 
 ### 17.5 自动 Merge
 
 Phase 1 默认不自动 Merge。
+
+Phase 0 用户在 GitHub 人工合并；Phase 1 平台内的合并按钮也是人工逐次授权，不等于开启
+自动 Merge。仓库所有者的合并意愿、GitHub Review 和逐项 AC 验收分别记录；单人仓库的
+必要 reviewer 规则按实际身份和仓库能力配置，Agent 不伪造第二个人的批准。
 
 如果启用，必须同时满足：
 
@@ -3109,6 +3384,28 @@ Requirement acceptance criteria passed
 AND
 no active Recovery / ReviewFix
 ```
+
+### 17.6 首版终端认证与控制面隔离
+
+首版平台 CLI 使用开发机上独立的受限 Unix socket 访问审批 API；不通过公开 HTTP 的免鉴权
+例外，不从浏览器复制 Access cookie，也不要求原生 Codex TUI 能完成 Access 登录。
+浏览器走 Access 身份验证；本地 CLI 走操作系统身份验证，两者映射到同一平台 owner_id，
+再进入同一个授权/CAS/审计实现，不是两套审批规则。
+
+- socket 只提供 16.8 所需的待办/Run 读取和审批/回答命令，不能启动任意进程、写 SQL、
+  改策略或转发任意 app-server RPC；复用 API 的校验、大小/速率限制。
+- socket 所在目录与文件只授权指定人工管理账号；服务端验证 OS peer credentials，
+  将配置允许的宿主机 UID 映射到平台 owner_id，拒绝其他 UID。容器场景必须验证实际 UID
+  映射，不因 socket 能连上就默认可信，也不相信客户端发送的 user_id。
+- Agent/executor 使用不同的低权限 UID，不挂载该 socket 或其父目录，不得进入人工账号
+  会话，也不能读取 SSH 私钥。若无法满足隔离条件，终端审批模式不得启用。
+- 远程电脑的终端首版可通过已批准的 SSH 连接到该开发机后运行平台 CLI；
+  SSH 主机身份/登录仍按原有安全策略校验，不新增公开终端、SSH 入站端口或 root 登录要求。
+  实现该功能不授权平台擅自配置路由器、Tunnel SSH 或用户的 SSH 密钥。
+- 断开 SSH、退出 CLI、停止 watch 都不影响后台审批请求；禁用人工 UID 或移除 socket
+  授权后，后续请求拒绝。宿主机 root 属于主机管理员信任边界，不宣称能防御主机被完全接管。
+- 从其他机器直接以 HTTPS 运行 CLI 的认证方式留作后续增强；如接入 Access service token，
+  需要单独定义作用域、撤销和人类决策审计，不能把自动化身份默认为人工批准。
 
 ---
 
@@ -3221,22 +3518,35 @@ pill = 9999px
 
 ### 18.4 本项目页面模式
 
-首页采用 `My Development / Work Queue`，显示：
+首页采用 `Needs My Attention / Work Queue`，从 Phase 0 显示：
 
 ```text
+待审批
+待回答
+待审查 PR（跳转 GitHub）
+失败 / 需要人工处理
 Running Agents
 Ready Requirements
 Submitted Requirements
 Recent Activity
 ```
 
-Phase 1 起再增加：
+Phase 0 的 CI 失败和已合并状态来自只读同步；Phase 1 才增加持久化 Blocked、
+完整验收和修复队列。统计卡片和全量审计表不抢占手机首页空间。
 
-```text
-Blocked Items
-PRs Waiting Review
-CI Failures
-```
+首版只要求四类页面：待办/工作队列、需求新建与详情、Run 进度与审批、PR/CI 摘要。
+日志、证据、失败原因作为详情展开，不另建完整后台模块。
+
+审批卡片必须在手机可见范围内显示：
+
+- Requirement、Repository、当前 Run 和请求来源；
+- 实际命令/工具参数、工作目录、读写路径或网络目标；敏感值脱敏，但不能隐藏操作范围；
+- 请求理由、权限变化与风险提示；风险提示只是辅助，不能覆盖硬性禁止规则；
+- 过期时间和当前状态；单次批准、拒绝及理由输入；
+- 明确区分“决策已保存”“Runtime 已接收”“请求已失效”，多设备同时操作时显示最终结果。
+
+人工问题提供直接回复输入框；已处理卡片保留结果但禁用再次提交。通知打开的是这个
+可重新鉴权的详情页，不是带有批准令牌的 action URL。
 
 Requirement、Agent、PR、CI 详情页统一采用：
 
@@ -3308,6 +3618,12 @@ Failure + Retry
 Desktop Chrome
 Pixel 7 / mobile Chromium
 ```
+
+响应式手机 Web 属于 Phase 0 核心能力，不以“PWA 在 Phase 4”为由推迟。完整安装体验、
+service worker、Web Push 和离线模式可后置；首版不承诺离线执行或后台轮询可靠。
+除模拟视口外，至少在用户实际使用的手机浏览器验证 Access 登录、通知跳转、审批、
+输入法弹出、锁屏返回和 GitHub 跳转；若使用 iPhone，须补 Safari 真机流程，
+不能用 mobile Chromium 模拟替代。
 
 ### 18.7 无障碍
 
@@ -3390,8 +3706,9 @@ token_usage
 estimated_cost
 ```
 
-Phase 1 增加 queued_requirements、blocked_requirements、ci_failure_count；
-Phase 2 启用 ReviewFix 后再增加 review_fix_count。
+Phase 0 增加 pending_approvals、pending_inputs、notification_delivery_failures、
+github_sync_age、ci_failure_count；Phase 1 增加 queued_requirements、blocked_requirements
+和 review_fix_count。CI 摘要计数不等于内部状态计数。
 
 V2：
 
@@ -3406,8 +3723,11 @@ Grafana
 首页不是传统 Admin Dashboard，而是工作队列：
 
 ```text
-My Development
-├── Running Agents
+Needs My Attention
+├── 待审批 / 待回答
+├── PR 待审查 / CI 失败
+├── 执行失败 / 同步或通知异常
+├── Running Agents（包含人工等待原因）
 ├── Ready Requirements
 ├── Submitted Requirements
 └── Recent Activity
@@ -3415,12 +3735,11 @@ My Development
 Phase 1：
 ├── Queued Requirements
 ├── Blocked Items
-├── PRs Waiting Review
-└── CI Failures
+└── 最终验收 / 修复队列
 ```
 
-MVP 不展示尚未启用的 CI / Review / Blocked 统计；这些卡片在 Phase 1 启用对应事实源后
-才显示。
+MVP 展示已接入的 PR/CI/Review 外部摘要和同步时间，不展示尚未启用的持久化 Blocked/Done
+或自动修复统计。手机首页以待办和明确下一步操作为主，不要求监控大屏。
 
 必须支持按以下维度过滤：
 
@@ -3432,6 +3751,25 @@ Agent State
 PR State
 CI State
 ```
+
+### 19.5 首版通知
+
+首次部署选定并只实现一个用户实际接收的渠道（例如现有聊天工具机器人或受控通知服务）；
+渠道选择是部署配置，不需要首版建设通知平台，也不假定已有任何厂商凭证。
+真实手机收到一次通知是交付条件，不能用“未来支持”或仅日志输出替代。
+
+- 通知事件：新审批、新问题、执行失败、PR 已可人工处理、CI 失败，以及请求即将过期的单次提醒。
+- 仅发送脱敏标题、事件类型、时间和固定站点下的详情链接；不发送原始命令、代码、secret、
+  Access token 或批准口令，锁屏通知不暴露仓库敏感内容。
+- 事件与 outbox 在同一事务写入，发送结果保存到 `notification_deliveries`；同一来源事件
+  重复消费不重新生成通知意图。发送器不要求恰好一次送达：响应丢失可能重复提醒，但绝不能
+  重复批准或触发编码。重复轮询得到同一事实不产生新事件。
+- 发送失败有限退避重试，超过通知时限显示失败/过期；已解决请求不继续发送过期催办。
+  通知故障不导致 Run 失败，不占用执行重试预算，不使审批自动通过。
+- 通知是提醒渠道，数据库待办才是权威；即使通知不可用，用户仍可打开平台处理。
+  浏览器关闭后不依赖前端轮询发送通知；通知发送始终由开发机后端负责。
+- 本机断电时本机不能发送告警；独立外部可用性监控可后置，首版必须明确显示服务不可达，
+  不承诺断电期间仍能审批或执行。
 
 ---
 
@@ -3497,7 +3835,7 @@ async-trait
 - queue
 - priority
 - dependency
-- global capacity（Phase 0 / Phase 1 默认 4）
+- global capacity（Phase 0 / Phase 1 固定 1；Phase 2 默认 1、可配置到 4）
 - repository serial（Phase 0 / Phase 1 同 Repository 串行）
 - project/repository capacity（Phase 3）
 - fair scheduling（Phase 3）
@@ -3543,9 +3881,12 @@ async-trait
 
 ```text
 docker compose
-├── app                  # API/调度/可信控制面
+├── app                  # Web/API、调度、可信控制面、只读同步、通知发送
 ├── executor             # 低权限本机执行服务，无平台数据库与 GitHub 凭证
 └── postgres
+
+既有 cloudflared 连接器 → app 的受限入口
+（没有既有连接器时才新增 cloudflared 服务，不重复搭建第二套）
 ```
 
 executor 是同一主机的安全边界，不是多 Worker 调度或新增消息队列。控制请求使用本机受限
@@ -3556,6 +3897,11 @@ Workspace 使用显式挂载：
 ```text
 ./workspaces:/workspaces
 ```
+
+PostgreSQL、canonical clone、sealed artifacts/evidence 和必要配置各自使用持久卷；
+不能只持久化 workspaces。secret 通过独立受限挂载/提供器注入，不能放入公共 Compose 配置。
+app 可直接同源提供构建后的 Web 静态文件，不要求为首版额外引入 Caddy/Nginx。
+若已有反向代理可复用，但必须保留源站隔离和 Access JWT 验证。
 
 镜像职责：
 
@@ -3590,7 +3936,9 @@ Global Scheduler
 Supervisor
 Reconciler
 Handoff Worker
-SSE broadcaster
+GitHub read-only poller
+Notification Dispatcher
+SSE broadcaster（Phase 1 可选）
 ```
 
 Agent 子进程由 Supervisor 经 executor 启动，执行组清理不依赖控制面正常退出。
@@ -3608,6 +3956,76 @@ Redis Streams / NATS
 ```
 
 在此之前不要为了“未来扩展”引入分布式 MQ。
+
+### 21.4 Cloudflare 域名、Tunnel 与 Access（Phase 0 必须）
+
+复用用户已有域名和连接器，不要求公网 IP、路由器端口映射或手机安装 VPN 客户端。
+首版部署选用“公开 hostname + Access 保护”的 Web 入口，而不是直接暴露无认证的服务：
+
+```text
+电脑 / 手机浏览器
+    → HTTPS：factory.<用户域名>
+    → Cloudflare Access：只允许本人登录
+    → Cloudflare Tunnel：既有 cloudflared 主动建立出站连接
+    → 受限源站入口：响应式 Web + /api
+    → 控制面 → executor / PostgreSQL / GitHub / 通知渠道
+```
+
+部署验收顺序：
+
+1. 创建单一 hostname 与 Access self-hosted application，填写允许身份和会话期；
+   在发布源站前先配置拒绝默认访问的策略，不先裸露服务再补认证。
+2. 绑定既有 Tunnel 的精确 hostname 路由和拒绝其他流量的兜底规则。
+   cloudflared 与 app 在同一主机时用回环绑定，或仅它们可达的私有容器网络；
+   连接器在另一台 LAN 主机时限制源地址，并对该段使用可验证的 HTTPS，
+   不以“局域网可信”为由开放所有设备直连。
+3. app 配置固定 Access issuer、AUD 和用户身份，按 17.4 验证 JWT；尝试绕过 Tunnel
+   直接访问、伪造邮箱/身份头、错误 AUD、过期 JWT，均必须失败。
+4. 验证边缘 HTTPS、域名和 Access 登录；不为省事对 app 源站启用 `noTLSVerify`。
+   同机回环/受限容器网络的 HTTP 与跨 LAN 的 HTTPS 是明确不同的部署边界。
+5. 手机上完成登录、提交、待办审批和通知链接跳转，再验证会话到期后重新登录不会自动批准。
+   日常操作共用一个域名与登录入口，不另建二维码配对系统。
+
+Tunnel 只代理控制台入站访问；GitHub API、模型、依赖下载和通知仍需各自批准的出站网络。
+禁止把 Executor 的任意预览端口、终端、数据库或 Docker socket 自动挂到这个公开 hostname。
+应用运行预览不是首版交付前提；确需手机预览时另定义受认证的预览入口与生命周期。
+
+Phase 0 只做 GitHub 出站轮询，因此没有 webhook 的 Access 例外。Phase 1 选择接入时，
+使用独立 webhook hostname 或精确路径，仅路由到 webhook 接收器；GitHub 不需要取得
+用户 Access 会话，接收器必须独立验证原始请求体 HMAC、事件类型、仓库范围和 delivery ID。
+默认未匹配路由拒绝请求，不能让 webhook bypass 同时开放 `/api`、静态管理页面或健康详情。
+
+官方依据（实施时复核部署界面和协议，不以本文件代替厂商文档）：
+
+```text
+Cloudflare Tunnel / public applications:
+https://developers.cloudflare.com/tunnel/
+Cloudflare Tunnel / outbound-only connections:
+https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/
+Cloudflare Access / Validate JWTs:
+https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/
+GitHub REST / best practices:
+https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-rest-api
+```
+
+### 21.5 单机运行、备份与恢复（Phase 0 基础要求）
+
+- 开发机不依赖桌面登录保持服务；配置开机启动和进程重启，停用不适合无人值守的自动休眠，
+  但不擅自修改用户主机电源设置。平台离线时不能审批或执行，这一限制必须可见。
+- 升级前暂停新调度，处理或显式停止当前 Run，确认执行组静止，再备份数据库、canonical/
+  sealed refs、产出清单、权威证据和配置。备份记录 schema/version 与文件清单，
+  secret 另行加密备份，不混入仓库或普通日志。
+- 首版提供每日备份与升级前备份的可重复脚本/操作说明。需要一致性窗口时暂停写入并确认
+  无在途交接后取快照，不承诺对运行中的数据库和文件分别复制就能一致恢复。
+  备份失败显示待办；保留至少一份离机、受限且加密的副本，单机目录副本不是灾备。
+- 首次发布前至少实际恢复一次到隔离目录/数据库；默认禁用调度和外部写操作，
+  避免演练环境产生真实 PR、通知或并发执行。恢复生产时先对账远端和旧执行组再开放写入。
+- 启动检查磁盘可用空间和执行资源额度；低于可配置阈值暂停新的 dispatch/验证任务并显示
+  原因，不当作代码失败消耗模型重试。不自动删除有活动 lease、reservation 或未封存改动的目录。
+- 首版支持展示磁盘占用和人工确认后的安全清理；按保留期自动清理旧资源留到 Phase 2。
+  保留失败现场和恢复所需证据，清理不能破坏已交付 PR 的追溯链。
+- 手机断网/Access 会话结束与主机断电分开处理：前者不取消运行；后者恢复后按 5.1 对账。
+  Tunnel/通知暂时断开不等于模型或数据库失效，不因此自动重启编码。
 
 ---
 
@@ -3631,11 +4049,10 @@ Redis Streams / NATS
 
 ### 22.2 Scheduler
 
-- Phase 0：单 Project / 单 Repository 下验证全局容量上限不会突破（同仓串行时有效运行数
-  通常为 1）
-- Phase 1：多 Project 并行
-- Phase 1：多 Repository 并行
-- Phase 0：全局容量限制的上限不超限；Phase 1 再验证并行吞吐
+- Phase 0 / Phase 1：单 Project / 单 Repository / 单 Agent，待审批仍占用容量
+- Phase 2：多 Project 并行
+- Phase 2：多 Repository 并行
+- Phase 0：全局容量固定 1 且不可绕过；Phase 2 再验证配置上限和并行吞吐
 - Phase 0：同 Repository 串行
 - Phase 0：FIFO + priority
 - Project 容量限制（Phase 3）
@@ -3646,7 +4063,8 @@ Redis Streams / NATS
 - Phase 0：Running + 未完成交接不被判作孤立状态
 - Phase 0：retry backoff
 - Phase 0：retry 上限
-- Phase 2：同一 PR branch 的 Recovery / ReviewFix 互斥
+- Phase 1：同一 PR branch 的 Recovery / ReviewFix 互斥
+- Phase 0：暂停领取不取消当前 Run，磁盘不足不新建 Run、不消耗执行重试
 
 ### 22.3 Workspace / Git
 
@@ -3678,28 +4096,33 @@ Redis Streams / NATS
 - Phase 0：dynamicTools 注册和准确 request ID 回包
 - Phase 0：TokenUsageUpdated 独立累计，重复事件不重复计费
 - Phase 0：受控 Git 提交、并行审批和 user input 的重复/超时/迟到回答
+- Phase 0：持久化人工等待超过普通 stall 时限，仍续租且不推进未授权操作
+- Phase 0：独立请求超时、Run 绝对寿命上限、Runtime 失联和审批送达未知各自正确处理
+- Phase 0：待审批重启后旧请求失效并转人工，不复用历史批准
+- Phase 0：电脑 Web、手机 Web、平台 CLI 读取同一个请求，任选一端批准/拒绝/回答后正确回传
+- Phase 0：三端并发冲突、旧操作摘要/版本、重复相同决定、CLI 退出和回复丢失
+- 原生 Codex TUI 接入仅做后续兼容性实验；不得以存在 `--remote` 参数代替上述测试
 
 ### 22.5 GitHub
 
-- 多 installation
-- 多 repository webhook 路由
-- signature 校验
-- delivery 去重
-- webhook 乱序
-- PR 关联
-- CI 结果归档
-- Phase 1：Review 事实归档
-- Phase 2：ReviewFix 生成
+- Phase 0：PR 关联、只读 CI/Review 摘要、GitHub 跳转、合并/关闭回显
+- Phase 0：轮询条件请求、分页、限流退避、stale/unknown 和最后同步时间
+- Phase 0：head 改变后不复用旧 CI 成功，关闭/合并不伪造 Done
+- Phase 1：最终验收证据与 ReviewFix 生成
+- Phase 1：人工 Merge 的 head 绑定、规则检查、重复点击、未知响应对账
+- Phase 1 可选 Webhook：signature、delivery 去重、乱序和精确回调路由隔离
+- Phase 2：多 installation / repository 路由
 
 ### 22.6 Recovery
 
-- Phase 2：CI failure 创建 Recovery Requirement
-- Phase 2：复用原 PR branch
-- Phase 2：最大修复次数
-- Phase 2：重复事件不重复创建任务
-- Phase 2：修复失败进入 Blocked
+- Phase 1：显式 policy 开启后 CI failure 创建 Recovery Requirement
+- Phase 1：ReviewFix 需要用户选定意见和确认，过期意见不静默应用
+- Phase 1：复用原 PR branch，每类最多一次、root 合计最多两次
+- Phase 1：重复事件不重复创建任务，失败进入 Blocked
+- Phase 1：受信 Gate 的安全/配置类失败不得自动修复，本项目门禁例外保持有效
 - Phase 1：人工 Unblock 按受阻阶段恢复
-- Phase 2：达到 root 总上限后 Unblock 不重置计数
+- Phase 1+：达到 root 总上限后 Unblock 不重置计数
+- Phase 2：更丰富的修复策略总额仍不超过 3，升级不放宽历史冻结预算
 
 ### 22.7 输入一致性
 
@@ -3724,18 +4147,23 @@ Redis Streams / NATS
 - Angular Desktop Chrome 视觉验收
 - Angular Pixel 7 视觉验收
 - Angular 暗色、键盘、reduced-motion 和异步状态验收
+- Phase 0：用户实际手机浏览器的登录、输入法、待办、锁屏返回和通知跳转验收
 
 ### 22.9 真实集成测试
 
 Phase 0 真实集成至少验证：
 
 ```text
-创建 Requirement
+手机真实域名 / Access 登录
+→ 创建 Requirement 并确认 Ready
 → Worktree
+→ Agent 请求审批 / 人工输入 → 手机收到通知并回答
 → Agent 修改 / create_local_commit
 → report_completion 持久化 / 执行组静止 / 受信验证 / 封存
 → HandoffOperation 幂等 push / 创建 PR
 → Submitted
+→ 手机查看 PR/CI 摘要 → 跳转 GitHub 人工合并
+→ 平台显示 PR=MERGED、最终 SHA、同步时间；内部保持 Submitted
 ```
 
 在声明前、声明后、封存后、push 后和 PR 创建后分别注入重启；验证各自恢复路径，
@@ -3758,6 +4186,9 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository，验证：
 
 真实测试失败不能静默当作通过。
 
+手机 UI 测试使用测试仓库和安全的受控审批动作；不得为测试而批准访问平台凭证或宿主机
+任意路径。云入口和通知渠道在用户实际部署环境验收；CI 模拟测试不能替代真实访问结果。
+
 ### 22.10 故障窗口验收矩阵
 
 | 阶段 | 注入场景 | 必须观察到的结果 |
@@ -3773,23 +4204,51 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository，验证：
 | Phase 0 | Agent 改 Gate 配置/验证入口/报告 | 受信策略不被更新，不能通过修改规则绕过失败 |
 | Phase 0 | hook 的 test 失败与 secret 失败 | 前者可有限反馈修复；后者立即转人工，无提交 |
 | Phase 0 | 审批迟到或工具尝试读取平台凭证 | 回答被拒绝，凭证不可读 |
+| Phase 0 | 手机锁屏/断网/Access 会话到期 | 任务不取消，重新登录后读当前待办，不自动重放批准 |
+| Phase 0 | 审批等待超过普通 stall 时限 | 仍续租；按独立 human_wait_timeout 处理，不当作卡死重启 |
+| Phase 0 | 电脑 Web/手机 Web/CLI 同时批准或拒绝 | 第一个有效 CAS 胜出，其余端显示冲突/已处理 |
+| Phase 0 | CLI 在确认后响应丢失/SSH 断开 | 读取既有决定，不换幂等键重发；后台任务和待办不被取消 |
+| Phase 0 | Agent 尝试访问审批 Unix socket/伪造人工 UID | OS 隔离与 peer credential 验证拒绝，不允许自批 |
+| Phase 0 | 决策已落库、Runtime 回复丢失 | 显示送达未确认，核对原 request ID，不重发工具动作 |
+| Phase 0 | 带待审批请求的 Run 重启 | 旧请求失效，转人工重试，新 Run 重新请求授权 |
+| Phase 0 | 通知服务失败/同一事件重复消费 | 待办仍可处理，通知有限重试，不重启编码或重复决策 |
+| Phase 0 | PR 轮询超时/限流/head 变化 | 显示 stale/unknown，不把旧检查当新 head 成功 |
+| Phase 0 | 伪造 Access 头/错误 AUD/直接访问源站 | 拒绝管理请求，无状态修改 |
+| Phase 0 | 磁盘不足/备份失败 | 暂停新领取或告警，保留现场，不消耗模型重试 |
 | Phase 1 | PR 修改所选知识文件后合并 | 正确分类自有产出并继续最终验证 |
 | Phase 1 | 同路径存在外部输入变化 | 进入 NeedsRevalidation，不自动豁免 |
 | Phase 1 | PR CI 成功但最终 SHA 无证据 | 保持 pending，不能 Done |
 | Phase 1 | 同一 AC 在两个 SHA 上先成功后失败 | 保留两份历史，最终视图使用正确目标 SHA |
 | Phase 1 | 上游仅 Submitted 或不在下游基线 | 不领取下游，不消耗 retry |
+| Phase 1 | 合并确认后 head 变化/merge API 响应丢失 | 前者拒绝旧确认；后者先查合并事实，不重复合并 |
+
+### 22.11 首版部署验收
+
+- Cloudflare hostname、Access 本人登录、JWT 验证和源站不可绕过；
+- 会话撤销后旧客户端请求被拒绝，通知不带认证/批准凭证，敏感 API 不缓存；
+- 平台 CLI 经人工账号/受限 socket 完成同一审批，其他 UID 与 executor 不能访问；
+- 首版没有公开 webhook 入口；后续启用时精确 callback 路由不暴露管理 API；
+- 数据库、sealed refs、产物清单和证据恢复到隔离环境，外部写操作默认禁用；
+- 恢复生产前先对账远端与旧执行组，不重复创建 PR 或并发修改原分支。
 
 ---
 
 ## 23. 实施分期
 
-### Phase 0：执行内核
+本章是实际开发队列，不按前文的章节顺序逐章实现。首版是可使用的垂直切片，
+不是先完成所有数据库实体、抽象层和管理页面。长期目标不反向扩大 Phase 0。
 
-目标：先证明单 Project、单 Repository 的端到端闭环可行；终点是 PR 创建并进入
-`Submitted`，不是 `Done`。
+### Phase 0：手机可用的远程开发控制台
 
-包含：
+目标：用户能从手机发起真实需求，处理 Agent 审批/问题，并在 GitHub 审查合并，
+回到平台能看到结果。内部交接成功态为 `Submitted`，完整 Done 验收尚未启用。
 
+必须包含：
+
+- 既有 Cloudflare Tunnel + Access、同源响应式 Web、后端 JWT 校验和源站隔离
+- 手机需求表单、待办首页、审批/回答、日志摘要、停止、失败原因和人工重试
+- 轻量平台 CLI：待办/请求详情、交互式批准/拒绝、回答、运行摘要；人工 UID 的受限 socket 认证
+- 一个真实可收信的外部通知渠道，脱敏详情链接、交付状态和测试入口
 - Project / Repository 基础表
 - 多 Project 数据模型，Phase 0 使用限制为单 Project
 - Requirement 结构化 Contract + 自动 AC ID + 不可变 Revision + AC 验收证据
@@ -3798,11 +4257,11 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository，验证：
   `path + blob_oid`；本地未提交例外为 content hash）
   与 `NeedsRevalidation`
 - 一个 CodexRuntime：直接实现，参考 Symphony app_server.ex，schema codegen，版本锁定
-- 调度：全局并发 4 + 同 Repository 串行 + FIFO（priority 排序）+ claim lease
+- 调度：单仓单 Agent，全局并发固定 1 + FIFO（priority 排序）+ claim lease，支持暂停新领取
 - Workspace / Worktree 创建和清理
 - AgentRun
 - 基础日志
-- Reconciler：Process + Workspace；按声明/manifest/交接阶段恢复，先处理旧执行组
+- Reconciler：Process + Workspace + 最小只读 GitHub 轮询；按声明/manifest/交接阶段恢复
 - 受控 LocalGitBroker、dynamicTools、审批/user input API 和基础 UI
 - 完成声明、产出清单、Handoff Worker/outbox 及独立交接重试
 - generation/dispatch_epoch、恢复屏障和取消竞态处理
@@ -3811,6 +4270,9 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository，验证：
 - 本项目 Harness-Gate 接入（config check、doctor、hook、封存前 verify --profile ci --all）
 - 本项目 Angular 设计 Token、页面骨架和基础可访问性基线
 - 错误码表与 MVP RetryPolicy 引擎（第 28 章）
+- 已关联 PR 的状态、CI/基础 Review 摘要、同步时间、GitHub 跳转与合并/关闭回显
+- 浏览器轮询、Token/估算成本、运行/人工等待时限和通知/GitHub 同步健康
+- 开机启动说明、磁盘不足停止新领取、基础备份与一次真实恢复演练
 
 不包含（推迟清单见本章末尾）：
 
@@ -3821,24 +4283,32 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository，验证：
 - 完整 policy / Harness-Gate digest
 - SSE 实时更新
 - Recovery 重试、ReviewFix 重试和 root 级修复计数
+- 平台内 Merge、自建 diff 审查器、自动需求澄清、Planner、多 Agent 协作
+- Webhook、完整 PWA、Web Push、离线审批、复杂仪表盘、独立 MQ
+- 原生 Codex TUI 直连、独立 CLI/IDE 会话接管、跨主机 HTTPS CLI 登录
 
 验收：
 
 ```text
-创建一个 Requirement，确认 Ready（或调用 Start 立即触发扫描），
-Agent 在独立 worktree 中修改代码并请求受控本地提交；
-声明完成后平台停止执行组、验证封存并幂等交接 PR；
-UI 区分执行/审批/验证/交接，重启后不误交接中间 commit、不重复编码已封存产出。
+手机通过真实域名登录 → 填写需求和验收标准 → 确认 Ready
+→ 后台 Agent 执行 → 手机收到提醒 → 批准权限或回答问题
+→ 继续执行 → 受控提交 / 受信 Gate / 声明封存 → 平台创建 PR
+→ 手机看到 PR/CI 摘要 → 跳转 GitHub 审查并人工合并
+→ 平台显示 PR 已合并及同步时间，Requirement 仍为 Submitted，明确未做完整验收
 ```
 
-### Phase 1：CI / Review / Webhook 主闭环
+正常条件下前台待办刷新不超过 10 秒，PR 外部事实同步不超过 2 个默认轮询周期；
+通知测试应在约定交付窗口内（首版目标 60 秒）真实到达，失败时有可见状态。
+这些是验收目标，不是互联网/通知服务可用性保证；断线与限流必须显示 stale 并恢复。
+只跑通 API、只创建 PR 或只做手机视口截图，均不能算首版完成。
+同一受控测试请求还须分别从电脑 Web、手机 Web 和平台 CLI 完成审批/回答；
+三端同时决定只执行一次，CLI 断开不取消 Agent。不以原生 Codex TUI 尚未适配推迟基础 CLI。
 
-包含：
+### Phase 1：减少人工介入、完成业务闭环
 
-- 多 Repository 映射（恢复多仓库能力）
-- Checks / Actions 读取
-- Webhook inbox
-- Reconciler：增加 GitHubReconciler
+仍保持单仓单 Agent，在已经可用的 Phase 0 上分小版本发布，依次包含：
+
+- Reconciler：将只读 GitHub 同步升级为完整 CI/Review/Done 业务对账
 - `InputSnapshotChanged` 事件与受影响 Requirement 重验证
 - 增加 WaitingCI / WaitingReview / Done / Blocked，以及人工 Unblock
 - `Submitted → WaitingCI → WaitingReview → Done`
@@ -3846,39 +4316,46 @@ UI 区分执行/审批/验证/交接，重启后不误交接中间 commit、不�
 - 最终 SHA 的 CI/Gate 证据、逐项人工验收和可审计的 Review 继承规则
 - 输入来源分类、OutputIntegrated 与 no-impact 产出重新授权
 - 同 Repository 执行性依赖，校验上游 Done 和下游基线包含关系
-- 基础 Angular 工作队列
-- SSE 实时更新
+- 手机逐项人工验收页面，不能依赖直接改数据库补证据
+- 平台内人工 Merge：expected head SHA、调用意图持久化、规则检查、未知结果对账
+- 有限修复：Repository 显式开启后，最多一次 CiRecovery、一次用户确认的 ReviewFix，
+  root 合计上限 2；复用原分支/PR，失败或超限转人工，安全门禁例外仍以 12.6 为准
+
+Webhook 和 SSE 是可选增强，仅在轮询延迟/开销成为实际问题时启用，不阻塞上述小版本。
+简单的“描述生成 Contract 草稿”可作为本阶段后续独立小版本：用户确认后才 Ready，
+不自动拆分或调度，不要求先实现完整 Discussion。
 
 验收：
 
 ```text
-多个 Repository 的 Requirement 可以并行走到 PR，
-服务重启后不会重复运行同一个 branch，并能基于外部事实推进到 WaitingReview；
-人工 Merge 后对精确的最终 SHA 验证，通过后才由 reconciler 推进到 Done。
+手机可看到 CI 失败后有限修复、按选定意见继续改原 PR、确认合并并逐项验收；
+head 改变会使旧合并确认失效，修复超限不继续消耗模型；
+人工 Merge 后验证精确的最终 SHA，通过后才由 reconciler 推进到 Done。
 ```
 
-### Phase 2：CI Recovery 和 ReviewFix
+### Phase 2：多仓并行与运行增强
 
 包含：
 
-- Failure Summary
-- Recovery Requirement
-- Review Comment 归档
-- ReviewFix Requirement
-- 原 PR branch 复用
-- root 级 `total_recovery_attempts` 硬上限 3 + 同 branch 串行
+- 多 Project/Repository 映射和队列；全局并发默认 1，显式配置后最多 4，同仓继续串行
+- 更丰富的 Failure Summary、Review 意见聚合和修复策略
+- root 级修复总硬上限最多 3，保留历史冻结限额，不自动扩张旧需求的预算
 - Blocked 人工处理
 - 完整输入 digest（Project/Repository policy、Harness-Gate 配置和完整上下文）
 - Reconciler：增加 DigestReconciler 和 ResourceCleaner
+- 自动保留期清理、主机资源配额与多仓恢复测试
 
-### Phase 3：可选需求澄清增强
+不承诺同一 Requirement 跨仓修改，不因启用多仓就引入远程 Worker。
+
+### Phase 3：可选计划与子任务编排
 
 包含：
 
 - Discussion
 - Discussion messages
 - 从 Discussion 生成 Requirement Contract 草稿
-- Requirement 自动拆分
+- Planner 生成计划及子需求草稿；人工确认后才进入执行队列
+- 同仓子任务依赖、集成任务和失败子任务单独重试；初期保持单写入者串行，DAG 不等于并行
 - 仓库文档输入的 UI 预览和引用展示
 - 多 Project 公平调度与 Project 级容量
 
@@ -3886,7 +4363,10 @@ ADR/OpenSpec 的文件读取由 Project/Repository 的 `knowledge_policy` 控制
 不采用 Discussion 时可以跳过澄清模块，公平调度独立启用；Phase 0 的 Contract、Revision、
 context_input_digest、漂移检测和验收证据仍然是强制能力。
 
-### Phase 4：模型和体验增强
+启用复杂并行前另行定义分支集成、产出汇合、权限传播和预算边界，
+不能从当前 Scheduler 自动推断已具备多 Agent 协作。没有真实需要时可以不实施本阶段。
+
+### Phase 4：模型、PWA 与体验增强
 
 包含：
 
@@ -3894,8 +4374,9 @@ context_input_digest、漂移检测和验收证据仍然是强制能力。
 - Fallback
 - 预算
 - 多 Runtime
-- 移动 PWA
-- 通知
+- 完整 PWA 安装/更新、Web Push 或新增通知渠道；手机 Web 和首个通知渠道已在 Phase 0
+- 离线只读/草稿能力单独设计，不缓存批准命令或离线自动重放
+- 自建 diff 审查器、可选指标看板
 - 高级 CI 分析
 
 ### Phase 5：分布式扩展
@@ -3912,28 +4393,56 @@ context_input_digest、漂移检测和验收证据仍然是强制能力。
 
 | 能力 | 推迟到 | 回归条件 |
 |---|---|---|
-| WaitingCI / WaitingReview / Done 状态 | Phase 1 | 恢复 CI/PR 闭环；`Merging` 仅未来自动 Merge |
+| 完整 Done、最终 SHA 验收、人工验收页面 | Phase 1 | 手机到 GitHub 交接路径已可用 |
+| 平台内人工 Merge | Phase 1 | SHA 绑定、规则检查和未知结果对账 |
+| 一次 CI 修复 + 一次确认后的 ReviewFix | Phase 1 | 原分支复用、冻结限额和停止路径已验证 |
+| Webhook / SSE | Phase 1，可选 | 轮询延迟/开销成为实际问题 |
+| 多仓并行 | Phase 2 | 单仓日常使用稳定 |
 | Project 级容量、公平调度 | Phase 3 | 多项目并行有饥饿现象 |
 | 完整输入 digest（policy / Harness-Gate / 完整上下文） | Phase 2 | MVP blob_oid digest 稳定 |
 | 事件溯源重放 | Phase 3 | 审计/时间旅行成为真实需求 |
-| 数据保留任务、指标看板 | Phase 1 后 | MVP 上线稳定 |
+| 自动保留期清理 | Phase 2 | 基础备份与安全清理已可用 |
+| Planner/自动拆分 | Phase 3，可选 | 有实际需求拆解和集成场景 |
+| 完整 PWA、多通知渠道、自建 diff | Phase 4 | 基础移动 Web/通知已可用 |
+| 原生 Codex TUI/Remote 兼容接入 | 后续独立实验 | 先证明不会绕过平台审批落库、会话控制与审计 |
 
 #### 里程碑顺序
 
-不设单点工期估算，只定里程碑顺序：
+不承诺未经验证的日历工期。首版内部按可演示结果推进：
 
 ```text
-1. CodexRuntime 直接实现（验收标准见 8.3）
-2. 端到端闭环：Requirement → Agent → PR → Submitted（MVP）
-3. 多 Repository + CI/PR 状态同步（Phase 1）
-4. Recovery / ReviewFix（Phase 2）
+A. 可访问：真实域名 → Access 登录 → 手机打开待办壳层
+B. 可控制：真实 Agent 在隔离工作区运行 → 电脑/手机/平台 CLI 审批与回答，Web 可停止任务
+C. 可交付：需求 → Gate/受控提交/声明封存 → 幂等创建 PR
+D. 可日用：通知到手机 → PR/CI 回显 → GitHub 合并 → 平台同步结果
+E. 可恢复：声明/交接故障测试、等待期断线测试、备份恢复演练 → Phase 0 发布
 ```
+
+这些是同一 Phase 的验收切片，不是新增架构阶段。安全能力贯穿 B～E，
+不能先上线无隔离执行再补保护。通过 Phase 0 即开始日常使用，后续功能不反向阻塞发布。
+实现前只需确认实际 hostname/Access 身份、首个仓库、已批准执行策略和一个通知接收渠道；
+这些由部署时填写，不为等待完整平台设置页而推迟联调。
 
 ---
 
 ## 24. MVP Definition of Done
 
-MVP 必须满足：
+只有以下产品路径与安全底线同时满足，才能标记 Phase 0 交付；不能以服务端测试替代手机使用。
+
+### 真实用户路径（发布门槛）
+
+- [ ] 已有域名通过 Cloudflare Tunnel + Access 访问，只有本人可登录
+- [ ] 真实手机完成需求录入、AC 编辑、确认 Ready；电脑可看到同一条任务
+- [ ] Agent 在浏览器关闭后继续执行，审批待办可从另一设备处理
+- [ ] 真实手机收到脱敏通知，点击后经登录打开准确待办
+- [ ] 手机可批准/拒绝、回答问题、停止任务、查看失败原因并人工重试
+- [ ] 电脑浏览器和平台 CLI 可处理相同的审批/问题；不强制拿手机或跳转网页才能在终端决定
+- [ ] CLI 查看明确操作后交互式确认，三端同时处理仅一个有效决定，其他端同步已处理
+- [ ] PR 自动创建；平台显示准确 head 对应的 CI/Review 摘要、同步时间和 GitHub 链接
+- [ ] 在 GitHub 人工合并后平台显示 MERGED/最终 SHA，仍明确区分 Submitted 与 Done
+- [ ] 关闭但未合并、同步失败和陈旧缓存均有准确提示，不误报完成
+- [ ] 等待审批超过普通 stall 时限不会误杀；到独立等待上限后停止并使旧请求失效
+- [ ] 手机锁屏/断网/重新登录、多设备重复点击、Run 重启后的失效审批都通过验收
 
 ### 领域
 
@@ -3956,13 +4465,14 @@ MVP 必须满足：
 
 ### 调度
 
-- [ ] 全局并发限制（默认 4）
+- [ ] 单仓单 Agent，全局并发固定 1
 - [ ] 同 Repository 串行
 - [ ] FIFO + priority 排序
 - [ ] claim lease（60s 超时 / 20s 心跳）
 - [ ] MVP 临时故障 retry / backoff（startup / response / stall / git fetch / model 429/5xx）
 - [ ] 按故障窗口恢复：无声明不交接、有 manifest 不重新编码
 - [ ] lease 看门狗、旧执行组退出确认、dispatch_epoch 和 branch reservation
+- [ ] 暂停新调度与停止当前任务语义独立；等待审批保留租约和容量
 
 ### 执行
 
@@ -3974,6 +4484,7 @@ MVP 必须满足：
 - [ ] after_create / before_run / after_run hooks
 - [ ] create_local_commit 和 report_completion 的真实动态工具闭环
 - [ ] 审批/user input API 与 UI，覆盖并行、重复、超时及取消后回答
+- [ ] 平台 CLI 复用同一 API/CAS/审计，不直连 Runtime；旧版本/摘要拒绝，退出不取消 Run
 - [ ] 本项目 Agent 自检必须通过 Harness-Gate
 - [ ] 错误码表 + RetryPolicy 引擎（第 28 章）
 
@@ -3984,14 +4495,18 @@ MVP 必须满足：
 - [ ] PR 与 Requirement 关联
 - [ ] HandoffOperation 独立重试、Sending 授权与取消/输入替代对账
 - [ ] push/PR 响应丢失不重复 PR，也不创建新的 AgentRun
+- [ ] 已关联 PR 的只读轮询、条件请求/限流退避、head 变化后证据不串用
+- [ ] 首版不暴露平台内 Merge 或 webhook 入口
 
 ### 观测
 
 - [ ] Agent Event
 - [ ] Requirement Event
 - [ ] 结构化日志
-- [ ] 基础 Dashboard
+- [ ] 待办优先工作队列与浏览器轮询，不依赖 SSE
 - [ ] 门禁 invocation、failure code 和报告可追踪
+- [ ] 一个通知渠道真实可用；重复事件不重复决策、通知失败不重启编码
+- [ ] Token/估算成本、运行与等待时限、通知/GitHub 同步健康可查看
 
 ### 本项目 UI
 
@@ -3999,28 +4514,39 @@ MVP 必须满足：
 - [ ] 标准页面骨架
 - [ ] Loading/Success/Empty/Failure 状态
 - [ ] Desktop Chrome 与 Pixel 7 视觉验收
+- [ ] 用户实际手机浏览器的登录、输入、通知跳转、审批和 GitHub 跳转验收
 - [ ] 键盘、焦点、暗色和 reduced-motion 验收
 
 ### 安全
 
-- [ ] API 鉴权
+- [ ] Access JWT 签名/issuer/audience/有效期/身份验证；伪造头和源站绕过均被拒绝
+- [ ] Access 会话到期/撤销测试、CSRF 防护、同源部署及敏感数据 no-store
+- [ ] CLI socket 权限与 peer UID 校验，executor 不可访问；远端审批无免鉴权捷径
 - [ ] Secret 不进入 Agent
 - [ ] hooks/安装脚本/Gate/test 的隔离和凭证不可读验证
 - [ ] 受信 Gate policy 独立批准/撤销，Agent 不能修改权威证据
 - [ ] workspace containment
 - [ ] 自动 Merge 默认关闭
 
+### 单机运行
+
+- [ ] 服务启动/升级/回滚说明、持久卷与 secret 隔离，不依赖浏览器或桌面登录
+- [ ] 数据库和权威产物的一致备份、离机副本、最近备份状态
+- [ ] 隔离环境实际恢复一次，恢复前禁用外部写入并完成远端对账
+- [ ] 磁盘不足停止新的领取，保留未封存改动与未完成交接
+
 ### 推迟项（不进 MVP，保留回归路径）
 
 - [ ] WaitingCI / WaitingReview / Done 状态（Phase 1；`Merging` 仅未来自动 Merge）
-- [ ] 多 Repository 调度、Checks 读取（Phase 1）
-- [ ] Webhook 接收、签名验证、去重和事件处理（Phase 1）
-- [ ] webhook replay 防护（Phase 1）
-- [ ] SSE 实时更新（Phase 1）
+- [ ] 平台内人工 Merge、有限 CI Recovery/ReviewFix（Phase 1）
+- [ ] Webhook 接收、签名验证、去重和重放防护（Phase 1，可选启用时必须完整）
+- [ ] SSE 实时更新（Phase 1，可选）
+- [ ] 多 Project/Repository 并行（Phase 2）
 - [ ] Project 级容量、公平调度（Phase 3）
-- [ ] CI Recovery / ReviewFix（Phase 2）
 - [ ] 完整输入 digest（policy / Harness-Gate / 完整上下文，Phase 2）
-- [ ] 数据保留任务、指标看板（Phase 1 后；指标先采集不设阈值）
+- [ ] 自动保留期清理（Phase 2；基础备份和磁盘保护不推迟）
+- [ ] Planner/自动拆分（Phase 3）、完整 PWA/多渠道通知/自建 diff（Phase 4）
+- [ ] 原生 Codex TUI/Remote 接入与独立会话接管（后续独立实验，不作为已支持能力）
 
 ---
 
@@ -4037,7 +4563,9 @@ MVP 必须满足：
 | 配置快照、Git 写入与资源生命周期 | 9～10 |
 | GitHub 事实、受信 Gate、Recovery / ReviewFix | 11～13 |
 | 追加式证据、事务、outbox 与取消先后语义 | 14 |
-| 管理 API、权限与部署隔离 | 16～17、21 |
+| 三端审批、终端身份、通知与断线返回 | 8.1、16.8、17.6、18～19 |
+| Cloudflare Access/Tunnel、管理 API 与部署隔离 | 17、21.4 |
+| 单机备份、恢复与磁盘保护 | 21.5、22.11 |
 | 故障窗口、阶段范围与 MVP 验收 | 22～24 |
 | 错误分类、阶段动作与重试预算 | 28 |
 
@@ -4069,7 +4597,7 @@ MVP 必须满足：
 
 缓解：
 
-- root 级 `total_recovery_attempts <= 3` 硬上限
+- Phase 1 每类一次、root 合计最多 2 次；Phase 2 总额最多 3 次，按冻结 policy 校验
 - 执行/验证/交接分别限次，交接失败不再调用模型
 - Phase 4 增加预算限制；前期先采集成本
 - Blocked 状态 + 人工 Unblock
@@ -4091,6 +4619,24 @@ MVP 必须满足：
 - Run 时保存 workflow hash
 - 不使用全局 Config 单例
 - 受信 policy 独立批准，Agent 产出不能自行激活新 hooks 或验证入口
+
+### 风险 6：首版长期停留在执行内核，手机仍不可用
+
+缓解：
+
+- 按第 23 章 A～E 的真实路径交付，不按架构章节逐个建设后台模块；
+- 手机待办、通知、GitHub 状态和外网访问列入首版门槛；
+- 多仓并行、Planner、自建审查器、完整 PWA 不阻塞首版；
+- 安全底线保留，通过减少功能和界面数量缩小交付范围。
+
+### 风险 7：手机断线、通知失败或本机离线导致错过决策
+
+缓解：
+
+- 持久化待办、独立人工等待时限、会话重登恢复和多端幂等；
+- 通知故障独立显示，不默认批准或自动重启 Agent；
+- 开机启动、备份恢复、磁盘保护；明确主机断电期间平台不可用；
+- 低频/失效同步显示时间与错误，不让陈旧的绿色状态误导合并决策。
 
 ---
 
@@ -4160,14 +4706,16 @@ ReviewFix Requirement
 
 ```text
 多项目配置（数据模型）
-多仓库调度（Phase 1 起）
+多仓库调度（Phase 2 起）
 全局公平容量管理（Phase 3 起）
 持久化状态
-Webhook 对账
+PR/CI/Review 轮询对账（Phase 0 起；Webhook 后续可选加速）
 可恢复 Agent Run
 ```
 
 交付路径以 MVP 最小闭环为起点（第 23 章），上述能力按 Phase 渐进恢复，不在 V1 一次性铺开。
+首版交付名称为“远程开发控制台”，手机可处理需求和审批，代码审查合并借用 GitHub；
+图中的公平容量、Discussion 和完整 Done 不代表 Phase 0 已实现。
 
 ---
 
@@ -4230,7 +4778,14 @@ MVP 每种阶段的自动重试总预算最多 2 次，单错误上限取 min(�
 Requirement + generation 汇总，验证预算按 batch 汇总，交接预算按 operation 汇总。
 不同错误交替出现不能重置预算，自动重试不能通过递增 generation 绕过限制。
 人工重新授权可以开启新轮次，但保留累计历史。退避使用指数增长和 jitter，429 优先遵守
-服务端重置时间；所有阶段还有 wall-clock deadline。Phase 1+ 放宽次数必须显式配置。
+服务端重置时间；所有阶段还有明确 deadline。执行的有效工作时长、独立人工等待时限和
+Run 绝对寿命按 8.1 分开计算，不能让普通 turn/stall deadline 提前误杀待审批任务。
+Phase 1+ 放宽基础设施重试次数必须显式配置；不能放宽 12.5 的阶段修复硬上限。
+
+人工等待时的失联、进程重启或批准送达未知优先执行 8.1/5.1 的失效与人工恢复规则，
+即使底层错误为 agent_process_lost/agent_response_timeout，也不能自动重启绕过待定决策。
+通知失败、只读 GitHub 同步失败和拒绝的 HTTP 鉴权请求分别记录在对应服务/请求中，
+不套用执行失败状态机，不把正常 Run 误改 Failed，也不消耗执行重试预算。
 
 ### retry_class
 
@@ -4282,12 +4837,14 @@ failure code；只有 test/lint/build 可有限反馈修复，config/secret/arch
 | agent_startup_timeout | transient | 2 | 自动重试 |
 | agent_response_timeout | transient | 1 | 终止并确认旧组退出；按声明状态恢复，禁止盲目重发当前 turn |
 | agent_turn_timeout | blocked | 0 | 人工审查，可能需要调整 Requirement |
-| agent_stalled | transient | 2 | 杀掉当前进程并自动重试；重复失败后人工处理 |
+| agent_stalled | transient | 2 | 排除有效人工等待；停止完整执行组并确认静止后按声明状态恢复 |
 | agent_protocol_error | recoverable | 2 | 停止旧执行组后按声明状态恢复，不复用不确定会话 |
 | agent_process_lost | transient | 2 | 确认执行组静止，无声明才新建 Run |
 | agent_completion_not_reported | blocked | 0 | 未声明完成，不能交接中间 commit |
 | agent_approval_timeout | blocked | 0 | 请求过期，停止执行并转人工 |
 | agent_input_timeout | blocked | 0 | 人工输入过期，停止执行并转人工 |
+| agent_request_invalidated | blocked | 0 | 重启/失联后的旧请求失效，转人工，不复用审批 |
+| agent_run_lifetime_exceeded | blocked | 0 | 达到独立 Run 绝对寿命上限，停止执行组并转人工 |
 | agent_approval_denied | blocked | 0 | 人工决策或调整审批策略 |
 | agent_max_turns_exceeded | blocked | 0 | 拆分 Requirement |
 
@@ -4311,6 +4868,21 @@ failure code；只有 test/lint/build 可有限反馈修复，config/secret/arch
 | github_permission_denied | blocked | 0 | 人工修复安装权限，不能通过重新编码恢复 |
 | pr_create_failed | recoverable | 2 | 查已有 PR 和分支；只有临时失败才重试同一操作 |
 | pr_merge_conflict | blocked | 0 | 人工解决合并冲突 |
+
+表中 fixable 的默认值仅是通用配置上界，不代表 Phase 1 能修复三次：MVP 只展示外部 CI
+失败，Phase 1 每类修复最多一次且总额最多 2，Phase 2 总额最多 3，始终取冻结 policy、
+阶段硬上限与错误默认值中最严格的限制。
+
+### 控制台与配套服务（不触发编码重试）
+
+| code | 记录位置 | 动作 |
+|---|---|---|
+| access_unauthorized | API 安全审计 | 拒绝请求/要求重新登录，不改变 Run |
+| runtime_request_conflict | 审批请求审计 | 返回冲突或失效状态，刷新待办，不重放决策 |
+| notification_delivery_failed | notification_deliveries | 通知自身有限重试、告警，不重启编码 |
+| github_sync_stale | GitHub 同步状态 | 限流退避，显示最后成功时间，不伪造 CI/PR 结果 |
+| host_disk_low | 控制面健康/调度原因 | 暂停新领取、人工清理，不创建 Run、不消耗模型重试 |
+| backup_failed | 备份记录/待办 | 保留上一份可用副本，提示人工处理 |
 
 ### Business Logic
 
