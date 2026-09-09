@@ -1,0 +1,30 @@
+{
+ "direct_git_write_blocked": null,
+ "dynamic_tool_calls": [
+  {
+   "tool": "create_local_commit",
+   "args": {
+    "paths": [
+     "hello.txt"
+    ],
+    "message": "add hello",
+    "expected_head": "22d9adc2bcb0aa43c125330b2e1f90aa949b4671"
+   },
+   "callId": "exec-94a4be52-9ee6-4366-a874-22a71ab88782"
+  },
+  {
+   "tool": "report_completion",
+   "args": {
+    "summary": "Created hello.txt containing hello; the direct git command failed with a read-only filesystem error and the probe failed because .git is not a directory, while create_local_commit succeeded with commit 07660c7a9782d7c5d20385948bd30788e6393e10."
+   },
+   "callId": "exec-ca481c88-82b2-4a43-a8f6-bf2e6c057f7c"
+  }
+ ],
+ "token_usage_events": 3,
+ "turn_completed": true,
+ "commit_after_tool": "07660c7a9782d7c5d20385948bd30788e6393e10",
+ "completion_summary": "Created hello.txt containing hello; the direct git command failed with a read-only filesystem error and the probe failed because .git is not a directory, while create_local_commit succeeded with commit 07660c7a9782d7c5d20385948bd30788e6393e10.",
+ "hello_exists": true,
+ "git_log": "07660c7 add hello\n22d9adc init",
+ "git_status_clean": true
+}
