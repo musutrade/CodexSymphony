@@ -1,0 +1,236 @@
+{
+ "installation": {
+  "id": 159921491,
+  "permissions": {
+   "contents": "write",
+   "metadata": "read",
+   "pull_requests": "write"
+  },
+  "events": [],
+  "repository_selection": "selected"
+ },
+ "installation_token": {
+  "status": 201,
+  "expires_at": "2026-09-08T08:18:18Z",
+  "permissions": {
+   "contents": "write",
+   "metadata": "read",
+   "pull_requests": "write"
+  },
+  "repositories": [
+   "musutrade/disposable"
+  ],
+  "token_prefix": "ghs_..."
+ },
+ "installation_token_downscoped": {
+  "status": 201,
+  "permissions": {
+   "contents": "read",
+   "metadata": "read"
+  },
+  "body": null
+ },
+ "installation_token_request_unheld_permission": {
+  "status": 422,
+  "body": {
+   "message": "The permissions requested are not granted to this installation.",
+   "documentation_url": "https://docs.github.com/rest/reference/apps#create-an-installation-access-token-for-an-app",
+   "status": "422"
+  }
+ },
+ "repo": {
+  "default_branch": "main",
+  "private": false,
+  "rate": {
+   "X-RateLimit-Limit": "15000",
+   "X-RateLimit-Remaining": "14999",
+   "X-RateLimit-Resource": "core",
+   "ETag": "\"7c247faee27c305c254aacb191534939b1ed7fb055022e5cd43d98897f037af1\""
+  }
+ },
+ "clone": {
+  "base_sha": "07ddf1c1a7175ecf5df0000d56b865473d942537"
+ },
+ "artifact_commit": {
+  "sha": "528998a260dfbab2984a5117abe19515bb18d60f",
+  "branch": "ai/req-s2-b2e90253"
+ },
+ "push_create_branch_expected_zero": {
+  "rc": 0,
+  "stderr": "remote: \nremote: Create a pull request for 'ai/req-s2-b2e90253' on GitHub by visiting:        \nremote:      https://github.com/musutrade/disposable/pull/new/ai/req-s2-b2e90253        \nremote:"
+ },
+ "push_idempotent_same_sha": {
+  "rc": 0,
+  "stderr": ""
+ },
+ "push_stale_expectation_rejected": {
+  "rc": 0,
+  "stderr": ""
+ },
+ "ref_after_push": {
+  "status": 200,
+  "sha": "528998a260dfbab2984a5117abe19515bb18d60f"
+ },
+ "rest_ref_update_ff": {
+  "status": 200,
+  "new_sha": "58deff144daa99060dfc345a2b1f81ffe79e3c8f"
+ },
+ "rest_ref_update_non_ff_rejected": {
+  "status": 422,
+  "body": {
+   "message": "Update is not a fast forward",
+   "documentation_url": "https://docs.github.com/rest/git/refs#update-a-reference",
+   "status": "422"
+  }
+ },
+ "push_lease_mismatch_after_external_move": {
+  "rc": 1,
+  "stderr": "To https://github.com/musutrade/disposable.git\n ! [rejected]        528998a260dfbab2984a5117abe19515bb18d60f -> ai/req-s2-b2e90253 (stale info)\nerror: failed to push some refs to 'https://github.com/musutrade/disposable.git'"
+ },
+ "rest_ref_reset_for_test_only": {
+  "status": 200
+ },
+ "pr_find_before_create": [
+  200,
+  []
+ ],
+ "pr_create": {
+  "status": 201,
+  "number": 1,
+  "head_sha": "528998a260dfbab2984a5117abe19515bb18d60f",
+  "user": "my-disposable-bot[bot]",
+  "url": "https://github.com/musutrade/disposable/pull/1"
+ },
+ "pr_create_duplicate": {
+  "status": 422,
+  "body": {
+   "message": "Validation Failed",
+   "errors": [
+    {
+     "resource": "PullRequest",
+     "code": "custom",
+     "message": "A pull request already exists for musutrade:ai/req-s2-b2e90253."
+    }
+   ],
+   "documentation_url": "https://docs.github.com/rest/pulls/pulls#create-a-pull-request",
+   "status": "422"
+  }
+ },
+ "pr_find_after_create": [
+  200,
+  [
+   {
+    "number": 1,
+    "state": "open",
+    "head_sha": "528998a260dfbab2984a5117abe19515bb18d60f",
+    "merged_at": null
+   }
+  ]
+ ],
+ "check_runs_read": {
+  "status": 200,
+  "body": {
+   "total_count": 0,
+   "names": []
+  },
+  "rate": {
+   "X-RateLimit-Limit": "15000",
+   "X-RateLimit-Remaining": "14989",
+   "X-RateLimit-Resource": "core",
+   "ETag": "\"0550b836d7b1fa52864e79b2257dec999ebcc7f66667831d9d975d13c347d3e6\""
+  }
+ },
+ "check_suites_read": {
+  "status": 200,
+  "body": {
+   "total_count": 0
+  }
+ },
+ "combined_status_read": {
+  "status": 200,
+  "state": "pending",
+  "total": 0
+ },
+ "actions_runs_read": {
+  "status": 200,
+  "body": {
+   "total_count": 0
+  }
+ },
+ "branch_protection_read": {
+  "status": 403,
+  "body": {
+   "message": "Resource not accessible by integration",
+   "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+   "status": "403"
+  }
+ },
+ "rulesets_read": {
+  "status": 200,
+  "count": 0
+ },
+ "conditional_request": {
+  "first": 200,
+  "etag": "\"da2085314fe189e4c4d47fe92ca3cb5926ee7e1759fdd9c57f81985c7dbef1cc\"",
+  "second": 304,
+  "remaining_before": "14994",
+  "remaining_after": "14994"
+ },
+ "pr_mergeable": {
+  "mergeable": true,
+  "mergeable_state": "clean"
+ },
+ "merge_sha_mismatch": {
+  "status": 409,
+  "body": {
+   "message": "Head branch was modified. Review and try the merge again.",
+   "documentation_url": "https://docs.github.com/rest/pulls/pulls#merge-a-pull-request",
+   "status": "409"
+  }
+ },
+ "merge_ok": {
+  "status": 200,
+  "body": {
+   "sha": "97fa3fc84d108ee962b2b29ee8c1241a1e48f51c",
+   "merged": true,
+   "message": "Pull Request successfully merged"
+  }
+ },
+ "merge_repeat_after_merged": {
+  "status": 200,
+  "body": {
+   "sha": "97fa3fc84d108ee962b2b29ee8c1241a1e48f51c",
+   "merged": true,
+   "message": "Pull Request successfully merged"
+  }
+ },
+ "merge_fact_check": {
+  "status": 204,
+  "note": "204 = merged, 404 = not merged"
+ },
+ "pr_after_merge": {
+  "state": "closed",
+  "merged": true,
+  "merge_commit_sha": "97fa3fc84d108ee962b2b29ee8c1241a1e48f51c",
+  "merged_by": "my-disposable-bot[bot]"
+ },
+ "pr_find_after_merge": [
+  200,
+  [
+   {
+    "number": 1,
+    "state": "closed",
+    "head_sha": "528998a260dfbab2984a5117abe19515bb18d60f",
+    "merged_at": "2026-09-08T07:18:56Z"
+   }
+  ]
+ ],
+ "branch_delete": {
+  "status": 204
+ },
+ "rate_limit_final": {
+  "message": "Not Found",
+  "documentation_url": "https://docs.github.com/rest",
+  "status": "404"
+ }
+}
