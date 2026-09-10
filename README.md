@@ -7,6 +7,7 @@ Personal AI Software Factory 的设计规格与实施前验证。目标：**评�
 | 路径 | 内容 |
 |---|---|
 | `Personal_AI_Software_Factory_综合方案.md` | 综合方案 V9.0。第 0 章是前提与分期，第 23 章是实施队列，第 24 章是 V1 交付门槛；其余章节是各子系统的规格 |
+| `docs/architecture-boundaries.md` | **规范性架构边界**：三个真相分离、Harness-Gate 仅作为 Validation Evidence、禁止状态坍缩与职责越界 |
 | `spikes/s1/` | Codex app-server `dynamicTools` 与 workspace-write 沙箱边界（Python，真实模型运行） |
 | `spikes/s2/` | GitHub App：installation token → 条件 push → PR → Checks → sha 守卫合并（Python） |
 | `spikes/s3/` | Cloudflare Access JWT 在 Axum 中的验证、Tunnel 源站隔离、会话撤销（Rust） |
@@ -18,6 +19,7 @@ Personal AI Software Factory 的设计规格与实施前验证。目标：**评�
 - **一个人工决策点**：`POST /ready` = 评审通过。评审通过的标准是每条验收标准都可机器验证。
 - **人工介入只是异常中断**：Agent 提问、沙箱外请求、安全门禁失败、修复预算耗尽、评审后输入被改。待办箱为空是正常状态。
 - **三个真相分离**：Requirement 状态是业务真相，AgentRun 是执行事实，GitHub / CI 是外部观察事实。
+- **Harness-Gate Result = Validation Evidence，不是第四个状态源**：Harness-Gate 可对精确 source/config/evidence identity 给出权威门禁判定，但 CodexSymphony 只把它作为编排证据消费；它不得直接把 Requirement 置为 Done，也不得把 AgentRun 改写为失败。完整规则见 [`docs/architecture-boundaries.md`](docs/architecture-boundaries.md)。
 - **Agent 不碰 Git 远端**：只在 worktree 内改文件，通过受控工具 `create_local_commit` / `report_completion` 请求提交与声明完成；push、PR、合并由平台经 outbox 幂等执行。
 - **分期**：0a 本机闭环（需求 → PR）→ 0b 手机可用 → 0c 加固 → Phase 1 自动合并与自动 Done → Phase 2 描述生成 Contract、多仓。
 
