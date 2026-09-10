@@ -134,6 +134,7 @@ Phase 0a 完成即开始日常使用；后续 Phase 不反向扩大 0a 的范围
 | 三端审批 / CLI 降为可选模式（0b P2） | 1.2、8.1、16.8、17.6、22 |
 | 完整租约 / 恢复屏障 / digest / executor / Harness-Gate 推到 0c；0a 单进程简化 | 5.1、6.3、12.6、21.1 |
 | 描述→Contract 草稿 + 澄清 Agent 提前到 Phase 2 | 7.3 |
+| **网络授权改为需求内声明**（预设 / 域名 / 拒绝），白名单外由 Codex 本地代理直接拒绝，不产生审批请求 | 16.9、8.1、22.4、28 |
 | 首页待办箱以"为空"为设计目标；新增介入率指标 | 18.4、19.3 |
 | 新增风险 8（自动合并合入错误需求）、风险 9（需求质量成为瓶颈） | 26 |
 | 第 23 章按 S / 0a / 0b / 0c / 1 / 2 / 3 / 4 重排并标 P0/P1/P2；第 24 章改为按 Phase 的 V1 DoD | 23、24 |
@@ -148,6 +149,8 @@ allow_manual_review           = false
 require_manual_start          = false
 require_manual_revalidation   = false
 sandbox_escape_handling       = deny      （可按类别改为 ask）
+network_defaults              = []        （Repository 常见依赖域名与预设）
+allow_requirement_network_scope = true    （允许需求级声明网络范围，见 16.9）
 ```
 
 ---
@@ -1852,7 +1855,8 @@ MVP 默认 Runtime sandbox：
 
 ```text
 thread_sandbox = workspace-write
-network = deny（只有 Repository Policy 显式白名单可开启）
+network        = 域名白名单（见 16.9），由 平台全局 ∪ Repository 默认 ∪ 需求声明 生成
+                 白名单外的域名由 Codex 本地代理直接拒绝，不产生审批请求、不打断人
 ```
 
 审批策略必须绑定到 AgentRun 快照。普通配置更新仅影响新 Run；安全策略撤销会停止旧 Run，
@@ -3378,6 +3382,90 @@ CLI 只提供待办、请求详情、批准/拒绝、回答和运行摘要，是
 需另行设计覆盖所有写入路径的工具/OS 强制策略并验证，不能靠提示词或匹配 `rm` 字符串实现。
 审批也不允许访问平台凭证、其他 workspace 或越过不可授权的硬边界。
 
+### 16.9 网络授权：从"打断人"变成"需求里声明"
+
+这是零介入路径上最常见的破口。Symphony 的实际体验是：Agent 在沙箱里需要访问外部网络，
+要么停下来等人批准，要么沙箱直接拒绝导致任务失败；前者要人登录 SSH 回终端处理，
+后者要重新描述需求。两种都不该发生。
+
+原则：**一条需求的网络需求是需求的一部分，应该在评审时确定，而不是在运行时向人索取。**
+
+#### 三层来源，从宽到严
+
+```text
+1. 需求级声明（Requirement Contract.network_access）
+   评审时由用户或 Contract 草稿生成器写出，随 revision 冻结。
+2. Repository 默认（Repository Policy.network_defaults）
+   该仓库常见依赖域名、包管理器、CI 端点的默认集合。
+3. 平台全局白名单（只读、只增不减）
+   provider 端点、必要的官方 registry；不允许需求级声明删减它。
+```
+
+生效集合 = 平台全局 ∪ Repository 默认 ∪ 需求声明；`denied_domains` 优先级最高，谁都不能覆盖。
+需求声明超出 Repository / 平台允许范围时，评审阶段（`POST /ready`）就拒绝并说明缺哪个域名，
+而不是等 Agent 跑到一半才失败。
+
+#### 声明形态
+
+```toml
+[requirement.network]
+# 语义化预设优先，评审者不必手写域名
+presets = ["cargo", "npm", "github_api", "cloudflare_api"]
+
+# 预设之外的显式域名（自动去重、自动展开子域）
+domains = ["download.pytorch.org", "huggingface.co"]
+
+# 明确禁止（覆盖一切上层）；空表示不额外禁止
+denied = []
+```
+
+预设是平台维护的命名集合（例如 `cargo` = `crates.io` / `static.crates.io` / `index.crates.io` /
+`github.com` / `raw.githubusercontent.com`），Repository Policy 可以扩充但不能再定义同名预设。
+
+#### 运行时执行：Codex 的受限网络模式（S5 实测，见 23.S）
+
+Codex 0.153.4 自带一个可用的机制，不需要平台自己写代理：
+
+- 开关：`features.network_proxy = true`；种子环境时 `[network] enabled = true`。
+- 沙箱任务获得一个**本地 CONNECT 代理**（`http_proxy` / `https_proxy` 指向 `127.0.0.1` 的随机端口），
+  非白名单域名的 TLS 连接被代理层拒绝：
+  `CONNECT tunnel failed, response 403 ... was blocked: domain is not on the allowlist for the current sandbox mode`。
+- 这是**真正的域名白名单**：`approvalPolicy = "never"` 下也不会请求批准，直接拒绝并返回明确错误文本给 Agent。
+- 直连绕过（`--noproxy '*'` 打 IP）被沙箱网络隔离挡住；白名单生效时绕过路径也一并关闭。
+
+平台侧要做的是：按 16.9 的生效集合生成每个 Run 的 allowlist，写进该 Run 的**平台自有 CODEX_HOME**
+（不复用用户 `~/.codex`），并把上游代理（用户网络需要时）通过进程环境传给 app-server。
+`allowed_domains` 的配置位置与"managed requirements"的关系在 S5 中另行确认；
+在确认前，平台不依赖用户 `config.toml` 里的任何网络设置。
+
+#### 与需求契约的关系
+
+- `RequirementContract` 增加可选字段 `network_access {presets[], domains[], denied[]}`；
+  缺省表示只使用 Repository 默认，不允许用"未声明"表达"全放开"。
+- Agent Context 中包含生效集合的摘要，让 Agent 知道哪些域名可用，减少无效尝试。
+- 当 Agent 确实遇到未声明的域名需求时，**行为是拒绝并报告，不是停下来等人**：
+  Agent 在完成声明前提出 `network_scope_request`，平台据此在需求详情里生成一条可一键采纳的
+  Contract 修订建议；采纳后按 7.6 进入 `NeedsRevalidation` 重新执行。若该 Run 已无进展，
+  按 Failed 记录 `network_domain_not_allowed`，不消耗修复预算。
+- 平台不得在运行中静默放宽 allowlist（等价于热更新安全策略，被 8.1 禁止）。
+
+#### 验收
+
+```text
+在需求里声明 presets=["cargo"] 的任务：
+  访问 crates.io → 成功，且不产生任何 runtime_request；
+  访问未声明域名 → 被代理拒绝，Agent 收到明确错误，Run 继续（不暂停、不通知人）；
+  Agent 提出 network_scope_request → 需求详情出现修订建议，采纳后走 NeedsRevalidation；
+  整个过程中待办箱保持为空。
+```
+
+#### 不在本节范围
+
+- 平台不实现通用出网代理、DNS 重绑定防护或流量内容审查。
+- 非 Codex Runtime（后续 Phase）需要各自的等价机制；网络策略属于 Runtime 能力契约的一部分，
+  新 Runtime 接入时必须先满足 16.9 的拒绝语义。
+- 网络白名单不替代凭证隔离：白名单里的域名不等于允许携带平台凭证。
+
 ---
 
 ## 17. 安全设计
@@ -4275,6 +4363,10 @@ https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-
 - Phase 0：dynamicTools 注册和准确 request ID 回包
 - Phase 0：TokenUsageUpdated 独立累计，重复事件不重复计费
 - Phase 0：沙箱内命令/文件修改不产生任何 runtime_request；沙箱外请求默认自动拒绝并记录，Agent 收到拒绝原因后 Run 继续
+- Phase 0（16.9）：需求声明 `presets=["cargo"]` 的任务访问 crates.io 成功且不产生待办；未声明域名被代理拒绝且 Run 继续
+- Phase 0（16.9）：`--noproxy '*'` 直连 IP、SOCKS 绕过均被沙箱网络隔离挡住
+- Phase 0（16.9）：Agent 提出 `network_scope_request` → 需求详情出现 Contract 修订建议；采纳后走 NeedsRevalidation；未采纳不改变 allowlist
+- Phase 0（16.9）：平台运行中不因 Agent 请求而放宽 allowlist；新 Run 才读取新集合
 - Phase 0：Policy 将某类别设为 ask 时才产生待办；user input 请求始终产生待办
 - Phase 0：持久化人工等待超过普通 stall 时限，仍续租且不推进未授权操作
 - Phase 0：独立请求超时、Run 绝对寿命上限、Runtime 失联和审批送达未知各自正确处理
@@ -4445,7 +4537,7 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 | S2 | GitHub App 安装 → installation token → 条件 push → 创建 PR → 读取 Checks → sha 守卫合并 | **已完成（2026-09-08），结论见下方 S2 结论与 `spikes/s2/README.md`。** 11.1 权限集、14.4 步骤 2/3 的实现方式、17.5 合并守卫的错误码由此确定 |
 | S3 | Axum 中验证 Cloudflare Access JWT（签名 / issuer / aud / 过期），并实测撤销会话后请求被拒 | **已完成（2026-09-09），结论见下方 S3 结论与 `spikes/s3/README.md`。** 17.4 校验规则、`sub` 绑定、撤销语义由此确定 |
 | S4 | Harness-Gate 在本项目上的 `hook` / `verify --profile ci --all` 实际耗时、误报率、JSON 输出稳定性 | 12.6 在 0a 是否作为默认门禁，还是 0c 再切 |
-| S5 | Codex 审批策略实测：`approval_policy` + `workspace-write` + 网络白名单下，一条真实需求会产生多少沙箱外请求 | 8.1 冻结策略的具体值；决定"沙箱外默认拒绝"是否可行 |
+| S5 | Codex 受限网络模式实测：白名单域名放行、非白名单域名拒绝、绕过路径、审批策略 | **部分完成（2026-09-10），见下方 S5 结论。** 16.9 的网络授权设计成立；`allowed_domains` 的配置位置待补测 |
 
 #### S1 结论（2026-09-07，codex-cli 0.153.4，Linux landlock）
 
@@ -4505,6 +4597,27 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 
 未验证：已撤销 JWT 直接重放源站（逻辑上必然通过，未导出用户 JWT 实测）；自然过期边缘行为；
 Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
+
+#### S5 结论（2026-09-10，codex-cli 0.153.4，受限网络模式）
+
+1. `features.network_proxy = true` 后，沙箱任务获得本地 CONNECT 代理：`http_proxy` / `https_proxy`
+   指向 `127.0.0.1` 随机端口（另有 SOCKS5 端口）。**不允许的域名在代理层被拒**：
+   `curl: (7) CONNECT tunnel failed, response 403` + `Network access to "<domain>" was blocked:
+   domain is not on the allowlist for the current sandbox mode.`
+2. 该拒绝**不产生审批请求**：`approvalPolicy = "never"` 下三个域名全部被拒、turn 正常结束，
+   Agent 拿到明确错误文本。16.9 要求的"沙箱外默认拒绝、不打断人"在协议层成立。
+3. 直连绕过无效：`curl --noproxy '*'` 打裸 IP 超时（沙箱网络隔离），SOCKS5 UDP / 非 HTTPS TCP 被禁。
+4. 平台自有 CODEX_HOME（不复用 `~/.codex`）是可行且必要的：用户 `config.toml` 里的
+   `network_access` / 代理环境会被覆盖或需显式传递；平台须把上游代理通过 app-server 进程环境传入。
+5. **待补测**：allowlist 的具体配置键。`[network] domains={...}`、`[network] allowed_domains=[...]`、
+   `[experimental_network] domains`、`$CODEX_HOME/requirements.toml` 四种写法实测都得到空 allowlist
+   （域名被全拒）。二进制里同时存在 `requirements.toml`、`managedAllowedDomainsOnly`、
+   "`experimental_network.domains` cannot be combined with legacy `allowed_domains`"等串，
+   强烈提示 allowlist 属于 **managed requirements**（系统级 `/etc/codex/requirements.toml`，
+   需 root）或某个尚未试出的键位。补测前平台不依赖任何用户级网络配置，16.9 的实现按其语义先落地。
+
+未验证（S5）：allowlist 配置键与生效路径（最高优先）；白名单命中时的实际连接（本次所有域名均被拒，
+未观察到一次成功放行）；预设集合与 Codex 内部域名匹配规则（是否匹配子域、是否区分端口）。
 
 
 ### Phase 0a：本机闭环（目标 L1）
@@ -4762,6 +4875,8 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 沙箱内操作自动放行、沙箱外自动拒绝并记录；user input 进待办箱
 - [ ] Worktree 创建/清理、`ai/req-*` 分支、after_create hook
 - [ ] `create_local_commit` + `report_completion` 动态工具闭环；声明先落库再回复
+- [ ] 16.9 网络授权：需求声明生效集合 → 生成 Run allowlist；白名单外域名被拒且不产生待办；
+      `--noproxy` / SOCKS 绕过被挡；`network_scope_request` 只在需求详情生成修订建议
 - [ ] 声明后：中断 session、确认子进程退出、HEAD 校验、custom 门禁 + must 级 AC 本地验证、封存
 - [ ] 声明后验证失败 → 执行预算内自动重跑一次带失败摘要的新 Run
 - [ ] HandoffOperation + outbox：条件 push、查找/创建 PR、持久化关联、`Submitted`；重试不新建 Run
@@ -4794,6 +4909,7 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] `human_wait_timeout`（2h）、Run 绝对寿命（8h）
 - [ ] 每日备份、升级前备份、一次隔离环境真实恢复（外部写默认禁用）、磁盘不足暂停领取
 - [ ] 22.10 全部 Phase 0 行 + 22.11 部署验收通过
+- [ ] 补测 S5 的 allowlist 配置键，并把结论写回 16.9；在此之前不依赖用户级网络配置
 - [ ] **验收**：本项目自身一条需求经 Harness-Gate 全流程到 PR，零介入
 
 ### Phase 1：自动闭环（L2）
@@ -5161,6 +5277,7 @@ failure code；只有 test/lint/build 可有限反馈修复，config/secret/arch
 | agent_request_invalidated | blocked | 0 | 重启/失联后的旧请求失效，转人工，不复用审批 |
 | agent_run_lifetime_exceeded | blocked | 0 | 达到独立 Run 绝对寿命上限，停止执行组并转人工 |
 | agent_approval_denied | blocked | 0 | 人工决策或调整审批策略 |
+| network_domain_not_allowed | blocked | 0 | 未声明域名被代理拒绝；生成 network_scope_request 建议，不消耗修复预算 |
 | agent_max_turns_exceeded | blocked | 0 | 拆分 Requirement |
 
 ### Model Provider
