@@ -38,12 +38,30 @@ $HG --project-root . hook
 $HG --project-root . verify --all
 ```
 
+## 补测：Agent 能否用暂存配置自证通过（2026-09-11，`s4b` / `s4c` / `s4d`）
+
+**结论：能。harness-gate 本身不防自证通过；防篡改必须由平台实现。**
+
+| 尝试 | 结果 |
+|---|---|
+| 基线：正确配置 + 暂存区含违规 → `hook` | FAIL（符合预期） |
+| 从 `required_steps` 里删掉 `project.staged-diff-check` | 仍 FAIL（`required_steps` 是"不可豁免"列表，不是"要跑什么"） |
+| 删掉整个 `[[steps]]` 定义块 | `config check` 与 `hook` 都以 `E1000` fail-closed（TOML/引用不完整） |
+| **保留 step、把它的命令改成恒真（`program="git"`→`"true"`, `args=[]`）** | **`config check` 通过，`hook` 报 `TEST_SUMMARY: PASS`**，尽管暂存区有行尾空白违规 |
+
+第 4 行是决定性的：配置 schema 合法、step id 不变、`configuration_digest` 变了，
+但工具不会告诉你 digest 应该是多少——**它只是忠实地按当前配置执行**。
+
+因此 12.6.1 的规则要写成硬性要求：
+
+- 平台必须持久化"本 Run 应当使用的 `configuration_digest`"（来自独立批准的 policy revision），
+  与该 invocation 记录里的 `configuration_digest` 比对，**不一致即拒绝采信该次验证结果**；
+- 仅凭 harness-gate 的 `TEST_SUMMARY: PASS` 不足以推进 `Submitted` / `Done`；
+- `configuration_digest` 必须写进 AgentRun 的不可变审计快照（方案 12.6.1 已列该字段）。
+
 ## 未验证
 
-- **削弱但 schema 合法的暂存配置能否通过 `hook`**（这是 12.6.1 "Agent 不能自证通过"的核心）：
-  脚本尝试标注这一点时被本会话的权限分类器拦下，未完成。预期：`hook` 会用暂存配置执行，
-  因此**能**通过——门禁的防篡改不来自 harness-gate 本身，而来自平台用独立的受信 policy revision
-  比对 `configuration_digest`。这一点必须在 Phase 0c 实现时补测。
+- 真实代码量下 `rust-api` preset 的耗时（当前仓库几乎为空，0.36s 无参考价值）。
 - 真实代码量下的耗时（当前仓库几乎为空，0.36s 无参考价值）；`rust-api` preset 在真实 Rust 项目上的
   fmt/clippy/test 耗时。
 - `reports/leases` 的并发语义（多 Run 同时 verify）。

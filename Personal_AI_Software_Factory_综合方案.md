@@ -2651,6 +2651,11 @@ Repository 配置重复双写。
 Agent 修改这些路径时，变更保持待批准；不能自动把工作树的新摘要当作受信摘要。
 批准需要鉴权 API、操作者和理由，Agent 工具没有策略批准权限。
 
+**S4 补测证明这不是可选的加固**：保留 step id、把步骤命令改成恒真即可让 `hook` 报 PASS
+（`config check` 也通过）。因此平台必须：① 持久化本 Run 应使用的 `configuration_digest`
+（来自独立批准的 policy revision）；② 与该 invocation 记录里的值比对，**不一致即拒绝采信该次验证**；
+③ 只把工具自报的 `TEST_SUMMARY` 当作辅助信息，不作为推进 `Submitted` / `Done` 的依据。
+
 GateRunner 在独立验证检出中物化受信配置，并只读挂载到仓库相对路径；强制验证入口同样固定。
 被测代码仍来自待验证的 artifact SHA，平台分别记录“被测源身份”和“验证策略身份”。
 无法安全使用受信策略验证该变更时进入人工处理，不用修改后的配置自证通过。调用显式传：
@@ -3444,10 +3449,19 @@ Codex 0.153.4 自带一个可用的机制，不需要平台自己写代理：
 - 这是**真正的域名白名单**：`approvalPolicy = "never"` 下也不会请求批准，直接拒绝并返回明确错误文本给 Agent。
 - 直连绕过（`--noproxy '*'` 打 IP）被沙箱网络隔离挡住；白名单生效时绕过路径也一并关闭。
 
-平台侧要做的是：按 16.9 的生效集合生成每个 Run 的 allowlist，写进该 Run 的**平台自有 CODEX_HOME**
-（不复用用户 `~/.codex`），并把上游代理（用户网络需要时）通过进程环境传给 app-server。
-`allowed_domains` 的配置位置与"managed requirements"的关系在 S5 中另行确认；
-在确认前，平台不依赖用户 `config.toml` 里的任何网络设置。
+平台侧要做的是：按 16.9 的生效集合生成 allowlist，并把上游代理（用户网络需要时）通过进程环境传给
+app-server。**S5 实测：allowlist 只能写在系统级 `/etc/codex/requirements.toml` 的
+`[experimental_network]` 表下（需 root），用户 `config.toml` 与 `$CODEX_HOME/requirements.toml`
+都不生效。** 这意味着该配置是全局的、影响同机所有 codex 进程，不是 per-Run 的。
+
+由此产生一条实现约束（16.9 的核心难点）：
+
+- 平台必须把 `[experimental_network]` 当作**独占的受信资源**管理：由受信控制面写、Agent 不可写；
+- 每个 Run 开始前写入该 Run 的生效集合（并记录摘要用于审计），Run 结束后收敛；
+- **同机不能并行跑两个网络集合不同的 Run**——这与 6.3 的"同 Repository 串行""全局并发上限"
+  是不同维度的约束，必须在 Phase 0 的调度条件里显式表达，不能靠"反正并发是 1"隐式成立；
+- 多 Worker（Phase 5）时每个 Worker 主机各自持有自己的 `/etc/codex/requirements.toml`，
+  调度器必须按网络集合对 Run 做**主机亲和性**分组，或串行化不同集合的 Run。
 
 #### 与需求契约的关系
 
@@ -4550,7 +4564,7 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 | S2 | GitHub App 安装 → installation token → 条件 push → 创建 PR → 读取 Checks → sha 守卫合并 | **已完成（2026-09-08），结论见下方 S2 结论与 `spikes/s2/README.md`。** 11.1 权限集、14.4 步骤 2/3 的实现方式、17.5 合并守卫的错误码由此确定 |
 | S3 | Axum 中验证 Cloudflare Access JWT（签名 / issuer / aud / 过期），并实测撤销会话后请求被拒 | **已完成（2026-09-09），结论见下方 S3 结论与 `spikes/s3/README.md`。** 17.4 校验规则、`sub` 绑定、撤销语义由此确定 |
 | S4 | Harness-Gate 在本项目上的 `hook` / `verify --profile ci --all` 实际耗时、误报率、JSON 输出稳定性 | **已完成（2026-09-10），结论见下方 S4 结论与 `spikes/s4/README.md`。** 12.6 按 0c 切换；版本锁定改为 0.3.7 |
-| S5 | Codex 受限网络模式实测：白名单域名放行、非白名单域名拒绝、绕过路径、审批策略 | **部分完成（2026-09-10），见下方 S5 结论。** 16.9 的网络授权设计成立；`allowed_domains` 的配置位置待补测 |
+| S5 | Codex 受限网络模式实测：白名单域名放行、非白名单域名拒绝、绕过路径、审批策略 | **已完成（2026-09-11），见下方 S5 结论与 `spikes/s5/README.md`。** 配置位置定为 `/etc/codex/requirements.toml` 的 `[experimental_network]`（系统级） |
 
 #### S1 结论（2026-09-07，codex-cli 0.153.4，Linux landlock）
 
@@ -4611,7 +4625,7 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 未验证：已撤销 JWT 直接重放源站（逻辑上必然通过，未导出用户 JWT 实测）；自然过期边缘行为；
 Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
 
-#### S5 结论（2026-09-10，codex-cli 0.153.4，受限网络模式）
+#### S5 结论（2026-09-10 初测，2026-09-11 补测完成；codex-cli 0.153.4，受限网络模式）
 
 1. `features.network_proxy = true` 后，沙箱任务获得本地 CONNECT 代理：`http_proxy` / `https_proxy`
    指向 `127.0.0.1` 随机端口（另有 SOCKS5 端口）。**不允许的域名在代理层被拒**：
@@ -4622,15 +4636,21 @@ Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
 3. 直连绕过无效：`curl --noproxy '*'` 打裸 IP 超时（沙箱网络隔离），SOCKS5 UDP / 非 HTTPS TCP 被禁。
 4. 平台自有 CODEX_HOME（不复用 `~/.codex`）是可行且必要的：用户 `config.toml` 里的
    `network_access` / 代理环境会被覆盖或需显式传递；平台须把上游代理通过 app-server 进程环境传入。
-5. **待补测**：allowlist 的具体配置键。`[network] domains={...}`、`[network] allowed_domains=[...]`、
-   `[experimental_network] domains`、`$CODEX_HOME/requirements.toml` 四种写法实测都得到空 allowlist
-   （域名被全拒）。二进制里同时存在 `requirements.toml`、`managedAllowedDomainsOnly`、
-   "`experimental_network.domains` cannot be combined with legacy `allowed_domains`"等串，
-   强烈提示 allowlist 属于 **managed requirements**（系统级 `/etc/codex/requirements.toml`，
-   需 root）或某个尚未试出的键位。补测前平台不依赖任何用户级网络配置，16.9 的实现按其语义先落地。
+5. **allowlist 的配置位置已定位（2026-09-11 补测完成）**：写在系统级
+   **`/etc/codex/requirements.toml`** 的 **`[experimental_network]`** 表下（不是 `[network]`，
+   不是 `$CODEX_HOME/requirements.toml`，不是用户 `config.toml`），需 root。
+   `configRequirements/read` 可回读确认为 `network.domains`。
+6. 生效验证：managed 白名单加载后，**`crates.io` 与 `index.crates.io` 真实放行（200）**，
+   未列入的 `example.com` / `api.github.com` 报
+   `blocked by policy`。即 S5 的机制、配置位置、拒绝语义三者全部落地。
+7. 该配置是**全局**的（影响同机所有 codex 进程），不是 per-Run；平台若按 16.9 做 per-Run 生效集合，
+   需要自己管理该文件并在 Run 前后收敛，或者等待 Codex 提供 per-session 白名单。
+   这是 16.9 实现方案里必须写清的一条约束。
 
-未验证（S5）：allowlist 配置键与生效路径（最高优先）；白名单命中时的实际连接（本次所有域名均被拒，
-未观察到一次成功放行）；预设集合与 Codex 内部域名匹配规则（是否匹配子域、是否区分端口）。
+未验证（S5）：`managed_allowed_domains_only` 与用户级 allowlist 的叠加行为；deny 覆盖 allow 的实测；
+子域是否需逐条列出（`sub.crates.io` 无真实解析，未能干净验证）；白名单是否区分端口。
+另注：上游代理本身可能对目标返回 403（本项目环境 `static.crates.io` 即如此），
+排查"是否被沙箱拒绝"要看响应体是否含 `blocked by policy`，不能只看状态码。
 
 #### S4 结论（2026-09-10，harness-gate 0.3.7 源码构建，generic preset）
 
@@ -4645,6 +4665,11 @@ Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
    方案要的"验证策略身份 / 被测源身份"分离**，字段名以此为准。
 5. 本机 `cargo install` 的 harness-gate 是 **0.1.0**，与源码仓库 0.3.7 不同；平台必须记录实际执行
    二进制的摘要，不能只记版本号。
+6. **自证通过已实测成立（2026-09-11 补测）**：保留 step id、把步骤命令改成恒真（`program="true"`），
+   `config check` 通过、`hook` 报 `TEST_SUMMARY: PASS`，尽管暂存区存在违规。删掉 `required_steps`
+   引用无效（该列表是"不可豁免"，不是"要跑什么"）；删掉整个 `[[steps]]` 块会 fail-closed。
+   结论：**harness-gate 不防自证通过**，12.6.1 要求的"平台用独立批准的 policy revision 比对
+   `configuration_digest`、不一致即拒绝采信"是必须实现的硬性控制，不能只靠工具自报 PASS。
 
 #### S2 补测结论（2026-09-10，disposable 仓库含真实 Actions workflow 与 ruleset）
 
@@ -4949,7 +4974,8 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 每日备份、升级前备份、一次隔离环境真实恢复（外部写默认禁用）、磁盘不足暂停领取
 - [ ] 22.10 全部 Phase 0 行 + 22.11 部署验收通过
 - [ ] 补测 S5 的 allowlist 配置键，并把结论写回 16.9；在此之前不依赖用户级网络配置
-- [ ] 补测 S4 的"削弱但合法的暂存配置能否通过 hook"（12.6.1 防自证通过的核心），Phase 0c 实现时做
+- [x] 补测 S4 的暂存配置篡改（2026-09-11 完成，结论：能自证通过 → 平台必须比对 configuration_digest）
+- [ ] 实现 12.6.1 的 configuration_digest 比对，并加一条测试：篡改 config 后必须拒绝采信
 - [ ] **验收**：本项目自身一条需求经 Harness-Gate 全流程到 PR，零介入
 
 ### Phase 1：自动闭环（L2）

@@ -1,0 +1,48 @@
+{
+ "control": {
+  "rc": 1,
+  "summary": "TEST_SUMMARY: FAIL",
+  "err": null,
+  "ran": [
+   "[PASS] secret scan (61 ms)",
+   "[PASS] architecture audit (10 ms)",
+   "[RUN ] staged Git whitespace check ... FAIL (11 ms)"
+  ]
+ },
+ "neutered_config_check": {
+  "rc": 0,
+  "summary": null,
+  "err": null,
+  "ran": []
+ },
+ "neutered_hook": {
+  "rc": 0,
+  "summary": "TEST_SUMMARY: PASS",
+  "err": null,
+  "ran": [
+   "[PASS] secret scan (61 ms)",
+   "[PASS] architecture audit (11 ms)",
+   "[RUN ] staged Git whitespace check ... PASS (10 ms)"
+  ]
+ },
+ "recorded": {
+  "configuration_digest": "sha256:2c7d58c8428157c1c8b7e2c43d313b68617cda2bd77197d41e2dde9ac1812720",
+  "steps": [
+   {
+    "id": "builtin.secret-scan",
+    "passed": true,
+    "failure_code": null
+   },
+   {
+    "id": "builtin.architecture-audit",
+    "passed": true,
+    "failure_code": null
+   },
+   {
+    "id": "project.staged-diff-check",
+    "passed": true,
+    "failure_code": null
+   }
+  ]
+ }
+}

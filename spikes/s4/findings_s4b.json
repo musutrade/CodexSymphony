@@ -1,0 +1,49 @@
+{
+ "baseline_with_secret": {
+  "rc": 1,
+  "summary": "TEST_SUMMARY: FAIL",
+  "tail": "harness-gate verify\nScope: staged\nComponents: project\n\n[FAIL] secret scan (61 ms)\n       log: /home/gem/dev-tmp/s4b-rpfy_tjw/repo/.harness-gate/reports/invocations/inv-1789090170-343098202-3402522-1/secret_scan.json\n\nVerification report: /home/gem/dev-tmp/s4b-rpfy_tjw/repo/.harness-gate/reports/test_result.md\nTEST_SUMMARY: FAIL"
+ },
+ "baseline_config_digest": "37a2012c2abf7dcac5c778b6a7e4a88ed120f161d5389c9ad0f41697b0c90e3e",
+ "unweakened_with_whitespace_violation": {
+  "rc": 1,
+  "summary": "TEST_SUMMARY: FAIL",
+  "tail": "aged\nComponents: project\n\n[PASS] secret scan (63 ms)\n[PASS] architecture audit (11 ms)\n[RUN ] staged Git whitespace check ... FAIL (11 ms)\n       log: /home/gem/dev-tmp/s4b-rpfy_tjw/repo/.harness-gate/reports/invocations/inv-1789090170-767933426-3402558-1/logs/git_staged_diff_check.log\n\nVerification report: /home/gem/dev-tmp/s4b-rpfy_tjw/repo/.harness-gate/reports/test_result.md\nTEST_SUMMARY: FAIL"
+ },
+ "weakened_config_digest": "1efea72968ca8c0668d53d9d82f7fc16ee5f176a41622c188dc79fccf2e082b2",
+ "config_digest_changed": true,
+ "weakened_config_still_schema_valid": {
+  "rc": 0,
+  "summary": null,
+  "tail": "Configuration valid: /home/gem/dev-tmp/s4b-rpfy_tjw/repo/.harness-gate/flow.toml\nSchema version: 2\nComponents: project\nProfiles: full, hook\nVerification steps: 2"
+ },
+ "weakened_with_whitespace_violation": {
+  "rc": 1,
+  "summary": "TEST_SUMMARY: FAIL",
+  "tail": "aged\nComponents: project\n\n[PASS] secret scan (62 ms)\n[PASS] architecture audit (10 ms)\n[RUN ] staged Git whitespace check ... FAIL (10 ms)\n       log: /home/gem/dev-tmp/s4b-rpfy_tjw/repo/.harness-gate/reports/invocations/inv-1789090171-276022896-3402602-1/logs/git_staged_diff_check.log\n\nVerification report: /home/gem/dev-tmp/s4b-rpfy_tjw/repo/.harness-gate/reports/test_result.md\nTEST_SUMMARY: FAIL"
+ },
+ "recorded": {
+  "executor_version": "0.3.7",
+  "input_mode": "staged",
+  "source_identity": "git-tree:62b673017b34eb834f8e3ed6fcac876d5c05a3cc",
+  "configuration_digest": "sha256:3333b2c7c3eee852dcecf27e615a73cd594855be6af91b54d3863b6a95812203",
+  "profile": "hook"
+ },
+ "recorded_steps": [
+  {
+   "step_id": "builtin.secret-scan",
+   "passed": true,
+   "failure_code": null
+  },
+  {
+   "step_id": "builtin.architecture-audit",
+   "passed": true,
+   "failure_code": null
+  },
+  {
+   "step_id": "project.staged-diff-check",
+   "passed": false,
+   "failure_code": "STEP_FAILED"
+  }
+ ]
+}
