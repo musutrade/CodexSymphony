@@ -2426,7 +2426,9 @@ Phase 0 的 GitHubReconciler 只轮询数据库已关联的 PR，不扫描整个
 - 支持条件请求、分页、指数退避和服务端限流时间；持续失败显示 `stale/unknown`、
   `last_synced_at`、`sync_error`，不能把“读不到”当作 CI 成功、无评审意见或 PR 已关闭。
 - PR head 改变后旧 CI 结果保留历史，但不展示成新 head 的通过结果；缺失检查显示 unknown/pending，
-  skipped/neutral 不能无条件视为满足必需检查。
+  skipped/neutral 不能无条件视为满足必需检查。CI 判据用 check-runs（`name` + `app.slug` 匹配，
+  取该名称下全部 run），**不用 combined status**：只有 Actions check-runs 的仓库，
+  `commits/:sha/status` 恒为 `pending`、`total_count` 为 0（S2 补测实测）。
 - PR URL 来自适配器校验过的 GitHub 仓库/PR 关联，不从不可信需求文本任意打开外部链接。
 - PR 创建、需要人工审查或发现合并/关闭时更新外部事实；重复轮询不会重复生成待办或通知。
   合并/关闭确认归档后停止高频轮询；首版每日至少低频复查一次终结 PR，也允许人工刷新，
@@ -2598,8 +2600,10 @@ Codex harness，也不替代 GitHub Actions；它负责在本项目的本地提�
 https://github.com/musutrade/Harness-Gate
 ```
 
-初始接入基线固定到经过验证的不可变版本，例如 `v0.3.7`。本项目不得使用 `latest`、`main`
-或可变下载 URL；升级 Harness-Gate 必须显式修改版本并重新跑完整门禁。
+初始接入基线固定到经过验证的不可变版本 **`v0.3.7`**（S4 实测版本）。本项目不得使用 `latest`、
+`main` 或可变下载 URL；升级 Harness-Gate 必须显式修改版本并重新跑完整门禁。
+平台必须记录**实际执行二进制的摘要**，不能只记版本号——本机曾出现 PATH 上是 0.1.0、源码仓库是
+0.3.7 的情况，仅凭版本字符串无法发现。
 
 #### 12.6.1 本项目仓库配置
 
@@ -2623,25 +2627,34 @@ https://github.com/musutrade/Harness-Gate
 本项目配置和报告只属于本项目，不作为外部 Repository 的默认配置。平台必须保存执行快照：
 
 ```text
-harness_gate_binary
-harness_gate_version
-harness_gate_config_path
-harness_gate_profile
-harness_gate_config_digest
+executor_version          # 工具自报版本（仅参考，必须同时记二进制摘要）
+executor_binary_digest    # 实际执行二进制的 sha256（版本字符串可被 PATH 上的旧版本骗过）
+configuration_digest      # 工具原生字段，形如 sha256:<hex>（S4 实测）
+source_identity           # git-tree:<sha> 或 working-tree:<sha>（S4 实测）
+input_mode                # all | staged（S4 实测）
+profile
 trusted_gate_policy_revision_id
-trusted_source_commit_sha
 protected_entrypoint_digests
 evidence_store_ref
+invocation_id             # 工具生成，形如 inv-<ts>-<rand>-<pid>-<n>
 ```
 
 Repository 使用通用的 `gate_provider`、`gate_config`、`gate_recovery_policy` 和受信 policy 指针；
 `harness_gate_*` 字段只作为 AgentRun / Gate invocation 的不可变审计快照，不与
 Repository 配置重复双写。
 
-仓库内的配置是策略源，不是“Agent 当前工作区有什么就执行什么”。管理员从固定源 commit
-批准 policy revision，固定配置、强制步骤集合、工具版本和受保护验证入口的摘要。
+仓库内的配置是策略源，不是“Agent 当前工作区有什么就执行什么”。**S4 实测：`hook` 读的是 Git 暂存区
+（index）里的配置，会物化到临时目录再校验，因此 Agent 改工作区配置不影响 `hook` 看到的规则；
+但配置未暂存时 `hook` 直接报 `E1000` 失败**，平台必须在每次调用前确保配置已暂存、并检查退出码与
+`TEST_SUMMARY`，否则门禁会静默失效。管理员从固定源 commit 批准 policy revision，
+固定配置、强制步骤集合、工具版本和受保护验证入口的摘要。
 Agent 修改这些路径时，变更保持待批准；不能自动把工作树的新摘要当作受信摘要。
 批准需要鉴权 API、操作者和理由，Agent 工具没有策略批准权限。
+
+**S4 补测证明这不是可选的加固**：保留 step id、把步骤命令改成恒真即可让 `hook` 报 PASS
+（`config check` 也通过）。因此平台必须：① 持久化本 Run 应使用的 `configuration_digest`
+（来自独立批准的 policy revision）；② 与该 invocation 记录里的值比对，**不一致即拒绝采信该次验证**；
+③ 只把工具自报的 `TEST_SUMMARY` 当作辅助信息，不作为推进 `Submitted` / `Done` 的依据。
 
 GateRunner 在独立验证检出中物化受信配置，并只读挂载到仓库相对路径；强制验证入口同样固定。
 被测代码仍来自待验证的 artifact SHA，平台分别记录“被测源身份”和“验证策略身份”。
@@ -2771,14 +2784,17 @@ Harness-Gate / verify
 - Harness-Gate 二进制版本不符合本项目 policy；
 - GateRunner 进程异常退出或结果无法解析。
 
-失败结果进入 AgentRun：
+失败结果进入 AgentRun。`gate_failure_code` 直接用工具原生的 `failure_code`（S4 实测如
+`SECRET_SCAN_FAILURE`、`TEST_SUMMARY: FAIL`），不另立一套命名：
 
 ```text
 gate_status = failed
-gate_failure_code
-gate_retry_class
-gate_report_path
+gate_failure_code        # 工具原生 failure_code
+gate_retry_class         # 平台按 28 章映射
+gate_report_path         # invocations/<invocation_id>/test_result.json
 gate_invocation_id
+gate_configuration_digest
+gate_source_identity
 ```
 
 门禁失败不生成新的普通 Feature。Phase 0 不生成 `CiRecovery`；Phase 1 起按下述策略自动修复
@@ -3433,10 +3449,19 @@ Codex 0.153.4 自带一个可用的机制，不需要平台自己写代理：
 - 这是**真正的域名白名单**：`approvalPolicy = "never"` 下也不会请求批准，直接拒绝并返回明确错误文本给 Agent。
 - 直连绕过（`--noproxy '*'` 打 IP）被沙箱网络隔离挡住；白名单生效时绕过路径也一并关闭。
 
-平台侧要做的是：按 16.9 的生效集合生成每个 Run 的 allowlist，写进该 Run 的**平台自有 CODEX_HOME**
-（不复用用户 `~/.codex`），并把上游代理（用户网络需要时）通过进程环境传给 app-server。
-`allowed_domains` 的配置位置与"managed requirements"的关系在 S5 中另行确认；
-在确认前，平台不依赖用户 `config.toml` 里的任何网络设置。
+平台侧要做的是：按 16.9 的生效集合生成 allowlist，并把上游代理（用户网络需要时）通过进程环境传给
+app-server。**S5 实测：allowlist 只能写在系统级 `/etc/codex/requirements.toml` 的
+`[experimental_network]` 表下（需 root），用户 `config.toml` 与 `$CODEX_HOME/requirements.toml`
+都不生效。** 这意味着该配置是全局的、影响同机所有 codex 进程，不是 per-Run 的。
+
+由此产生一条实现约束（16.9 的核心难点）：
+
+- 平台必须把 `[experimental_network]` 当作**独占的受信资源**管理：由受信控制面写、Agent 不可写；
+- 每个 Run 开始前写入该 Run 的生效集合（并记录摘要用于审计），Run 结束后收敛；
+- **同机不能并行跑两个网络集合不同的 Run**——这与 6.3 的"同 Repository 串行""全局并发上限"
+  是不同维度的约束，必须在 Phase 0 的调度条件里显式表达，不能靠"反正并发是 1"隐式成立；
+- 多 Worker（Phase 5）时每个 Worker 主机各自持有自己的 `/etc/codex/requirements.toml`，
+  调度器必须按网络集合对 Run 做**主机亲和性**分组，或串行化不同集合的 Run。
 
 #### 与需求契约的关系
 
@@ -3574,7 +3599,9 @@ Phase 0 用户在 GitHub 合并。Phase 1 起自动 Merge 默认开启；Reposit
 自动 Merge 的条件全部由平台从外部事实和验证证据机械判定，不含任何主观项：
 
 ```text
-PR head 的必需 Checks 全部 success（Policy 声明的 Check 名称集合，缺失或 skipped 不算通过）
+PR head 的必需 Checks 全部 success（Policy 按 job `name` 声明集合，如 `test-job`；
+          同一名称下**所有** run 都必须 success（push 与 pull_request 会各触发一次）；
+          缺失 / skipped / neutral 不算通过；不用 combined status——Actions 仓库下它恒为 pending）
 AND 受信 Gate 在该 head 上通过
 AND `pulls/:n.mergeable_state == "clean"`（GitHub 异步计算，首次读取可为 null，Reconciler 重试；不需要 administration 权限）
 AND 所有 review thread 已 resolved（无 reviewer 的仓库此项恒真）
@@ -4536,8 +4563,8 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 | S1 | 锁定版本的 Codex app-server：`dynamicTools` 注册 / `item/tool/call` 回包 / `experimentalApi` 开关；`workspace-write` 沙箱是否真正拒绝写 `.git` | **已完成（2026-09-07），结论见下方 S1 结论与 `spikes/s1/README.md`。** 8.1 的 `create_local_commit` / `report_completion` 成立，退路方案不需要启用 |
 | S2 | GitHub App 安装 → installation token → 条件 push → 创建 PR → 读取 Checks → sha 守卫合并 | **已完成（2026-09-08），结论见下方 S2 结论与 `spikes/s2/README.md`。** 11.1 权限集、14.4 步骤 2/3 的实现方式、17.5 合并守卫的错误码由此确定 |
 | S3 | Axum 中验证 Cloudflare Access JWT（签名 / issuer / aud / 过期），并实测撤销会话后请求被拒 | **已完成（2026-09-09），结论见下方 S3 结论与 `spikes/s3/README.md`。** 17.4 校验规则、`sub` 绑定、撤销语义由此确定 |
-| S4 | Harness-Gate 在本项目上的 `hook` / `verify --profile ci --all` 实际耗时、误报率、JSON 输出稳定性 | 12.6 在 0a 是否作为默认门禁，还是 0c 再切 |
-| S5 | Codex 受限网络模式实测：白名单域名放行、非白名单域名拒绝、绕过路径、审批策略 | **部分完成（2026-09-10），见下方 S5 结论。** 16.9 的网络授权设计成立；`allowed_domains` 的配置位置待补测 |
+| S4 | Harness-Gate 在本项目上的 `hook` / `verify --profile ci --all` 实际耗时、误报率、JSON 输出稳定性 | **已完成（2026-09-10），结论见下方 S4 结论与 `spikes/s4/README.md`。** 12.6 按 0c 切换；版本锁定改为 0.3.7 |
+| S5 | Codex 受限网络模式实测：白名单域名放行、非白名单域名拒绝、绕过路径、审批策略 | **已完成（2026-09-11），见下方 S5 结论与 `spikes/s5/README.md`。** 配置位置定为 `/etc/codex/requirements.toml` 的 `[experimental_network]`（系统级） |
 
 #### S1 结论（2026-09-07，codex-cli 0.153.4，Linux landlock）
 
@@ -4598,7 +4625,7 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 未验证：已撤销 JWT 直接重放源站（逻辑上必然通过，未导出用户 JWT 实测）；自然过期边缘行为；
 Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
 
-#### S5 结论（2026-09-10，codex-cli 0.153.4，受限网络模式）
+#### S5 结论（2026-09-10 初测，2026-09-11 补测完成；codex-cli 0.153.4，受限网络模式）
 
 1. `features.network_proxy = true` 后，沙箱任务获得本地 CONNECT 代理：`http_proxy` / `https_proxy`
    指向 `127.0.0.1` 随机端口（另有 SOCKS5 端口）。**不允许的域名在代理层被拒**：
@@ -4609,15 +4636,52 @@ Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
 3. 直连绕过无效：`curl --noproxy '*'` 打裸 IP 超时（沙箱网络隔离），SOCKS5 UDP / 非 HTTPS TCP 被禁。
 4. 平台自有 CODEX_HOME（不复用 `~/.codex`）是可行且必要的：用户 `config.toml` 里的
    `network_access` / 代理环境会被覆盖或需显式传递；平台须把上游代理通过 app-server 进程环境传入。
-5. **待补测**：allowlist 的具体配置键。`[network] domains={...}`、`[network] allowed_domains=[...]`、
-   `[experimental_network] domains`、`$CODEX_HOME/requirements.toml` 四种写法实测都得到空 allowlist
-   （域名被全拒）。二进制里同时存在 `requirements.toml`、`managedAllowedDomainsOnly`、
-   "`experimental_network.domains` cannot be combined with legacy `allowed_domains`"等串，
-   强烈提示 allowlist 属于 **managed requirements**（系统级 `/etc/codex/requirements.toml`，
-   需 root）或某个尚未试出的键位。补测前平台不依赖任何用户级网络配置，16.9 的实现按其语义先落地。
+5. **allowlist 的配置位置已定位（2026-09-11 补测完成）**：写在系统级
+   **`/etc/codex/requirements.toml`** 的 **`[experimental_network]`** 表下（不是 `[network]`，
+   不是 `$CODEX_HOME/requirements.toml`，不是用户 `config.toml`），需 root。
+   `configRequirements/read` 可回读确认为 `network.domains`。
+6. 生效验证：managed 白名单加载后，**`crates.io` 与 `index.crates.io` 真实放行（200）**，
+   未列入的 `example.com` / `api.github.com` 报
+   `blocked by policy`。即 S5 的机制、配置位置、拒绝语义三者全部落地。
+7. 该配置是**全局**的（影响同机所有 codex 进程），不是 per-Run；平台若按 16.9 做 per-Run 生效集合，
+   需要自己管理该文件并在 Run 前后收敛，或者等待 Codex 提供 per-session 白名单。
+   这是 16.9 实现方案里必须写清的一条约束。
 
-未验证（S5）：allowlist 配置键与生效路径（最高优先）；白名单命中时的实际连接（本次所有域名均被拒，
-未观察到一次成功放行）；预设集合与 Codex 内部域名匹配规则（是否匹配子域、是否区分端口）。
+未验证（S5）：`managed_allowed_domains_only` 与用户级 allowlist 的叠加行为；deny 覆盖 allow 的实测；
+子域是否需逐条列出（`sub.crates.io` 无真实解析，未能干净验证）；白名单是否区分端口。
+另注：上游代理本身可能对目标返回 403（本项目环境 `static.crates.io` 即如此），
+排查"是否被沙箱拒绝"要看响应体是否含 `blocked by policy`，不能只看状态码。
+
+#### S4 结论（2026-09-10，harness-gate 0.3.7 源码构建，generic preset）
+
+1. 四项命令在本项目跑通且很快（0.05s / 0.20s / 0.16～0.51s / 0.36～0.38s；仓库几乎无代码，属下限基线）。
+2. **`hook` 读暂存区（index）而非工作区**：配置物化到 `$TMPDIR/harness-gate-staged-<pid>-<ts>/` 再校验。
+   这是 12.6.1 要的受信快照语义；但配置未暂存时报 `E1000: read staged workflow configuration ... No such file`，
+   平台必须在每次 `hook` 前确保配置已暂存并检查退出码，否则门禁静默失效。
+3. 拦截能力已实测：真实形态 AWS key → `SECRET_SCAN_FAILURE` + `TEST_SUMMARY: FAIL`；暂存行尾空白 →
+   `staged Git whitespace check FAIL`。占位符（`...EXAMPLE`）被正确豁免，不是漏报。
+4. 每次 invocation 记 `executor_version`、`input_mode`、`source_identity`、`configuration_digest`、
+   `execution_root`，每个 step 带原生 `failure_code`。**`configuration_digest` + `source_identity` 就是
+   方案要的"验证策略身份 / 被测源身份"分离**，字段名以此为准。
+5. 本机 `cargo install` 的 harness-gate 是 **0.1.0**，与源码仓库 0.3.7 不同；平台必须记录实际执行
+   二进制的摘要，不能只记版本号。
+6. **自证通过已实测成立（2026-09-11 补测）**：保留 step id、把步骤命令改成恒真（`program="true"`），
+   `config check` 通过、`hook` 报 `TEST_SUMMARY: PASS`，尽管暂存区存在违规。删掉 `required_steps`
+   引用无效（该列表是"不可豁免"，不是"要跑什么"）；删掉整个 `[[steps]]` 块会 fail-closed。
+   结论：**harness-gate 不防自证通过**，12.6.1 要求的"平台用独立批准的 policy revision 比对
+   `configuration_digest`、不一致即拒绝采信"是必须实现的硬性控制，不能只靠工具自报 PASS。
+
+#### S2 补测结论（2026-09-10，disposable 仓库含真实 Actions workflow 与 ruleset）
+
+1. check-run `name` == workflow 里 job 的 `name`（`test-job`），发布 App `github-actions`；
+   17.5 的必需 Check 集合直接配 job 名，无需 `CI /` 前缀。
+2. **combined status 永远是 `pending`**（Actions 只写 check-runs）：绝不能作为 CI 判据。
+3. `mergeable_state` 序列实测 `null`（t≈12s，GitHub 仍在计算）→ `blocked`（t≈21s）→ `clean`（t≈30s）；
+   Reconciler 必须处理 `mergeable == null`，且 `blocked` 不等于失败。
+4. 同一 SHA 返回 **2 条同名 `test-job`**（push 与 pull_request 各一次）→ 判据是"该名称下全部 run
+   都 success"，不是取第一条。
+5. 合并事实：`GET /pulls/:n` 的 `merged` 可能为 `null`，以 `merge_commit_sha` 非空或
+   `GET /pulls/:n/merge` 的 204 为准；sha 守卫不符仍为 409。
 
 
 ### Phase 0a：本机闭环（目标 L1）
@@ -4910,6 +4974,8 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 每日备份、升级前备份、一次隔离环境真实恢复（外部写默认禁用）、磁盘不足暂停领取
 - [ ] 22.10 全部 Phase 0 行 + 22.11 部署验收通过
 - [ ] 补测 S5 的 allowlist 配置键，并把结论写回 16.9；在此之前不依赖用户级网络配置
+- [x] 补测 S4 的暂存配置篡改（2026-09-11 完成，结论：能自证通过 → 平台必须比对 configuration_digest）
+- [ ] 实现 12.6.1 的 configuration_digest 比对，并加一条测试：篡改 config 后必须拒绝采信
 - [ ] **验收**：本项目自身一条需求经 Harness-Gate 全流程到 PR，零介入
 
 ### Phase 1：自动闭环（L2）
