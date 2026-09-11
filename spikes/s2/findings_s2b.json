@@ -1,0 +1,68 @@
+{
+ "pr": {
+  "number": 3,
+  "head": "26bb66ec37c81b34672c4b5e3dac897951dc8589"
+ },
+ "mergeable_state_sequence": [
+  {
+   "t": 12,
+   "mergeable": null,
+   "state": "unknown"
+  },
+  {
+   "t": 21,
+   "mergeable": true,
+   "state": "blocked"
+  },
+  {
+   "t": 30,
+   "mergeable": true,
+   "state": "clean"
+  }
+ ],
+ "check_run_names": [
+  "test-job"
+ ],
+ "check_run_apps": [
+  "github-actions"
+ ],
+ "combined_status_states": [
+  "pending"
+ ],
+ "final": {
+  "t": 30,
+  "mergeable": true,
+  "mergeable_state": "clean",
+  "checks": [
+   [
+    "test-job",
+    "completed",
+    "success"
+   ],
+   [
+    "test-job",
+    "completed",
+    "success"
+   ]
+  ],
+  "combined": "pending"
+ },
+ "merge_wrong_sha": {
+  "status": 409,
+  "body": {
+   "message": "Head branch was modified. Review and try the merge again.",
+   "documentation_url": "https://docs.github.com/rest/pulls/pulls#merge-a-pull-request",
+   "status": "409"
+  }
+ },
+ "mergeable_state_before_merge": "clean",
+ "merge_when_clean": {
+  "state": "clean",
+  "mergeable": true
+ },
+ "mergeable_state_null_observed": true,
+ "merge_result": {
+  "status": 200,
+  "sha": "0b0dd251d1a3e9b1eead6dd1e13a04e246c82613"
+ }
+}
