@@ -541,7 +541,9 @@ AgentRun
 ├── approval_policy_snapshot
 ├── sandbox_policy_snapshot
 ├── gate_invocation_id
-├── gate_result_digest
+├── failure_receipt_id
+failure_receipt_source_sha256
+gate_result_digest
 ├── gate_report_path
 ├── status
 ├── started_at
@@ -2068,6 +2070,21 @@ redaction_status
 token_estimate
 ```
 
+**降级必须是可用的，而不是缺失的。** 上下文组装中任何一步失败（收据验证失败、文件超限、
+模型摘要服务不可用）都不能让 Agent 拿到"半个上下文"或空章节：
+
+```text
+摘要/收据失败     → 回退为截断原文 + summary_unavailable 标记 + 原始归档引用
+文件超限          → 跳过该文件并在 source_refs 标记 skipped，不静默截断内容（同 7.4）
+policy 读取失败   → 拒绝启动 Run（这是安全边界，不是可降级项）
+token 预算不足    → 按优先级裁剪 Optional Repository Inputs，保住 Platform/Execution/Failure
+                    三层；裁剪结果记入 source_refs，可在 UI 看到"哪些输入没进去"
+```
+
+原则：**降级只降低压缩率，不降低证据可得性**。Agent 永远能通过 `source_refs` 里的引用
+取回原始内容；不允许出现"平台说有失败摘要但 Agent 看不到内容"的状态。
+任何降级都写 `agent_events`，并计入 19.3 的指标（便于发现系统性失败）。
+
 不要把全部 CI 日志、全部历史事件和全部 Repository 内容直接塞给 Agent。
 
 ---
@@ -2480,34 +2497,57 @@ CI Running
     └── Failed → Failure Analysis
 ```
 
-### 12.3 Failure Summary
+### 12.3 Failure Summary（收据式，而非自由文本摘要）
 
-发送给 Agent 的不是完整原始日志，而是经过限制和脱敏的摘要：
+发送给 Agent 的不是完整原始日志，而是一份**可机械核对的收据**。这一节的设计借鉴
+NVlabs/SoL-Pi 的 Evidence-Preserving Reducer（见 23.S 的 S6 记录）：把长日志交给便宜模型读，
+但它的输出不是"总结"，而是一组**必须逐字节出现在原文中的引文**，由平台验证后才交给 Agent。
+好处不只是省 token，更是让摘要从不可信文本变成可验证证据。
 
 ```text
-CiFailureSummary
-├── repository
-├── pull_request
-├── commit_sha
-├── workflow
-├── job
-├── step
-├── conclusion
-├── error_excerpt
-├── annotations
-├── relevant_files
-├── log_artifact_refs
-└── possible_causes
+CiFailureReceipt
+├── schema_version         固定字符串，用于拒绝格式漂移
+├── source_sha256          原始日志归档的哈希；必须与平台归档一致
+├── source_bytes / source_lines
+├── observed_is_error      平台观测到的退出状态（不是模型自报）
+├── status                 success | failure；必须与 observed_is_error 一致
+├── uncertain              bool；日志无明确失败信号时为 true
+├── evidence[]             每项 {kind, line, quote, quote_sha256}
+│     kind ∈ fatal | failure | warning | target | summary
+│     quote 必须逐字节出现在原文中，且不超过 MAX_QUOTE_CHARS
+├── annotations            来自 CI API，非模型生成
+├── relevant_files         平台按失败文件映射，非模型生成
+├── log_artifact_refs      原始日志归档位置（平台私有存储）
+└── possible_causes        由平台按 failure_code → retry_class 映射；**不由模型生成**
 ```
 
-需要：
+验证规则（任一不满足即整份作废，不做部分采信）：
 
-- 最大字节数
-- Secret 脱敏
-- 日志来源
-- commit 对齐
-- 失败发生时间
-- 是否允许自动修复
+```text
+1. 能解析为 JSON 且 schema_version 匹配
+2. source_sha256 == 平台归档哈希，source_bytes/lines 一致
+3. status == failure 当且仅当 observed_is_error
+4. evidence 数量不超过上限；每条 kind 在允许集合内
+5. 每条 quote 满足：长度 ≤ MAX_QUOTE_CHARS 且 body.includes(quote) 为真
+6. 去重后仍至少有一条 fatal 或 failure 类证据（否则视为 uncertain）
+7. quote 中出现疑似凭证时按 Secret 规则脱敏后重新校验
+```
+
+失败降级（fail-open，与原设计一致）：
+
+```text
+收据验证失败 → 不做摘要，回退为"截断后的原文 + summary_unavailable 标记 + 归档引用"
+              → Agent 仍能拿到证据，只是没被压缩
+绝不返回：半份收据、被修改过的引文、模型自由发挥的 possible_causes
+绝不因为摘要失败而把 Run 判为失败或消耗修复预算
+```
+
+其他要求：
+
+- 最大字节数、Secret 脱敏、日志来源、commit 对齐、失败发生时间、是否允许自动修复
+- 原始日志归档保留完整，不在摘要成功后删除
+- 收据与归档的绑定关系写入 AgentRun（`failure_receipt_id` / `source_sha256`），可追溯
+- 平台侧不采信模型对根因的判断：`possible_causes` 与 `retry_class` 一律由 `failure_code` 映射
 
 ### 12.4 Recovery Requirement
 
@@ -3962,6 +4002,10 @@ review_fix_count、auto_merge_count、post_merge_validation_failures。CI 摘要
 零介入是产品目标，因此从 Phase 0a 起单独维护介入指标，按 Requirement 归档、按周聚合展示：
 
 ```text
+**统计口径**：`zero_touch_ratio` 只在 AC 达标（Phase 1 起即 `Done`、Phase 0 为 must 级 AC 验证通过）
+的需求上统计。零介入但产出错误的需求不计入分子，也不从分母剔除——它应体现在失败率里，
+而不是被算成效率提升（原则取自 SoL-Pi：效率改进只在任务质量不变时计入）。
+
 intervention_count            每条需求从 Ready 到终态需要人处理的次数
 intervention_reason           agent_question | sandbox_ask | security_gate | budget_exhausted |
                               revalidation_failed | post_merge_revert | manual_policy
@@ -4408,6 +4452,10 @@ https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-
 - Phase 0：轮询条件请求、分页、限流退避、stale/unknown 和最后同步时间
 - Phase 0：head 改变后不复用旧 CI 成功，关闭/合并不伪造 Done
 - Phase 1：必需 Check 名称集合匹配；缺失 / skipped / neutral 不算通过
+- Phase 0（12.3）：伪造引文的失败收据被拒绝（quote 不在原文、source_sha256 不匹配、status 与
+  observed_is_error 不一致、无 fatal/failure 证据各有独立用例）
+- Phase 0（12.3）：收据验证失败 → fail-open 回退截断原文 + summary_unavailable，Run 不失败
+- Phase 0（8.4）：上下文降级只降低压缩率；`source_refs` 记录 skipped/裁剪，可追溯到原始内容
 - Phase 1：自动 Merge 在 17.5 条件全部成立时触发且仅触发一次；任一条件不成立不触发
 - Phase 1：自动 Merge 期间 head 变化 → 放弃本次 MergeOperation，重新等待条件
 - Phase 1：合并 API 未知响应先查合并事实，不重复合并
@@ -4565,6 +4613,7 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 | S3 | Axum 中验证 Cloudflare Access JWT（签名 / issuer / aud / 过期），并实测撤销会话后请求被拒 | **已完成（2026-09-09），结论见下方 S3 结论与 `spikes/s3/README.md`。** 17.4 校验规则、`sub` 绑定、撤销语义由此确定 |
 | S4 | Harness-Gate 在本项目上的 `hook` / `verify --profile ci --all` 实际耗时、误报率、JSON 输出稳定性 | **已完成（2026-09-10），结论见下方 S4 结论与 `spikes/s4/README.md`。** 12.6 按 0c 切换；版本锁定改为 0.3.7 |
 | S5 | Codex 受限网络模式实测：白名单域名放行、非白名单域名拒绝、绕过路径、审批策略 | **已完成（2026-09-11），见下方 S5 结论与 `spikes/s5/README.md`。** 配置位置定为 `/etc/codex/requirements.toml` 的 `[experimental_network]`（系统级） |
+| S6 | 外部方案评审：NVlabs/SoL-Pi 的四项 harness 效率机制 | **已评审（2026-09-11），不引入依赖。** 只借鉴其"证据保全式摘要"用于 12.3，其余三项不采纳（理由见下） |
 
 #### S1 结论（2026-09-07，codex-cli 0.153.4，Linux landlock）
 
@@ -4682,6 +4731,30 @@ Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
    都 success"，不是取第一条。
 5. 合并事实：`GET /pulls/:n` 的 `merged` 可能为 `null`，以 `merge_commit_sha` 非空或
    `GET /pulls/:n/merge` 的 204 为准；sha 守卫不符仍为 409。
+
+#### S6 记录：NVlabs/SoL-Pi 评审（2026-09-11，只读源码与文档，未引入依赖）
+
+SoL-Pi 是 Pi 编码 agent 的效率扩展，用自动研究循环从 152 个方向筛出 4 个机制。
+其核心信念与本方案一致：**在不可信的模型输出与可信判定之间加一层可机械验证的收据**。
+
+采纳一项：
+
+- **证据保全式摘要**（Evidence-Preserving Reducer）→ 写入 12.3。要点：摘要输出是结构化收据，
+  每条引文必须逐字节出现在原文中，`source_sha256` 必须等于归档哈希，`status` 必须与观测到的
+  退出状态一致；任一校验失败整份作废；失败时 fail-open 回退原文而非返回半成品。
+  这解决了本方案 12.3 原设计的缺口——原设计只限制摘要大小与脱敏，不约束内容可验证性。
+- **fail-open 降级原则** → 写入 8.4：降级只降低压缩率，不降低证据可得性。
+
+不采纳及其理由：
+
+| 机制 | 不采纳理由 |
+|---|---|
+| Action Fusion（编辑与验证合并为一次 tool call） | 会把验证命令拉进 Agent 的沙箱与 tool call 内，由模型决定跑什么验证。与 12.6.1"验证策略来自受信快照、Agent 不能自证通过"直接冲突；S4 补测已证明自证通过是真实风险，不应再扩大模型的验证权限 |
+| Online Context Compact（子任务边界压缩） | 纯收益但不紧急；待 Phase 0a 观测到 turn/token 成为瓶颈时再评估。注意它的收益依赖"子任务边界"概念，而 Phase 0/1 没有 Planner（Phase 3 才有） |
+| 自动研究循环本身（152→4） | 那是发现机制的方法，不是机制。规模上不适用 |
+
+同时采纳其一条评测原则：**效率改进只在任务质量不变的前提下计入**。用于约束 19.3——
+`zero_touch_ratio` 只在 AC 达标的需求上统计，避免"跑得快但做错了"被算作成功。
 
 
 ### Phase 0a：本机闭环（目标 L1）
@@ -4945,6 +5018,8 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 声明后验证失败 → 执行预算内自动重跑一次带失败摘要的新 Run
 - [ ] HandoffOperation + outbox：条件 push、查找/创建 PR、持久化关联、`Submitted`；重试不新建 Run
 - [ ] 只读 GitHub 轮询：PR 状态、head SHA、Checks 摘要、合并/关闭、`last_synced_at`、stale
+- [ ] 12.3 收据式失败摘要 + 引文校验 + fail-open 降级；`possible_causes` 由 failure_code 映射
+- [ ] 8.4 上下文降级路径（摘要失败 / 文件超限 / 预算不足各自可用且可追溯）
 - [ ] 最简 Web：需求表单、列表/详情、Run 时间线、待办箱
 - [ ] 错误码子集 + 执行阶段自动重试白名单 + 每阶段预算 2；未知错误 fail-closed
 - [ ] 结构化日志、`agent_events`、`requirement_events`
