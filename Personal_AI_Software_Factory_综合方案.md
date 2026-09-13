@@ -3,7 +3,7 @@
 > 首版：评审通过的需求自动到 PR（Phase 0）、自动到合并与 Done（Phase 1）；长期演进为多仓库、多 Agent 软件工厂
 > 版本：V9.0 Draft — 评审后零介入优先；各章节已按 0.1 前提同步（差异见 0.8）
 > 日期：2026-09-07
-> 更新：2026-09-13 — 纳入 Symphony 运行复盘；确定性流程接管见 12.7，阻塞声明、工作快照与恢复上下文见 3.7、8.1、8.4
+> 更新：2026-09-13 — 按最少人工介入原则统一执行/验证、确定性产物、修复预算、环境自动恢复、资源清理与分期验收
 > 状态：设计规格；实施范围和验收条件以第 22～24 章为准
 
 ---
@@ -22,12 +22,15 @@
 
 1. **人工介入是异常中断，不是流程步骤。** 每条 Requirement 默认走完全自动路径：
    评审通过 → 调度 → 编码 → 受控提交 → Gate → PR → CI → 合并 → 自动判定 Done。
-   只有下列情况才进入待办箱等待人处理：
+   只有下列情况才进入待办箱等待人处理（输入修订同时按下述授权规则记录）：
    - Agent 判断需求有歧义或 AC 不可实现，主动停下提问；
-   - 沙箱和网络白名单之外的请求；
+   - 确实无法继续且需要扩大沙箱/网络授权的请求；单次拒绝不产生待办；
    - 安全类门禁失败（secret、架构违规、策略被撤销）；
-   - 自动修复预算耗尽；
-   - 评审通过后 Contract / AC / 受信策略被修改。
+   - 自动修复或阶段恢复预算耗尽、未知故障、无法自动恢复的环境/存储/交接问题；
+   - 安全策略撤销、自动重验证失败，或合并后的验收失败；
+   - 运维恢复/清理达到告警阈值、必要 reviewer 确认等待超时，以及 Policy 显式开启的人工步骤。
+   用户主动修改 Contract/AC 是新的明确输入，保存时展示影响并记录重新授权；系统按分期
+   保全工作、撤销旧动作并继续，不额外要求重复确认。已合并的需求转 follow-up Draft。
 2. **需求评审的通过标准是"每条验收标准都可机器验证"。** `verification_method` 默认为
    `automated_test` / `ci_check` / `gate_check`；不能机器验证的 AC 必须改写，或由评审者显式
    标记 `waived` 并记录理由。不允许默认 `manual_review`。这是系统能自动判定 Done 的唯一来源，
@@ -36,6 +39,11 @@
 V8.1 中的三端审批、人工 Merge、手机逐项人工验收、用户选定 Review 意见等能力，降级为
 "信任建立期"的**可选模式**：Repository Policy 可以打开它们，默认关闭；它们不再是任何 Phase 的
 交付门槛。
+
+已有授权内，平台先按阶段自动分类、探测、恢复和验证；只在机器无法判断、需要新授权或
+预算耗尽时请求人工。环境 blocker 由平台有限探测，满足条件后自动恢复，不要求例行点击
+Unblock。待定人工问题、安全撤销和权限扩大不能通过环境恢复绕过。每条待办包含已完成工作、
+阻塞证据、已尝试动作、最小决策范围和决定后恢复步骤；同一原因聚合，不重复唤醒 Agent。
 
 ### 0.2 自动化等级
 
@@ -115,7 +123,7 @@ Phase 0a 完成即开始日常使用；后续 Phase 不反向扩大 0a 的范围
     → CI → 红则自动修复（预算内）→ 绿
     → 自动合并 → 最终 SHA 验证批次 → Done                 ← Phase 1 终点
 
-任何一步进入异常 → 待办箱 → 手机 / 电脑处理 → 继续
+异常 → 平台按阶段有限恢复；需要新授权/人工判断或恢复耗尽 → 一次待办 → 决策后自动续作
 ```
 
 ### 0.8 与 V8.1 的差异
@@ -128,7 +136,7 @@ Phase 0a 完成即开始日常使用；后续 Phase 不反向扩大 0a 的范围
 | `POST /ready` = 评审通过，直接进队列；`/start` 降为别名 | 7.1、16.2 |
 | 自动 Merge 默认开启，条件全部机械判定；`Merging` 从 Phase 1 启用 | 4.1、11.5、16.5、17.5 |
 | Done 由 post_merge 自动证据判定；人工验收仅 Policy 开启时出现 | 4.1、7.2、7.6 |
-| 修复预算默认 3、Policy 可配；CiRecovery / ReviewFix 自动触发，不要求人选意见 | 12.5、12.6.4、13、14.2、28 |
+| 修复预算默认 3、Policy 可配；RepairAttempt 统一覆盖本地/CI/Review，自动触发，不要求人选意见 | 12.5、12.6.4、13、14.2、28 |
 | 声明后验证失败自动重跑一次带失败摘要的新 Run，不直接转人工 | 12.6.4、28 |
 | 沙箱内自动放行、沙箱外默认拒绝（Policy 可改为 ask）；只有 Agent 提问必然进待办箱 | 8.1 |
 | 输入漂移默认自动分类与重验证，失败才进待办箱 | 7.6 |
@@ -142,6 +150,10 @@ Phase 0a 完成即开始日常使用；后续 Phase 不反向扩大 0a 的范围
 | 2026-09-13：预检/磁盘保护前移 0a；规则优先修复包，Phase 1 受信证据复用与重复失败停止 | 12.3、12.7、19.3、21.5、22～24、28 |
 | 阻塞声明禁止自动续轮；恢复必须保全工作快照并注入上下文，有声明只恢复平台阶段 | 3.7、5.1、8.1、8.4、22～24、28 |
 | 单仓异步资源回收前移 0a：持久化清理任务、引用保护、重试与补漏，Agent 不等待清理 | 10.6、14、19.3、21～24、28 |
+| SoL-Pi 复评：0a 输出归档与分页、Phase 1 动作合并实验、Phase 2 压缩经济性实验；逐项对照 | 8.5、8.6、12.7.6、19.3、22～24 |
+| 一致性修订：执行与验证分离、平台候选产物、RepairAttempt、环境自动解除、输入替代、清理告警聚合 | 3～4、8、10、12～14、22～24、28 |
+| 阻塞体验补齐：诊断包、原因确认程度、六项可操作卡片、有限只读诊断与独立预算 | 3.8、8.7、14、16.7、18.4、19.3、22～24、28 |
+| 合并事实与 fast-forward 双校验、分阶段 AC、脱敏视图收据、固定队列统计口径 | 7、11～14、17、19、23.S |
 
 保留的信任建立期开关（Repository Policy，默认值即零介入路径）：
 
@@ -485,16 +497,17 @@ Requirement → exactly one Repository
 Recovery / ReviewFix 的来源使用显式字段：
 
 ```text
-recovery_source_type = ci_failure | review_comment | null
+recovery_source_type = ci_failure | review_batch | null
 recovery_source_id
 ```
 
+ReviewFix 使用平台不可变 review_batch ID 作为聚合来源，各意见版本在 review_fix_items 独立去重。
 非 Recovery Requirement 的两个字段必须为 `null`。同一来源只允许创建一个对应的修复
 Requirement（见 14.3）。
 
 `root_requirement_id` 统一使用这一命名：根 Requirement 的值为自身 ID，Recovery /
 ReviewFix 子 Requirement 指向根 Requirement。`total_recovery_attempts` 只在根
-Requirement 上维护，子任务读取根任务的聚合值。
+Requirement 上维护，从 Phase 1 的 RepairAttempt 预留记录计数，子任务读取根任务的聚合值。
 
 根 Requirement 的 UUID 由应用在创建时先生成，并同时写入 `id` 与 `root_requirement_id`；
 不依赖数据库触发器在插入后回填。
@@ -534,6 +547,7 @@ AgentRun
 ├── blocker_report_id
 ├── resumed_from_run_id
 ├── recovery_plan_id
+├── repair_attempt_id
 ├── work_snapshot_id
 ├── artifact_manifest_id
 ├── handoff_operation_id
@@ -550,8 +564,8 @@ AgentRun
 ├── sandbox_policy_snapshot
 ├── gate_invocation_id
 ├── failure_receipt_id
-failure_receipt_source_sha256
-gate_result_digest
+├── failure_receipt_source_sha256
+├── gate_result_digest
 ├── gate_report_path
 ├── status
 ├── started_at
@@ -589,7 +603,7 @@ Agent：
 
 Platform / GitHub Adapter：
   持久化完成声明并停止 Agent 写入；
-  运行受信 Gate，封存 commit 和不可变产出清单；
+  确认执行完整性并保存 candidate，独立运行受信 Gate，封存不可变产出清单；
   通过 outbox 幂等执行 push；
   按 repository + branch 查找或创建 PR；
   只有 PR 已创建且关联已持久化，才允许 Requirement 进入 Submitted。
@@ -597,18 +611,25 @@ Platform / GitHub Adapter：
 
 ### 3.5 完成声明、封存产出与交接
 
-三个记录各有独立职责，不能用“发现一个 commit”替代：
+以下记录各有独立职责，不能用“发现一个 commit”替代：
 
 | 记录 | 必备绑定 | 意义 |
 |---|---|---|
 | CompletionDeclaration | run_id、generation、revision_id、context_input_digest、声明时 HEAD、summary、received_at | Agent 明确请求结束；先持久化再回复工具成功 |
-| ArtifactManifest | declaration_id、artifact SHA/tree、change_base SHA、snapshot_id、Gate policy/result、sealed_ref、sealed_at | 平台确认写入静止，验证通过并保存在 Agent 不可写的位置 |
+| ArtifactCandidate | requirement/revision/generation、固定 SHA/tree、source_type/source_id、parent_candidate_id、context snapshot | 不可变待验证产物；来源为 agent_declaration 或 deterministic_repair |
+| DeterministicRepair | repair_attempt_id、原 candidate、Policy 授权、工具/参数摘要、前后 diff、新 candidate | 平台受控修复执行事实，不是 Agent 完成声明 |
+| ArtifactManifest | candidate_id、artifact SHA/tree、change_base SHA、snapshot_id、Gate policy/result、sealed_ref、sealed_at | 平台验证通过并保存在 Agent 不可写的位置，来源沿 candidate 追溯 |
 | HandoffOperation | requirement_id、run_id、generation、manifest_id、verification_batch_id、input_authorization_event_id、repository/branch、expected_remote_sha、operation_attempt | 平台对固定产出的 push/PR 交接；重验证时保留显式授权引用 |
 
-CompletionDeclaration 与 ArtifactManifest 不可变；每个 Run 最多一个被接受的完成声明和一个
-有效封存产出。重复工具调用返回原结果；参数不同的重复声明拒绝。新 HEAD 或 Contract/AC
-变化需要新 Run，不得修改已有声明指向的 SHA。其他输入变化能否复用原产出，按 7.6 的人工
-重验证规则决定，不回写历史输入。
+CompletionDeclaration、ArtifactCandidate 与 ArtifactManifest 不可变；每个 Run 最多一个被接受
+的完成声明、每个声明最多一个 candidate、每个 candidate 最多一个 manifest。重复请求返回原记录，
+参数不同的重复请求拒绝。Agent 修改 HEAD 或 Contract/AC 变化后继续编码需要新 Run，不得修改
+已有声明的 SHA。平台确定性修复生成新的 candidate，引用 DeterministicRepair 和原 candidate，
+无需新 AgentRun 或虚构声明；初始 candidate 必须源于有效 Agent 声明，修复链不能凭空授权。
+其他输入变化按 7.6 自动/人工重验证规则处理，不回写历史输入。交接的 run_id 仅追溯最初执行；
+实际发送对象以 manifest/candidate 为准，必须核对其当前授权和新验证证据。
+Phase 0a/0b 的 context_input_digest 可空，统一以 input_identity_version=0、revision、generation、
+已读取 WORKFLOW/策略快照摘要绑定；并非跳过身份检查。0c 起使用完整 MVP digest，旧记录不补写。
 
 HandoffOperation 状态：
 
@@ -643,12 +664,15 @@ WebhookDelivery
 
 | 记录 | 必备绑定与内容 | 权威范围 |
 |---|---|---|
-| BlockerReport | run/generation/revision、请求幂等键、reason_code、证据引用、所需条件、Agent 自报进度、received_at | 执行受阻声明；根因和解除条件仍须平台核查 |
+| BlockerReport | requirement/run/generation/revision、请求幂等键、reason_code、证据引用、所需条件、Agent 自报进度、received_at | 执行受阻声明；根因和解除条件仍须平台核查 |
 | WorkSnapshot | source_run_id、HEAD/base/tree、index 与工作树清单及内容摘要、遗漏项、captured_at、pending/complete/partial、存储引用 | 恢复中间工作；不是 ArtifactManifest 或验证通过 |
 | RecoveryPlan | source_run_id、目标输入身份、blocker/snapshot/declaration/manifest 引用、恢复阶段、剩余步骤、解决证据、授权和预算引用 | 平台依据当前事实选择的恢复动作，不自动更新旧 Run |
 
 新 Run 的 `resumed_from_run_id / recovery_plan_id / work_snapshot_id` 必须可追溯。
 恢复事件和计划保留版本；后续解除阻塞追加解决记录，不覆盖原报告或累计消耗。
+领取前预检 blocker 的 run_id 可空，绑定 requirement/输入身份，进度来源标记 platform；
+运行时动态工具报告必须绑定当前 Run。BlockerReport 的平台分类附 recovery_mode=auto_probe|manual、probe_policy_id、probe_attempt、
+next_probe_at、probe_deadline、resolution_event_id；Agent 不能指定 auto_probe 或解除自己的 blocker。
 
 **工作快照的最低实现：** 在阻塞、停止或异常退出后，先禁止新写入并确认旧执行组静止，
 再由平台保存 HEAD 及可达的中间 commit、暂存/未暂存改动、未跟踪的源码/测试/必要进度文件，
@@ -664,11 +688,33 @@ WebhookDelivery
 保持该需求原有变更基线，不能隐式 reset/rebase 到最新 main。
 
 平台生成 RecoveryPlan 的顺序固定为：取消/授权与旧组静止检查 → 未解决 blocker 检查 →
-有效 manifest 则只交接 → 有声明则恢复验证/封存 → 无声明则预检、验证工作快照与恢复上下文，
+有效 manifest 则只交接 → 有 candidate 则独立验证/封存 → 有声明则确认执行完整性并生成 candidate → 无声明则预检、验证工作快照与恢复上下文，
 之后才按预算创建新 Run。目标输入改变须按既有输入资格规则重新评估，不盲目套用旧快照。
 重启只保全最后可读取的工作，不承诺恢复尚未写入磁盘的数据。尚未启动模型且确定没有
 中间修改的准备重试可记录已验证的初始基线与空改动清单；不得把身份不明的目录当成空工作。
 
+
+---
+
+### 3.8 阻塞诊断与可操作待办
+
+BlockerReport 记录“发生了什么”，DiagnosisReport 解释“哪些原因已确认”，ActionableBlockerView
+回答“现在谁需要做什么”。后两者均关联原 blocker，不新增第二套业务状态或独立审批真相。未解决待办持有诊断包
+与证据的受管引用；诊断完成不立即清理仍需用户查看或恢复使用的内容。
+
+| 记录/视图 | 必备字段 | 约束 |
+|---|---|---|
+| DiagnosticBundle | blocker_id、revision/generation、失败阶段、输入/环境身份、工具退出状态、脱敏观察引用、固定探针结果、已尝试动作、工作保存状态、missing_evidence、created_at、digest | 平台机械组装并版本化保全；未采集到的信息显式列出，不要求用户重新找日志 |
+| DiagnosisReport | blocker_id、bundle_id、producer=rules/model、cause_status=confirmed/suspected/unknown、原因说明、支持/反证引用、缺失信息、建议 action_id、created_at | 模型原因只能为 suspected/unknown；confirmed 必须有平台规则与有效探针依据 |
+| DiagnosticAttempt | blocker_id、root_requirement_id、bundle_id、policy_snapshot、状态、预算预留、Runtime/模型/会话引用、累计 token/turn/耗时、报告引用 | 独立的只读诊断执行事实，非代码修复 Run；不改变 Requirement、Gate 或 GitHub 真相 |
+| ActionableBlockerView | blocker_id/version、当前失败步骤、确认程度、已完成工作、系统已尝试/正在做的事、责任方、可执行操作、解除判据、恢复步骤、下次检查时间/需人工原因 | 从 blocker、报告、恢复计划与既有 runtime_requests 派生，不能由模型自由生成可执行按钮 |
+
+每个操作包含固定 action_id、用户可读标签、对象与范围、执行主体（平台/用户/主机管理员）、
+所需授权、参数 schema、预计影响、验证方式及 unavailable_reason。操作集合来自平台批准的
+版本化 action catalog：重新检查环境、进入具体权限/需求修订入口、查看/导出脱敏诊断包、
+重投已授权清理、取消任务等；不把模型输出的 shell、链接或“建议重试”直接变成执行入口。
+引用外部设置页面时由适配器构造并验证目标；需要用户在宿主机操作时给出具体对象、步骤和
+预期检查结果，命令仅来自批准的操作说明。未知原因不得伪造修复步骤来满足字段校验。
 
 ---
 
@@ -739,11 +785,11 @@ Cancelled
 
 Running / Submitted / WaitingCI / WaitingReview
   → Blocked            Phase 1+，修复预算耗尽、安全类或第 28 章要求人工处理的阻塞
-  → 原受阻阶段         人工 Unblock，重新校验后继续；不盲目重新编码
+  → 原受阻阶段         auto_probe 条件满足或人工 Unblock 后，重新校验再继续；不盲目重新编码
 
 Ready / Queued / Running / Submitted / WaitingCI / WaitingReview
   → NeedsRevalidation  Phase 0c+
-  → Ready              Contract/AC 变了（用户改的即视为重新评审），自动生成新 Revision 回队
+  → Ready              Contract/AC 变了（显式 revise 保存视为重新评审），自动生成新 Revision 回队
   → 原阶段             Contract/AC 未变、产出在新输入下自动重验证通过，自动恢复
   → 待办箱             自动重验证失败，才需要人
 
@@ -763,7 +809,7 @@ Policy 要求人工 Review 或 manual_review AC 时，这些证据也必须齐�
 
 ```text
 MVP / Phase 0：
-完成声明和封存产出有效，产出 commit 已 push，PR 已创建，平台已保存 PR 关联；
+candidate 来源链（Agent 声明或授权确定性修复）和封存产出有效，产出 commit 已 push，PR 已创建，平台已保存 PR 关联；
 generation、当前输入资格、受信 Gate 与远端 head 校验全部通过
 ```
 
@@ -791,7 +837,17 @@ Draft → Ready → Running → Submitted / Failed
 ```
 
 另保留 `Cancelled`（手动停止 / 取消）。`NeedsRevalidation` 从 Phase 0c 启用；此前
-`Running` / `Submitted` 期间拒绝修改 Contract，要改先 Cancel 再重新评审。
+`Running` / `Submitted` 期间拒绝普通 PATCH 直接修改 Contract；使用受控输入替代命令，
+一次显示影响并保存新 Revision，按下述规则处理，不要求先手工 Cancel 再点 Ready。
+
+
+Phase 0a/0b 的受控输入替代（`POST /requirements/:id/revise`）先保存待应用 Revision 和用户授权，
+原子撤销旧 generation、新工具/旧交接资格，异步停止旧组、保存完整 WorkSnapshot 并对账在途
+交接；此期间显示 input_replacement_pending，不领取新 Run。全部完成后应用 Revision、冻结
+新授权并回 Ready，系统核查旧工作适用性后生成 RecoveryPlan，不自动丢弃中间实现。普通表单
+保存草稿不等于执行授权；仅显示影响并明确提交的 revise 命令视为重新评审。失败保留 pending
+记录和现场，按自动恢复/人工异常规则处理。已合并则生成 follow-up Draft，不修改原完成事实。
+0c+ 同一入口使用 NeedsRevalidation 状态承载，不增加第二套授权规则。
 
 `Queued`、`WaitingCI`、`WaitingReview`、`Merging`、`Done`、`Blocked` 从 Phase 1 启用。
 Phase 0 读取 PR/CI/基础 Review 摘要，仅作外部事实展示；不自动修复、不自动合并，
@@ -807,7 +863,9 @@ failure_code = ...
 manual_action_required = true
 ```
 
-Phase 1 启用独立的持久化 `Blocked` 状态及其人工恢复命令。
+Phase 1 启用独立的持久化 `Blocked` 状态。Blocked 表示不能继续，不等同于一定需要人；
+8.1 的 auto_probe blocker 可自动解除，其他情况使用人工 Unblock。Phase 0 对应 Failed，
+通过 manual_action_required 区分自动探测等待与人工异常，调度器不能仅凭 Failed 自动回队。
 
 状态语义按分期固定：
 
@@ -837,7 +895,10 @@ Stalled
 Cancelled
 ```
 
-AgentRun 在完成声明、写入静止、验证和封存成功后进入 `Succeeded`，不等待 GitHub。
+AgentRun 在完成声明有效、写入静止、声明 HEAD 一致且工作树干净后进入 `Succeeded`，
+表示 Agent 执行完成，不表示质量验证通过或交付完成。平台先保全固定 candidate，再独立
+运行 VerificationBatch；Gate/AC 失败仅记录验证事实和编排决定，不将已成功的 Run 改成 Failed。
+执行异常、未完成声明、工作区完整性异常仍按执行事实记录失败。
 AgentRun 状态不能直接决定 Requirement 状态。例如：
 
 ```text
@@ -846,8 +907,10 @@ HandoffOperation = RetryWaiting
 Requirement = Running
 ```
 
-终态 AgentRun 不重开。人工对既有有效声明的固定 SHA 重新验证时创建新 VerificationBatch，
-保留原 Run 的失败历史；验证通过可以封存或重新授权该产出并交接，不把历史 Run 改写为成功。
+终态 AgentRun 不重开。对既有有效 candidate 的固定 SHA 重新验证时创建新 VerificationBatch，
+保留原 Run 的执行历史；验证通过可以封存或重新授权产出并交接，不改写历史 Run。
+Finishing 只覆盖停止旧组、完整性确认与候选保全，不含独立验证；UI 从 VerificationBatch
+显示 validation 子阶段。验证占独立主机额度，不占 Agent slot。
 
 MVP / Phase 0 的 AgentRun 不使用 `Blocked` 状态；运行层只记录 `Failed`、
 `TimedOut`、`Stalled` 或 `Cancelled` 与对应 `failure_code`。持久化业务 `Blocked` 从
@@ -933,7 +996,7 @@ ReviewApproved
 ```
 
 上图是目标形态；访问入口另见第 21 章的 Cloudflare Tunnel + Access。MVP 只启用单 Project /
-单 Repository / 单 Agent，运行 Process、Workspace 和只读 GitHub 状态轮询三个组件，
+单 Repository / 单 Agent，运行 Process、Workspace 和只读 GitHub 状态轮询组件，
 加一个消费数据库 outbox 的通知发送器；它们均可在一个控制面进程内实现。
 MVP 的输入漂移检查由 Scheduler / Supervisor 在关键时机同步执行，不依赖独立 DigestReconciler。
 
@@ -974,19 +1037,20 @@ Phase 0 / Phase 1 不实现 Project 级容量和 weighted round-robin 公平调�
 拆分为五个独立组件，各自独立间隔、独立错误处理，通过 inbox / outbox 事件总线协调：
 
 ```text
-ProcessReconciler       每 30 秒   执行组、完成声明与交接状态对账；隔离旧写入者后恢复
+ProcessReconciler       每 30 秒   执行组、完成声明与交接对账；按持久化计划有限探测并解除环境 blocker
 WorkspaceReconciler     每 5 分钟  对账孤儿 workspace / worktree，向清理队列提交受管资源候选
 GitHubReconciler        默认 60 秒 同步已关联 PR / CI / Review 摘要；Phase 0 只读，Phase 1 驱动闭环
 DigestReconciler        事件触发   处理 InputSnapshotChanged，重算 context digest
 ResourceCleaner        队列触发 + 每 5 分钟补漏  异步回收受管资源；Phase 2 扩展历史数据 GC
 ```
 
-Phase 0a 只实现最小 `ProcessReconciler`：进程重启后，`Running` 且无活跃子进程的 Run 按
-"有声明 → 恢复验证 / 交接；无声明 → 先核查 blocker、保存并校验工作快照和恢复上下文，
-条件满足才按预算新建 Run"两条规则处理（3.7、8.4）。持久化阻塞优先于通用进程失联重试；
+Phase 0a 只实现最小 `ProcessReconciler`：进程重启后对 Run 和独立平台任务统一对账，按
+"manifest → 交接；candidate → 独立验证；声明 → 确认完整性并保全 candidate；
+无以上记录 → 核查 blocker、保存并校验工作快照和恢复上下文，条件满足才按预算新建 Run"
+处理（3.7、8.4）。已成功 Run 的验证仍可在途，不能因 Run 终态而跳过该平台任务。持久化阻塞优先于通用进程失联重试；
 不得仅因 Issue active、进程退出或 attempt 仍有余额重新启动编码。
 下面的 9 条冷启动规则、恢复屏障、execution_group 与 incarnation 核对从 Phase 0c 起完整实现。
-Phase 0b 增加 `WorkspaceReconciler` 和最小 `GitHubReconciler`；
+Phase 0a 已有最小 `GitHubReconciler`，Phase 0b 增加 `WorkspaceReconciler`；
 后者在 Phase 0 不创建修复任务或将 Requirement 标记 Done，轮询范围和限流规则见 11.5。
 `NeedsRevalidation` 的最小输入 digest 检查从 0c 起由 Scheduler / Supervisor 在 `Ready`、Agent start、
 提交/终态判定前执行。0a 的 ResourceCleaner 先实现 10.6 的单仓登记、延迟任务、重试与补漏；
@@ -1006,7 +1070,9 @@ ProcessReconciler 的冷启动规则：
    不自动重试绕过待定决策。存在未解除 BlockerReport 时禁止自动续轮或创建新 Run。
    其余旧 Run 结束后，按 3.7/8.4 核查预检、快照、恢复上下文与执行预算，再创建新 Run；
    新线程从已保存工作和剩余步骤继续，不能默认回到干净基线。
-5. 有声明但没有 manifest：校验声明的 generation/revision/digest/HEAD，恢复平台验证和封存；
+5. 有声明或 candidate 但没有 manifest：校验来源链、generation/revision/阶段身份，
+   有 candidate 则恢复独立验证；仅有声明则先确认执行完整性并保全 candidate。确定性候选按其
+   原候选与 Policy 授权恢复，不能要求新的 Agent 声明；
    HEAD 不同、声明失效或 Gate 不通过时拒绝交接，不以现存 PR 替代这些检查。
 6. 有有效 manifest 或未完成 HandoffOperation：只恢复交接步骤，不创建新的编码 Run；
    已 push 未建 PR、PR 已建但响应丢失分别读远端事实后补齐。
@@ -1014,7 +1080,7 @@ ProcessReconciler 的冷启动规则：
    不推进 Submitted，不自动删除分支或关闭 PR。
 8. Running 且没有 active Run、待封存声明、未完成验证批次或未完成交接，才是孤立状态；
    核实执行组已静止且无外部调用在途后，按原失败阶段和重试预算恢复或转人工。
-9. Submitted 必须满足有效声明、manifest、当前授权/输入资格、Gate 和持久化 PR 关联；
+9. Submitted 必须满足有效 candidate 来源链、manifest、当前授权/输入资格、Gate 和持久化 PR 关联；
    同一 branch 的恢复屏障只能在以上对账完成后释放。
 ```
 
@@ -1083,11 +1149,15 @@ AND dependency_satisfied
 AND no_active_conflicting_run
 AND no_unresolved_execution_group
 AND no_pending_handoff_on_target_branch
+AND network_policy_resource_available（16.9 的主机级白名单身份/占用匹配）
 ```
 
 Phase 0 / Phase 1 不实现 Project 级容量，也不做 weighted round-robin 公平调度。
 
-Agent 容量只统计 active AgentRun；交接重试等待不占该容量。Handoff Worker 与 Agent 共用
+未启用诊断 Agent 时模型容量只统计 active AgentRun；交接重试等待不占该容量。
+8.7 启用诊断 Agent 后，全局模型容量统计 active AgentRun + Queued/Running 中已预留容量的
+DiagnosticAttempt；诊断与编码使用同一事务级调度锁，不能绕过全局并发 1。仅等待队列且未
+预留容量的诊断不占额度，恢复先对账孤立的诊断执行组再释放。Handoff Worker 与 Agent 共用
 Repository 排他写入权；独立验证任务使用隔离检出和单独的主机资源额度，不增加 AgentRun。
 `dependency_satisfied` 的分期规则见 7.2：Phase 0 没有执行性依赖，不能把 Submitted 当作依赖完成。
 
@@ -1111,7 +1181,9 @@ Repository 串行约束，不能无限抢占普通 Feature。
 Phase 0a / 0b  单进程，全局并发 1。只使用 requirements 上的 owner_id / lease_token /
                leased_until / heartbeat_at，加 agent_runs 的活跃部分唯一索引（14.3）。
                不实现 Repository dispatch lease、dispatch_epoch 递增、worktree_leases 与恢复屏障；
-               字段和表保留，值固定为 0 / 空。
+               字段和表保留，值固定为 0 / 空。仍必须有启动恢复闸门：单实例控制权、持久化
+               Run/进程组标识与启动时间、generation/当前 incarnation 守卫；确认旧组静止、
+               快照可恢复及交接对账前不放行新写入者。不能把未实现完整屏障理解为直接重跑。
 Phase 0c+      启用下文的完整领取事务、双租约续租、epoch 隔离与 branch reservation。
 ```
 
@@ -1129,12 +1201,12 @@ heartbeat_at
 可在领取前先经过 `Queued`。
 
 Phase 0 的 Repository lease 持有者可以是 Run 或 HandoffOperation；
-Phase 1 增加 MergeOperation（`holder_kind=merge`，自动或人工触发），同样核对 generation/dispatch_epoch，
+Phase 1 增加 DeterministicRepair（holder_kind=deterministic_repair）和 MergeOperation（`holder_kind=merge`，自动或人工触发），同样核对 generation/dispatch_epoch，
 恢复时先对账未完成合并结果，禁止结果未知时向该分支发放新写入权。
 branch reservation 使用独立的
 `worktree_leases` 记录，其寿命覆盖执行、封存和交接；它不会随短租约释放或超时而自动消失。
 所有 claim 路径统一使用事务级 advisory lock，避免“容量检查”和“lease 占用”之间出现竞态。
-active 数量从 `agent_runs` 事实派生，不维护会因 crash 泄漏的 `active_count`：
+active 数量从 `agent_runs` 及启用后的诊断容量预留事实派生，不维护会因 crash 泄漏的 `active_count`：
 
 下面是 Agent 执行领取示例。封存恢复和 Handoff Worker 使用同一 Repository epoch/租约机制，
 但不插入新 AgentRun，也不执行 Ready → Running 领取；交接只校验原授权仍有效。
@@ -1155,6 +1227,7 @@ FROM agent_runs
 WHERE status IN ('created', 'preparing_workspace', 'starting_runtime', 'running', 'finishing');
 -- 应用必须实际比较 active_count < $global_limit（Phase 0 / Phase 1 固定 1）；
 -- 不满足时 ROLLBACK，并记录 scheduler_capacity_unavailable。
+-- 启用 8.7 后，在同一锁内加上已预留容量的 diagnostic_attempts；该示例只展示编码 Run 查询。
 -- 等价伪代码：IF active_count >= $global_limit THEN RAISE capacity_unavailable;
 
 UPDATE repositories
@@ -1318,12 +1391,14 @@ Acceptance Criteria（逐条填写，至少一条；每条必须带可机器执�
 ```
 
 用户不直接编辑 Contract JSON。API 由表单生成 Contract，AC ID 自动生成。
-`verification_method` 默认 `automated_test`，表单要求填写测试命令或选择已有
+`verification_method` 默认 `automated_test`，表单默认两个验证阶段；仅在高级选项中调整
+阶段并说明理由。表单要求填写测试命令或选择已有
 ValidationStep；`ci_check` 需选择 Policy 中声明的 Check 名称；`gate_check` 需选择受信 Gate 规则。
 `manual_review` 必须显式选择并填写理由，且只有 Repository Policy 开启 `allow_manual_review`
 时才可选；默认 Policy 不开启。评审通过（`POST /ready`）时校验：每条 AC 的 `verification_ref`
 可解析、至少一条 `must` 级 AC 可机器验证；不满足则拒绝进入 `Ready`，并指出是哪条 AC。
-不能伪造验证成功；未接入的验证源保持 pending。
+不能伪造验证成功；未接入的验证源保持 pending。Phase 0 还要求至少一条可在本地 pre_merge 执行的自动 AC，
+防止只配置 ci_check 而在首版没有实际本地验收。
 `problem` 来自描述、`goal` 默认来自标题，范围和验证计划按模板生成并在评审页可见、可修改。
 简单表单不降低 7.2 的 schema/AC 校验。描述→Contract 草稿生成与澄清 Agent 从 Phase 2 启用（7.3）。
 
@@ -1353,6 +1428,7 @@ interface RequirementContract {
   validation_plan: ValidationStep[];
   constraints: string[];
   dependencies: DependencyRef[];
+  network_access?: { presets: string[]; domains: string[]; denied: string[] };
   metadata: { created_at: string; created_by: string };
 }
 
@@ -1362,6 +1438,8 @@ interface AcceptanceCriterion {
   verification_method: "automated_test" | "ci_check" | "gate_check" | "manual_review";
                        // 默认 automated_test；manual_review 需 Policy 允许并附理由
   verification_ref: string; // 指向 ValidationStep、受信 Check selector、Gate 规则或人工验收规则
+  verification_stages: ("pre_merge" | "post_merge")[]; // 默认两阶段；只在合并后可验证须评审明确批准
+  stage_scope_reason?: string; // 非默认双阶段时必填，不能豁免 Policy 强制检查
   evidence_required: boolean;
   priority: "must" | "should" | "could";
 }
@@ -1399,15 +1477,23 @@ CHECK (contract ? 'acceptance_criteria')
 
 ```text
 1. Contract 创建时，平台自动生成 AC ID（AC-001、AC-002…）
-2. Agent 声明完成后，平台在封存前对固定 SHA 逐项执行 automated_test / gate_check，
-   写入 verified 或 failed；任一 must 级 AC failed 视为验证失败（见 12.6.4 的处理路径）
+2. Agent 声明完成后，平台在封存前对固定 SHA 执行 pre_merge 适用的 automated_test / gate_check，
+   写入 verified 或 failed；任一该阶段适用且未明确豁免的 AC failed 视为验证失败（见 12.6.4 的处理路径）
 3. ci_check 在 Phase 0 只展示、保持 pending；Phase 1 起按精确 SHA 的 Check 结果自动写入。
    manual_review（仅 Policy 允许时存在）保持 pending 直到有人在待办箱处理
 4. 每次验证追加到 requirement_acceptance_checks，绑定验证批次和目标 commit，不覆盖旧证据
-5. Phase 0：有效完成声明 + 封存产出（含 must 级 AC 本地验证通过）+ 平台交接成功 → Submitted
-6. Phase 1：PR 合并后建立最终验证批次，所有 AC verified 或 waived，且必需 CI/Gate 通过 → Done；
+5. Phase 0：有效完成声明 + 封存产出（含该阶段适用 AC 本地验证通过）+ 平台交接成功 → Submitted
+6. Phase 1：PR 合并后建立最终验证批次，各阶段适用的所有 AC verified 或 waived，且最终必需 CI/Gate 通过 → Done；
    全程无需人参与，除非出现 manual_review AC 或验证失败
 ```
+
+验收统一判据：priority 只表示业务优先级，不隐含跳过检查。默认每条 AC 在 pre_merge 和
+post_merge 都适用；评审时可显式声明阶段并说明理由，仅合并后可验证的条件不阻塞合并前。
+平台先验证阶段声明与 Policy 兼容，至少一条 pre_merge 自动 AC；不能把强制检查全部挪到合并后。
+Phase 0 的 ci_check 仍 pending，只要求该阶段可执行的本地 AC 通过才 Submitted；这不是最终验收。
+Phase 1 合并前要求所有 pre_merge 适用 AC 通过/明确豁免，Done 要求全部适用阶段证据齐备。
+不适用阶段记录 not_applicable_stage 与批准依据，不写 verified；不得冒充 required CI 的 skipped。
+每条 AC 至少一个阶段；waiver 绑定 revision/criterion/阶段/目标 SHA 与人工授权，不自动跨 SHA。
 
 AC ID 生命周期规则：
 
@@ -1671,7 +1757,8 @@ Phase 1 的完成资格按本次实际集成基线与 merged commit 判断；合
 事件写入 inbox/outbox 后，由 Reconciler 处理，不需要识别变化来自 ADR、OpenSpec 还是普通文件。
 
 Phase 0c 起不运行独立 `DigestReconciler`，由 Scheduler / Supervisor 在以下时机同步计算
-（Phase 0a / 0b 用"`Running` / `Submitted` 期间拒绝修改 Contract"替代，不计算 digest）：
+（Phase 0a / 0b 冻结 Contract/策略身份，但不计算完整 context_input_digest；
+通过 4.1 的受控输入替代处理修订，完整 digest 字段为 null 并记录 input_identity_version=0）：
 
 ```text
 Ready 确认前
@@ -1692,7 +1779,7 @@ Phase 2 增加事件触发的 `DigestReconciler`，用于完整输入集合和�
     ↓
 计算受影响 Requirements
     ↓
-Ready / Queued / Running / Submitted / WaitingCI / WaitingReview
+Ready / Queued / Running / Submitted / WaitingCI / WaitingReview / Merging
     → NeedsRevalidation
     ↓
 停止新的 Agent dispatch，终止旧执行组
@@ -1700,10 +1787,10 @@ Ready / Queued / Running / Submitted / WaitingCI / WaitingReview
 重新生成当前 Agent Context
     ↓
 平台自动分类：
-  ├── Contract / AC 变了（只能是用户改的，视为重新评审）
+  ├── Contract / AC 变了（通过显示影响的 revise 命令提交，记录重新评审授权）
   │     → 自动生成新 Revision → Ready；已合并时自动创建 follow-up Draft 进待办箱
   ├── Contract / AC 未变，仅 WORKFLOW / 知识文件 / Policy 变化
-  │     ├── 无有效产出 → 用新输入自动回 Ready
+  │     ├── 无有效产出 → 保全旧工作、生成新输入下的 RecoveryPlan 后自动回 Ready
   │     └── 有有效封存产出 → 在新输入下自动重跑验证
   │           ├── 通过 → 记录 auto_revalidated 授权，恢复原阶段
   │           └── 失败 → 待办箱：人选择"新执行"或"修改 Contract"
@@ -1736,7 +1823,8 @@ no-impact 偷换 Revision；不变的 Contract 可以复用旧产出，但须重
 PR 已合并
 AND 最终验证批次指向精确的 merged_commit_sha
 AND 该 SHA 的必要 CI 和受信 Gate 通过
-AND 所有 AC-* 在该批次中 verified，或由允许的人工策略明确 waived
+AND 所有 post_merge 适用 AC 在该批次中 verified 或由允许的人工策略明确 waived
+AND 所有仅 pre_merge 适用 AC 的原批次证据仍有效、来源关系已核查（不改标为 post_merge 执行）
 AND Run 输入快照完整，来源变化已分类且必要的重验证授权有效
 AND Policy 要求的 Review 证据齐备（默认 Policy 不要求人工 Review）
 AND 没有未解决的 `NeedsRevalidation`
@@ -1886,9 +1974,9 @@ MVP 审批策略：
 ```text
 sandbox 允许范围内的命令执行和文件修改 → 自动放行，不产生请求
 create_local_commit → 受控工具按 Run/路径/分支/HEAD 校验后执行
-沙箱外请求（网络白名单外、workspace 外路径、提权）
+沙箱外请求（workspace 外路径、提权；网络另按 16.9）
     → 默认自动拒绝并写 agent_event；Agent 收到明确拒绝原因后自行调整
-    → Repository Policy 可把指定类别（如 `network_egress`）改为 ask：暂停并进待办箱等单次批准
+    → Repository Policy 可把指定类别（如已允许人工裁决的 workspace 外路径）改为 ask：暂停并进待办箱等单次批准
 未知工具、访问平台凭证或其他 workspace → 拒绝，不提供绕过硬边界的批准
 人工输入请求（elicitation / user input）→ 暂停并进待办箱；这是正常路径上唯一预期出现的人工点，
     Agent 只应在需求歧义或 AC 不可实现时使用
@@ -1925,6 +2013,9 @@ workspace 的明确相对路径；验证真实 worktree、目标 branch、expect
 使用固定 Git 二进制、参数数组和受信配置，禁用仓库自带 hooks、credential helpers 及未批准
 filters；Gate hook 由独立隔离验证器执行。Broker 不持有 GitHub 凭证，不提供任意命令、rebase、
 force push 或其他仓库写入接口。Agent 可请求提交，但不能直接修改共享 refs 或 canonical clone。
+Phase 1 的确定性修复使用 Broker 的平台内部入口，按 DeterministicRepair ID、独立候选目录、
+当前 Repository lease/epoch、RepairAttempt 和 Policy 白名单校验；不冒用已结束 Run 的租约。
+此入口不注册为 Agent 动态工具，不接受任意命令；与 Agent/Handoff/Merge 写入者互斥。
 
 审批/人工输入请求写入 `runtime_requests`，保存平台 UUID 与原始协议 request ID、Run/thread/turn、
 generation、请求类型、不可变操作内容及摘要、过期时间、request_version 与状态；
@@ -1936,7 +2027,7 @@ API 与 Web UI 从 Phase 0a（localhost）/ 0b（手机）起支持该闭环；�
 Supervisor 是向 Runtime 回答该请求的唯一出口；所有客户端都不直连 app-server、
 不写其 stdin、不修改 runtime_requests 表，也不自行执行获准的删除/网络等操作。
 
-#### 人工等待规则（0b 起；多端同权，CLI 可选）
+#### 人工等待规则（Phase 0a 起；0b 扩展手机，CLI 可选）
 
 - UI 从持久化请求派生 `execution_phase=waiting_approval / waiting_input`，
   Requirement 仍为 Running、AgentRun 仍为 Running，不为此增加业务主状态。
@@ -1975,19 +2066,35 @@ report_blocker(reason_code, evidence_refs, required_conditions, progress_summary
   意图生效，重复同一请求返回原记录，冲突/迟到请求拒绝。没有落库不能回复已受理。
 - 受理后立即拒绝新写入工具和 turn/start，停止整个执行组并确认静止，然后按 3.7 保存工作快照。
   已有 shell 子进程不能靠拒绝工具继续运行。旧 Run 在确认退出后记录 Failed 与具体失败码；
-  Requirement 在 Phase 0 进入 Failed + 原因，在 Phase 1 进入 Blocked。不能把阻塞声明视为完成。
+  Requirement 在 Phase 0 进入 Failed + 原因，在 Phase 1 进入 Blocked；是否需要人工由下述
+  recovery_mode 决定。不能把阻塞声明视为完成。
 - 阻塞原因、未知分类与所需环境变化由平台映射处理，非瞬态且需人工处理时生成一次待办。
-  网络范围外拒绝仍遵守 16.9：只生成范围修订建议，不因调用本工具创建权限审批或自动扩大范围；
+  网络范围外拒绝仍遵守 16.9：单次拒绝不产生待办；确实无法继续且需扩大范围时生成一次
+  Contract 修订待办，不因调用本工具授予临时权限或自动扩大范围；
   不支持机器映射的原因保留原证据并按未知错误处理，不能猜测一个可自动重试的原因。
 - 持久化 blocker 未解除时，Issue active、有新诊断文件、进程重启和重试余额都不能触发编码。
-  Retry/Unblock 必须按既有授权路径进入平台预检，追加满足解除条件的证据；条件未满足返回
+  自动解除或 Retry/Unblock 都必须按既有授权路径进入平台预检，追加满足解除条件的证据；条件未满足返回
   原 blocker，不调用模型。人工等待与安全撤销仍遵守原规则，环境修复不复用失效审批。
-- 恢复时不复活旧 thread/Run；先生成 RecoveryPlan，根据声明/manifest 分界恢复平台步骤或
+- 恢复时不复活旧 thread/Run；先生成 RecoveryPlan，根据 candidate/声明/manifest 分界恢复平台步骤或
   带 Recovery Context 的新 Run。Agent 必须用本工具报告无法继续的环境阻塞；自然语言
   “blocked”不能代替持久化协议。未按协议报告时保留两轮无进展/turn 上限的兜底，不承诺从
   任意自然语言自动识别全部阻塞。
 - 工具回复丢失时以落库的结束意图为准，不续轮；若数据库/磁盘故障导致无法落库，则停止旧组、
   保留工作目录并关闭新调度，按存储故障恢复，不能退化为“没有声明，所以自动重新编码”。
+
+**自动解除环境阻塞（Phase 0a 起）：** ProcessReconciler 消费持久化探测任务，由固定探针判断
+依赖就绪、磁盘恢复、已批准服务恢复等条件。依赖预置/下载只执行 Policy 已批准的固定动作，
+不扩大网络、文件权限或安装任意 Agent 提供的脚本。探测与恢复共用 blocker_id 的幂等记录，
+默认最多 6 次探测、指数退避且最长等待 30 分钟；Policy 可冻结不同上限，重启不重置。
+同一 blocker 只允许一个在途探测，达到上限后转一次人工待办，不无限轮询。
+
+等待期间 Phase 0 使用 Failed + manual_action_required=false，Phase 1 使用 Blocked +
+manual_action_required=false；UI 显示“等待环境自动恢复”，不进入人工待办箱。条件满足后，
+平台追加解决证据并再次检查授权、待定人工请求、旧组静止、快照、输入资格和剩余预算，
+通过后自动执行 RecoveryPlan；无需点击 Retry/Unblock。快照 pending 时先保存，不直接启动模型。
+若已经因耗尽转人工，迟到探测结果仅归档；显式 Retry 可重新授权有限探测轮次，保留累计记录。
+需要权限扩大、安全策略撤销、未知故障、人工问题未回答或旧审批失效时，recovery_mode=manual，
+不能自动解除。权限原状由管理员恢复后，只有原先明确允许 auto_probe 的 blocker 才可自动继续。
 
 Agent 运行完成必须有显式完成信号：
 
@@ -1997,9 +2104,11 @@ report_completion(summary)
 
 平台接受该工具时读取受控工作区 HEAD，并将声明与 Run/revision/digest/generation 原子持久化；
 数据库提交成功后才回复工具成功。随后禁止新的写入工具调用，中断 session，确认整个执行组
-退出，再验证 HEAD 未偏离声明、工作区无未提交改动、相对 change_base 有真实产出以及 Gate 通过。
+退出，再确认 HEAD 未偏离声明、工作区无未提交改动、相对 change_base 有真实产出。
+这些执行完整性条件满足后登记 candidate，再独立验证 Gate/AC。
 对复用的中间 commit 必须校验来源并重新验证；不能仅凭历史 Gate 结果认定完成。
-验证器在不可变 SHA 的独立检出上工作，受信 Gate 和封存完成后 AgentRun 才 Succeeded。
+HEAD/工作树完整性确认并保全 candidate 后 AgentRun Succeeded；验证器在该不可变 SHA 的
+独立检出上工作，Gate/AC 的结果写 VerificationBatch。只有通过才封存交接，不回写执行结果。
 声明、产出清单和交接记录的绑定规则见 3.5，之后不再恢复这个 session 继续修改。
 仅当没有持久化结束意图、待定人工请求或控制面存储故障时，才考虑下一 turn：
 没有完成信号且工作区没有新变更，连续两次视为 `agent_completion_not_reported`；
@@ -2024,9 +2133,9 @@ turn/start
     ├── 无结束意图且存储健康/授权有效 → 按 8.1 判断是否同一 thread 继续 turn
     └── report_completion → 持久化声明 → 禁止新写入 → 停止整个执行组并确认退出
     ↓
-平台验证声明 HEAD / 输入资格 / 受信 Gate → 封存 manifest
+平台确认声明 HEAD / 工作树完整性 → 保全 candidate → AgentRun = Succeeded / 释放执行租约
     ↓
-AgentRun = Succeeded → 释放执行租约 → HandoffOperation
+独立 VerificationBatch：输入资格 / 受信 Gate / AC → 封存 manifest → HandoffOperation
     ↓
 平台幂等 push / 查找或创建 PR → Submitted
 ```
@@ -2052,7 +2161,7 @@ Codex app-server 的协议 schema 是协议唯一来源。实现不得仅凭本�
   禁止手写协议字段；`approval_policy` / `thread_sandbox` / `turn_sandbox_policy` 等值是
   pass-through 的 Codex 配置，以目标 app-server 版本的 schema 为准，不手维护枚举。
 - 锁定 Codex 版本；升级流程 = 重新生成 schema + 重跑协议兼容测试。
-- `create_local_commit` / `report_completion` / `report_blocker` 使用 `dynamicTools`。按目标版本开启所需
+- `create_local_commit` / `report_completion` / `report_blocker` / `read_observation` 使用 `dynamicTools`。按目标版本开启所需
   `initialize.capabilities.experimentalApi`，在 thread/start 注册 schema，并按协议处理
   `item/tool/call` 及原始 request ID 回包。codegen 必须包含所用实验类型；缺少能力时启动失败，
   不回退为解析聊天文字或授予通用 shell 权限。
@@ -2073,6 +2182,7 @@ CodexRuntime 验收标准：
 7. 真实 worktree 中沙箱直接写 .git 被拒绝，create_local_commit 可完成受控提交（S1 已通过）
 8. dynamicTools 注册/调用/回包有效；完成声明持久化后重启不会丢失或重复交接
 9. report_blocker 落库后不续轮；与完成声明竞态、回复丢失、重启均只接受一个结束意图
+10. read_observation 的 ID 授权、分页/摘要校验和不存在引用处理通过（8.5）
 ```
 
 协议和安全参考（适配时以锁定版本复核）：
@@ -2153,15 +2263,15 @@ token_estimate
 模型摘要服务不可用）都不能让 Agent 拿到"半个上下文"或空章节：
 
 ```text
-摘要/收据失败     → 回退为截断原文 + summary_unavailable 标记 + 原始归档引用
+摘要/收据失败     → 回退为脱敏视图片段 + summary_unavailable 标记 + 授权归档引用
 文件超限          → 跳过该文件并在 source_refs 标记 skipped，不静默截断内容（同 7.4）
 policy 读取失败   → 拒绝启动 Run（这是安全边界，不是可降级项）
-token 预算不足    → 按优先级裁剪 Optional Repository Inputs，保住 Platform/Execution/Failure
-                    三层；裁剪结果记入 source_refs，可在 UI 看到"哪些输入没进去"
+token 预算不足    → 按优先级裁剪 Optional Repository Inputs，保住 Platform/Execution/Failure/Recovery
+                    必需层；裁剪结果记入 source_refs，可在 UI 看到"哪些输入没进去"
 ```
 
-原则：**降级只降低压缩率，不降低证据可得性**。Agent 永远能通过 `source_refs` 里的引用
-取回原始内容；不允许出现"平台说有失败摘要但 Agent 看不到内容"的状态。
+原则：**降级只降低压缩率，不降低证据可得性**。Agent 能通过 `source_refs` 里的引用
+取回授权范围内的原始文件或日志脱敏视图；未脱敏敏感归档不向 Agent 开放；不允许出现"平台说有失败摘要但 Agent 看不到内容"的状态。
 任何降级都写 `agent_events`，并计入 19.3 的指标（便于发现系统性失败）。
 
 不要把全部 CI 日志、全部历史事件和全部 Repository 内容直接塞给 Agent。
@@ -2178,6 +2288,119 @@ uncertain；已验证步骤绑定输入和有效期，复用仍按 12.7.3，0a �
 缺失、快照不完整/损坏或身份不匹配时禁止启动恢复 Run，记录 recovery_state_invalid 并转人工；
 不得自动丢弃既有工作。每个新 Run 的创建事件记录恢复来源或明确的首次执行/人工重新实施原因。
 
+### 8.5 工具输出归档与分页读取（借鉴 ObservationPack）
+
+Phase 0a 先覆盖平台可控制的验证输出、动态工具返回值及恢复上下文。长输出由平台保全，
+返回有限大小的摘要/首尾片段、失败状态和稳定 observation_id，需要时通过受控工具读取：
+
+```text
+read_observation(observation_id, offset, max_bytes)
+→ text, next_offset, eof, content_digest, original_bytes
+```
+
+这是平台新增的动态工具，不假定 Runtime 原生提供。观察记录包含 Run/验证 invocation、
+工具调用身份、来源/内容摘要、创建时间、总字节/行数、脱敏视图及受控归档引用；offset 定义为
+所返回视图的 UTF-8 字节偏移，平台限制单页大小并保持字符边界，提供 next_offset 避免跳读。
+observation_id 只寻址已登记归档，不接受任意路径；每次读取检查当前调用者及恢复 Run 的来源授权。
+
+- 原始执行记录和归档不可变；精简的是送入 Agent 的结果视图，不回写历史会话。首版用规则
+  提取，不额外调用摘要模型；体积阈值、片段大小和分页预算由 Policy 配置并记录。
+- 先成功归档并确认可读，再返回引用；归档失败则返回有上限的安全脱敏内容和 archive_unavailable/
+  truncated 标记，不伪造可读取引用。普通压缩失败不使任务失败；必要验证/恢复证据未保全时，
+  仍按 12.6/3.7 阻止封存或恢复，不能用 fail-open 放宽证据要求。
+- 错误码、退出状态、未解决失败/uncertain、来源身份不可隐藏；12.3 的已验证失败收据、
+  blocker 和 Recovery Context 的关键清单不二次压缩成普通首尾片段。收据每条引文仍可核对对应不可变脱敏视图，原始归档身份独立保留。
+- 同一执行结果的重复投递按工具请求/结果身份幂等归档；不同执行即使字节相同也保留各自
+  来源、时间和退出状态，不能因内容去重把旧观察当新证据。文件变化产生新观察，旧 ID 仍指旧版本。
+- 归档登记为 10.6 的 ManagedResource；活动 Run、DiagnosticAttempt/待处理诊断卡、恢复计划和必需验收引用均持有资源引用。
+  清理临时输出前须有可读归档，归档本身遵守引用与证据保留策略，不能在原 Run 结束时自动删除。
+- Runtime 内置工具已有历史输出能否在后续请求中替换，须独立验证其公开上下文投影接口；
+  0a 不修改 app-server 内部历史或用自建协议代理达成此功能。缺少接口时，只对受控工具的新结果
+  和新 Run 的恢复上下文应用此机制，不宣称已获得 SoL-Pi 在 Pi 上的全部历史重放收益。
+
+0a 验收：分页无遗漏/越权，原文摘要一致，摘要/归档失败显式降级，失败收据不二次裁剪，
+新旧源码观察不混淆；原工作目录清理后，仍被恢复计划引用的观察可读取。比较实际输入量与
+额外 recall 次数，不能只统计返回体变小就宣称净节约。
+
+### 8.6 主动上下文压缩（Phase 2 可选实验）
+
+借鉴 Online Context Compact 的经济性判断，不默认启用新的压缩控制器：预计剩余请求所节省
+的输入成本，应足以覆盖摘要调用和缓存重建成本；接近窗口上限的容量保护与经济性优化分开记录。
+缓存口径/剩余请求估计不足时不推测收益，继续使用 Runtime 自带机制。阶段边界可来自已完成
+验证/实现步骤，不以存在 Phase 3 Planner 为前提；边界仅是候选触发点，不表示必然应压缩。
+
+仅在真实长 Run 数据表明有收益空间、公开接口可用并通过 12.7.6 对照评测后启用。保留
+Contract/授权身份、blocker、未完成动作和有效证据引用；压缩失败不能清空上下文。压缩完成
+后的继续执行必须经过 Supervisor 的原有结束意图/授权/人工等待检查，不能绕过取消、阻塞、
+完成声明或旧执行组静止要求，也不能通过压缩重置预算。该机制不替代 3.7/8.4 的故障恢复。
+
+
+
+---
+
+### 8.7 阻塞诊断与人工处理闭环
+
+最小固定诊断、可操作待办和诊断包从 Phase 0a 必需；Phase 0b 增加手机通知/处理。
+平台内诊断 Agent 从 Phase 0c 的只读隔离验收通过后启用，不能等到 Phase 4 多模型体系；
+0a 若提前通过同等隔离与预算测试可提前启用，否则显示“固定诊断已完成，自动分析不可用”及
+具体原因和下一步，不冒充已有模型诊断。以下能力均为设计要求，不代表当前平台已实现。
+
+**流程：** 阻塞事实落库 → 停止冲突写入并保全工作 → 组装 DiagnosticBundle → 固定诊断 →
+已授权恢复或有限只读诊断 → 更新同一个阻塞详情 → 必要时一次人工决策 → 平台验证解除条件 →
+按 RecoveryPlan 恢复。页面先显示已知事实与诊断进度，不等诊断全部结束才显示阻塞。
+没有 Agent 报告时，Supervisor/验证器/交接组件也必须从真实退出状态和阶段事件生成诊断包。
+未知故障仍保持第 28 章 manual blocker 和停止执行的语义；只读诊断不等于自动解除。
+页面立即可见，自动诊断窗口内可延迟需人工通知（最多首次固定诊断 60 秒加诊断窗口 3 分钟），
+结束或不可用后按同一 blocker 发一次可操作提醒；不能因排队或诊断不可用无限静默。
+已知的新授权/人工问题及紧急存储故障不等待模型分析才提示。
+
+固定诊断只使用平台白名单探针，覆盖磁盘/可写目录、工具与已声明依赖、沙箱拒绝、
+GitHub 认证/授权状态、远端 head/交接结果和证据/快照完整性。探针不读取或展示凭证值，
+不执行仓库 hooks 或 Agent 建议的宿主机命令；每个探针有超时，整个首次诊断默认不超过
+60 秒，与 8.1 的持续环境探测共用已有结果和身份，避免重复探测。不完整时也必须输出
+已知事实、失败探针、缺失信息和下一项具体诊断动作，不能只有“unknown，请看日志”。
+明确的人工问题、权限扩大、安全撤销直接给出已知待办，不为这些情况额外启动诊断模型。
+
+**平台内有限诊断 Agent：** 仅当固定诊断不足、存在可用证据、旧写入组已静止、控制存储健康、
+Policy 允许且预算可用时触发。默认 Policy diagnostic_mode=auto_when_unknown，能力未验证
+不得开启；无需每次询问用户是否启动。沿用既有 Runtime/模型配置，输入只含 DiagnosticBundle
+和必要脱敏分页引用，不重读整仓或历史会话。它不能修改代码、运行 shell/仓库脚本、任意联网、
+访问其他 workspace/原始敏感日志、调用 Broker/完成声明/权限批准或自行解除 blocker。
+这些限制须由实际工具和执行视图强制，不能只写在提示词里；模型认证隔离沿用 17.3。
+
+默认每个 blocker 最多 1 次自动 DiagnosticAttempt、每个根需求最多 2 次；初始上下文默认最多
+12,000 个估算 token，输出与分页另设可强制字节上限（输出 8 KiB、分页累计 64 KiB），最多 2 turn、
+3 分钟（包含排队、启动和执行）。配置随尝试冻结；模型调用/token 另按实际可观察口径计量，
+不把 turn 当作一次请求。
+诊断次数在 root 行锁下先预留再排队；模型容量在实际启动前另于共享调度锁内领取，
+两种预留分开记录。超时/崩溃/取消均保留已预留次数，不自动重新调用。
+更换 bundle、重复消息、重启、Retry/Unblock 都不能重置同一 blocker 的自动额度。
+诊断不扣 RepairAttempt，但有独立根预算，禁止借“诊断”进行编码或无限循环。
+
+DiagnosticAttempt 的 Queued/Running/Completed/Failed/Cancelled 是执行记录状态，不使业务
+进入 Ready 或 Running。诊断与编码共用全局模型并发额度（0/1 固定 1），由同一调度锁预留；
+已停止但仍保留原目录的编码任务不会授权诊断写入。容量预留保存 holder/token/lease 与
+执行组身份；租约到期必须确认诊断组静止才释放，重启不并行重开旧诊断。
+排队只显示等待容量，不创建新业务需求；
+只读诊断使用独立、无写入能力的证据视图，诊断结束释放模型额度，归档按 10.6 引用规则清理。
+诊断队列不得无限抢占普通编码，取消/输入替代撤销未发诊断；在途诊断中断，迟到结果仅审计。
+
+模型输出必须按 DiagnosisReport schema 校验，引用必须存在且属于当前 bundle/授权视图。
+建议的动作只允许引用 action catalog；平台核查适用性后才显示按钮，模型结论不能将原因
+升级为 confirmed，也不能改写 retry_class 或扩大授权。输出无效、模型不可用或预算耗尽时，
+保留固定诊断结果与原始脱敏证据，标明诊断限制，不让“诊断失败”覆盖原 blocker 的原因。
+对于安全类/权限类问题，即使诊断解释了原因，恢复仍走原有人工授权规则。
+
+**仍需人工时：** 同一 blocker 更新一张待办，用户不必新开会话或重新描述任务。原因未知时，
+明确列出已排除项、尚缺的具体证据，并给出一个范围最小的下一步（例如核实指定安装权限、
+在指定主机执行批准的只读检查，或导出已有脱敏诊断包供人工分析）；不得只给通用 Retry 或日志链接。
+确实需要用户补充信息时，在 blocker/version 下保存结构化回答及 actor 审计，不把回答送入
+已结束的 app-server session，也不自动获得新的模型诊断预算。诊断包可下载，不含凭证，
+已包含任务目标、进度、关键证据与未解决问题；外部分享仍需用户明确发起。
+
+用户决策先经原有权限、版本、幂等和范围校验，再执行对应领域命令；页面依次显示“决定已保存”
+“正在验证条件”“恢复到某步骤”。点击“已处理”不等于条件满足；验证失败在原卡片说明还缺什么，
+不重复建待办、不盲目启动编码。未知原因不自动解除，不能用诊断模型的建议代替机器验证。
 
 ---
 
@@ -2371,7 +2594,8 @@ ReviewFix：
 7. Worktree、branch、PR 的关联写入数据库。
 8. Git 元数据、remote 配置和 sealed refs 由 LocalGitBroker/平台管理，不向 Agent 开放写权限。
 9. Gate 与 push 使用 manifest 中的固定 SHA，不读取可被修改的 branch HEAD 作为替代。
-10. push 非预期拒绝时先 fetch 对账；禁止自动 force push。需要 rebase 时显式开始新执行，
+10. push 非预期拒绝时先 fetch 对账；只允许 fast-forward，14.4 的 lease 仅作 CAS 守卫。
+    Phase 1 的授权内集成修复可新建候选保留远端历史；需要 rebase 时显式开始新执行，
     旧 manifest 和 Gate 证据不得套用于 rebase 后的新 SHA。
 
 ### 10.5 Git 失败分类
@@ -2434,8 +2658,10 @@ Agent 或测试脚本提供的任意路径/清理 shell 不能成为宿主机删
   文件系统删除不跟随符号链接，使用唯一实例目录并保持 retiring 期间路径占用；同名实例身份
   无法确认时停止清理，不能只按路径字符串重试。
 - 仍有引用或保留期未到进入 Deferred，记录阻止原因并等引用释放/到期，不消耗失败重试次数。
-  临时错误默认最多自动重试 3 次并退避，永久权限/身份异常或耗尽转 Failed，产生一条待办；
-  不重启 Agent、不回写已完成需求为失败。人工修复后可重投原 task，保留累计审计；补漏扫描
+  临时错误默认最多自动重试 3 次并退避，不逐次通知。永久权限/身份异常或耗尽转 Failed；
+  按 repository + provider + failure_code/根因聚合一条运维待办，列出所有受影响资源；
+  不重启 Agent、不回写已完成需求为失败。人工修复后一次命令可重新授权该聚合项内明确列出的
+  task 做有限重投，保留累计审计；补漏扫描
   不得重建 task 或清零 attempt 来绕过失败上限。
 - 0a 每 5 分钟扫描已登记资源与终态/引用记录，补建遗漏 task、处理过期 claim 和未确认创建；
   队列事件是主路径，定期对账是补漏。只扫描受管资源，不做全机目录猜测或全局 prune。
@@ -2448,6 +2674,7 @@ Agent 或测试脚本提供的任意路径/清理 shell 不能成为宿主机删
 | 可重建的 Run 私有构建输出 | 无验证/恢复/后继消费者引用且策略允许后；不能误删作为验收证据的二进制 |
 | Workspace / worktree | 满足 10.2 的全部条件后，默认最后使用起 72 小时；可先入队再延迟执行 |
 | 共享缓存/镜像/固定依赖 | 最后引用释放且专属保留策略允许；单任务结束不能触发全局清空 |
+| 工具输出归档/观察记录 | 8.5 的活动 Run/诊断/恢复/验收引用释放且保留策略允许后；清理临时原目录不影响仍有效的读取引用 |
 | 工作快照、sealed refs、manifest、权威证据 | 不随临时资源清理；分别遵守恢复和证据保留规则 |
 
 旧执行组终止和端口/服务写入冲突消除是安全交接条件，仍由 Supervisor/受控 runner 同步确认，
@@ -2609,7 +2836,7 @@ Phase 0 的 GitHubReconciler 只轮询数据库已关联的 PR，不扫描整个
   `last_synced_at`、`sync_error`，不能把“读不到”当作 CI 成功、无评审意见或 PR 已关闭。
 - PR head 改变后旧 CI 结果保留历史，但不展示成新 head 的通过结果；缺失检查显示 unknown/pending，
   skipped/neutral 不能无条件视为满足必需检查。CI 判据用 check-runs（`name` + `app.slug` 匹配，
-  取该名称下全部 run），**不用 combined status**：只有 Actions check-runs 的仓库，
+  按发布 App、workflow/job、事件类型/受信 Check selector 分组，每组取当前有效 attempt），**不用 combined status**：只有 Actions check-runs 的仓库，
   `commits/:sha/status` 恒为 `pending`、`total_count` 为 0（S2 补测实测）。
 - PR URL 来自适配器校验过的 GitHub 仓库/PR 关联，不从不可信需求文本任意打开外部链接。
 - PR 创建、需要人工审查或发现合并/关闭时更新外部事实；重复轮询不会重复生成待办或通知。
@@ -2666,22 +2893,23 @@ CI Running
 
 发送给 Agent 的不是完整原始日志，而是一份**可机械核对的收据**。这一节的设计借鉴
 NVlabs/SoL-Pi 的 Evidence-Preserving Reducer（见 23.S 的 S6 记录）：摘要是一组
-**必须逐字节出现在原文中的引文**，由平台验证后才交给 Agent。默认先消费门禁结构化结果、
+**必须逐字节出现在不可变脱敏视图中的引文**，由平台验证后才交给 Agent。默认先消费门禁结构化结果、
 CI annotations 和固定规则提取错误片段，不为每次失败额外调用摘要模型。只有规则提取不足，
 且 Policy 显式启用并给出独立调用/输出预算时，才用摘要模型选择引文；模型选择沿用当前
-Runtime Policy，不提前引入 Phase 4 的多模型调度。引用真实只证明原文存在，不证明根因判断正确。
+Runtime Policy，不提前引入 Phase 4 的多模型调度。引用真实只证明对应脱敏视图中存在，不证明根因判断正确。
 
 ```text
 CiFailureReceipt
 ├── schema_version         固定字符串，用于拒绝格式漂移
-├── source_sha256          原始日志归档的哈希；必须与平台归档一致
-├── source_bytes / source_lines
+├── raw_source_sha256      原始日志归档哈希，仅供受限归档追溯
+├── source_sha256          不可变脱敏视图哈希；绑定 redaction_policy_version
+├── source_bytes / source_lines  脱敏视图的字节/行数
 ├── observed_is_error      平台观测到的退出状态（不是模型自报）
 ├── status                 success | failure；必须与 observed_is_error 一致
 ├── uncertain              bool；日志无明确失败信号时为 true
 ├── evidence[]             每项 {kind, line, quote, quote_sha256}
 │     kind ∈ fatal | failure | warning | target | summary
-│     quote 必须逐字节出现在原文中，且不超过 MAX_QUOTE_CHARS
+│     quote 必须逐字节出现在该脱敏视图中，且不超过 MAX_QUOTE_CHARS
 ├── annotations            来自 CI API，非模型生成
 ├── relevant_files         平台按失败文件映射，非模型生成
 ├── log_artifact_refs      原始日志归档位置（平台私有存储）
@@ -2692,18 +2920,18 @@ CiFailureReceipt
 
 ```text
 1. 能解析为 JSON 且 schema_version 匹配
-2. source_sha256 == 平台归档哈希，source_bytes/lines 一致
+2. source_sha256 == 平台脱敏视图归档哈希，source_bytes/lines 一致；原始归档另验 raw_source_sha256
 3. status == failure 当且仅当 observed_is_error
 4. evidence 数量不超过上限；每条 kind 在允许集合内
-5. 每条 quote 满足：长度 ≤ MAX_QUOTE_CHARS 且 body.includes(quote) 为真
+5. 每条 quote 满足：长度 ≤ MAX_QUOTE_CHARS 且脱敏视图 body.includes(quote) 为真，行号一致
 6. 去重后仍至少有一条 fatal 或 failure 类证据（否则视为 uncertain）
-7. quote 中出现疑似凭证时按 Secret 规则脱敏后重新校验
+7. 提取前先生成脱敏视图；仍检测到疑似凭证时拒绝该视图，生成新版本后重新提取/校验，不能改写原收据
 ```
 
 失败降级（fail-open，与原设计一致）：
 
 ```text
-收据验证失败 → 不做摘要，回退为"截断后的原文 + summary_unavailable 标记 + 归档引用"
+收据验证失败 → 不做摘要，回退为"脱敏视图片段 + summary_unavailable 标记 + 授权归档引用"
               → Agent 仍能拿到证据，只是没被压缩
 绝不返回：半份收据、被修改过的引文、模型自由发挥的 possible_causes
 绝不因为摘要失败而把 Run 判为失败或消耗修复预算
@@ -2713,7 +2941,9 @@ CiFailureReceipt
 
 - 最大字节数、Secret 脱敏、日志来源、commit 对齐、失败发生时间、是否允许自动修复
 - 原始日志归档保留完整，不在摘要成功后删除
-- 收据与归档的绑定关系写入 AgentRun（`failure_receipt_id` / `source_sha256`），可追溯
+- 收据绑定 raw/view 双摘要与脱敏策略；模型仅能分页读取脱敏视图，原始日志保留于平台私有存储。
+  安全脱敏失败时返回结构化错误码和受限引用，不回退泄露原文；原始证据仍供授权诊断。
+- 收据关联验证批次和修复 Run（`failure_receipt_id` / `failure_receipt_source_sha256`），可追溯
 - 平台侧不采信模型对根因的判断：`possible_causes` 与 `retry_class` 一律由 `failure_code` 映射
 - 修复上下文按 12.7.4 组装；Phase 0a 用于本地声明后验证失败，Phase 1 才用于 hosted CI 修复
 
@@ -2724,11 +2954,11 @@ Phase 1 起，显式启用修复策略的 CI Failure 才生成 Recovery Requirem
 ```text
 CiRecovery Requirement
 ├── root_requirement_id
-├── source_ci_failure_id
+├── recovery_source_type / recovery_source_id
 ├── target_pull_request_id
 ├── target_branch
 ├── parent_id
-├── total_recovery_attempts
+├── repair_attempt_id          # 总额读取 root，不在子任务重复维护
 └── failure_summary
 ```
 
@@ -2750,47 +2980,30 @@ Recovery 默认：
 
 ### 12.5 修复预算
 
-Phase 0 不创建 Recovery / ReviewFix（CI 失败只展示）。Phase 1 起自动修复默认开启：
+Phase 0 不创建 CiRecovery / ReviewFix，声明后的代码失败仍只允许执行预算内一次修复 Run。
+Phase 1 起引入统一 RepairAttempt：覆盖声明后代码修复、CI 修复、ReviewFix 和确定性修复。
+预算限制修复尝试，不把一次尝试误称为一次底层模型请求；模型调用、token 与工具消耗分别计量。
 
-- 修复预算是**成本护栏，不是信任护栏**：它限制一条需求最多消耗多少次模型调用，
-  不是让人来审每次修复。默认开启，Repository Policy 可关闭或调整。
-- 预算按根需求计，`CiRecovery` 与 `ReviewFix` 合计，默认 3，Policy 可配置 0～10；
-  耗尽 → root `Blocked` → 待办箱。不实现无限重试。
-- `CiRecovery` 由精确 head SHA 上的必需 Check 失败自动触发，复用原 PR 分支。
-- `ReviewFix` 由未 resolved 的 review thread 自动触发，来源限于 Policy 允许的 reviewer
-  （人，或 Phase 1 P1 的自动 reviewer）；同一 PR 上多条 thread 聚合为一个 ReviewFix。
-  没有 reviewer 的仓库不产生 ReviewFix。不另开 PR。
-- Policy 开启 `require_fix_confirmation`（信任建立期）时，每次修复前进待办箱等人确认；默认关闭。
-- Phase 2 允许按失败类型分配预算和更丰富的意见聚合。
+- 创建根需求时冻结 Policy，默认最多 3 次，允许配置 0～10；升级、重启、输入修订及 Unblock
+  都不清零累计次数。模式默认 auto；require_fix_confirmation 仅在显式开启时请求人工。
+- RepairAttempt 保存 root、sequence、failure source/version（local_validation / ci_failure /
+  review_batch / remote_integration）、目标 SHA/配置身份、Policy、
+  状态、formatter/Agent 执行引用和累计消耗。状态为 Reserved / Running / Waiting / Succeeded /
+  Failed / Cancelled。先在 root 行锁内去重并预留额度，再发出工具或模型动作。
+- total_recovery_attempts = 已预留 RepairAttempt 数；预留后取消也保留计数，不能靠反复取消
+  或重建释放预算。同一失败事件的重复投递关联原尝试，不再次扣费。
+- 每次尝试至多一次白名单 formatter 修复，之后仍有代码问题时至多启动一次逻辑编码修复，
+  二者共享同一尝试。其基础设施恢复 Run 另受第 28 章执行预算限制；新一轮验证确认仍有
+  代码失败则结束当前尝试，下一轮必须预留新 RepairAttempt，不能在子任务内无限修复。
+- 声明后无 PR 的修复可以直接在原 Requirement 下启动新 Run，绑定 repair_attempt_id；
+  PR 上修复通过 CiRecovery / ReviewFix 子任务承载。子任务数量不再作为扣费依据。
+- CI 等待、验证基础设施重试、交接重试、只读 blocker 探针不扣修复额度，但分别有阶段上限
+  与 deadline；不能用反复创建 batch/operation/子任务重置同一恢复链的预算。
+- ReviewFix 等 CI 通过再运行，按 13.2 聚合尚未处理的意见版本；已有处理记录不重复唤醒。
 
-从 Phase 1 起使用统一 root 计数；创建根需求时冻结其修复 policy 与限额，升级平台不自动
-放宽历史需求的预算，也不清零已有次数：
-
-```text
-total_recovery_attempts = CiRecovery 次数 + ReviewFix 次数
-默认：total <= 3（Repository Policy 可配置 0～10）
-```
-
-ReviewFix 必须等 CI 通过后才运行：先修 CI，再修 Review，避免同时处理两类问题。
-
-超过上限：
-
-```text
-root Requirement → Blocked
-不自动重试
-需要人工审查、修改 Contract 或显式 Unblock
-```
-
-数据模型预留：
-
-```sql
-ALTER TABLE requirements ADD COLUMN root_requirement_id UUID;
-ALTER TABLE requirements ADD COLUMN total_recovery_attempts INT DEFAULT 0;
-```
-
-以 root 级 `total_recovery_attempts` 为唯一计数口径。创建新修复 Requirement 时在 root 行锁内
-检查并递增；重复事件、同一子任务的基础设施重试与交接重试不重复计数。Unblock 不清零总次数，
-达到上限后只能人工完成当前修复或创建新的显式需求，不能用 Unblock 无限增加自动修复任务。
+耗尽时 root 进入 Blocked + manual_action_required，生成一次带证据与剩余工作的待办。
+Unblock 只恢复仍有资格的步骤；到达修复上限只能人工完成当前修复或创建新的显式需求，
+不能通过修改 Contract、追加子任务或 Unblock 无限增加自动额度。
 
 ### 12.6 本项目 Harness-Gate 门禁集成
 
@@ -2993,7 +3206,8 @@ Harness-Gate / verify
 - Harness-Gate 二进制版本不符合本项目 policy；
 - GateRunner 进程异常退出或结果无法解析。
 
-失败结果进入 AgentRun。`gate_failure_code` 直接用工具原生的 `failure_code`（S4 实测如
+失败结果写入 VerificationBatch / ValidationEvidence，关联 AgentRun 用于追溯，不改变其
+执行状态；Supervisor 按本节策略记录编排决定。`gate_failure_code` 直接用工具原生的 `failure_code`（S4 实测如
 `SECRET_SCAN_FAILURE`、`TEST_SUMMARY: FAIL`），不另立一套命名：
 
 ```text
@@ -3024,7 +3238,7 @@ fixable 类失败，本项目自身仓库与外部仓库同一规则，安全类
   不提交，允许当前 Run 在 max_turns / wall-clock 上限内修代码后再次请求；
   不消耗修复预算，不能自行降级门禁
 
-声明后的平台验证（含 must 级 AC 的 automated_test）：
+声明后的平台验证（含该阶段适用 AC 的 automated_test）：
   test / lint / build / AC 失败 → 在修复预算内创建新 Run，把失败摘要作为 Failure Context
   （8.4）交给 Agent 重新编码，复用原分支；不重开已结束的 session
   Phase 0：执行预算内自动重跑一次，仍失败 → Failed + manual_action_required
@@ -3118,7 +3332,7 @@ Phase 1 可启用 Policy 白名单中的确定性 formatter 修复：固定工�
 候选 SHA 重新进入正常验证/封存流程，旧 SHA 的证据不能证明候选通过；无需人另行确认已由
 Policy 授权的格式变更。工具不支持或一次修复后仍失败时，返回证据并按原修复政策处理。
 平台记录候选的产出来源为确定性修复及其 Policy 授权，不伪造 Agent 的完成声明；新旧产物
-关联和新验证批次必须持久化。CI 修复时 formatter 是同一个 CiRecovery 内的先行步骤，
+关联和新验证批次必须持久化。formatter 是同一 RepairAttempt 内的先行步骤（CI 修复可由 CiRecovery 承载），
 仍计入根修复预算，不能借工具修复绕过 12.5；格式修复模式关闭时走原有代码修复路径。
 
 #### 12.7.3 验证去重与受信证据复用
@@ -3165,7 +3379,7 @@ Phase 1 对平台可观察的重复执行计算失败指纹：源码/配置/环�
 Phase 0a 起持久化恢复事件，记录原阻塞、解决证据、适用输入、恢复阶段、剩余工作及授权
 来源。Retry/Unblock 不覆盖历史 attempt/token/失败记录；显式新授权另记增量额度，并保留
 原累计值，不能放宽 12.5 的根需求修复上限。恢复前重新核查条件，不能只因旧摘要称“已解决”
-就跳过预检。恢复仍遵守声明/manifest 分界；无有效声明的中间 commit 不自动交接。
+就跳过预检。恢复仍遵守 candidate/声明/manifest 分界；无有效 candidate 来源链及 manifest 的中间 commit 不自动交接。
 运行中阻塞必须使用 8.1 的 report_blocker；未解除前禁止续轮/新 Run。无声明恢复依赖
 3.7 的完整工作快照和 8.4 的必需 Recovery Context，不把“新线程”实现为“从头重做”。
 
@@ -3185,6 +3399,36 @@ CI 等待/交接重试不调用模型，代码失败才生成预算内修复任�
 
 对同类、同验收强度的已验收任务比较第 19.3 节指标，同时报告失败、人工介入与未完成任务。
 不以降低覆盖率、跳过检查、遗漏失败或把工作转给人工来宣称节约。
+
+#### 12.7.6 受控动作合并与逐项对照评测
+
+Phase 1 P1 评估 Action Fusion：把一次已授权编辑与其可预测的快速检查合并为一个受控工具
+请求，省去中间仅用于选择检查的模型决策。若 Runtime 现有批量工具已经完成同一序列，先测
+是否还有收益，不为工具数量或形式单独新增接口。
+
+适用实现必须满足：检查引用来自平台配置的 check_id/固定参数，不接受模型指定宿主机任意
+命令；编辑与检查均在当前执行授权和沙箱内。编辑失败不执行检查；检查失败保留修改，分别
+返回两个步骤的结果。按请求幂等键识别重放，重复请求不再次修改文件；检查绑定实际测试的
+工作树身份，存在并发写入、取消或无法确认原执行结果时不得盲目重放。验证产物登记到 10.6。
+
+该结果只提供开发反馈；即使快速检查通过，仍必须经完成声明后的独立固定 SHA 验证和 required
+CI。模型选择开发期快速检查不构成最终验收权，Action Fusion 本身也不必然与受信门禁冲突。
+不把每个微小编辑都触发全量测试作为默认行为。首版不替换 Runtime 内建编辑工具，新增接口
+只有在公开扩展能力和隔离/幂等性验证通过后才启用，否则沿用现有工具调用。
+
+每项效率机制独立开关并记录到 Run Policy 快照；先单项对照，再评估组合。Phase 0a 对 8.5
+归档结果视图做小规模基线对照，Phase 1 对动作合并等新增机制做相同要求：冻结任务起始 SHA、
+Contract、模型/配置、环境与验收器，保留失败和未完成任务；开发调参任务与最终验收任务分开。
+最终验收结果不反复反馈调参后仍宣称为独立验证。
+
+对照至少记录模型请求/turn 可观察性、输入/缓存/输出量、recall 和摘要额外调用、验证覆盖、
+成功/失败/介入、实际成本口径和端到端耗时；在基线噪声较大时重复配对运行并报告样本数与波动。
+必须证明机制实际触发；工具/UI 声称“省一次调用”或静态估算不等于实际请求减少。原有必需
+AC 和安全回归逐项通过，任务能力无已确认退化，至少一项实际效率指标改善，才可默认开启；
+样本不足则保持实验开关，不宣称稳定收益。组合也要独立回归，不能把单项收益直接相加。
+SoL-Pi 的公开百分比不作为本项目验收目标；其组合平均分约保留 Pi 的 94%，不能作为严格
+零质量损失的证明（来源见 23.S 的 S6）。
+
 
 ---
 
@@ -3212,7 +3456,7 @@ Human comment
 满足以下条件的 review thread 自动进入 ReviewFix，不需要人选定：
 
 - thread 来自 Policy 允许的 reviewer（人，或已配置的自动 reviewer bot）
-- thread 未 resolved，且不是纯通知 / 已标记 ignored
+- thread 未 resolved，且不是纯通知 / 已标记 ignored；该意见版本尚未被处理，也未被在途尝试领取
 - PR 仍然开放，且 CI 已通过（先修 CI 再修 Review）
 - 没有其他 Recovery / ReviewFix 正在修改同一 branch
 - 修复预算（12.5）尚未耗尽
@@ -3221,7 +3465,18 @@ Human comment
 
 同一 PR 上同时存在的多条合格 thread 聚合为一个 ReviewFix，Agent 一次处理；
 ReviewFix 完成后由平台在对应 thread 下回复"已在 <sha> 处理"，不自动 resolve 人写的 thread
-（resolve 权留给 reviewer；自动 reviewer 的 thread 可自动 resolve）。
+（resolve 权留给 reviewer；自动 reviewer 的 thread 仅在其复审确认通过、且 Policy 授权时自动 resolve）。
+平台保存 review_fix_items：repository/thread、意见事件版本（新评论 ID 或编辑内容摘要）、
+source_sha、RepairAttempt、处理 SHA、证据、回复 outbox 与 waiting_review/resolved 等状态。
+去重键为 thread + 意见版本；head 改变、线程尚未 resolved 或回复响应丢失均不能制造新意见版本。
+已处理版本只等 reviewer 确认，不能再次调用 Agent。只有新的可执行意见或 reviewer 明确重审
+指出问题仍存在时才申请新尝试；仍受根预算约束。新 head 本身不证明旧问题已解决。
+RepairAttempt 在修复产物交接和针对该 SHA 的适用验证完成后结束；Review 的人工 resolve 等待
+单独记录，不把它继续算作执行中修复。子 Requirement 的最终业务 Done 可随根验收后判定，
+17.5 的“无进行中修复”检查实际 RepairAttempt/执行/交接，不等待子 Requirement 先 Done，
+避免“等合并才能完成修复、等修复完成才能合并”的循环。
+Policy 要求 resolve 而 reviewer 长期未处理时，默认 24 小时后聚合一次提醒；等待不消耗 Agent
+容量。ignored/stale 意见保留审计，不自动 resolve 人类线程，不假称业务验收通过。
 
 Policy 开启 `require_fix_confirmation` 时，ReviewFix 创建前进待办箱由人确认；默认关闭。
 
@@ -3249,8 +3504,9 @@ PR Review Threads（未 resolved）
     → 平台在 thread 下回复处理位置 → 等待 resolve / 自动 reviewer 复审
 ```
 
-ReviewFix 与 CiRecovery 共享 root 级 `total_recovery_attempts` 计数（默认合计 3，
-Repository Policy 可配置；见 12.5），超限后 root Requirement 进入 `Blocked`，需要人工 Unblock。
+ReviewFix、CiRecovery 与声明后修复共享 root 级 RepairAttempt 计数（默认合计 3，
+Repository Policy 可配置；见 12.5），超限后 root Requirement 进入 `Blocked` 并生成一次待办；
+Unblock 不增加修复额度。
 
 ---
 
@@ -3286,8 +3542,18 @@ discussion_messages
 agent_runs
 agent_events
 agent_context_snapshots
+observations                 # 8.5：来源、内容摘要、脱敏视图和受控归档引用
 completion_declarations
+artifact_candidates
+deterministic_repairs
+repair_attempts
+repair_attempt_sources
+review_fix_items
 blocker_reports
+diagnostic_bundles
+diagnosis_reports
+diagnostic_attempts
+blocker_responses
 work_snapshots
 recovery_plans
 artifact_manifests
@@ -3324,7 +3590,7 @@ settings
 
 上表是目标模型目录，不要求首版一次创建所有表。Phase 0 仅迁移实际使用的领域、执行、
 交接、外部摘要、通知和配置表；Discussion、逐条 ReviewFix 和高级模型表随对应阶段启用。
-待办是对 `runtime_requests`、失败 Requirement 和 PR 外部事实的聚合视图，不另建第二份
+待办是对 `runtime_requests`、需人工的 Requirement/运维异常和 PR 外部事实的聚合视图，不另建第二份
 审批状态。通知交付记录不是业务状态真相。
 
 `requirements` 的执行授权与当前视图字段：
@@ -3335,7 +3601,7 @@ state_version                BIGINT，领域命令 CAS 版本
 generation                   BIGINT，当前执行/交接授权代次
 frozen_context_input_digest  TEXT，Ready 时冻结的当前输入摘要
 root_requirement_id          UUID，根 Requirement 的值为自身 ID，子任务指向根
-total_recovery_attempts      INT DEFAULT 0，仅根 Requirement 维护，CiRecovery + ReviewFix 合计
+total_recovery_attempts      INT DEFAULT 0，仅根 Requirement 维护，由 RepairAttempt 预留记录计数
 gate_recovery_policy         JSONB NOT NULL DEFAULT '{"mode":"auto","allowed_failure_codes":["test_failed","lint_failed","build_failed"],"budget":3}'
 failure_code                 TEXT NULL
 retry_class                  TEXT NULL
@@ -3344,8 +3610,8 @@ manual_action_required       BOOLEAN NOT NULL DEFAULT false
 
 `requirements` 不保存 Contract JSON 副本、产出提交字段或第二份 AC 副本；
 Contract 及其 schema 校验只存在 `requirement_revisions.contract` /
-`requirement_revisions.contract_version`，产出提交只以 `agent_runs.artifact_commit_sha`
-为准。
+`requirement_revisions.contract_version`，产出身份以不可变 `artifact_candidates` / `artifact_manifests` 为准；
+`agent_runs.artifact_commit_sha` 只引用该 Agent 声明产生的原始候选，不被平台修复的新 SHA 覆盖。
 
 ### 14.3 关键约束
 
@@ -3354,7 +3620,14 @@ requirements(project_id, repository_id, ...)
 requirement_revisions(requirement_id, revision) UNIQUE
 requirement_acceptance_checks(verification_batch_id, criterion_id, producer_event_id) UNIQUE
 completion_declarations(agent_run_id) UNIQUE
-artifact_manifests(agent_run_id) UNIQUE
+artifact_candidates(source_type, source_id) UNIQUE
+artifact_manifests(candidate_id) UNIQUE
+repair_attempts(root_requirement_id, sequence) UNIQUE
+repair_attempt_sources(source_type, source_id, source_version) UNIQUE
+review_fix_items(repository_id, thread_id, review_version) UNIQUE
+diagnostic_bundles(blocker_id, evidence_digest) UNIQUE
+diagnostic_attempts(blocker_id) UNIQUE WHERE automatic = true
+blocker_responses(blocker_id, idempotency_key) UNIQUE
 runtime_requests(agent_run_id, worker_incarnation_id, protocol_request_id) UNIQUE
 notification_deliveries(channel_id, source_event_id, notification_kind) UNIQUE
 outbox_events(handoff_operation_id, action_key) UNIQUE
@@ -3363,7 +3636,7 @@ outbox_events(cleanup_task_id, action_key) UNIQUE
 webhook_events(provider, delivery_id) UNIQUE
 worktree_leases(repository_id, branch) UNIQUE
 pull_requests(provider, repository_id, number) UNIQUE
-CHECK (recovery_source_type IS NULL OR recovery_source_type IN ('ci_failure', 'review_comment'))
+CHECK (recovery_source_type IS NULL OR recovery_source_type IN ('ci_failure', 'review_batch'))
 CHECK (
   (recovery_source_type IS NULL AND recovery_source_id IS NULL)
   OR (recovery_source_type IS NOT NULL AND recovery_source_id IS NOT NULL)
@@ -3398,14 +3671,17 @@ ON requirements (recovery_source_type, recovery_source_id)
 WHERE recovery_source_id IS NOT NULL;
 ```
 
-从 Phase 1 起，Recovery / ReviewFix 创建命令在 root 行锁内检查根需求冻结的修复预算
-（默认 3，Policy 可配置）；不作为 Phase 0 的全局表约束。
+从 Phase 1 起，任何自动修复先在 root 行锁内创建 RepairAttempt 并检查冻结预算；
+创建子任务只是承载方式，不重复扣费。Phase 0 的一次声明后修复仍按执行预算记录。
 
 另需约束：
 
 - 当前 Revision、snapshot、声明、manifest、HandoffOperation 必须属于同一 Requirement；
   使用组合外键或等价事务校验，不能只验证 UUID 存在。
-- 同一 Repository/branch 同时只能有一个未终结交接；同一 Run 的同一 generation 不重复创建
+- candidate 的 source_type/source_id 必须引用同一需求的有效声明或 DeterministicRepair；
+  修复记录必须引用原 candidate、RepairAttempt 和当前 Policy 授权。禁止循环来源、跨需求借用
+  声明或覆盖旧 SHA。manifest 唯一性按 candidate，而不是 origin Run。
+- 同一 Repository/branch 同时只能有一个未终结交接；同一 candidate 的同一 generation 不重复创建
   HandoffOperation。跨 generation 复用产出必须引用重验证授权（平台自动或人工）。
 - gate_policy_revisions、声明、manifest、验证证据追加后不可更新；策略撤销以单独事件记录。
 - 验收记录的 producer_event_id 是稳定的幂等键；新状态通过新事件追加，当前验收视图按目标
@@ -3419,10 +3695,17 @@ WHERE recovery_source_id IS NOT NULL;
 |---|---|
 | Ready/Start | 校验状态版本与 Contract、冻结 snapshot、授权 generation、领域事件 |
 | 接受完成声明 | 校验当前租约/generation、插入声明、Run → Finishing、领域事件；提交后回复工具 |
-| 验证和封存完成 | 引用已可靠保存的 sealed_ref/证据、插入 manifest、活跃 Run → Succeeded、创建交接和 outbox；重验证不改写终态 Run |
+| 接受 blocker | 校验当前授权、结束意图互斥、插入 BlockerReport/禁止续轮标记及探测意图；提交后回复 |
+| 诊断预留 | 锁 root/全局容量并校验 blocker、输入与独立预算，写 DiagnosticAttempt/调度意图；提交后才启动 Runtime |
+| 诊断结果/用户补充 | 校验 bundle/blocker 版本、来源和幂等性，追加报告或回答、刷新同一待办视图；不直接解除 blocker |
+| 自动解除 blocker | CAS 核对 blocker 状态/版本、保存探测证据和恢复计划、更新待办/调度意图；不复活旧 Run |
+| 输入替代 revise | 保存 pending Revision/人工授权、撤销旧 generation 和未发动作、记录保全/对账意图；完成后另事务应用 |
+| 执行完成 | 确认旧组静止与声明 HEAD/工作树完整、登记已保全 candidate、Run → Succeeded、安排独立验证 |
+| 验证和封存完成 | 引用已可靠保存的 sealed_ref/证据、插入 candidate 的 manifest、创建交接和 outbox；不改写 Run 状态 |
+| 确定性修复完成 | 关联 RepairAttempt、不可变修复记录与新 candidate，安排新 SHA 验证；不生成 Agent 声明 |
 | Cancel/输入替代 | 递增 generation/state_version、撤销待处理 runtime_requests、标记未发出命令失效、领域事件 |
 | 交接成功 | 校验当前授权和远端事实、持久化 PR 关联、交接成功、Requirement → Submitted |
-| 创建 Recovery | 锁 root 并检查总上限、来源去重、创建子任务及关联、递增计数、事件/outbox |
+| 预留 RepairAttempt | 锁 root 并检查冻结上限、来源去重、预留尝试并递增计数、按需创建 Recovery 子任务、事件/outbox |
 | Done | 绑定最终验证批次、输入资格及全部证据、写不可变完成快照和领域事件 |
 | 受管资源释放/以上终态事件 | 更新资源引用与释放记录、upsert CleanupTask + 清理 outbox；资源未到期可先延迟入队 |
 
@@ -3441,12 +3724,18 @@ Git 对象和证据先写入平台私有的不可变存储并确认可读取，�
 
 1. 在短事务内取得操作与 Repository lease，校验当前 generation、可交接状态、branch reservation、
    输入资格和有效验证批次的 Gate policy 未撤销，将动作标记 `Sending`；这是本次调用的授权时点。
-2. push 只发送 manifest 固定 SHA，实现为
+2. push 只发送 manifest 固定 SHA。发送前 fetch 精确远端 ref：已等于目标 SHA 则归档幂等成功；
+   否则必须等于 expected_remote_sha，且该 expected 必须为目标 SHA 的祖先（新分支除外）。
+   祖先检查通过后，以下命令仅作为 CAS 更新守卫，不授予改写历史权限：
    `git push --force-with-lease=refs/heads/<b>:<expected_remote_sha> origin <sha>:refs/heads/<b>`，
    新建分支 expected 为 40 个 0；凭证经 `-c http.<url>.extraheader` 传 `x-access-token:<token>`，
    不进 URL、不落盘。远端与预期不符时 stderr 含 `(stale info)` → `git_push_rejected`，先对账不重试；
-   其他失败 → `git_push_failed` 可重试。远端已是目标 SHA 则 rc=0 幂等成功，但此时 git 不检查 lease，
-   平台须另行 fetch 确认远端 SHA，不能把 lease 当作远端状态断言。绝不自动 rebase 或无条件 force push。
+   其他失败按真实原因分类，只有确认的网络/5xx 等临时故障 → `git_push_failed` 可重试。远端已是目标 SHA 则 rc=0 幂等成功，但此时 git 不检查 lease，
+   平台须另行 fetch 确认远端 SHA，不能把 lease 当作远端状态断言。禁止任何非 fast-forward 更新。
+   远端漂移先有限只读对账，不直接转人工或启动编码。Phase 1 若 Policy 明确允许保留远端改动的
+   集成修复，创建预算内 RepairAttempt，在新候选中 merge 当前远端并完整重验证，再以新预期 SHA
+   交接；不能改写旧 manifest 或执行 rebase/force。无法证明输入来源、超出授权、安全策略变更、
+   语义冲突或预算耗尽才转人工。Phase 0 对账确认需要集成代码时生成一次异常待办。
 3. PR 创建先按 `GET /pulls?state=all&head=<owner>:<branch>&base=<default>` 查找，并校验远端 head。
    `POST /pulls` 返回 422 且 `errors[].message` 含 "A pull request already exists" 时不是失败，回到查找。
    找到已合并/关闭或不属于该交接的 PR 时转人工，不把任意同名 PR 认作成功。
@@ -3564,6 +3853,7 @@ GET    /api/requirements/:id
 PATCH  /api/requirements/:id
 
 GET    /api/requirements/:id/revisions
+POST   /api/requirements/:id/revise       # 保存待应用 Revision + 明确输入替代授权，按 4.1/7.6 执行
 POST   /api/requirements/:id/revalidate
 POST   /api/requirements/:id/ready
 POST   /api/requirements/:id/start
@@ -3582,8 +3872,10 @@ GET    /api/requirements/:id/handoffs
 `require_manual_start` 时才有独立意义。两者不能绕过依赖、容量、lease 或输入资格检查。
 
 所有写命令携带 `Idempotency-Key` 和期望 `state_version`，通过领域事务校验，冲突返回 409。
+平台自动解除 blocker 和人工 Retry/Unblock 共用 RecoveryPlan 守卫，不建立不同恢复捷径。
 Retry/Unblock 默认按 `failure_phase` 恢复：preparation 只重查/准备环境、不启动模型，
-handoff 继续交接，validation 重新验证固定 SHA，
+handoff 继续交接；validation 基础设施故障只重新验证固定 SHA，确认的代码失败按
+12.5/12.6.4 预留允许的修复尝试后才启动新 Run，
 execution 才在 blocker 已解除、快照与 Recovery Context 校验通过后回 Ready 创建恢复 Run。
 条件未满足返回原阻塞；显式从基线重新实施须记录人工放弃中间工作的选择，撤销旧交接并完成对账。
 Cancel 先撤销新动作授权；有执行组或外部调用在途时返回 202，响应包含 cleanup/reconciliation
@@ -3661,7 +3953,7 @@ Phase 0 前台每 5 秒轮询待办/运行摘要，列表页可放宽到 15 秒�
 显示“最后刷新时间”和断线提示，不能把连接断开显示为 Agent 已失败。
 手机、电脑和平台 CLI 轮询同一平台数据库视图，不因客户端数量增加而重复调用 GitHub。
 
-SSE 从 Phase 1 作为可选增强，不阻塞完整闭环：
+SSE 从 Phase 0b P2 作为可选增强，不阻塞完整闭环：
 
 ```http
 GET /api/events
@@ -3686,13 +3978,21 @@ GET    /api/inbox
 GET    /api/notifications/status
 POST   /api/notifications/test
 GET    /api/system/health
+GET    /api/requirements/:id/blockers
+GET    /api/blockers/:id                    # ActionableBlockerView，含诊断状态与可用动作
+GET    /api/blockers/:id/diagnostic-bundle   # 脱敏包，no-store、鉴权与大小限制
+POST   /api/blockers/:id/actions            # action_id + 受限参数，转既有领域命令
+POST   /api/blockers/:id/responses          # 回答具体缺失信息，不回答已结束 Runtime 请求
 POST   /api/scheduler/pause
 POST   /api/scheduler/resume
 ```
 
-`inbox` 聚合未过期权限请求、待回答问题、失败项和待人工处理 PR，并返回来源实体与版本；
+`inbox` 聚合未过期权限请求、待回答问题、manual_action_required=true 的失败/运维聚合项和待人工处理 PR，并返回来源实体与版本；
 回答仍调用 Run API，不在 inbox 维护另一份审批。通知测试只向已批准的接收端发送脱敏测试消息，
 API 不接受任意目的 URL。通知凭证通过 secret provider 配置。
+blocker 写接口携带 blocker_version、期望 state_version 与 Idempotency-Key，校验归属及当前
+授权。action_id 由服务器 catalog 决定并重新核查，过期操作返回 409/当前详情；不能接受任意
+shell、外部 URL 或诊断模型自造动作。补充信息是审计证据，不会自动扩大权限或重置预算。
 健康视图只对已认证用户开放，包含 executor、数据库、GitHub 同步、通知、磁盘和最近备份状态，
 不回传凭证。暂停调度只停止新的领取，不暗中取消正在执行的 Run；停止当前任务需单独确认。
 
@@ -3757,8 +4057,8 @@ CLI 只提供待办、请求详情、批准/拒绝、回答和运行摘要，是
    评审时由用户或 Contract 草稿生成器写出，随 revision 冻结。
 2. Repository 默认（Repository Policy.network_defaults）
    该仓库常见依赖域名、包管理器、CI 端点的默认集合。
-3. 平台全局白名单（只读、只增不减）
-   provider 端点、必要的官方 registry；不允许需求级声明删减它。
+3. 平台全局白名单（对需求只读；管理员可版本化批准/撤销）
+   provider 端点、必要的官方 registry；不能改写全局配置，需求 denied 仍可缩小自身有效集合。
 ```
 
 生效集合 = 平台全局 ∪ Repository 默认 ∪ 需求声明；`denied_domains` 优先级最高，谁都不能覆盖。
@@ -3804,29 +4104,40 @@ app-server。**S5 实测：allowlist 只能写在系统级 `/etc/codex/requireme
 - 每个 Run 开始前写入该 Run 的生效集合（并记录摘要用于审计），Run 结束后收敛；
 - **同机不能并行跑两个网络集合不同的 Run**——这与 6.3 的"同 Repository 串行""全局并发上限"
   是不同维度的约束，必须在 Phase 0 的调度条件里显式表达，不能靠"反正并发是 1"隐式成立；
-- 多 Worker（Phase 5）时每个 Worker 主机各自持有自己的 `/etc/codex/requirements.toml`，
+- 多 Worker（Phase 4）时每个 Worker 主机各自持有自己的 `/etc/codex/requirements.toml`，
   调度器必须按网络集合对 Run 做**主机亲和性**分组，或串行化不同集合的 Run。
+- 从 0a 起保存该主机网络策略摘要、持有者与恢复状态；文件修改由预先配置的最小特权 helper
+  执行，仅接受已批准集合，不以 root 启动整个 app/Agent。部署必须明确授权该受管配置。
+  无法排除同机其他 Codex 使用者时，禁止按 Run 改写全局文件；选择已批准的固定集合或
+  隔离 executor 的配置视图。Phase 2 并发仅允许共享同一有效集合，不能静默取不同需求的并集
+  扩大授权；最后使用者退出才收敛。重启先对账，不覆盖未知使用者的配置。
 
 #### 与需求契约的关系
 
 - `RequirementContract` 增加可选字段 `network_access {presets[], domains[], denied[]}`；
   缺省表示只使用 Repository 默认，不允许用"未声明"表达"全放开"。
 - Agent Context 中包含生效集合的摘要，让 Agent 知道哪些域名可用，减少无效尝试。
-- 当 Agent 确实遇到未声明的域名需求时，**行为是拒绝并报告，不是停下来等人**：
-  Agent 在完成声明前提出 `network_scope_request`，平台据此在需求详情里生成一条可一键采纳的
-  Contract 修订建议；采纳后按 7.6 进入 `NeedsRevalidation` 重新执行。若该 Run 已无进展，
-  按 Failed 记录 `network_domain_not_allowed`，不消耗修复预算。
-- 平台不得在运行中静默放宽 allowlist（等价于热更新安全策略，被 8.1 禁止）。
+- 单次未声明域名请求被拒时，Agent 可继续其他工作，不产生权限请求或待办。工具拒绝记录
+  不等于 Run 失败。需要补充范围时通过 report_blocker 的结构化证据提交 network_scope_request
+  建议；该结束工具只在确实无法继续时调用，不用于仍可继续任务的普通诊断。
+- 确实无法继续时必须报告 blocker、停止旧组并保存工作；已有授权内的固定依赖准备按 8.1
+  自动恢复。需要扩大范围时按 requirement + 建议集合去重，生成一次 Contract 修订待办，
+  manual_action_required=true；不消耗代码修复预算，不向 Runtime 发送临时网络批准。
+- 用户采纳时显示新增域名、原因和恢复阶段，保存新 Revision 并记录授权；随后自动预检和恢复。
+  Phase 0a/0b 按下面的受控输入替代路径撤销旧 generation、保全工作、回 Ready；0c+ 使用
+  NeedsRevalidation。不能在原 session 中静默扩大 allowlist。
 
 #### 验收
 
 ```text
-在需求里声明 presets=["cargo"] 的任务：
-  访问 crates.io → 成功，且不产生任何 runtime_request；
-  访问未声明域名 → 被代理拒绝，Agent 收到明确错误，Run 继续（不暂停、不通知人）；
-  Agent 提出 network_scope_request → 需求详情出现修订建议，采纳后走 NeedsRevalidation；
-  整个过程中待办箱保持为空。
+已声明 cargo 域名 → 放行，不产生 runtime_request；
+单次未声明域名拒绝但任务可继续 → 无待办，不结束 Run；
+已授权依赖暂缺 → 固定准备/有限探测，满足后自动恢复，无需 Unblock；
+无法继续且需新域名 → 一次范围修订待办，保存快照，重复报告不新增通知；
+用户采纳 → 新 Revision/授权、预检和从保存步骤恢复，不复用旧 session。
 ```
+
+
 
 #### 不在本节范围
 
@@ -3864,7 +4175,9 @@ Agent Context 必须包含来源和边界信息，不能默认相信其中的指
 - 禁止操作其他 workspace
 - 限制 hook 工作目录
 
-上述路径规则不替代操作系统隔离。从 Phase 0 起，Agent 工具、after_create/before_run/after_run、
+上述路径规则不替代操作系统隔离。Phase 0a/0b 仅限可信自有仓库，使用同 UID 的已知读取
+限制，仍必须控制写入、子进程停止和凭证不注入；不宣称具备下述完整读取隔离。
+从 Phase 0c 起，Agent 工具、after_create/before_run/after_run、
 依赖安装脚本以及 Gate/test 子进程都在低权限执行环境运行，不继承 API/调度器的执行身份。
 必须限制可读挂载和可写目录、网络出口、进程/CPU/内存额度；禁止挂载 Docker socket、
 平台数据库凭证、GitHub App 私钥、Cloudflare Tunnel 凭证、通知密钥和 evidence store 的写权限。
@@ -3944,14 +4257,15 @@ Phase 0 用户在 GitHub 合并。Phase 1 起自动 Merge 默认开启；Reposit
 
 ```text
 PR head 的必需 Checks 全部 success（Policy 按 job `name` 声明集合，如 `test-job`；
-          同一名称下**所有** run 都必须 success（push 与 pull_request 会各触发一次）；
+          按发布 App、workflow/job、触发事件和 Policy selector 分组，每个必需组的当前有效 attempt
+          必须 success；push 与 pull_request 是独立组。旧失败 attempt 保留历史，不永久阻止新成功；
           缺失 / skipped / neutral 不算通过；不用 combined status——Actions 仓库下它恒为 pending）
 AND 受信 Gate 在该 head 上通过
 AND `pulls/:n.mergeable_state == "clean"`（GitHub 异步计算，首次读取可为 null，Reconciler 重试；不需要 administration 权限）
 AND 所有 review thread 已 resolved（无 reviewer 的仓库此项恒真）
 AND Policy 要求的 approval 已存在（默认不要求；单人仓库不能靠 Agent 伪造第二人批准）
-AND 所有 must 级 AC 在该 head 上 verified 或 waived
-AND 无进行中的 Recovery / ReviewFix / Handoff
+AND 所有 pre_merge 适用且未被明确豁免的 AC 在该 head 上 verified
+AND 无进行中的 RepairAttempt / Agent 写入 / 验证封存 / Handoff（不以子 Requirement 未 Done 判定）
 AND Requirement 无未解决的 NeedsRevalidation
 ```
 
@@ -4128,6 +4442,38 @@ Phase 0 的 CI 失败和已合并状态来自只读同步；Phase 1 增加持久
 统计卡片和全量审计表不抢占手机首页空间。
 
 首版只要求四类页面：待办箱/进度概览、需求新建与评审、Run 进度与异常处理、PR/CI 摘要。
+
+阻塞卡片从 0a 起是强制产品契约，不能仅展示 Blocked、failure_code 或日志链接：
+
+| 用户必须能回答的问题 | 卡片必须展示的内容 |
+|---|---|
+| 为什么停了？ | 失败阶段/具体步骤、一句话原因与 confirmed/suspected/unknown；关键脱敏证据可展开 |
+| 已经做到哪里？ | 已完成与尚未验证的工作分开，快照是否完整、哪些工作仍保留 |
+| 系统正在做什么？ | 已尝试动作及结果、当前诊断/恢复动作、下次检查时间；若不再自动处理则说明原因 |
+| 我现在需要做什么？ | 明确“无需操作”或具体执行主体、对象/范围、步骤与动作按钮；禁止含糊的“修复环境” |
+| 怎么知道解决了？ | 解除判据、平台会执行的检查、上次检查结果；不能用用户点击代替验证 |
+| 然后从哪继续？ | 下一恢复阶段与保留工作，不显示泛化的“重新运行任务” |
+
+字段暂缺时显示“尚未确认/正在采集/采集失败原因”，不得留空或伪造根因。诊断进度、
+等待容量、证据缺失和失败降级都在同一详情页；无需用户到另一个 Agent 会话查日志。
+通知从 0b 起给出脱敏的一句话原因、是否需要操作及详情链接，不只写“任务被阻塞”。
+普通诊断进展不重复通知；从自动处理转为需人工时发送一次，按 blocker/version/通知类型去重。
+
+示例（说明模板，不代表实际故障）：
+
+```text
+测试依赖下载受阻｜原因已确认｜需要你允许本需求访问一个新域名
+失败位置：准备测试依赖；代理拒绝 download.example.org
+已完成：代码修改已保存；完整工作快照可用；尚未完成测试
+系统已尝试：本地依赖与已批准镜像检查，均无可用版本
+你需要做：查看新增域名与原因，选择“采纳本需求网络修订”或“保持当前范围”
+解除判据：新授权生效、沙箱内下载探针成功、依赖摘要一致
+之后继续：从依赖准备与测试继续，不从头编写代码
+```
+
+未知原因示例必须显示“固定诊断未确认原因”，给出已排除项、缺失证据与具体采集步骤；
+“重新检查”只执行已授权固定探针，“采纳修订”进入 4.1/16.9 的版本化授权，不是通用提权按钮。
+
 日志、证据、失败原因作为详情展开，不另建完整后台模块。
 
 审批卡片必须在手机可见范围内显示：
@@ -4310,7 +4656,7 @@ Phase 0a 起按 Requirement/Run/阶段持久化 12.7 的效率计数，可观察
 一个 turn 等于一个底层模型请求；不可观察的 model_call_count 标记 unknown：
 
 ```text
-model_call_count             含编码、修复和可选摘要调用，分别标记用途
+model_call_count             含编码、修复、只读诊断和可选摘要调用，分别标记用途
 input_tokens / cached_input_tokens / output_tokens
 uncached_input_tokens        仅在提供方明确缓存口径时由 input - cached 得出，否则 unknown
 phase_duration              preparation / execution / validation / ci_wait / handoff / human_wait
@@ -4318,15 +4664,25 @@ preflight_failure_count / preparation_attempts
 validation_execution_count / validation_duplicate_suppressed_count
 repair_context_bytes / summary_model_call_count
 blocker_count / recovery_run_count / recovery_context_degraded_count / work_snapshot_failure_count
+blocker_reason_confirmed/suspected/unknown_count / actionable_blocker_missing_field_count
+blocker_time_to_explanation / blocker_time_to_action / blocker_resolution_duration
+diagnostic_bundle_incomplete_count / fixed_diagnosis_duration
+diagnostic_attempt_count / diagnostic_tokens / diagnostic_turns / diagnostic_duration
+diagnostic_invalid_output_count / diagnostic_budget_exhausted_count / manual_diagnosis_required_count
 ```
 
 Phase 1 增加 evidence_reuse_count、evidence_reuse_rejected_count、deterministic_fix_count、
 repeated_failure_stop_count。证据复用不等于模型调用节省，分别计量；缺失的 token/cache 数据
 不得填零。金额只按实际提供方计费口径估算，不将含缓存和重复上下文的 total_tokens 直接估价。
 业务决策事件独立于高频 delta 调试流保存，调试日志限额/轮转不得挤掉恢复和验收证据。
+8.5 增加 observation_original/returned_bytes、observation_recall_count/bytes、archive_failure_count；
+12.7.6 实验增加 fusion_eligible/triggered、实际请求变化、重复/无效检查数。8.6 启用时记录
+compaction_reason、摘要与缓存重建成本、压缩后额外请求及预计/实际收益。估算与实测分别标注。
 0a 同时记录 managed_resource_count、cleanup_pending/failed/deferred、最老可执行清理任务等待
 时长、cleanup_duration、实际 reclaimed_bytes、补漏任务数；retention 未到与清理积压分开显示。
-磁盘/资源视图能定位 owner Run、保留原因、最后错误及下一重试时间，清理失败只生成运维待办。
+磁盘/资源视图能定位 owner Run、保留原因、最后错误及下一重试时间。清理临时失败不通知；
+永久失败/重试耗尽、可执行积压超过 Policy 阈值（默认 30 分钟）或影响调度时聚合运维待办，
+Deferred 的引用/保留期等待不算积压。
 
 Phase 0 增加 pending_approvals、pending_inputs、notification_delivery_failures、
 github_sync_age、ci_failure_count；Phase 1 增加 queued_requirements、blocked_requirements、
@@ -4335,16 +4691,23 @@ review_fix_count、auto_merge_count、post_merge_validation_failures。CI 摘要
 零介入是产品目标，因此从 Phase 0a 起单独维护介入指标，按 Requirement 归档、按周聚合展示：
 
 ```text
-**统计口径**：`zero_touch_ratio` 只在 AC 达标（Phase 1 起即 `Done`、Phase 0 为 must 级 AC 验证通过）
-的需求上统计。零介入但产出错误的需求不计入分子，也不从分母剔除——它应体现在失败率里，
-而不是被算成效率提升（原则取自 SoL-Pi：效率改进只在任务质量不变时计入）。
+统计口径：固定同一批 Ready 授权的根 Requirement（相同观察窗口），以该批全部需求为分母。
+分子仅包括零人工介入且达到该 Phase 成功终点的需求（0a 为通过本地适用 AC 后 Submitted，
+Phase 1 为 Done）；失败、取消和未完成均保留在分母并单列，不因重试/子任务增加样本量。
+恢复、输入修订与重新授权不覆盖原累计；Policy 人工模式另分组，但不静默排除失败样本。
 
-intervention_count            每条需求从 Ready 到终态需要人处理的次数
-intervention_reason           agent_question | sandbox_ask | security_gate | budget_exhausted |
-                              revalidation_failed | post_merge_revert | manual_policy
-zero_touch_ratio              零介入到终态的需求占比（0a 目标 ≥60%，Phase 1 目标 ≥70%）
-time_to_pr / time_to_done     从 Ready 起算的时长，扣除人工等待
+intervention_count            Ready 后人工处理次数，包括输入替代/扩大授权；自动探测/清理不计
+intervention_reason           agent_question | sandbox_ask | network_scope_change | security_gate |
+                              budget_exhausted | environment_manual | recovery_exhausted |
+                              storage_recovery | handoff_manual | revalidation_failed |
+                              input_revision | post_merge_revert | reviewer_wait | operations | manual_policy
+zero_touch_ratio              零介入且验收成功数 / 同批全部根需求数（0a ≥60%，Phase 1 ≥70%）
+time_to_pr / time_to_done      从 Ready 起算的实际端到端时长，包含人工等待
+human_wait_duration           人工等待单列
+active_processing_duration    另报扣除人工等待的处理时长，不冒充端到端时长
 ```
+
+
 
 `intervention_reason` 不在上述枚举内的介入视为缺陷；`agent_question` 占比高说明 Contract 模板需要改，
 `sandbox_ask` 占比高说明网络白名单初值需要调。
@@ -4397,7 +4760,8 @@ CI State
 渠道选择是部署配置，不需要首版建设通知平台，也不假定已有任何厂商凭证。
 真实手机收到一次通知是交付条件，不能用“未来支持”或仅日志输出替代。
 
-- 通知事件：新审批、新问题、执行失败、PR 已可人工处理、CI 失败，以及请求即将过期的单次提醒。
+- 通知事件：需人工的新审批/问题、自动恢复耗尽、PR 已可人工处理、授权扩大和运维告警，
+  以及请求即将过期的单次提醒。自动 CI 修复、环境探测和清理重试只更新进度，不逐次通知。
 - 仅发送脱敏标题、事件类型、时间和固定站点下的详情链接；不发送原始命令、代码、secret、
   Access token 或批准口令，锁屏通知不暴露仓库敏感内容。
 - 事件与 outbox 在同一事务写入，发送结果保存到 `notification_deliveries`；同一来源事件
@@ -4598,7 +4962,7 @@ Handoff Worker
 ResourceCleaner（0a：独立异步 worker，持久化任务与补漏）
 GitHub read-only poller
 Notification Dispatcher
-SSE broadcaster（Phase 1 可选）
+SSE broadcaster（Phase 0b P2 可选）
 ```
 
 Agent 子进程由 Supervisor 经 executor 启动，执行组清理不依赖控制面正常退出。
@@ -4698,8 +5062,8 @@ https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-
 
 ## 22. 测试和验证矩阵
 
-本章的"Phase 0"标签统一指 0a～0c 合计，具体归属以第 23 章为准：租约/恢复/隔离/digest 类
-属于 0c，Cloudflare/通知/手机类属于 0b，其余属于 0a。三端审批与 CLI 相关条目仅在实现该可选
+本章的"Phase 0"标签统一指 0a～0c 合计，具体归属以第 23 章为准：完整租约/OS 隔离/digest 类
+属于 0c；最小停止/恢复/工作快照/人工等待与异步清理从 0a 起，Cloudflare/通知/手机类属于 0b，其余属于 0a。三端审批与 CLI 相关条目仅在实现该可选
 能力时执行。
 
 零介入是首要验收指标，各 Phase 的集成测试都要统计"介入次数 / 需求数"和介入原因分布；
@@ -4791,11 +5155,13 @@ https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-
 - Phase 0：轮询条件请求、分页、限流退避、stale/unknown 和最后同步时间
 - Phase 0：head 改变后不复用旧 CI 成功，关闭/合并不伪造 Done
 - Phase 1：必需 Check 名称集合匹配；缺失 / skipped / neutral 不算通过
-- Phase 0（12.3）：伪造引文的失败收据被拒绝（quote 不在原文、source_sha256 不匹配、status 与
+- Phase 0（12.3）：伪造引文的失败收据被拒绝（quote 不在绑定脱敏视图、source_sha256 不匹配、status 与
   observed_is_error 不一致、无 fatal/failure 证据各有独立用例）
-- Phase 0（12.3）：收据验证失败 → fail-open 回退截断原文 + summary_unavailable，Run 不失败
+- Phase 0（12.3）：收据验证失败 → fail-open 回退安全脱敏片段 + summary_unavailable，Run 不失败
 - Phase 0（8.4）：上下文降级只降低压缩率；`source_refs` 记录 skipped/裁剪，可追溯到原始内容
 - Phase 1：自动 Merge 在 17.5 条件全部成立时触发且仅触发一次；任一条件不成立不触发
+- Phase 1：merge_commit_sha 非空但 merged=false 不算已合并，未知结果不伪造成功
+- Phase 1：Checks 按受信来源/事件与有效 attempt 分组，旧失败不永久阻塞已成功重跑
 - Phase 1：自动 Merge 期间 head 变化 → 放弃本次 MergeOperation，重新等待条件
 - Phase 1：合并 API 未知响应先查合并事实，不重复合并
 - Phase 1：post_merge 验证失败 → 自动创建 revert 建议进待办箱，不回滚、不自动 revert
@@ -4810,6 +5176,8 @@ https://docs.github.com/en/rest/using-the-rest-api/best-practices-for-using-the-
 - Phase 1：未 resolved review thread 自动聚合为一个 ReviewFix；stale 意见跳过并列出
 - Phase 1：ReviewFix 等 CI 通过后才运行
 - Phase 1：修复预算默认 3，Policy 可配置；耗尽进入 Blocked 并出现在待办箱
+- Phase 1：声明后修复无需创建子任务也必须预留 RepairAttempt；formatter 与 Agent 共享一次尝试
+- Phase 0a：自动 blocker 探测不唤醒模型；环境恢复自动继续，授权扩大只生成一次待办
 - Phase 1：重复事件不重复创建任务
 - Phase 1：安全/配置类失败不得自动修复，本项目与外部仓库同一规则
 - Phase 1：`require_fix_confirmation` 开启时每次修复前进待办箱；默认关闭不产生待办
@@ -4877,6 +5245,12 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository（含真实 
 
 真实测试失败不能静默当作通过。
 
+阻塞体验验收：另构造缺依赖、磁盘不足、权限拒绝、未知退出四种任务，验收者只使用任务
+详情页，在不打开原始日志、不另开 Agent 会话的条件下说明为何停止（或明确尚未确认）、
+已保存什么、系统正在做什么、自己下一步是什么、平台怎样验证、从哪里恢复。任一场景只能
+回答“blocked，得找人查日志”即失败。未知故障允许尚无根因，但必须有具体证据缺口与诊断
+动作；此验收不要求系统解决任意未知故障，也不允许为了通过测试编造原因。
+
 手机 UI 测试使用测试仓库和安全的受控审批动作；不得为测试而批准访问平台凭证或宿主机
 任意路径。云入口和通知渠道在用户实际部署环境验收；CI 模拟测试不能替代真实访问结果。
 
@@ -4901,7 +5275,7 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository（含真实 
 | 可选 CLI | CLI 在确认后响应丢失/SSH 断开 | 读取既有决定，不换幂等键重发；后台任务和待办不被取消 |
 | 可选 CLI | Agent 尝试访问审批 Unix socket/伪造人工 UID | OS 隔离与 peer credential 验证拒绝，不允许自批 |
 | Phase 0 | Agent 请求白名单外网络 / workspace 外路径 | 自动拒绝并记录，不产生待办，Run 继续 |
-| Phase 0 | 声明后验证 must 级 AC 失败 | 自动重跑一次带失败摘要的新 Run；仍失败才 Failed 进待办箱 |
+| Phase 0 | 声明后验证适用 AC 失败 | 自动重跑一次带失败摘要的新 Run；仍失败才 Failed 进待办箱 |
 | Phase 0 | 决策已落库、Runtime 回复丢失 | 显示送达未确认，核对原 request ID，不重发工具动作 |
 | Phase 0 | 带待审批请求的 Run 重启 | 旧请求失效，转人工重试，新 Run 重新请求授权 |
 | Phase 0 | 通知服务失败/同一事件重复消费 | 待办仍可处理，通知有限重试，不重启编码或重复决策 |
@@ -4914,8 +5288,29 @@ Phase 1 真实集成至少需要一个 disposable GitHub Repository（含真实 
 | Phase 0a | 恢复快照缺失/损坏/未保存、恢复摘要失败 | 前者不启动模型且保留原目录；后者用结构化恢复上下文降级 |
 | Phase 0a | 完成事务后崩溃/清理回执丢失/重复消费 | 清理 task 不丢、同实例幂等，无模型调用 |
 | Phase 0a | 清理权限失败/后继任务引用/同路径新实例 | 运维待办或 Deferred；不误删、不回写需求失败，不阻塞独立资源任务 |
+| Phase 0a | 输出归档失败/分页跨 UTF-8 边界/跨 Run 读取/原目录清理 | 显式降级、分页完整、授权隔离，有效恢复引用不悬空 |
+| Phase 1 可选 | 动作合并编辑失败/检查失败/重复请求 | 不误执行后续命令、不丢修改、不重复编辑，最终验收独立 |
 | Phase 1 | 证据身份/有效期/策略资格变化 | 拒绝复用；需要验证时重新执行，不沿用旧 PASS |
 | Phase 1 | formatter 修复 / 同输入重复失败 | 新 SHA 重验证；确定性同指纹两次失败后停止第三次自动执行 |
+| Phase 0a | Agent 完成后 Gate/AC 失败 | Run 执行成功不改写；独立验证失败，平台按阶段选择修复 |
+| Phase 0a | 环境恢复/探测重复投递/探测耗尽 | 单探测幂等；满足后自动续作，耗尽只生成一次待办 |
+| Phase 0a | 缺依赖/磁盘满/权限拒绝/交接未知 | 阻塞卡直接说明具体步骤、证据、系统动作、用户下一步、解除判据及恢复阶段 |
+| Phase 0a | 无 Agent 报告、固定探针失败或根因未知 | 平台生成部分诊断包；明确 missing_evidence/unknown 和具体采集动作，不只显示错误码 |
+| Phase 0a | 用户点已处理但解除检查仍失败 | 同一卡片显示尚缺条件；不重复待办、不启动编码、不改写解决事实 |
+| Phase 0a | 旧卡片提交/重复点击/诊断包越权 | CAS/幂等与归属校验生效，不执行过期动作、不泄露日志 |
+| Phase 0c | 已知故障与未知故障分别触发诊断 | 前者零诊断模型调用；后者仅在能力/证据/预算满足时触发有限只读诊断 |
+| Phase 0c | 模型自造根因/证据/action_id、尝试写代码或联网 | 不能 confirmed/解除 blocker；引用和动作拒绝，写入与越权路径实测拒绝 |
+| Phase 0c | 诊断崩溃/取消/模型失败/预算耗尽/重复 bundle | 保留累计额度与固定诊断；不重启编码、不重置预算，迟到报告只审计 |
+| Phase 0c | 诊断与编码同时领取 | 共用模型容量与原子锁，并发不超上限，诊断不抢占原 worktree 写入权 |
+| Phase 0a | revise 时旧组存活/快照失败/交接在途 | 先撤销保全与对账；不发新写入权，不丢旧工作 |
+| Phase 0a | 收据含敏感值、脱敏后分页读取 | 引文核对脱敏视图，raw/view 分别验摘要，Agent 不可读敏感原文 |
+| Phase 0a | 多资源暂时清理失败/保留期等待 | 有限重试不逐个通知；永久/耗尽/积压/影响调度才聚合运维待办 |
+| Phase 0a | expected 匹配但目标不是其后代 | 禁止 push；不因 lease 正确允许历史改写 |
+| Phase 1 | 未合并 PR 有 merge_commit_sha | 不记录 merged，不启动 post_merge，查询未知有限对账 |
+| Phase 1 | 同 SHA 的旧失败 attempt 与新成功 attempt | 按可信分组取有效 attempt；保留历史，不永久卡住或误取其他组成功 |
+| Phase 1 | 本地/CI/Review 修复交替、formatter 后转 Agent | 共用根 RepairAttempt；不漏计、不双扣、不借子任务绕过上限 |
+| Phase 1 | 已处理 thread 未 resolve / 新 head / 回复丢失 | 不重复修复；仅新意见版本或明确复审失败才申请新尝试 |
+| Phase 1 | AC 仅适用 post_merge / should AC 在适用阶段失败 | 前者按已批准阶段执行，后者不能因优先级低而跳过 |
 | Phase 0 | 伪造 Access 头/错误 AUD/直接访问源站 | 拒绝管理请求，无状态修改 |
 | Phase 0 | 磁盘不足/备份失败 | 暂停新领取或告警，保留现场，不消耗模型重试 |
 | Phase 1 | PR 修改所选知识文件后合并 | 正确分类自有产出并继续最终验证 |
@@ -4965,7 +5360,7 @@ P2  可以顺延到下一 Phase，不影响本 Phase 验收
 | S3 | Axum 中验证 Cloudflare Access JWT（签名 / issuer / aud / 过期），并实测撤销会话后请求被拒 | **已完成（2026-09-09），结论见下方 S3 结论与 `spikes/s3/README.md`。** 17.4 校验规则、`sub` 绑定、撤销语义由此确定 |
 | S4 | Harness-Gate 在本项目上的 `hook` / `verify --profile ci --all` 实际耗时、误报率、JSON 输出稳定性 | **已完成（2026-09-10），结论见下方 S4 结论与 `spikes/s4/README.md`。** 12.6 按 0c 切换；版本锁定改为 0.3.7 |
 | S5 | Codex 受限网络模式实测：白名单域名放行、非白名单域名拒绝、绕过路径、审批策略 | **已完成（2026-09-11），见下方 S5 结论与 `spikes/s5/README.md`。** 配置位置定为 `/etc/codex/requirements.toml` 的 `[experimental_network]`（系统级） |
-| S6 | 外部方案评审：NVlabs/SoL-Pi 的四项 harness 效率机制 | **已评审（2026-09-11），不引入依赖。** 只借鉴其"证据保全式摘要"用于 12.3，其余三项不采纳（理由见下） |
+| S6 | 外部方案评审：NVlabs/SoL-Pi 的四项 harness 效率机制 | **2026-09-13 已复评，不引入依赖。** 采纳受控输出归档/分页读取与收据，动作合并单独实验，主动压缩后置；见 8.5、8.6、12.7.6 |
 
 #### S1 结论（2026-09-07，codex-cli 0.153.4，Linux landlock）
 
@@ -5079,35 +5474,46 @@ Access service token；非 OTP IdP 下 `sub` 稳定性；JWKS 轮换期。
 2. **combined status 永远是 `pending`**（Actions 只写 check-runs）：绝不能作为 CI 判据。
 3. `mergeable_state` 序列实测 `null`（t≈12s，GitHub 仍在计算）→ `blocked`（t≈21s）→ `clean`（t≈30s）；
    Reconciler 必须处理 `mergeable == null`，且 `blocked` 不等于失败。
-4. 同一 SHA 返回 **2 条同名 `test-job`**（push 与 pull_request 各一次）→ 判据是"该名称下全部 run
-   都 success"，不是取第一条。
-5. 合并事实：`GET /pulls/:n` 的 `merged` 可能为 `null`，以 `merge_commit_sha` 非空或
-   `GET /pulls/:n/merge` 的 204 为准；sha 守卫不符仍为 409。
+4. 同一 SHA 返回 **2 条同名 `test-job`**（push 与 pull_request 各一次）；两类触发不能只取第一条。
+   判据按 17.5 的受信 selector/事件分组与有效 attempt 选择；补测没有证明必须要求所有历史
+   attempt 成功。无法识别替代关系时保持 unknown，不能用任意同名成功掩盖当前失败。
+5. 合并事实：仅接受明确 `merged=true` 或 `GET /pulls/:n/merge` 的 204；null/缺失/查询失败
+   为未知，有限退避对账。`merge_commit_sha` 非空不能证明合并，未合并 PR 也有测试合并 SHA。
+   确认合并后再读取最终 SHA，不以测试合并 SHA 作为 post_merge 目标；sha 守卫不符仍为 409。
+   依据：https://docs.github.com/en/rest/pulls/pulls#get-a-pull-request（2026-09-13 复核并修正旧推断）。
 
-#### S6 记录：NVlabs/SoL-Pi 评审（2026-09-11，只读源码与文档，未引入依赖）
+#### S6 记录：NVlabs/SoL-Pi 复评（2026-09-13）
 
-SoL-Pi 是 Pi 编码 agent 的效率扩展，用自动研究循环从 152 个方向筛出 4 个机制。
-其核心信念与本方案一致：**在不可信的模型输出与可信判定之间加一层可机械验证的收据**。
+本次只读核对当前 README、源码和技术报告，未安装扩展或在本项目运行其基准。SoL-Pi 面向 Pi
+的公开扩展接口，不能直接作为 CodexSymphony/Codex Runtime 插件使用；借鉴机制，不新增依赖。
 
-采纳一项：
-
-- **证据保全式摘要**（Evidence-Preserving Reducer）→ 写入 12.3。要点：摘要输出是结构化收据，
-  每条引文必须逐字节出现在原文中，`source_sha256` 必须等于归档哈希，`status` 必须与观测到的
-  退出状态一致；任一校验失败整份作废；失败时 fail-open 回退原文而非返回半成品。
-  这解决了本方案 12.3 原设计的缺口——原设计只限制摘要大小与脱敏，不约束内容可验证性。
-- **fail-open 降级原则** → 写入 8.4：降级只降低压缩率，不降低证据可得性。
-
-不采纳及其理由：
-
-| 机制 | 不采纳理由 |
+| 机制 | 本项目决定与分期 |
 |---|---|
-| Action Fusion（编辑与验证合并为一次 tool call） | 会把验证命令拉进 Agent 的沙箱与 tool call 内，由模型决定跑什么验证。与 12.6.1"验证策略来自受信快照、Agent 不能自证通过"直接冲突；S4 补测已证明自证通过是真实风险，不应再扩大模型的验证权限 |
-| Online Context Compact（子任务边界压缩） | 纯收益但不紧急；待 Phase 0a 观测到 turn/token 成为瓶颈时再评估。注意它的收益依赖"子任务边界"概念，而 Phase 0/1 没有 Planner（Phase 3 才有） |
-| 自动研究循环本身（152→4） | 那是发现机制的方法，不是机制。规模上不适用 |
+| ObservationPack | 新增采纳：0a 先实现平台受控输出归档与分页读取（8.5），原始结果保留；内部历史投影需另验 Runtime 能力 |
+| Evidence-Preserving Reducer | 保留 12.3：规则优先、可验证引文、失败降级；已验证收据不再被二次压缩 |
+| Action Fusion | 修正旧拒绝结论：编辑后的快速反馈不等于最终验收；Phase 1 P1 做受控合并实验，保留独立门禁（12.7.6） |
+| Online Context Compact | 修正旧“纯收益”判断：需计摘要/缓存重建成本；不依赖 Planner，但仍为 Phase 2 可选实验（8.6） |
+| 自动研究方法 | 不照搬大规模搜索；采用单项开关、冻结基线、独立验收集、配对对照和组合回归（12.7.6） |
 
-同时采纳其一条评测原则：**效率改进只在任务质量不变的前提下计入**。用于约束 19.3——
-`zero_touch_ratio` 只在 AC 达标的需求上统计，避免"跑得快但做错了"被算作成功。
+2026-09-11 的评审已采纳证据保全收据，但漏评 ObservationPack，把 Action Fusion 判为必然
+违反受信门禁边界、把主动压缩判为纯收益，均由本次复评修正。工具序列合并可以只影响开发
+反馈；是否允许最终交付仍取决于平台独立证据。上下文压缩可能破坏缓存收益，需要测量。
 
+SoL-Pi 当前 ObservationPack 在 Pi 的 context 投影层替换输出并提供 obs_recall，保留会话历史，
+归档/压缩失败保留原输出；本项目 8.5 只承诺受控接口可实现的范围。其归档不会在会话结束时
+自动删除，本项目接入 10.6 的引用与异步回收，不能复制无期限留存的运维行为。
+技术报告披露组合机制约保留 Pi 平均分的 94%；它采用能力容忍范围，不能替代本项目既有
+required AC 和安全验收。所有收益需在本项目上实测，不直接采用报告中的节省比例。
+
+核对来源（2026-09-13 的 main/公开报告，未来实现时固定并复核对应版本）：
+
+- [README 与存储行为](https://github.com/NVlabs/SoL-Pi)
+- [ObservationPack 实现](https://github.com/NVlabs/SoL-Pi/blob/main/src/sol-pi/extensions/observation-pack/index.ts)
+- [失败收据排除与观察身份](https://github.com/NVlabs/SoL-Pi/blob/main/src/sol-pi/extensions/observation-pack/observation.ts)
+- [Action Fusion 实现](https://github.com/NVlabs/SoL-Pi/blob/main/src/sol-pi/extensions/action-fusion/index.ts)
+- [压缩经济性判断](https://github.com/NVlabs/SoL-Pi/blob/main/src/sol-pi/extensions/online-context-compact/economics.ts)
+- [Pi 接口兼容性与压缩后续执行](https://github.com/NVlabs/SoL-Pi/blob/main/docs/compatibility.md)
+- [技术报告、实验方法与组合结果](https://nvlabs.github.io/SoL-Pi/)
 
 ### Phase 0a：本机闭环（目标 L1）
 
@@ -5123,10 +5529,11 @@ SoL-Pi 是 Pi 编码 agent 的效率扩展，用自动研究循环从 152 个方
   `automated_test`，每条 AC 必须有可解析的 `verification_ref`；`manual_review` 需显式选择并给理由
 - 评审通过 = `Ready`：`POST /ready` 校验 Contract schema 与 AC 可验证性后直接进入调度队列，
   没有第二次"确认执行"
-- 状态机：`Draft → Ready → Running → Submitted / Failed / Cancelled`；`Running` 期间拒绝修改
-  Contract（要改先 Cancel），不实现 `NeedsRevalidation`
+- 状态机：`Draft → Ready → Running → Submitted / Failed / Cancelled`；Running
+  / Submitted 时拒绝普通 PATCH 改 Contract；4.1 的 revise 命令一次授权后保全/对账再应用，
+  不实现 `NeedsRevalidation` 主状态
 - 调度：全局并发 1，`priority DESC, created_at ASC`；单一 `requirements.lease_token / leased_until`
-  + `agent_runs` 活跃部分唯一索引；不实现 Repository dispatch lease、dispatch_epoch、恢复屏障
+  + `agent_runs` 活跃部分唯一索引；实现最小启动恢复闸门，完整 Repository lease/epoch/屏障留 0c
 - CodexRuntime：spawn app-server、initialize、thread/start、turn/start、事件流、token 去重、
   turn/interrupt、startup / response / stall timeout；schema codegen，版本锁定
 - 审批策略冻结为：沙箱内文件修改与命令自动放行；沙箱外请求自动拒绝并记录 `agent_event`；
@@ -5136,23 +5543,31 @@ SoL-Pi 是 Pi 编码 agent 的效率扩展，用自动研究循环从 152 个方
 - 12.7.1 模型启动前的真实沙箱预检；固定依赖/工具能力、可写目录、Broker、磁盘检查；
   准备失败只重试准备，不消耗编码预算；最小低磁盘暂停和持久化失败阻止外部写入
 - `create_local_commit` + `report_completion` + `report_blocker` 动态工具；结束意图原子互斥，阻塞落库后不续轮
+- 8.1 持久化 auto_probe/manual 分类、有限探测与自动解除；条件满足从 RecoveryPlan 续作，
+  需要新授权/未知原因/探测耗尽才聚合一次待办；人工等待时限 2 小时、Run 绝对寿命 8 小时
+- 16.9 网络声明与主机级策略资源占用/最小特权配置；可继续的拒绝无待办，范围扩大只请求一次
 - LocalGitBroker 用固定 Git 二进制和参数
   数组、禁用仓库 hooks 与 credential helper；声明先落库再回复工具
-- 声明后：中断 session、确认子进程退出、校验 HEAD 未偏离、运行 Repository Policy 声明的门禁命令
-  （0a 默认 `gate_provider = custom`，例如 `cargo test`），封存 `artifact_commit_sha`
+- 声明后：中断 session、确认旧组静止和 HEAD/工作树完整，保存 candidate 后 Run Succeeded；
+  独立执行 Repository Policy 的 custom 门禁（例如 cargo test）与适用 AC，通过才封存，
+  验证失败不改写 Run 状态
 - HandoffOperation + outbox：条件 push（仅 fast-forward）→ 按 repo+branch 查找或创建 PR →
   持久化关联 → `Submitted`；重试用相同 action_key，不新建 AgentRun
 - 只读 GitHub 轮询（60 秒）：已关联 PR 的状态、head SHA、Checks 摘要、合并 / 关闭事实；
   显示 `last_synced_at` 与 stale
 - 最简 Web（Angular，localhost）：需求表单、需求列表 / 详情、Run 事件时间线、待办箱（人工问题、
-  失败项）；不做设计系统验收，用 Material 默认主题
+  需人工的失败/运维项）；不做设计系统验收，用 Material 默认主题
 - 错误码表子集：`preparation_*`、`agent_*`、`git_*`、`model_*`、`github_*`；分阶段自动重试白名单，
   每阶段预算 2 次；未知错误 fail-closed 为 `Failed + manual_action_required`
 - 结构化日志 + `agent_events` / `requirement_events`
 - 12.7.3 同批次验证幂等；12.3/12.7.4 规则优先的修复包、原始证据按需读取、恢复事件与累计预算
 - 3.7 阻塞/完整工作快照/恢复计划；8.4 每个恢复 Run 必需 Recovery Context，含未提交/未跟踪实现
+- 3.8/8.7 DiagnosticBundle、固定诊断与报告、action catalog 和 18.4 可操作阻塞卡；
+  已知故障直接给出下一步，未知故障给出已排除项/缺失证据/具体采集动作；不依赖额外 Agent 会话
 - 进程重启按 5.1 最小规则对账；存储或快照故障保留原目录，禁止从干净基线自动重跑
 - 19.3 模型调用/token 分项、准备/编码/验证/等待/交接耗时与验证去重计数
+- 8.5 受控输出归档 + read_observation 分页、失败收据不二次压缩、恢复/验收引用保护；
+  12.7.6 单项开关与同验收强度的基线对照，0a 不要求 Runtime 内部历史投影
 - 10.6 ManagedResource + 引用登记、CleanupTask/outbox 同事务、后台 ResourceCleaner；
   单仓限额并发、幂等重试、5 分钟补漏，到期 worktree 与一次性测试资源分别回收
 
@@ -5198,6 +5613,7 @@ Cloudflare / 通知 / CLI / executor 容器 / Harness-Gate 必选 / 三套租约
   独立重试，失败不影响 Run
 - 会话到期 / 撤销实测；写请求不自动重放；多设备重复提交幂等
 - 后台不依赖浏览器：关闭页面、锁屏不影响 Run
+- WorkspaceReconciler 对账孤儿 worktree，向 0a 的清理队列提交候选；保留已有 GitHub 轮询
 
 **P1**
 
@@ -5226,20 +5642,22 @@ Cloudflare / 通知 / CLI / executor 容器 / Harness-Gate 必选 / 三套租约
 - 低权限 executor：Agent、hooks、Gate / test 子进程以独立 UID / 容器运行；实测不能读取平台数据库
   凭证、GitHub App 私钥、Cloudflare 凭证、其他 workspace；执行组按 cgroup / 进程组整体终止
 - Codex 模型认证与工具执行视图隔离（受控代理或不可读挂载），按 17.3 实测
+- 8.7 平台内只读诊断 Agent：固定诊断不足才自动触发，既有 Runtime、独立预算与共享容量，
+  bundle 输入/受控分页、禁止写入和权限变更；模型失效仍能查看和处理固定诊断卡片
 - 受信 Gate policy revision：批准 / 撤销 API；Agent 修改 `.harness-gate/`、hooks、验证入口只作为
   待批准变更；本项目 dogfood 切换 `gate_provider = harness-gate`，`hook` + `verify --profile ci --all`，
   fail-closed 规则按 12.6.4
 - 完整租约语义：Repository dispatch lease、dispatch_epoch、worktree_leases（branch reservation）、
   恢复屏障、旧 epoch 消息只归档；ProcessReconciler 冷启动 9 条规则（5.1）
 - `context_input_digest`（Contract + AC + WORKFLOW.md + 实际读取文件 blob_oid）与
-  `NeedsRevalidation`：替代 0a 的"Running 时禁止修改"
+  `NeedsRevalidation`：承载 0a 已有受控输入替代流程
 - 22.10 故障窗口矩阵中 Phase 0 标注的场景全部通过
 - 每日备份脚本、升级前备份、一次隔离环境真实恢复（默认禁用外部写）；扩展 0a 已有的磁盘保护
 
 **P1**
 
-- WorkspaceReconciler 对账孤儿 worktree，按 10.6 向异步队列提交清理候选；远端 branch 不自动删除
-- 人工等待独立时限（`human_wait_timeout` 默认 2 小时）、Run 绝对寿命 8 小时
+- 扩展 0b WorkspaceReconciler 的完整 lease/epoch 对账，按 10.6 提交清理候选；远端 branch 不自动删除
+- 加固 0a 已有等待/绝对时限与执行组隔离的联动，不推迟最小等待规则
 
 **验收**
 
@@ -5257,24 +5675,27 @@ Cloudflare / 通知 / CLI / executor 容器 / Harness-Gate 必选 / 三套租约
 - 状态机补齐：`Submitted → WaitingCI → WaitingReview → Merging → Done`，`Blocked`，人工 `Unblock`
 - GitHubReconciler 升级为业务对账：精确 head SHA 的 Checks 结果驱动 `WaitingCI`
 - **自动合并**（默认开启，Repository Policy 可关）：条件 = 必需 Checks 全部 success
-  AND 受信 Gate 通过 AND 所有 AC 在 PR head 上 `verified` 或 `waived` AND 无未解决 review thread
-  AND 无进行中 Recovery；平台以 expected head SHA 调用 merge，未知结果先查合并事实
+  AND 受信 Gate 通过 AND 所有 pre_merge 适用 AC 在 PR head 上 `verified` 或 `waived` AND 无未解决 review thread
+  AND 无进行中 RepairAttempt/写入/验证封存/交接；平台以 expected head SHA 调用 merge，未知结果先查合并事实
 - **自动 Done**：合并后建立 `post_merge` VerificationBatch，在隔离环境检出 merged SHA，
   运行 automated_test / gate_check；ci_check 等待默认分支上该 SHA 的结果；全部满足 → `Done`。
   `manual_review` AC 仅在 Policy 显式开启人工验收时出现，出现即进待办箱
 - **自动 CI 修复**：Checks 失败 → 提取 Failure Summary（12.3）→ 创建 `CiRecovery`，复用原分支；
   预算来自 Repository Policy，默认每根需求 3 次，串行；耗尽 → `Blocked` + 待办箱。
   secret / 架构 / 配置类失败永不自动修复
-- **ReviewFix**：有 review thread 未解决时（来自允许的 reviewer 或自动 reviewer bot）自动创
-  建 ReviewFix，与 CiRecovery 共用预算；无 reviewer 时跳过此环节。不再要求人选定意见
+- **ReviewFix**：仅尚未处理的意见版本自动聚合；处理后等待复审/resolve 不重复唤醒，
+  新反馈才申请新尝试；与声明后修复、CiRecovery 共用 RepairAttempt 预算
 - 同 Repository 执行性依赖（`depends_on`）：上游 `Done` 且 merged SHA 是下游基线祖先才领取
 - `OutputIntegrated` 来源分类：本次 PR 修改 WORKFLOW / 知识文件不触发自身 NeedsRevalidation
 - 12.7 确定性流程接管：验证身份/证据复用（provider 能力不足时完整执行）、受控 formatter
-  修复、重复失败停止规则；CI 规则提取失败摘要，等待/对账/基础设施恢复不调用编码模型
+  的 DeterministicRepair/candidate 来源链（不创建 AgentRun），
+  新 SHA 完整重验证、重复失败停止规则；统一 RepairAttempt 先预留再执行，等待/对账不调用编码模型
 
 **P1**
 
 - 可选自动 reviewer：独立只读 Agent 对 PR diff 产生 review comments，供 ReviewFix 消费
+- 12.7.6 受控 Action Fusion 实验：先验证现有批量工具的收益空间，固定快速检查；
+  同一授权、请求幂等、失败保留编辑，结果不替代最终验收；实测无收益则不开启
 - Webhook 接收（HMAC、delivery 去重、精确路由）加速对账；轮询保留为兜底
 - 平台内人工 Merge 按钮（Policy 关闭自动合并时使用）
 
@@ -5309,6 +5730,7 @@ Cloudflare / 通知 / CLI / executor 容器 / Harness-Gate 必选 / 三套租约
 
 - 扩展 0a ResourceCleaner：多仓资源协调、共享缓存淘汰和历史数据 GC
 - 多仓恢复测试、主机资源配额
+- 8.6 主动上下文压缩可选实验：真实长 Run 瓶颈、公开接口验证、经济性判断与独立对照通过后启用
 
 ### Phase 3：可选编排
 
@@ -5373,9 +5795,9 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 浏览器（localhost）创建 Requirement：结构化 Contract、自动 AC ID、不可变 Revision
 - [ ] `verification_method` 默认 `automated_test`；Ready 校验拒绝无 `verification_ref` 的 AC
 - [ ] `POST /ready` = 评审通过，直接进入调度队列，无第二次确认
-- [ ] 状态机 `Draft / Ready / Running / Submitted / Failed / Cancelled`；Running 期间拒绝改 Contract
+- [ ] 状态机 `Draft / Ready / Running / Submitted / Failed / Cancelled`；Running/Submitted 拒绝普通 PATCH；revise 一次授权后保全工作与对账再应用
 - [ ] 单进程、全局并发 1、FIFO + priority、单一 Requirement lease + 活跃 Run 部分唯一索引
-- [ ] CodexRuntime：8.3 验收 1～6、8、9 通过；schema codegen、版本锁定
+- [ ] CodexRuntime：8.3 验收 1～10 通过；schema codegen、版本锁定
 - [ ] 沙箱内操作自动放行、沙箱外自动拒绝并记录；user input 进待办箱
 - [ ] Worktree 创建/清理、`ai/req-*` 分支、after_create hook
 - [ ] 10.6 受管资源登记/引用、终态事务写 CleanupTask/outbox、独立后台 worker、幂等重试与补漏
@@ -5384,11 +5806,16 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 最小磁盘保护与 ENOSPC 注入：暂停领取/外部写入，恢复后对账，不消耗编码预算
 - [ ] `create_local_commit` + `report_completion` + `report_blocker` 动态工具闭环；结束意图原子落库再回复
 - [ ] 运行中 blocker 受理后不续轮，active/诊断文件/重启不绕过；解除条件未满足不调用模型
+- [ ] auto_probe 有上限与 deadline，条件满足自动续作；人工问题/安全撤销/权限扩大不自动解除
+- [ ] 人工等待时限 2h、Run 绝对寿命 8h，从 0a 支持，重启/超时不重复请求或绕过授权
 - [ ] 3.7 工作快照保留 index/未提交/未跟踪实现；每个恢复 Run 带 8.4 Recovery Context
+- [ ] 3.8/8.7 固定诊断包与报告、原因确认程度、缺失证据/下一动作；不要求用户另外找日志
+- [ ] 18.4 阻塞卡六项问题可直接回答，具体操作/主体/范围/解除判据/恢复位置完整；仅 Blocked 不通过
+- [ ] blocker API 版本/CAS/动作白名单、诊断包脱敏与越权拒绝，补充信息不复用旧 Runtime 请求
 - [ ] 快照失败保全原目录并禁止自动重跑；摘要失败可降级；无声明新 Run 从已保存进度续作
-- [ ] 16.9 网络授权：需求声明生效集合 → 生成 Run allowlist；白名单外域名被拒且不产生待办；
-      `--noproxy` / SOCKS 绕过被挡；`network_scope_request` 只在需求详情生成修订建议
-- [ ] 声明后：中断 session、确认子进程退出、HEAD 校验、custom 门禁 + must 级 AC 本地验证、封存
+- [ ] 16.9 网络授权：需求声明生效集合 → 生成 Run allowlist；单次白名单外拒绝可继续时无待办；
+      `--noproxy` / SOCKS 绕过被挡；无法继续且需扩大范围时只生成一次修订待办，采用新授权恢复
+- [ ] 声明后：中断 session、确认子进程退出、HEAD 校验、保存 candidate 并完成 Run；独立 custom 门禁 + 适用 AC 本地验证，通过才封存
 - [ ] 声明后验证失败 → 执行预算内自动重跑一次带失败摘要的新 Run
 - [ ] HandoffOperation + outbox：条件 push、查找/创建 PR、持久化关联、`Submitted`；重试不新建 Run
 - [ ] 只读 GitHub 轮询：PR 状态、head SHA、Checks 摘要、合并/关闭、`last_synced_at`、stale
@@ -5396,6 +5823,8 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 同批次验证幂等；恢复记录保存阻塞/解决证据/阶段/授权，累计预算不重置
 - [ ] 19.3 调用用途、token/cache 分项、阶段耗时、验证去重指标；12.7.5 的 0a 故障场景通过
 - [ ] 8.4 上下文降级路径（摘要失败 / 文件超限 / 预算不足各自可用且可追溯）
+- [ ] 8.5 归档/分页：摘要与身份一致、失败显式降级、收据不二次压缩、清理后有效引用仍可读
+- [ ] 12.7.6 输出视图单项基线对照，记录 recall 成本和所有失败；收益不足不开默认压缩
 - [ ] 最简 Web：需求表单、列表/详情、Run 时间线、待办箱
 - [ ] 错误码子集 + 执行阶段自动重试白名单 + 每阶段预算 2；未知错误 fail-closed
 - [ ] 结构化日志、`agent_events`、`requirement_events`
@@ -5407,6 +5836,7 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] CSRF、`no-store`、会话到期与撤销实测、写请求不自动重放
 - [ ] 手机响应式：需求表单、待办箱、Run 详情、提问回复、Stop / Retry
 - [ ] 一个真实通知渠道：待办箱新增、执行失败、PR 已创建；链接不带令牌；独立重试
+- [ ] 阻塞通知包含脱敏原因与是否需操作；手机同一详情页完成查看、决策与验证状态回显
 - [ ] 后台不依赖浏览器：关闭页面、锁屏不影响 Run
 - [ ] 多设备并发处理同一待办：第一个 CAS 胜出，其余显示已处理
 - [ ] WorkspaceReconciler + 最小 GitHubReconciler
@@ -5416,15 +5846,18 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 
 - [ ] 低权限 executor：独立 UID/容器、cgroup 执行组整体终止；实测不能读平台凭证、其他 workspace
 - [ ] Codex 模型认证与工具执行视图隔离，按 17.3 实测
+- [ ] 8.7 只读诊断 Agent 隔离、自动触发条件、每 blocker 1 次/每 root 2 次预算与全局容量守卫
+- [ ] 无效引文/自造动作/模型失败/预算耗尽/取消迟到降级正确，不覆盖原 blocker、不擅自恢复
 - [ ] 受信 Gate policy revision 批准/撤销；Agent 改 `.harness-gate/`、hooks、验证入口只作待批准变更
 - [ ] 本项目 dogfood 切换 `gate_provider = harness-gate`；`hook` + `verify --profile ci --all`；12.6.4 fail-closed
 - [ ] 完整租约：Repository dispatch lease、dispatch_epoch、worktree_leases、恢复屏障、旧 epoch 只归档
 - [ ] ProcessReconciler 9 条冷启动规则（5.1）
 - [ ] `context_input_digest` + `NeedsRevalidation`；Contract 未变自动重验证，失败才进待办箱
-- [ ] `human_wait_timeout`（2h）、Run 绝对寿命（8h）
+- [ ] 0a 已有等待时限与 0c 完整执行组隔离联动通过
 - [ ] 每日备份、升级前备份、一次隔离环境真实恢复（外部写默认禁用）；扩展 0a 已有磁盘保护
 - [ ] 22.10 全部 Phase 0 行 + 22.11 部署验收通过
-- [ ] 补测 S5 的 allowlist 配置键，并把结论写回 16.9；在此之前不依赖用户级网络配置
+- [x] S5 allowlist 配置键已在 2026-09-11 补测并写回 16.9
+- [ ] 补测 S5 尚未覆盖的 deny 优先级、子域/端口、主机共享占用和用户配置叠加；未验证能力不启用
 - [x] 补测 S4 的暂存配置篡改（2026-09-11 完成，结论：能自证通过 → 平台必须比对 configuration_digest）
 - [ ] 实现 12.6.1 的 configuration_digest 比对，并加一条测试：篡改 config 后必须拒绝采信
 - [ ] **验收**：本项目自身一条需求经 Harness-Gate 全流程到 PR，零介入
@@ -5439,14 +5872,17 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] 自动 CiRecovery：必需 Check 失败 → Failure Summary → 复用原分支；预算默认 3，Policy 可配
 - [ ] 自动 ReviewFix：未 resolved thread 聚合、stale 过滤、CI 通过后运行、thread 下回复处理位置
 - [ ] 预算耗尽 → `Blocked` → 待办箱；Unblock 不重置计数
+- [ ] RepairAttempt 覆盖声明后/CI/Review/formatter；预留与动作原子关联，重复来源不重复扣费
+- [ ] formatter 新 candidate 不要求 Agent 声明；来源链/唯一约束/新 SHA 验证与交接通过
+- [ ] Review 已处理版本只等待确认，重复轮询/回复丢失/head 变化不再启动 Agent
 - [ ] 安全类失败（secret / 架构 / 配置 / 策略撤销）永不自动修复
 - [ ] 12.7.3 provider 证据复用资格/完整身份校验；不支持时完整执行，身份/时效/撤销变化不误复用
 - [ ] 12.7.2 受控 formatter 新 SHA 重验证；12.7.4 重复失败停止；12.7.5 Phase 1 场景通过
 - [ ] 同 Repository `depends_on`：上游 Done 且 merged SHA 为下游基线祖先才领取
 - [ ] `OutputIntegrated` 来源分类，本次 PR 改 WORKFLOW/知识文件不自触发
-- [ ] Policy 开关全部可用且默认值正确：`auto_merge=true`、`gate_recovery_policy.mode=auto`、
+- [ ] 自动模式默认值正确；可选开关仅在对应能力实现后允许开启：`auto_merge=true`、`gate_recovery_policy.mode=auto`、
       `require_fix_confirmation=false`、`allow_manual_review=false`、`require_manual_start=false`
-- [ ] Policy 关闭自动 Merge 时人工 Merge 入口与自动路径共用校验
+- [ ] 实现可选人工 Merge 入口时与自动路径共用校验；未实现时可在 GitHub 人工合并
 - [ ] 22.10 全部 Phase 1 行通过
 - [ ] **验收**：disposable 仓库 10 条需求 ≥7 条零介入到 Done（含 ≥2 条经历 CI 失败自动修复）；
       介入原因全属 0.1 类型；预算耗尽后不再消耗模型
@@ -5459,11 +5895,13 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 - [ ] `require_manual_start` 下的 Ready 与 Start 分离
 - [ ] 自动 reviewer Agent（Phase 1 P1）
 - [ ] Webhook / SSE（Phase 1 P1 / 0b P2）
+- [ ] 12.7.6 Action Fusion（Phase 1 P1）：编辑/检查结果分离、重放幂等、不代替 required 检查，单项和组合对照
 
 ### 推迟项（不进 V1，保留回归路径）
 
 - [ ] 描述→Contract 草稿、澄清 Agent（Phase 2）
 - [ ] 多 Project/Repository 并行、完整输入 digest、DigestReconciler、多仓资源协调与历史数据 GC（Phase 2）
+- [ ] 8.6 主动上下文压缩（Phase 2 可选）：成本/窗口压力分开、保留恢复锚点、取消/阻塞不自动续跑
 - [ ] Planner / Discussion / 公平调度 / 事件溯源（Phase 3）
 - [ ] 多 Runtime / fallback / 金额预算 / Remote Worker / PWA / 跨仓 Requirement / 自动部署（Phase 4）
 - [ ] 原生 Codex TUI/Remote 接入与独立会话接管（后续独立实验，不作为已支持能力）
@@ -5545,7 +5983,7 @@ V1 = Phase 0a + 0b + 0c + Phase 1。每个 Phase 有独立的发布门槛，前�
 缓解：
 
 - 按第 23 章 0a → 0b → 0c 切片交付，0a 只做 localhost 闭环，不按架构章节逐个建设后台模块；
-- Cloudflare、通知、隔离、Gate、备份全部后置到 0b/0c，不阻塞第一条需求；
+- Cloudflare、通知、完整 OS 隔离、Harness-Gate 必选、备份后置到 0b/0c；0a 保留 custom 验证与最小恢复，不阻塞第一条需求；
 - 多仓并行、Planner、自建审查器、完整 PWA、CLI 不阻塞任何 Phase；
 - 实施前先做 S1～S5 spike，避免在不成立的协议假设上建整个流程。
 
@@ -5681,7 +6119,9 @@ Phase 0 交付"评审后自动到 PR"，人在 GitHub 合并；Phase 1 交付"�
     > 错误码表默认 max_retries / backoff
 ```
 
-Requirement 覆盖不能把 `blocked` 改成自动重试，也不能超过阶段硬上限。
+Requirement 覆盖不能把 manual blocker 改成自动重试，也不能超过阶段硬上限。
+blocked 先表示停止当前执行；只有 8.1 的平台白名单分类允许有限 auto_probe，解除证据落库并
+通过全部恢复守卫后才能继续。探测不是重试编码；错误码自身不能授权解除。
 
 错误记录必须带 failure_phase，不能仅凭 retry_class 决定是否启动新的 AgentRun。
 未解除的持久化 blocker、未确认静止的旧组、未保全的工作或控制面存储故障优先阻止重试；
@@ -5691,7 +6131,7 @@ agent_process_lost/stalled 等白名单不能覆盖这些条件：
 |---|---|---|
 | preparation | 只重试环境准备/预检，模型尚未启动 | 领取前为不可领取原因；已领取则保持准备阶段，独立 preparation_attempt |
 | execution | 先检查未解除 blocker；停止旧组，无声明/manifest 时核查工作快照与 Recovery Context 后新 Run 续作 | Ready + not_before_at；execution_attempt |
-| validation | 重试固定 SHA 的受信验证，不重启模型 | 封存前 Run 保持 Finishing；verification_attempt |
+| validation | 重试固定 candidate SHA 的受信验证，不重启模型 | Requirement 保持 Running 的验证子阶段；原 Run 终态不变，verification_attempt |
 | handoff | 对账并重试同一 push/PR 步骤 | Running + Handoff RetryWaiting；operation_attempt |
 | post_merge | 等待精确 SHA 的 CI 或重试平台验证 | WaitingCI/WaitingReview；verification_attempt |
 
@@ -5720,7 +6160,8 @@ model_invalid_response
 
 MVP 验证阶段仅允许 gate_timeout 等明确的基础设施超时重试；交接阶段允许 git_push_failed、
 github_api_rate_limit、github_api_error 和可确认临时的 pr_create_failed。GitHub 认证/权限错误、
-远端 head 冲突不进入临时重试；git_push_rejected 不自动 rebase。
+远端 head 冲突不进入临时重推；git_push_rejected 先只读对账，只有 14.4 已授权的新候选修复
+可继续，不自动 rebase。
 
 Phase 0 不创建 CI Recovery/ReviewFix。完成声明前 hook 的 test/lint/build 失败按 12.6.4
 反馈给当前 Agent，不能视为新的 Run 重试；声明后的 fixable 失败（test/lint/build/AC）在执行预算内
@@ -5731,11 +6172,15 @@ Phase 0 的 RetryPolicy 只允许以下自动重试：
 ```text
 transient / recoverable 且属于当前阶段 allowlist → 在同一阶段有限重试
 声明后的 fixable                                → 执行预算内一次带失败摘要的重新编码 Run
-blocked / 未知错误                              → Failed + manual_action_required=true
+blocked 且平台分类为 auto_probe                 → Failed + manual_action_required=false，有限探测后按计划恢复
+其他 blocked / 未知错误                         → Failed + manual_action_required=true
 ```
 
-Phase 0 每种阶段的自动重试总预算最多 2 次，单错误上限取 min(表中默认值, 2)；执行预算按
-Requirement + generation 汇总，准备预算独立按 Requirement + generation 汇总，验证预算按 batch 汇总，交接预算按 operation 汇总。
+Phase 0 执行/准备/验证/交接各阶段自动重试总预算最多 2 次，单错误上限取 min(表中默认值, 2)；执行预算按
+Requirement + generation 汇总，准备预算独立按 Requirement + generation 汇总，验证预算按 candidate + policy + stage 的恢复链汇总（batch 保存引用），交接预算按 candidate + branch
+的交接恢复链汇总（operation 保存引用）。
+8.1 的只读 blocker 探测默认最多 6 次，10.6 清理重试默认最多 3 次，各用独立计数；
+它们不属于这里的执行阶段 2 次预算，不据此增加编码或准备动作次数。创建新批次/重投操作不得重置同一失败链预算。
 不同错误交替出现不能重置预算，自动重试不能通过递增 generation 绕过限制。
 人工重新授权可以开启新轮次，但保留累计历史。退避使用指数增长和 jitter，429 优先遵守
 服务端重置时间；所有阶段还有明确 deadline。执行的有效工作时长、独立人工等待时限和
@@ -5752,8 +6197,8 @@ Phase 1+ 放宽基础设施重试次数必须显式配置；不能放宽 12.5 �
 ```text
 transient   临时失败，自动重试（指数退避 + jitter）
 recoverable 平台安全清理、停止后重启或对账重新投递，可在原阶段有限重试
-fixable     需要 Agent 修改代码，可生成 CiRecovery（受白名单与次数上限约束）
-blocked     需要人工介入，不自动重试
+fixable     需修改代码；先尝试白名单确定性修复，必要时交给 Agent，统一受 RepairAttempt 上限约束
+blocked     停止当前执行；按平台分类有限探测环境，或请求人工；不直接自动重试编码
 ```
 
 ### Git
@@ -5766,7 +6211,7 @@ blocked     需要人工介入，不自动重试
 | git_branch_conflict | blocked | 0 | 人工解决分支冲突 |
 | git_dirty_workspace | recoverable | 1 | 保存现场后重建；声明后发现脏工作区不得自动丢弃变更 |
 | git_push_failed | transient | 2 | 对账远端，仅重试固定 SHA 的交接步骤 |
-| git_push_rejected | blocked | 0 | 远端冲突/保护规则拒绝，人工处理，禁止自动 rebase |
+| git_push_rejected | recoverable | 0 | 禁止盲目重推；有限只读对账后按 14.4 决定幂等成功、授权内新修复或人工，保护规则拒绝不绕过 |
 | git_rebase_conflict | blocked | 0 | 人工解决冲突 |
 
 ### 环境准备（不启动模型）
@@ -5774,8 +6219,8 @@ blocked     需要人工介入，不自动重试
 | code | retry_class | max_retries | recovery_action |
 |---|---|---|---|
 | preparation_timeout | transient | 2 | 只重试固定准备步骤，遵守准备总预算与 deadline |
-| preparation_dependency_missing | blocked | 0 | 记录缺失输入；授权范围内预置完成后重新预检，否则待办 |
-| preparation_capability_mismatch | blocked | 0 | 记录所需/实际能力及工具身份，环境更新后重新预检 |
+| preparation_dependency_missing | blocked | 0 | 已授权固定输入可由平台预置并有限探测；需要扩大授权或探测耗尽才待办 |
+| preparation_capability_mismatch | blocked | 0 | 已批准工具预置流程可自动准备并重查；无法按既定流程解决则待办 |
 | preparation_permission_denied | blocked | 0 | 修复执行环境权限，不放宽沙箱、不调用模型绕过 |
 
 ### Harness-Gate
@@ -5810,14 +6255,14 @@ failure code；只有 test/lint/build 可有限反馈修复，config/secret/arch
 | agent_protocol_error | recoverable | 2 | 停止旧执行组后按声明状态恢复，不复用不确定会话 |
 | agent_process_lost | transient | 2 | 确认旧组静止；先核查 blocker/快照/恢复上下文，有声明只恢复平台步骤 |
 | agent_completion_not_reported | blocked | 0 | 未声明完成，保全工作快照；不能交接中间 commit |
-| agent_blocker_reported | blocked | 0 | 保存运行中阻塞、停止续轮、保全工作；核查解除证据后按原阶段恢复 |
+| agent_blocker_reported | blocked | 0 | 停止续轮、保全工作；按 8.1 auto_probe/manual 分类，解除后按阶段恢复 |
 | recovery_state_invalid | blocked | 0 | 必需快照/恢复记录缺失、损坏或身份不匹配；保留原目录，不从干净基线自动重跑 |
 | agent_approval_timeout | blocked | 0 | 请求过期，停止执行并转人工 |
 | agent_input_timeout | blocked | 0 | 人工输入过期，停止执行并转人工 |
 | agent_request_invalidated | blocked | 0 | 重启/失联后的旧请求失效，转人工，不复用审批 |
 | agent_run_lifetime_exceeded | blocked | 0 | 达到独立 Run 绝对寿命上限，停止执行组并转人工 |
 | agent_approval_denied | blocked | 0 | 人工决策或调整审批策略 |
-| network_domain_not_allowed | blocked | 0 | 未声明域名被代理拒绝；生成 network_scope_request 建议，不消耗修复预算 |
+| network_domain_not_allowed | blocked | 0 | 仅无法继续时终止并保全；需扩大范围则聚合一次 Contract 修订待办，不消耗修复预算 |
 | agent_max_turns_exceeded | blocked | 0 | 拆分 Requirement |
 | agent_repeated_failure | blocked | 0 | Phase 1：12.7.4 同输入确定性失败达到阈值；停止重复恢复，保留修复包与累计预算 |
 
@@ -5854,10 +6299,13 @@ Policy 可配置）约束，取两者中更严格的；Phase 0 只展示外部 C
 | runtime_request_conflict | 审批请求审计 | 返回冲突或失效状态，刷新待办，不重放决策 |
 | notification_delivery_failed | notification_deliveries | 通知自身有限重试、告警，不重启编码 |
 | github_sync_stale | GitHub 同步状态 | 限流退避，显示最后成功时间，不伪造 CI/PR 结果 |
-| host_disk_low | 控制面健康/调度原因 | 暂停新领取、人工清理；活动 Run 按 3.7 保全，无模型重试 |
+| host_disk_low | 控制面健康/调度原因 | 暂停领取，已授权 ResourceCleaner 回收并有限探测；持续不足才运维待办，活动工作按 3.7 保全 |
 | control_storage_unavailable | 控制面健康/恢复记录 | 停止新动作和活动写入组，保留原目录；恢复后先保全/对账，不能以无声明触发重跑 |
 | backup_failed | 备份记录/待办 | 保留上一份可用副本，提示人工处理 |
 | resource_cleanup_failed | cleanup_tasks / 运维待办 | 清理自身有限重试/人工修复；不新建 AgentRun，不更改业务完成事实 |
+| diagnostic_bundle_incomplete | diagnostic_bundles | 展示缺失证据与采集失败原因，保留已知事实；不使原 blocker 消失 |
+| diagnostic_unavailable / diagnostic_budget_exhausted | diagnostic_attempts / blocker 详情 | 固定诊断和具体下一步仍可用；不自动追加模型调用或扣代码修复预算 |
+| diagnostic_output_invalid | diagnosis_reports / 诊断审计 | 拒绝无证据结论与自造动作，退回固定诊断，不覆盖原失败码 |
 
 ### Business Logic
 
@@ -5876,5 +6324,5 @@ Policy 可配置）约束，取两者中更严格的；Phase 0 只展示外部 C
 退避和资源释放按本章阶段表及 6.3 执行；不能把交接等待套用成 Ready + 新 AgentRun。
 取消、输入替代和迟到消息属于授权/状态机处理，不通过通用错误处理器覆盖已有业务状态。
 
-未知 `failure_code` / `retry_class` 一律 fail-closed：MVP 记为
+未知 `failure_code` / `retry_class` 不允许 auto_probe，一律 fail-closed：MVP 记为
 `Failed + manual_action_required=true`；Phase 1+ 记为 `Blocked`。
