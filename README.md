@@ -8,6 +8,7 @@ Personal AI Software Factory 的设计规格与实施前验证。目标：**评�
 |---|---|
 | `Personal_AI_Software_Factory_综合方案.md` | 综合方案 V9.0。第 0 章是前提与分期，第 23 章是实施队列，第 24 章是 V1 交付门槛；其余章节是各子系统的规格 |
 | `docs/architecture-boundaries.md` | **规范性架构边界**：三个真相分离、Harness-Gate 仅作为 Validation Evidence、禁止状态坍缩与职责越界 |
+| `docs/symphony-harness-gate-retrospective-2026-09-13.md` | Symphony 开发 Harness-Gate 的运行复盘；减少模型调用的流程要求已纳入综合方案 12.7、实施队列与验收清单 |
 | `spikes/s1/` | Codex app-server `dynamicTools` 与 workspace-write 沙箱边界（Python，真实模型运行） |
 | `spikes/s2/` | GitHub App：installation token → 条件 push → PR → Checks → sha 守卫合并（Python） |
 | `spikes/s3/` | Cloudflare Access JWT 在 Axum 中的验证、Tunnel 源站隔离、会话撤销（Rust） |
