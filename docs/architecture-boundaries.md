@@ -64,6 +64,8 @@ Examples:
 
 - A Harness-Gate FAIL can cause CodexSymphony to schedule a remediation AgentRun, mark a Requirement blocked, or request human intervention according to policy, but the validation result itself does not mutate those lifecycle facts directly.
 - An AgentRun may complete successfully while producing code that fails validation.
+- A valid completion declaration, quiescent execution group and preserved candidate establish execution completion. A separate VerificationBatch records quality validation; its failure does not rewrite a terminal AgentRun.
+- A policy-authorized deterministic repair may produce a new candidate without an AgentRun. Its immutable provenance must reference the original candidate, repair attempt and policy authorization; it must not fabricate an agent completion declaration.
 - A PR may merge while a Requirement remains open because business acceptance or another required condition is still outstanding.
 - A Requirement may be approved before any AgentRun exists.
 
@@ -84,6 +86,8 @@ Requirement business truth
 Possible next actions include dispatching a new AgentRun, waiting for GitHub/CI, retrying an external action through the outbox, recording a blocker, requesting human intervention, merging when all independent preconditions are satisfied, or closing a Requirement according to its business acceptance policy.
 
 The orchestrator must preserve provenance for every decision so a later reconciliation can explain which facts and evidence caused an action.
+
+Within existing authorization, the orchestrator may resolve a machine-verifiable environment blocker through bounded probes and resume the recorded recovery stage. It must preserve work and cumulative budgets, and must not bypass pending human decisions, security revocation or a required permission expansion. Cleanup runs asynchronously with reference protection; cleanup failure does not change a completed Requirement or launch a coding agent.
 
 ## 5. Validation boundary
 
@@ -136,3 +140,9 @@ Any future implementation or schema change must be able to answer independently:
 - Which orchestration rule converted those independent facts into the next action?
 
 If one stored status makes any of those questions impossible to answer independently, the design has collapsed truth domains and must be rejected or redesigned.
+
+## 9. Blocker diagnosis is advisory evidence
+
+A DiagnosticAttempt is a read-only execution fact, not another business lifecycle or a code-repair attempt. DiagnosisReport preserves confirmed facts, hypotheses and missing evidence separately. Model-generated hypotheses cannot confirm a root cause, change retry policy, authorize an action or resolve a blocker. The platform validates references and maps suggestions to an approved action catalog; recovery still requires the original authorization and machine-verifiable conditions.
+
+Actionable blocker views derive from these records and the existing recovery plan. They must expose the specific next action and resume stage without requiring a separate agent conversation. Bounded diagnostics share model capacity with coding and preserve cumulative diagnostic budgets across restarts.
