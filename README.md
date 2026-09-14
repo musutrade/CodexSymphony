@@ -1,46 +1,31 @@
 # CodexSymphony
 
-Personal AI Software Factory 的设计规格与实施前验证。目标：**评审通过的需求在正常路径上零介入地变成已合并代码**——人只做需求评审和处理异常，Agent 编码，平台负责调度、验证、合并与交接。
+个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。长期目标是正常路径自动到合并与业务验收完成。
 
-## 仓库内容
+当前为 **设计规格 + spike 阶段，尚无平台主体代码**。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
 
-| 路径 | 内容 |
+## 从这里开始
+
+| 文档 | 效力 |
 |---|---|
-| `Personal_AI_Software_Factory_综合方案.md` | 综合方案 V9.0。第 0 章是前提与分期，第 23 章是实施队列，第 24 章是 V1 交付门槛；其余章节是各子系统的规格 |
-| `docs/architecture-boundaries.md` | **规范性架构边界**：三个真相分离、Harness-Gate 仅作为 Validation Evidence、禁止状态坍缩与职责越界 |
-| `docs/symphony-harness-gate-retrospective-2026-09-13.md` | Symphony 开发 Harness-Gate 的运行复盘；减少模型调用的流程要求已纳入综合方案 12.7、实施队列与验收清单 |
-| `spikes/s1/` | Codex app-server `dynamicTools` 与 workspace-write 沙箱边界（Python，真实模型运行） |
-| `spikes/s2/` | GitHub App：installation token → 条件 push → PR → Checks → sha 守卫合并（Python） |
-| `spikes/s3/` | Cloudflare Access JWT 在 Axum 中的验证、Tunnel 源站隔离、会话撤销（Rust） |
+| [综合方案 V10](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
+| [架构边界](docs/architecture-boundaries.md) | 三个真相分离，Harness-Gate 只提供验证证据 |
+| [演进目录](docs/roadmap-specs/README.md) | 后期候选及启用条件，不构成当前开发/验收要求 |
+| [本次范围收缩记录](docs/scope-reduction-2026-09-14.md) | 变更理由与迁移映射，不另定义行为 |
+| [运行复盘](docs/symphony-harness-gate-retrospective-2026-09-13.md) | 历史事故依据，不覆盖当前规格 |
 
-每个 spike 目录的 `README.md` 有结论表、对方案的修正、复现步骤和未验证项；结论已回写到方案 23.S 与对应章节。
+## 当前选择
 
-## 方案要点
+- 一个 Rust 控制面 + PostgreSQL + 最小 Angular Web，60 秒只读 GitHub 轮询。
+- GitHub App；Agent 只通过受控工具提交/声明，平台经持久化 outbox 发布。
+- 严格全局顺序覆盖编码、验证、交接、CI 等待和阻塞；具体释放条件见综合方案第 6 章。
+- 部署期强制静态网络白名单；需求联网声明只是评审意图，不承诺逐任务网络隔离。
+- 保留启动恢复闸门、工作保全、精确验证身份、一次代码修复、累计预算和磁盘保护。
+- 手机、执行隔离、Harness-Gate 接入及自动合并随后分期；通用租约/诊断/资源/缓存框架按实际需要评估。
 
-- **一个人工决策点**：`POST /ready` = 评审通过。评审通过的标准是每条验收标准都可机器验证。
-- **人工介入只是异常中断**：Agent 提问、确需扩大授权、安全门禁失败、自动恢复/修复预算耗尽及无法自动处理的运维异常。已授权环境恢复由平台接续，输入修订一次授权后自动保全和恢复。待办箱为空是正常状态。
-- **三个真相分离**：Requirement 状态是业务真相，AgentRun 是执行事实，GitHub / CI 是外部观察事实。
-- **Harness-Gate Result = Validation Evidence，不是第四个状态源**：Harness-Gate 可对精确 source/config/evidence identity 给出权威门禁判定，但 CodexSymphony 只把它作为编排证据消费；它不得直接把 Requirement 置为 Done，也不得把 AgentRun 改写为失败。完整规则见 [`docs/architecture-boundaries.md`](docs/architecture-boundaries.md)。
-- **Agent 不碰 Git 远端**：只在 worktree 内改文件，通过受控工具 `create_local_commit` / `report_completion` 请求提交与声明完成；push、PR、合并由平台经 outbox 幂等执行。
-- **分期**：0a 本机闭环（需求 → PR）→ 0b 手机可用 → 0c 加固 → Phase 1 自动合并与自动 Done → Phase 2 描述生成 Contract、多仓。
+## 已有实验
 
-## 已由 spike 确定的硬约束
+[S1](spikes/s1/README.md)验证动态工具与工作区写边界；[S2](spikes/s2/README.md)及[补测](spikes/s2/README_S2b.md)验证 App、PR、Checks 与 SHA 守卫；[S3](spikes/s3/README.md)验证 Access；[S4](spikes/s4/README.md)验证 Gate 配置身份；[S5](spikes/s5/README.md)验证全局网络配置。
+实验结论绑定当时版本，不替代当前部署和实现验收。尤其 workspace-write 不限制同 UID 读取，0a 只接管本人可信仓库。
 
-- 每个 Run 单独启动一个 `codex app-server`，进程 cwd = 该 Run 的 worktree；否则 `.git` 不受沙箱保护。
-- workspace-write 沙箱不限制读：0a 只接管自己可信的仓库，0c 的独立 UID executor 是接管其他代码的前提。
-- GitHub App 最小权限 `contents: write` + `pull_requests: write` + `metadata: read`。
-- Access JWT：`owner_id` 绑 `sub`；撤销只在边缘生效，源站必须只能经 Tunnel 到达。
-- `jsonwebtoken 11` 必须开 `rust_crypto` feature。
-
-## 状态
-
-设计规格 + spike 阶段，尚无平台代码。S1～S5 及 S2 补测已有结论，S6 已完成外部方案复评；未覆盖项见各 spike 记录。下一步按综合方案第 23～24 章实施 Phase 0a。
-
-方案已统一最少人工介入规则：执行与验证分离、平台确定性产物来源、根 RepairAttempt 预算、环境 blocker 有限探测与自动恢复、引用保护的异步清理及聚合运维待办。
-
-## 参考
-
-- [OpenAI Symphony](https://github.com/openai/symphony) — 执行内核的设计来源
-- [Harness-Gate](https://github.com/musutrade/Harness-Gate) — 本项目的确定性质量门禁
-
-阻塞处理须在原任务详情内说明原因确认程度、已保存进度、系统已尝试动作、用户具体下一步、解除判据与恢复位置。固定诊断及可操作卡片从 0a 必需；只读隔离验收后的平台内诊断 Agent 使用独立有限预算，详见综合方案 3.8、8.7、18.4。
+参考：[OpenAI Symphony](https://github.com/openai/symphony)、[Harness-Gate](https://github.com/musutrade/Harness-Gate)。

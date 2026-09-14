@@ -1,5 +1,7 @@
 # S2 补测 — 真实 workflow 的 check-run 名称与 mergeable_state 序列
 
+> 历史实验记录：结论仅适用于文中版本；“对方案的修正”和旧章节编号指 V9。当前实施以[综合方案 V10](../../Personal_AI_Software_Factory_综合方案.md)为准，旧建议不构成当前交付要求。原始实验与未验证项保留用于追溯。
+
 日期：2026-09-10　　仓库 `musutrade/disposable`（含 `.github/workflows/ci.yml`：job 名 `test-job`，
 ruleset 要求该 check 通过才能合入 `main`）
 补充 `spikes/s2/README.md`；结论已写回综合方案 23.S、11.5、17.5。

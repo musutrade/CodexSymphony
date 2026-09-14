@@ -1,5 +1,7 @@
 # S1 spike — Codex app-server dynamicTools 与 workspace-write 沙箱边界
 
+> 历史实验记录：结论仅适用于文中版本；“对方案的修正”和旧章节编号指 V9。当前实施以[综合方案 V10](../../Personal_AI_Software_Factory_综合方案.md)为准，旧建议不构成当前交付要求。原始实验与未验证项保留用于追溯。
+
 日期：2026-09-07　　codex-cli 0.153.4　　Linux 7.0 / landlock　　结论已写回综合方案 23.S、8.1、8.3、17.3
 
 ## 结论

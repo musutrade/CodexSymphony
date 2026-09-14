@@ -1,148 +1,61 @@
 # CodexSymphony Architecture Boundaries
 
-Status: **Normative architecture policy**
+Status: **Normative responsibility boundaries** · 2026-09-14
 
-This document defines durable responsibility boundaries for CodexSymphony. Requirement lifecycle, execution lifecycle, external repository state, and validation evidence must not collapse into one state machine.
+This document defines responsibility, not implementation scope. Current behavior and acceptance live in the [main specification](../Personal_AI_Software_Factory_综合方案.md). Deferred framework designs have no current normative force.
 
-## 1. Three truth sources
+## 1. Three truth domains
 
-CodexSymphony has exactly three state-bearing truth domains:
+| Domain | Owns |
+|---|---|
+| Requirement | Reviewed input, business lifecycle and acceptance |
+| AgentRun | Execution attempts, processes, completion declarations and consumption |
+| GitHub / CI observations | Observed repository, PR, check and merge facts |
 
-1. **Requirement = business truth**
-   - What should be delivered.
-   - Acceptance criteria, review readiness, business lifecycle, blocked/done decisions.
-   - A Requirement is not completed merely because an AgentRun ended, a PR merged, or a validator returned PASS.
+Keep these independently queryable and reconcilable. A single coordinator does not imply a single status for all domains.
 
-2. **AgentRun = execution fact**
-   - What an agent actually attempted and produced.
-   - Run lifecycle, worktree, tool calls, completion request, failure/interruption/budget state.
-   - AgentRun records execution facts; it does not redefine Requirement business truth or GitHub state.
+## 2. Gate result is validation evidence
 
-3. **GitHub / CI = external observation fact**
-   - Commit, branch, PR, check-run, workflow, merge and repository observations owned by GitHub/CI.
-   - CodexSymphony observes these facts and reconciles them; it must not invent them from local AgentRun state.
+Harness-Gate may authoritatively evaluate its configured policy for an exact source/config/evidence identity.
+CodexSymphony consumes that result as evidence, not a fourth lifecycle or a substitute for business acceptance.
+Evidence preserves source identity, trusted configuration identity, result and artifact references; current storage and validation behavior are defined in the main specification.
 
-These truth domains may reference one another but must remain independently reconcilable.
+## 3. Forbidden inference
 
-## 2. Harness-Gate result is evidence, not a fourth truth source
+The following facts alone do not justify the corresponding state change:
 
-**Harness-Gate Result = Validation Evidence.**
+- Gate PASS → Requirement Done.
+- Gate FAIL → a terminal AgentRun rewritten as Failed.
+- AgentRun Succeeded → PR merged.
+- PR merged → business acceptance completed.
+- Local commit exists → remote branch or PR exists.
+- A previous SHA passed → the current SHA passed.
 
-Harness-Gate may authoritatively decide whether a specific source/config/evidence identity satisfies its configured quality and validation policy, but that decision is evidence consumed by CodexSymphony orchestration. It is not a CodexSymphony lifecycle state source.
+A valid agent completion and preserved candidate can end execution successfully while independent validation fails.
+The orchestrator records which policy and observed evidence justify each next action.
+Queue release is an orchestration decision; observing a merge for queue release does not fabricate business Done.
 
-A Harness-Gate result should be treated as an immutable or identity-bound observation with fields conceptually equivalent to:
+## 4. Division of responsibility
 
-```text
-validation_id
-source_identity
-config_identity
-status
-blockers
-report/evidence/artifact references
-producer/tool identity
-observed_at
-```
+CodexSymphony owns scheduling, execution supervision, authorization, recovery budgets, external action reconciliation and business decisions.
+Harness-Gate owns quality semantics, including CRAP, coverage, baseline/ratchet/debt and collector trust. CodexSymphony does not reimplement them.
+Project-specific API, integration, E2E and other tests remain owned by the project. Generic validation hooks do not replace project test frameworks.
+Platform credentials and remote actions remain outside the agent's delegated tools; actual isolation limits are explicit in the main specification.
 
-CodexSymphony must not model `HarnessGateStatus` as a peer lifecycle replacing Requirement, AgentRun, or GitHub/CI truth.
+## 5. No framework implied
 
-## 3. Forbidden state collapse
+These boundaries do not require separate services, a table per conceptual record, event sourcing, dual leases, diagnostic agents or a resource platform.
+Implement the minimum current behavior while preserving independent facts and exact provenance.
+Future model diagnosis remains advisory: a hypothesis is not a confirmed cause, authorization or permission to change a budget.
 
-The following shortcuts are architecture violations:
+## 6. Review questions
 
-```text
-Harness-Gate PASS -> Requirement = done
-Harness-Gate FAIL -> AgentRun = failed
-AgentRun completed -> PR = merged
-PR merged -> Requirement = done
-local commit exists -> GitHub branch/PR exists
-CI expected green -> GitHub check = success
-```
+An implementation should independently answer:
 
-Each transition must be justified by the domain that owns that fact and by orchestration policy.
+- What was required and authorized?
+- What did the agent execute and preserve?
+- What did GitHub/CI actually report?
+- Which exact source/configuration did validation cover?
+- Which orchestration rule authorized the next action?
 
-Examples:
-
-- A Harness-Gate FAIL can cause CodexSymphony to schedule a remediation AgentRun, mark a Requirement blocked, or request human intervention according to policy, but the validation result itself does not mutate those lifecycle facts directly.
-- An AgentRun may complete successfully while producing code that fails validation.
-- A valid completion declaration, quiescent execution group and preserved candidate establish execution completion. A separate VerificationBatch records quality validation; its failure does not rewrite a terminal AgentRun.
-- A policy-authorized deterministic repair may produce a new candidate without an AgentRun. Its immutable provenance must reference the original candidate, repair attempt and policy authorization; it must not fabricate an agent completion declaration.
-- A PR may merge while a Requirement remains open because business acceptance or another required condition is still outstanding.
-- A Requirement may be approved before any AgentRun exists.
-
-## 4. Orchestrator responsibility
-
-CodexSymphony owns **orchestration and reconciliation**, not validation semantics.
-
-The orchestrator consumes:
-
-```text
-Requirement business truth
-+ AgentRun execution facts
-+ GitHub/CI external observations
-+ Harness-Gate validation evidence
-= next permitted action
-```
-
-Possible next actions include dispatching a new AgentRun, waiting for GitHub/CI, retrying an external action through the outbox, recording a blocker, requesting human intervention, merging when all independent preconditions are satisfied, or closing a Requirement according to its business acceptance policy.
-
-The orchestrator must preserve provenance for every decision so a later reconciliation can explain which facts and evidence caused an action.
-
-Within existing authorization, the orchestrator may resolve a machine-verifiable environment blocker through bounded probes and resume the recorded recovery stage. It must preserve work and cumulative budgets, and must not bypass pending human decisions, security revocation or a required permission expansion. Cleanup runs asynchronously with reference protection; cleanup failure does not change a completed Requirement or launch a coding agent.
-
-## 5. Validation boundary
-
-CodexSymphony must not reimplement Harness-Gate quality semantics such as CRAP, coverage thresholds, baseline/ratchet/debt, collector trust, capability support, or aggregate quality decisions.
-
-Likewise, Harness-Gate must not become the owner of CodexSymphony Requirement lifecycle, AgentRun lifecycle, retry budgets, scheduling, PR orchestration, or human-intervention state.
-
-The integration boundary is therefore:
-
-```text
-CodexSymphony                         Harness-Gate
-----------------                    ----------------
-requirement lifecycle                validation policy
-agent scheduling/run lifecycle       command/collector orchestration
-GitHub reconciliation                evidence validation
-retry/outbox/human intervention      quality/baseline/ratchet decision
-next-action selection        <-----  identity-bound validation result
-```
-
-## 6. Project-owned validation
-
-Application-specific tests remain owned by the application repository. CodexSymphony may request or observe Harness-Gate execution, but neither CodexSymphony nor Harness-Gate should reimplement project-specific API/E2E/integration/smoke/load/migration test frameworks.
-
-Harness-Gate exposes generic command hooks, structured-result ingestion, and quality-collector boundaries. CodexSymphony consumes the resulting validation evidence and decides workflow actions.
-
-## 7. Persistence guidance
-
-Persistence should preserve separation rather than denormalize all states into one enum.
-
-Recommended conceptual records:
-
-```text
-Requirement
-AgentRun
-GitHubObservation / CIObservation
-ValidationEvidence
-OrchestrationDecision / OutboxAction
-```
-
-`ValidationEvidence` references the relevant Requirement/Run/repository/commit where useful, but remains evidence with source/config identity. It is not authoritative for Requirement or AgentRun status.
-
-## 8. Acceptance invariant
-
-Any future implementation or schema change must be able to answer independently:
-
-- What does the business currently require?
-- What did the agent actually do?
-- What does GitHub/CI actually report?
-- What did Harness-Gate validate for this exact source/config identity?
-- Which orchestration rule converted those independent facts into the next action?
-
-If one stored status makes any of those questions impossible to answer independently, the design has collapsed truth domains and must be rejected or redesigned.
-
-## 9. Blocker diagnosis is advisory evidence
-
-A DiagnosticAttempt is a read-only execution fact, not another business lifecycle or a code-repair attempt. DiagnosisReport preserves confirmed facts, hypotheses and missing evidence separately. Model-generated hypotheses cannot confirm a root cause, change retry policy, authorize an action or resolve a blocker. The platform validates references and maps suggestions to an approved action catalog; recovery still requires the original authorization and machine-verifiable conditions.
-
-Actionable blocker views derive from these records and the existing recovery plan. They must expose the specific next action and resume stage without requiring a separate agent conversation. Bounded diagnostics share model capacity with coding and preserve cumulative diagnostic budgets across restarts.
+Behavioral rules have one authoritative definition in the main specification; this file does not repeat their state machines or transaction algorithms.
