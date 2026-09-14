@@ -1,5 +1,7 @@
 # S3 spike — Cloudflare Access JWT 在 Axum 中的验证、Tunnel 源站隔离、会话撤销
 
+> 历史实验记录：结论仅适用于文中版本；“对方案的修正”和旧章节编号指 V9。当前实施以[综合方案 V10](../../Personal_AI_Software_Factory_综合方案.md)为准，旧建议不构成当前交付要求。原始实验与未验证项保留用于追溯。
+
 日期：2026-09-09　　Rust 1.97 / axum 0.8 / jsonwebtoken 11 / reqwest 0.12(rustls)
 team `higoalzm.cloudflareaccess.com`　　hostname `factory.aglmud.org`　　既有 tunnel（用户级 systemd `cloudflared-codex-gate`）
 结论已写回综合方案 23.S、17.4、21.4。

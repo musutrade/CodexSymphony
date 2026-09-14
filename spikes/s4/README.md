@@ -1,5 +1,7 @@
 # S4 spike — Harness-Gate 在本项目上的接入可行性、耗时与拦截能力
 
+> 历史实验记录：结论仅适用于文中版本；“对方案的修正”和旧章节编号指 V9。当前实施以[综合方案 V10](../../Personal_AI_Software_Factory_综合方案.md)为准，旧建议不构成当前交付要求。原始实验与未验证项保留用于追溯。
+
 日期：2026-09-10　　harness-gate **0.3.7**（从 `~/Harness-Gate/tools/harness-gate` 源码构建，工作区版本 0.3.7）
 结论已写回综合方案 23.S、12.6。注意：本机 `cargo install` 装的 `~/.cargo/bin/harness-gate` 是 **0.1.0**，
 与源码仓库的 0.3.7 不是同一版本，spike 用的一律是源码构建产物。

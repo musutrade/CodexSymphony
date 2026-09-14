@@ -1,5 +1,7 @@
 # S2 spike — GitHub App 交接路径：installation token → 条件 push → PR → Checks → 合并
 
+> 历史实验记录：结论仅适用于文中版本；“对方案的修正”和旧章节编号指 V9。当前实施以[综合方案 V10](../../Personal_AI_Software_Factory_综合方案.md)为准，旧建议不构成当前交付要求。原始实验与未验证项保留用于追溯。
+
 日期：2026-09-08　　App `my-disposable-bot`（org `musutrade`）　　仓库 `musutrade/disposable`（public）
 结论已写回综合方案 23.S、11.1、14.4、17.5。原始输出见 `findings_s2.json`（token 已脱敏）。
 
