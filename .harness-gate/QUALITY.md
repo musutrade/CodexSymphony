@@ -15,8 +15,9 @@ python3 tools/gate.py verify --profile ci --all
 
 入口同时检查两个程序的实际版本和已验证发布二进制 SHA-256；目前支持 Linux amd64。
 默认使用 PATH，本机已安装锁定版本。其他平台必须先审定并增加对应发布摘要。
-GitHub Actions 的 `.github/workflows/quality.yml` 使用同一入口，job 名为 `Harness-Gate`，
-Symphony 已将此名称列为必需检查。工作流尚未推送运行，远端保护规则尚未修改。
+GitHub Actions 的 job 名为 `Harness-Gate`，等待独立 App 宿主对精确提交运行同一门禁入口。
+main 同时要求该检查（App 15368）和 `Trusted Harness-Gate`（App 4867361），
+启用 strict 更新、管理员强制、禁止 force push 和删除。真实远端接入见 `docs/remote-gate.md`。
 
 - 后端：根 Cargo workspace，源码 `apps/`、`crates/`；format、Clippy、compile、tests。
 - 前端：`web/angular/`；lint、tests、build。Angular / Material 骨架及接口已建立。
@@ -63,9 +64,11 @@ Core 0.4.5 的完整 verify 未配置持久化 replay state，已提交
   本机与 CI 使用 `tools/install_gate_plugins.py` 安装，旧版本保留。它们仍是候选发行，
   不冒充 Harness-Gate 上游正式签名发布。
 
-剩余的是远端交付启用：GitHub Actions 的真实运行及受信输入供给、必需检查和策略保护，
-以及 Symphony 独立服务、真实沙箱与一次 Issue→PR→CI→交接验收。
-现有 GitHub hosted 工作流已加入候选插件安装，但尚未连接本机宿主，不能声称远端 CI PASS。
+远端受信输入和真实 CI 已接通：准备 PR #26 的 head 与合并后的 main 均完整通过，
+每次重新采集 3 个 producer、20 条 evidence。宿主程序和批准文件不由 Actions 或 PR 自行生成。
+Symphony 使用独立服务、台账、工作区与 Codex 文件系统命名空间；环境验收为 #27 / PR #28。
+实际状态和原始记录以 `docs/quality/remote-environment/` 为准。
+已有 0a #12–#25 均为 symphony-ready；安装器额外要求环境验收标签，业务队列需另行放行。
 不得在不可信 PR job 中自动 bootstrap 策略、放入签名私钥或自批新的测量系列。
 
 原 MIR collector 的独立 ratchet 路径未启用，本项目继续使用 Core 完整配置；

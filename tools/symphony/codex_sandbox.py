@@ -17,7 +17,7 @@ def command(argv):
     cargo=cwd/'.agent-cargo';cargo.mkdir(exist_ok=True)
     temporary=cwd/'.agent-tmp';temporary.mkdir(exist_ok=True)
     auth=BASE/'codex-home'
-    args=['/usr/bin/bwrap','--die-with-parent','--new-session','--unshare-user','--unshare-pid',
+    args=['/usr/local/libexec/codexsymphony/bwrap','--die-with-parent','--new-session','--unshare-user','--unshare-pid',
           '--ro-bind','/usr','/usr','--ro-bind','/etc','/etc',
           '--symlink','usr/bin','/bin','--symlink','usr/lib','/lib','--symlink','usr/lib64','/lib64',
           '--proc','/proc','--dev','/dev','--tmpfs','/run',
@@ -33,7 +33,7 @@ def command(argv):
           '--ro-bind',str(HOME/'.local/share/harness-gate'),str(HOME/'.local/share/harness-gate')]
     env={'HOME':str(HOME),'CODEX_HOME':str(auth),'CARGO_HOME':str(HOME/'.cargo'),
          'RUSTUP_HOME':str(HOME/'.rustup'),'CARGO_TARGET_DIR':str(cwd/'target'),
-         'PATH':'/opt/codex:/home/gem/.cargo/bin:/home/gem/.local/share/harness-gate/versions/v0.4.5/bin:/home/gem/.local/share/harness-gate/versions/rust-collector-v0.1.0-rc.6/bin:/usr/local/bin:/usr/bin:/bin',
+         'PATH':'/opt/codex:/home/gem/.local/share/harness-gate/versions/v0.4.5/bin:/home/gem/.local/share/harness-gate/versions/rust-collector-v0.1.0-rc.6/bin:/home/gem/.cargo/bin:/usr/local/bin:/usr/bin:/bin',
          'LANG':'C.UTF-8','TZ':'UTC','NO_COLOR':'1','HTTP_PROXY':'http://127.0.0.1:7890',
          'HTTPS_PROXY':'http://127.0.0.1:7890','NO_PROXY':'127.0.0.1,localhost,::1'}
     args+=['--clearenv']

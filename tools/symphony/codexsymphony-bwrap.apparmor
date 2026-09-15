@@ -1,0 +1,7 @@
+# Dedicated outer launcher for CodexSymphony only. The inner Codex sandbox
+# retains the system /usr/bin/bwrap profile. No system-wide profile is changed.
+abi <abi/5.0>,
+include <tunables/global>
+profile codexsymphony-bwrap /usr/local/libexec/codexsymphony/bwrap flags=(unconfined) {
+  userns,
+}
