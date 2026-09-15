@@ -23,10 +23,16 @@ Node 包使用锁定依赖并禁用安装脚本；Rust 源码插件使用独立�
 
 三个候选安装包及摘要已随 [CodexSymphony PR #26](https://github.com/musutrade/CodexSymphony/pull/26)
 合并，可从本仓库 `tools/gate-plugins/packages/` 获取。
-上述源码工作树均属于 `musutrade/Harness-Gate`；对应的 `feat/rust-source-risk`、
-`feat/typescript-crap`、`feat/api-contract` 分支及表中三个提交在本次查询时均未出现在
-GitHub，也没有对应 PR。它们已有本地 Git 提交，但尚未推送或合并上游。
-安装包已保存不代表源码开发分支已交付，也不代表正式签名发行已发布。
+上述源码工作树均属于 `musutrade/Harness-Gate`，现已保留原提交推送至对应分支：
+
+| 源码分支 | 上游 PR | 本次复测 |
+| --- | --- | --- |
+| `feat/rust-source-risk` | [#270](https://github.com/musutrade/Harness-Gate/pull/270) | 5 项 AST、12 项测量/协议测试通过 |
+| `feat/typescript-crap` | [#271](https://github.com/musutrade/Harness-Gate/pull/271) | 16 项单元、4 项 Core 0.4.5 集成测试通过 |
+| `feat/api-contract` | [#272](https://github.com/musutrade/Harness-Gate/pull/272) | 9 项合约测试通过 |
+
+已回读确认三个 PR 的 head 与表中源码提交一致；记录时 PR 均开放、上游 CI 运行中。
+源码已推送，不代表已合并或正式签名发行已发布。消费者继续使用当前已审查的候选包摘要。
 
 完整运行通过仓库外宿主入口：
 `~/.local/share/codexsymphony/gate-host/run --repository ~/CodexSymphony`。
