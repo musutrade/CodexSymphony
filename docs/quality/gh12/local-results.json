@@ -1,0 +1,118 @@
+{
+  "baseline_sha": "fee94e5e6f7fa9af0c952597fc649e7833f54ba5",
+  "source_identity": "Uncommitted validated input hashes below; published source identity is the PR head, read back by the host API and recorded in .symphony-handoff.json. Baseline SHA is not the new implementation SHA.",
+  "source_sha256": {
+    ".env.example": "ab2c4bf07f5189252fc338f178d5e31ab53a22ceeca548e30c89900d2cb6a8b6",
+    ".node-version": "55075b5ec4e8b31936cbbc282b8829116d1fd48f2f2f1856dee592a6650700ce",
+    "Cargo.lock": "1f63edeb206e160f0e42d32920455aafd672f4fa25a2396593714fa7aa3e7b32",
+    "Cargo.toml": "b61af0338b601821d910f1aea2b2c69ee0d758184a4910d57d4e6082a8dfe9ac",
+    "apps/server/Cargo.toml": "f75a7db6419c22b1d90c486d8243bee0553fbed2ffdc08f9a704ca0ff31acb29",
+    "apps/server/src/config.rs": "508a052dc87b767703f7122e4d6d851970917bb8c5f736f9aec41c37e0410cb5",
+    "apps/server/src/lib.rs": "39461f19945d74d1a059effd6eb84b4183071c5e96e7a5de39c420ede220ea6a",
+    "apps/server/src/main.rs": "0173e8974b589366ad1c13c42f914b0ed4ed711d19a52cc9f1d97b9505c4a2ed",
+    "apps/server/src/security.rs": "63d0ef6830877b64fee9a35904fd6063df1fbe74b62f7ce22384f0faff723ee7",
+    "apps/server/tests/health.rs": "68f72e22b9a1c0458627871cded4b0391e43697e58cdc66589a4b0adb7ff5017",
+    "apps/server/tests/startup.rs": "4db80ce648ecd3b94dd99a01e434f1f3538f21b5d53d820e8a9f426abeaff1d9",
+    "apps/server/tests/support/security.rs": "eb0f81c377edd832bb17200380aabb0d890f01a1c9329e87f6b59116dd30182a",
+    "docker-compose.dev.yml": "a38e9fecd10b10ca90934b641a3624a9422a062675ec68dbea6580ba56a873e6",
+    "docker-compose.yml": "99dc63691722564f581b085108e70a655917b22048fe2d04599b2524484c6c3b",
+    "rust-toolchain.toml": "8e390d6a0838315f972690f46ef8bae8b7ecc9ee6c1ed70140ef852869c2482e",
+    "web/angular/e2e/health.spec.ts": "fa3d29f6ff74945853b5f5bccb7aa339f5d755e8c1bcaaa7230a11806b43463d",
+    "web/angular/package-lock.json": "f1f50f4bb241233ca30e24bdb19363fddf063c68c325b1a9a382e2834fa462a9",
+    "web/angular/package.json": "ba3079b2204ec6306e3948319e9047fed222a693b2bdfad88b019fd527629c2b",
+    "web/angular/proxy.conf.json": "82d469d15767879c247a2685a4fcb3c6498d1e2cf58cd10389361d74bf921250",
+    "web/angular/src/app/app.config.ts": "3a695c5453a1b4e5c6fd320447cc74acfbaffe02326fbe8be0689188cd0d5835",
+    "web/angular/src/app/app.html": "5d56d0a5049e5c86763491c0e7487824f2b37256ab1bb654032aa26568a6494d",
+    "web/angular/src/app/app.routes.ts": "e2ef74b4c1f7f52a30a417c6808f01b2a29e69bb0d20302527ae5001607f7180",
+    "web/angular/src/app/app.scss": "1b3ef5d93fef01d4889db63ddeb2e8b986cf24bbeee1a2173500bf7070141972",
+    "web/angular/src/app/app.spec.ts": "38dd674add5110ee3d6e6abd8d2e9d732b3b1d7f256113b81ccc75aee1247cac",
+    "web/angular/src/app/app.ts": "955cef9b3bcea98ae049f5c8afde0d9fc83a9e9ff037023d014457992b0004fd",
+    "web/angular/src/app/health-response.ts": "f114401c0df9f4a31e97b725f4fadf8d48e8bc48f917f4062fda224eabde370c",
+    "web/angular/src/app/health.spec.ts": "e5ffec090e97633095e55979dd17d5694304399d06c178d4089953d5c5cdff2b",
+    "web/angular/src/app/health.ts": "6a6b3a3f2732f995352c6e8d7c3d7e6de75601fd54ee1c13c846f30a7ab2def2",
+    "web/angular/src/index.html": "003f591522430bbc4b0ef447ad8798876b154484dd27ef696f426c129fc7cd10",
+    "web/angular/src/main.spec.ts": "ad1aa34fb49029d40a9cfbace06e3219ab8ce817cf0d2176c3c9107915e395c4",
+    "web/angular/src/main.ts": "2341253f1a947c37dfa27838951cf7e224f7abb32dff45a8d425f042b5eeed13",
+    "web/angular/src/styles.scss": "532124b56583301faa1eeaf1220af5098267240cf354567b08297fa5421ff61e",
+    "web/angular/src/styles/_tokens.scss": "370defe3413c91bedae7cd77e634a1d8d9c851efb8ba89c495318ab2d41e81a4"
+  },
+  "toolchain": {
+    "rust": "1.97.1",
+    "node": "24.18.0",
+    "npm": "11.16.0"
+  },
+  "checks": {
+    "cargo_fmt": "PASS",
+    "cargo_test_workspace_locked": "PASS (10 integration tests)",
+    "cargo_clippy_workspace_all_targets_locked": "PASS",
+    "frontend_lint": "PASS",
+    "frontend_unit": "PASS (6 tests)",
+    "frontend_production_build": "PASS",
+    "playwright": "PASS (6 tests, Desktop Chrome + Pixel 7, axe WCAG AA)",
+    "config_check": "PASS",
+    "secret_scan": "PASS",
+    "architecture_audit": "PASS"
+  },
+  "rust_unsigned_measurement": {
+    "subjects": 24,
+    "max_crap": "19854/2197",
+    "minimum_function_coverage": "1/1",
+    "minimum_line_coverage": "12/13",
+    "minimum_region_coverage": "30/37",
+    "series": "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e",
+    "artifact": "target/gh12-rust-capture-v4/bundle.json",
+    "metrics": "target/gh12-rust-metrics-final.json"
+  },
+  "clean_frontend_build": {
+    "result": "PASS",
+    "source_export": "target/gh12-clean",
+    "dependency_install": "npm ci --offline --no-audit --no-fund",
+    "source_access": "Node permission model rejects reading /home/gem/arc-admin/frontend/src/styles/_tokens.scss; no arc-admin read permission granted",
+    "output": "/tmp/gh12-clean-build-output",
+    "css_sha256": "0f5a5c49f964866c19b05d95c4676c9d85addc4177684f7f0a67a7b557ae4058",
+    "limit": "Build dependency independence check, not a security isolation claim for native addons or child processes."
+  },
+  "startup": {
+    "configuration_example_sha256": "ab2c4bf07f5189252fc338f178d5e31ab53a22ceeca548e30c89900d2cb6a8b6",
+    "binary_sha256": "729ce6c2c3ed8c10240500b0877c0b7193f8b0d481f1d10c8d96d8aef4cef61c",
+    "startup": "PASS",
+    "database": "dedicated synthetic dev fixture",
+    "health_200": "PASS",
+    "sigint": "PASS",
+    "limit": "Only fixture password and sslmode URL query substituted; example role, DB, address, ports and WEB_ORIGIN used. No business data written."
+  },
+  "persistence": {
+    "compose_structure": "PASS",
+    "files": {
+      "docker-compose.yml": "99dc63691722564f581b085108e70a655917b22048fe2d04599b2524484c6c3b",
+      "docker-compose.dev.yml": "a38e9fecd10b10ca90934b641a3624a9422a062675ec68dbea6580ba56a873e6",
+      ".env.example": "ab2c4bf07f5189252fc338f178d5e31ab53a22ceeca548e30c89900d2cb6a8b6"
+    },
+    "fixtures": {
+      "dev": {
+        "ok": true,
+        "role": "dev",
+        "before_id": "8064728a6eb590263862a6c2833b1fdc0e805fbab4b37b3eba760eb3903c2a19",
+        "container_id": "dcae3d42b4bf2ea1779e01fe2fa7dd6cd0c4d15abfb54d3e09265f2f38d6a838",
+        "running": true,
+        "image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+        "storage": "named-volume",
+        "retained_row": "PASS",
+        "cross_database_isolation": "PASS"
+      },
+      "test": {
+        "ok": true,
+        "role": "test",
+        "before_id": "edf6c66319fbc3dab478850bcda474ed1506c4e907a64ed4e0755bd3122eb9c4",
+        "container_id": "eca479670f63c019c3ac04803c5dcc80d8590d500a8f9477e0faa7e7df11e715",
+        "running": true,
+        "image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777",
+        "storage": "tmpfs",
+        "discarded_row": "PASS",
+        "cross_database_isolation": "PASS"
+      }
+    },
+    "limit": "Compose is rendered and checked against the fixed fixture storage, database roles and ports. The host broker owns container names/network/passwords; workspace Docker did not create these containers. No real user database or disaster recovery was tested."
+  },
+  "trusted_quality": "PENDING: no ci-state.json/signing key in Agent workspace; controller must collect and accept the exact published commit with both protected checks."
+}

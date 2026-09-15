@@ -1,0 +1,20 @@
+# Independent of docker-compose.yml, whose test database is disposable tmpfs.
+name: codexsymphony-persistent-dev
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: codexsymphony_dev
+      POSTGRES_PASSWORD: ${DEV_POSTGRES_PASSWORD:?Copy .env.example to .env and set the local development password}
+      POSTGRES_DB: codexsymphony_dev
+    ports:
+      - '127.0.0.1:54330:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U codexsymphony_dev -d codexsymphony_dev']
+      interval: 2s
+      timeout: 2s
+      retries: 15
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+volumes:
+  postgres-data:

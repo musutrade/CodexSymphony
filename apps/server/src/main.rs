@@ -1,5 +1,6 @@
+use codexsymphony_server::{config::Config, security::RequestPolicy};
 use sqlx::{PgPool, postgres::PgPoolOptions};
-use std::{env, error::Error, time::Duration};
+use std::{error::Error, time::Duration};
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
@@ -8,16 +9,16 @@ type StartupError = Box<dyn Error + Send + Sync>;
 #[tokio::main]
 async fn main() -> Result<(), StartupError> {
     initialize_logging();
-    let database_url = env::var("DATABASE_URL")?;
-    let pool = connect(&database_url).await?;
+    let config = Config::from_env()?;
+    let pool = connect(&config.database_url).await?;
     sqlx::migrate!("../../migrations").run(&pool).await?;
-    let address = env::var("BIND_ADDRESS").unwrap_or("127.0.0.1:3081".into());
-    let listener = TcpListener::bind(address).await?;
+    let listener = TcpListener::bind(config.bind_address).await?;
+    let policy = RequestPolicy::new(listener.local_addr()?, config.web_origin)?;
     tracing::info!(
         "CodexSymphony API listening at http://{}",
         listener.local_addr()?
     );
-    axum::serve(listener, codexsymphony_server::router(pool))
+    axum::serve(listener, codexsymphony_server::router(pool, policy))
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())
