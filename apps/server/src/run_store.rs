@@ -189,15 +189,15 @@ pub async fn confirm_quiescent(pool: &PgPool, run: &Run, receipt: &Receipt) -> R
     if !receipt_matches(&run.key(), &process, receipt) {
         return Ok(false);
     }
-    // No candidate preservation exists yet, so stop proof means Interrupted,
-    // never Succeeded, Requirement completion, or permission to free the slot.
-    sqlx::query("UPDATE agent_run SET quiescent=true,state='Interrupted',blocker=NULL WHERE id=$1 AND process_identity=$2")
+    // Stop proof is independent of candidate/completion evidence and does not
+    // free the slot. Keep an unresolved workspace failure visible after stop.
+    sqlx::query("UPDATE agent_run SET quiescent=true,state='Interrupted',blocker=CASE WHEN EXISTS (SELECT 1 FROM workspace_operation o WHERE o.run_id=agent_run.id AND o.status<>'complete') THEN 'workspace operation incomplete; retain originals' ELSE NULL END WHERE id=$1 AND process_identity=$2")
         .bind(&run.id).bind(&run.process_identity).execute(pool).await?;
     Ok(true)
 }
 
 pub async fn finish_recovery(pool: &PgPool, incarnation: &str) -> Result<bool> {
-    let result = sqlx::query("UPDATE execution_control SET recovery_complete=true WHERE id=1 AND incarnation=$1 AND NOT EXISTS (SELECT 1 FROM agent_run WHERE NOT quiescent)")
+    let result = sqlx::query("UPDATE execution_control SET recovery_complete=true WHERE id=1 AND incarnation=$1 AND NOT EXISTS (SELECT 1 FROM agent_run WHERE NOT quiescent) AND NOT EXISTS (SELECT 1 FROM workspace_operation WHERE status<>'complete') AND NOT EXISTS (SELECT 1 FROM run_workspace w LEFT JOIN workspace_snapshot s ON s.run_id=w.run_id WHERE s.run_id IS NULL)")
         .bind(incarnation).execute(pool).await?;
     Ok(result.rows_affected() == 1)
 }

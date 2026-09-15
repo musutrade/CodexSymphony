@@ -105,6 +105,7 @@ async fn execution_acceptance() {
     let pool = pool().await;
     let root = root();
     claim_and_pause(&pool, &root).await;
+    delayed_identity(&pool, &root).await;
     live_descendants(&pool, &root).await;
     start_record_window(&pool, &root).await;
     failed_and_paused_handshake(&pool, &root).await;
@@ -146,6 +147,47 @@ fn helper(root: &Path, script: &str) -> PathBuf {
     fs::write(&path, format!("#!/bin/sh\n{script}\n")).unwrap();
     fs::set_permissions(&path, fs::Permissions::from_mode(0o700)).unwrap();
     path
+}
+
+async fn delayed_identity(pool: &PgPool, root: &Path) {
+    reset(pool, "delayed-identity").await;
+    recovered(pool, root, "delayed-identity").await;
+    let launch = launch(root, "delayed-identity", "touch writer");
+    assert!(run_store::reserve_prepared(pool, &launch).await.unwrap());
+    let delayed = helper(
+        root,
+        &format!(
+            "while [ ! -f \"$2/release\" ]; do sleep 0.02; done\nexec '{}' --supervise \"$2\"",
+            supervisor().display()
+        ),
+    );
+    let db = pool.clone();
+    let base = root.to_owned();
+    let copy = launch.clone();
+    let task =
+        tokio::spawn(async move { coordinator::start_reserved(&db, &base, &delayed, &copy).await });
+    let directory = process::run_directory(root, &launch.key.run_id).unwrap();
+    wait_file(&directory.join("launch.json")).await;
+    // Exceed the old handshake window while the helper is demonstrably alive.
+    tokio::time::sleep(Duration::from_secs(3)).await;
+    let waiting = !task.is_finished();
+    assert!(!directory.join("identity.json").exists());
+    assert!(!directory.join("start.json").exists());
+    assert!(!Path::new(&launch.workspace).join("writer").exists());
+    fs::write(directory.join("release"), b"release").unwrap();
+    let result = task.await.unwrap();
+    assert!(waiting, "live helper must survive delayed durable identity");
+    let _worker = Worker {
+        child: result.unwrap(),
+        directory: directory.clone(),
+    };
+    wait_file(&directory.join("quiescent.json")).await;
+    assert!(Path::new(&launch.workspace).join("writer").exists());
+    assert!(
+        run_store::unresolved(pool).await.unwrap()[0]
+            .process_identity
+            .is_some()
+    );
 }
 
 async fn failed_and_paused_handshake(pool: &PgPool, root: &Path) {
@@ -202,7 +244,7 @@ async fn failed_and_paused_handshake(pool: &PgPool, root: &Path) {
     let delayed = helper(
         root,
         &format!(
-            "sleep 0.3\nexec '{}' --supervise \"$2\"",
+            "sleep 3\nexec '{}' --supervise \"$2\"",
             supervisor().display()
         ),
     );

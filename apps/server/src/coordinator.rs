@@ -56,6 +56,15 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
             observe(pool, root, run).await?;
         }
     }
+    match crate::workspace_store::recover_stopped(pool, &root.join("workspaces")).await {
+        Ok(true) => {}
+        Ok(false) => return Ok(false),
+        Err(_) => {
+            return Err(sqlx::Error::Protocol(
+                "workspace preservation requires reconciliation".into(),
+            ));
+        }
+    }
     run_store::finish_recovery(pool, incarnation).await
 }
 
@@ -173,7 +182,10 @@ async fn grant_start(
 }
 
 async fn wait_identity(directory: &Path) -> std::io::Result<Receipt> {
-    for _ in 0..100 {
+    // The helper fsyncs its one-use claim before publishing identity. Real disk
+    // contention can take several seconds; keep a bounded 15-second window.
+    // No start permission is issued until identity is persisted and authorized.
+    for _ in 0..750 {
         if let Ok(receipt) = process::read(&directory.join("identity.json")) {
             return Ok(receipt);
         }

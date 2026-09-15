@@ -1,0 +1,87 @@
+{
+  "issue": 15,
+  "pr": 36,
+  "parent_sha": "3ee16419537b5be25630a6563085d115c8bf361b",
+  "host_failure": {
+    "attempt": "34974051650/1",
+    "check_id": 104397239876,
+    "stage": "native source coverage / execution_acceptance",
+    "diagnostics": "target/gh15/host-diagnostics/34974051650-1/diagnostic.json",
+    "export_hashes_verified": true
+  },
+  "reproduction": {
+    "log": "target/gh15/repair-reproduction-both/attempt-0.log",
+    "claim_complete_seconds": "4.213552593",
+    "identity_parsed_seconds": "4.514988418",
+    "identity_written_seconds": "7.956087371",
+    "result": "Original identity timeout reproduced with native instrumented binary and temporary stderr/timing diagnostics; diagnostic changes removed. Host internal timing remains unmeasured."
+  },
+  "change": "Allow 750 identity polls at 20ms instead of 100; preserve authorization, identity, stop and recovery requirements. Exercise a release-controlled 3-second delay and a paused 3-second helper.",
+  "checks": [
+    {
+      "name": "fmt",
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "target/gh15/repair-fixed-fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "tests",
+      "command": "python3 /opt/symphony-env/run.py cargo test --workspace --locked",
+      "exit_code": 0,
+      "log": "target/gh15/repair-fixed-tests.log",
+      "sha256": "500f66546bc14b6da3a2b3d5a212c90b0af423d0646c377bd112ba5b016a9d8d"
+    },
+    {
+      "name": "clippy",
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "target/gh15/repair-fixed-clippy.log",
+      "sha256": "f5f30d942c4571232eb577e59e4037b33ab05fa03680637d1b47431f08741eb4"
+    },
+    {
+      "name": "config",
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "target/gh15/repair-fixed-config.log",
+      "sha256": "e6bfb8e058bc14f7e9f0e87c570b46e84d3415a5381bc38be6c5fd86e8c39784"
+    },
+    {
+      "name": "secrets",
+      "command": "python3 tools/gate.py secrets --json",
+      "exit_code": 0,
+      "log": "target/gh15/repair-fixed-secrets.json",
+      "sha256": "49fb8eb3f7a3eeae5cf509025b5759003751abf57b629f033cc9ebbb65639151"
+    },
+    {
+      "name": "audit",
+      "command": "python3 tools/gate.py audit --json",
+      "exit_code": 0,
+      "log": "target/gh15/repair-fixed-audit.json",
+      "sha256": "22992d9eea292ea84a89fb2cc7e00c8760abb5f8821a345994a80444a03cd3d2"
+    },
+    {
+      "name": "source-capture",
+      "command": "python3 /opt/symphony-env/run.py python3 /home/gem/.local/share/harness-gate/rust-source/0.1.0-rc.2/capture.py --repository \"$PWD\" --output \"$PWD/target/gh15/repair-final-capture\" --target-dir \"$PWD/target/gh15/coverage-target\" --source-root apps/server/src --input Cargo.toml --input Cargo.lock --input apps --input migrations --manifest apps/server/Cargo.toml",
+      "exit_code": 0,
+      "log": "target/gh15/repair-final-capture.log",
+      "sha256": "a8ceeb5d859902e9b9ba231c59566047754e286ad589592f4f7d4e9e8d3b80b5"
+    }
+  ],
+  "source_quality": {
+    "collector": "rust-source-risk 0.1.0-rc.2",
+    "series": "measurement-series/v1:b79abd709904548fbed1042b2e1ceb146cc3fedc75bc55744eb475b84cdd1db9",
+    "functions": 229,
+    "max_crap": "10",
+    "min_line_coverage": "4/5",
+    "min_region_coverage": "4/5",
+    "violations": 0,
+    "current_inputs_match": true,
+    "evidence": "target/gh15/repair-final-capture"
+  },
+  "boundary": "Local acceptance only; exact-published-SHA trusted host quality and both protected CI checks pending.",
+  "tests": {
+    "passed": 23,
+    "failed": 0
+  }
+}
