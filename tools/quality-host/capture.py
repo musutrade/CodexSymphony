@@ -14,7 +14,7 @@ from isolation import command
 PLUGIN_ROOT = Path('/home/gem/.local/share/harness-gate')
 RUST = PLUGIN_ROOT / 'rust-source/0.1.0-rc.1'
 TS = PLUGIN_ROOT / 'typescript/0.1.0-rc.4/node_modules/@harness-gate/typescript-collector'
-HTTP = PLUGIN_ROOT / 'http-contract/0.1.0-rc.3/node_modules/@harness-gate/http-json-contract-collector'
+HTTP = PLUGIN_ROOT / 'http-contract/0.1.0-rc.4/node_modules/@harness-gate/http-json-contract-collector'
 
 def sha(data): return hashlib.sha256(data).hexdigest()
 def write(path, data): path.write_text(json.dumps(data, indent=2) + '\n')
@@ -59,7 +59,11 @@ def capture_http(run, repository, container, url):
                     address=line.split('API listening at http://',1)[1].strip();break
             if server.poll() is not None: raise RuntimeError('server exited before readiness: '+server.stderr.read())
         if address is None: raise RuntimeError('server readiness timeout')
-        observations=[]
+        from http_scenarios import capture
+        scenario_path=repository/'api/capture-scenarios.json'
+        scenarios=load(scenario_path) if scenario_path.exists() else []
+        observations=capture(address,load(repository/'api/openapi.json'),scenarios)
+
         for status in (200,503):
             if status==503: subprocess.run(['docker','stop','--time','1',container],check=True,capture_output=True)
             request=urllib.request.Request('http://'+address+'/api/health')
@@ -79,7 +83,7 @@ def captures(run, repository, root, context, baseline):
     for directory in ('probes','target'): (run/directory).mkdir()
     container,url=database(run)
     try:
-        args=command(['python3',RUST/'capture.py','--repository',repository,'--output',run/'probes/backend','--target-dir',run/'target','--source-root','apps/server/src','--input','Cargo.toml','--input','Cargo.lock','--input','apps','--input','migrations','--manifest','apps/server/Cargo.toml','--test','health','--test','startup'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
+        args=command(['python3',RUST/'capture.py','--repository',repository,'--output',run/'probes/backend','--target-dir',run/'target','--source-root','apps/server/src','--input','Cargo.toml','--input','Cargo.lock','--input','apps','--input','migrations','--manifest','apps/server/Cargo.toml'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
         run_logged(run,'backend-capture',args)
         args=command(['node',repository/'web/angular/tools/probe-typescript-risk.cjs'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes'],environment={'HARNESS_GATE_TYPESCRIPT_PLUGIN':str(TS)})
         run_logged(run,'frontend-capture',args)
@@ -113,9 +117,10 @@ def captures(run, repository, root, context, baseline):
     discovery=node(TS,'p.discover(q)',frontend);p['subjects']=discovery['subjects'];receipt['sources']=[{k:f[k] for k in ('path','sha256')} for f in discovery['sources']]
     receipt['request']=node(TS,'p.binding(q)',frontend)
     observation_path=runtime/'http-observations.json';write(observation_path,observations)
-    contract={'schema':'harness-collector-request/v1','project':'codexsymphony','component':'backend','collector':{'name':'http-json-contract','version':'0.1.0-rc.3'},'context':context,'workspace_root':str(root),'output_root':str(output),'requested_capabilities':['contract.breaking_changes','contract.client_drift','contract.compatible'],
+    contract={'schema':'harness-collector-request/v1','project':'codexsymphony','component':'backend','collector':{'name':'http-json-contract','version':'0.1.0-rc.4'},'context':context,'workspace_root':str(root),'output_root':str(output),'requested_capabilities':['contract.breaking_changes','contract.client_drift','contract.compatible'],
               'parameters':{'boundary':'contract','consumer_boundary':'production','contract':'api/openapi.json','client':'web/angular/src/app/health.ts','type_file':'web/angular/src/app/health-response.ts','type_name':'HealthResponse','observations':'.harness-gate/runtime/http-observations.json','artifact_subdir':'frontend-api','relationship':'frontend-api','consumer':'frontend','consumer_source_root':'web/angular/src','exclude':p['exclude']}}
     files=['api/openapi.json','web/angular/src/app/health.ts','web/angular/src/app/health-response.ts','apps/server/src/lib.rs','apps/server/src/main.rs','Cargo.toml','Cargo.lock','apps/server/Cargo.toml']
+    if (root/'api/capture-scenarios.json').exists(): files.append('api/capture-scenarios.json')
     contract['parameters']['receipt']={'schema':'http-json-capture/v1','context':context,'inputs':{name:sha((root/name).read_bytes()) for name in files},'baseline':baseline,'observations_sha256':sha(observation_path.read_bytes()),'binary_sha256':binary_hash,'consumer_sources':{f['path']:f['sha256'] for f in discovery['sources']}}
     contract['parameters']['subjects']=node(HTTP,'p.discover(q)',contract)['subjects']
     requests={'backend':backend,'frontend':frontend,'frontend-api':contract}

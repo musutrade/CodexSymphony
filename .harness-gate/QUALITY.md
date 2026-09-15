@@ -58,7 +58,7 @@ Core 0.4.5 的完整 verify 未配置持久化 replay state，已提交
 
 - Rust 源码插件：0.1.0-rc.1；MIR 仍仅作独立诊断。
 - TypeScript 插件：0.1.0-rc.4，已接入生产文件／函数清单及共享产物目录。
-- HTTP 合约插件：0.1.0-rc.3，检查真实 200／503 响应、完整支持范围内的客户端清单、
+- HTTP 合约插件：0.1.0-rc.4，检查真实健康响应及数据场景驱动的业务响应、完整支持范围内的客户端清单、
   生成类型来源及初始兼容性基线。未知合约或客户端语法会拒绝采集。
 - 插件安装包在 `tools/gate-plugins/packages/`，摘要在 `collector-candidates.json`；
   本机与 CI 使用 `tools/install_gate_plugins.py` 安装，旧版本保留。它们仍是候选发行，
