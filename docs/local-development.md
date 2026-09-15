@@ -45,7 +45,7 @@ E2E 要求 API 与数据库运行；Playwright 自行启动并关闭 4300 端口
 同日通过 `python3 tools/gate.py verify --profile ci --all` 复核：秘密扫描、架构检查
 和全部 7 项执行步骤 PASS；质量判定因缺少可信 ci-state.json 阻断，最终退出码为 1。
 
-## TypeScript CRAP 独立插件
+## TypeScript CRAP 独立插件（早期 rc.2 历史验收）
 
 实现位于 `~/Harness-Gate-ts-crap/tools/quality/typescript-risk`，分支
 `feat/typescript-crap`，提交 `819f88b`。它是 Harness-Gate 的独立 Node collector，
@@ -70,10 +70,11 @@ HARNESS_GATE_TYPESCRIPT_PLUGIN="$HOME/.local/share/harness-gate/typescript/0.1.0
 
 探针之后可运行 `tools/frontend_host_acceptance.py`；实际签名采集与前端策略判定已经 PASS，
 并拒绝 5 类篡改／过期／重放输入，见 [rc.2 验收记录](quality/frontend-rc2/README.md)。
-前端与后端源码系列均已分别完成本地验收；API 合约、完整多 collector 组合、
-生产宿主签名输入和 CI 保护规则验收仍需完成。
-项目 CRAP 上限为 10；随后已完成本机完整隔离门禁 PASS，见下方完整宿主入口。
-远端 CI 与 Symphony 自动交付仍待启用验收。
+上述 rc.2 是早期单插件验收。当前 TypeScript 候选版为 rc.4，准确归档摘要以
+`tools/gate-plugins/` 清单为准；API 合约、完整多 collector 组合及宿主签名输入已完整通过。
+项目 CRAP 上限为 10；本机完整隔离门禁入口见下方。
+远端双检查、main 保护与 Symphony Issue→PR→CI→自动合并关闭已实际验收，
+见 [远端环境记录](quality/remote-environment/README.md)。该结果不代表 0a 业务验收。
 详见 [门禁说明](../.harness-gate/QUALITY.md)。
 
 
