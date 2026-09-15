@@ -44,129 +44,129 @@ request = ".harness-gate/runtime/backend-request.json"
 [[collectors.backend.produces]]
 target = {kind = "subject", id = "backend-functions"}
 capability = "complexity.cyclomatic"
-series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"
+series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"
 [[collectors.backend.produces]]
 target = {kind = "subject", id = "backend-functions"}
 capability = "coverage.function"
-series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"
+series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"
 [[collectors.backend.produces]]
 target = {kind = "subject", id = "backend-functions"}
 capability = "coverage.line"
-series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"
+series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"
 [[collectors.backend.produces]]
 target = {kind = "subject", id = "backend-functions"}
 capability = "coverage.region"
-series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"
+series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"
 [[collectors.backend.produces]]
 target = {kind = "subject", id = "backend-functions"}
 capability = "risk.crap"
-series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"
+series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"
 [collectors.frontend]
 protocol = "harness-collector-request/v1"
 request = ".harness-gate/runtime/frontend-request.json"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "complexity.cyclomatic"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "coverage.line"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "coverage.function"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "risk.crap"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "complexity.cyclomatic"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "coverage.line"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "coverage.function"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "risk.crap"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "complexity.cyclomatic"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "coverage.line"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "coverage.function"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "risk.crap"
-series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"
+series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"
 [collectors.frontend-api]
 protocol = "harness-collector-request/v1"
 request = ".harness-gate/runtime/frontend-api-request.json"
 [[collectors.frontend-api.produces]]
 target = {kind = "relationship", id = "frontend-api"}
 capability = "contract.breaking_changes"
-series = "measurement-series/v1:fce04fefdc5d9437cf62f8b69aef7ea3933059742f217f70b34f2847d130ccd5"
+series = "measurement-series/v1:9dcb23d7d9cd247c4d9093e98d954d3224f13d9d2d9b12cb3ef6a6fad66b0b43"
 [[collectors.frontend-api.produces]]
 target = {kind = "relationship", id = "frontend-api"}
 capability = "contract.client_drift"
-series = "measurement-series/v1:fce04fefdc5d9437cf62f8b69aef7ea3933059742f217f70b34f2847d130ccd5"
+series = "measurement-series/v1:9dcb23d7d9cd247c4d9093e98d954d3224f13d9d2d9b12cb3ef6a6fad66b0b43"
 [[collectors.frontend-api.produces]]
 target = {kind = "relationship", id = "frontend-api"}
 capability = "contract.compatible"
-series = "measurement-series/v1:fce04fefdc5d9437cf62f8b69aef7ea3933059742f217f70b34f2847d130ccd5"
+series = "measurement-series/v1:9dcb23d7d9cd247c4d9093e98d954d3224f13d9d2d9b12cb3ef6a6fad66b0b43"
 [policies."backend.coverage.line"]
 policy_file = ".harness-gate/packs/backend/policy.json"
 rule = "backend.coverage.line"
-expectation = {target = {kind = "subject", id = "backend-functions"}, capability = "coverage.line", series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"}
+expectation = {target = {kind = "subject", id = "backend-functions"}, capability = "coverage.line", series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"}
 [policies."backend.coverage.region"]
 policy_file = ".harness-gate/packs/backend/policy.json"
 rule = "backend.coverage.region"
-expectation = {target = {kind = "subject", id = "backend-functions"}, capability = "coverage.region", series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"}
+expectation = {target = {kind = "subject", id = "backend-functions"}, capability = "coverage.region", series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"}
 [policies."backend.risk.crap"]
 policy_file = ".harness-gate/packs/backend/policy.json"
 rule = "backend.risk.crap"
-expectation = {target = {kind = "subject", id = "backend-functions"}, capability = "risk.crap", series = "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e"}
+expectation = {target = {kind = "subject", id = "backend-functions"}, capability = "risk.crap", series = "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced"}
 [policies."frontend.coverage.line"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.coverage.line"
-expectation = {target = {kind = "subject", id = "frontend-files"}, capability = "coverage.line", series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"}
+expectation = {target = {kind = "subject", id = "frontend-files"}, capability = "coverage.line", series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"}
 [policies."frontend.functions.coverage.line"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.functions.coverage.line"
-expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.line", series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"}
+expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.line", series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"}
 [policies."frontend.coverage.function"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.coverage.function"
-expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.function", series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"}
+expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.function", series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"}
 [policies."frontend.risk.crap"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.risk.crap"
-expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "risk.crap", series = "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749"}
+expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "risk.crap", series = "measurement-series/v1:1e7bbf85d23f9bfb1181565ef35737b58b5ee82ebcba6a21c25752fc34e96223"}
 [policies."frontend-api.contract.breaking_changes"]
 policy_file = ".harness-gate/packs/frontend-api/policy.json"
 rule = "frontend-api.contract.breaking_changes"
-expectation = {target = {kind = "relationship", id = "frontend-api"}, capability = "contract.breaking_changes", series = "measurement-series/v1:fce04fefdc5d9437cf62f8b69aef7ea3933059742f217f70b34f2847d130ccd5"}
+expectation = {target = {kind = "relationship", id = "frontend-api"}, capability = "contract.breaking_changes", series = "measurement-series/v1:9dcb23d7d9cd247c4d9093e98d954d3224f13d9d2d9b12cb3ef6a6fad66b0b43"}
 [policies."frontend-api.contract.client_drift"]
 policy_file = ".harness-gate/packs/frontend-api/policy.json"
 rule = "frontend-api.contract.client_drift"
-expectation = {target = {kind = "relationship", id = "frontend-api"}, capability = "contract.client_drift", series = "measurement-series/v1:fce04fefdc5d9437cf62f8b69aef7ea3933059742f217f70b34f2847d130ccd5"}
+expectation = {target = {kind = "relationship", id = "frontend-api"}, capability = "contract.client_drift", series = "measurement-series/v1:9dcb23d7d9cd247c4d9093e98d954d3224f13d9d2d9b12cb3ef6a6fad66b0b43"}
 [policies."frontend-api.contract.compatible"]
 policy_file = ".harness-gate/packs/frontend-api/policy.json"
 rule = "frontend-api.contract.compatible"
-expectation = {target = {kind = "relationship", id = "frontend-api"}, capability = "contract.compatible", series = "measurement-series/v1:fce04fefdc5d9437cf62f8b69aef7ea3933059742f217f70b34f2847d130ccd5"}
+expectation = {target = {kind = "relationship", id = "frontend-api"}, capability = "contract.compatible", series = "measurement-series/v1:9dcb23d7d9cd247c4d9093e98d954d3224f13d9d2d9b12cb3ef6a6fad66b0b43"}
 [profiles.ci]
 assurance = "complete"
 collectors = ["backend", "frontend", "frontend-api"]

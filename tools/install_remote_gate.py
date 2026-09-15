@@ -24,7 +24,9 @@ def main():
     names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/symphony/codex_sandbox.py']
     names += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tools/remote-gate').glob('*.py'))]
     protected={name:sha(ROOT/name) for name in names}
-    version=hashlib.sha256(json.dumps(protected,sort_keys=True).encode()).hexdigest()[:16]
+    identity={'protected_files':protected,'gate_approval':str(gate.resolve()),
+              'dependency_source':str(ROOT/'web/angular/node_modules')}
+    version=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()[:16]
     release=HOME/'releases'/version
     if not release.exists():shutil.copytree(ROOT/'tools/remote-gate',release,ignore=shutil.ignore_patterns('__pycache__'))
     for source in (ROOT/'tools/remote-gate').glob('*.py'):

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /opt/gh12-env/pg/ld-musl-x86_64.so.1 --library-path /opt/gh12-env/pg /opt/gh12-env/pg/psql "$@"

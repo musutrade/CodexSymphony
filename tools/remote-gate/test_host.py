@@ -27,4 +27,34 @@ class TrustedRun(unittest.TestCase):
             p.unlink();target=root/'target';target.write_text('approved');p.symlink_to(target)
             with self.assertRaises(ValueError):check_files(root,pins)
 
+class InstallationTokens(unittest.TestCase):
+    def test_scoped_token_reuse_and_refresh(self):
+        from unittest.mock import patch
+        import github
+        config={'app_id':7,'app_key':'/host-only/key','repository':'owner/repo'}
+        github._tokens.clear()
+        def response(path,token,method='GET',body=None):
+            if path.endswith('/installation'):return {'app_id':7,'id':9}
+            self.assertEqual(body['permissions']['checks'],'write')
+            return {'token':'synthetic-fixture-token','expires_at':'2099-01-01T00:00:00Z'}
+        with patch.object(github.time,'time',return_value=1000) as clock,patch.object(github.subprocess,'check_output',return_value=b'synthetic-signature'),patch.object(github,'request',side_effect=response) as request:
+            self.assertEqual(github.installation_token(config),'synthetic-fixture-token')
+            self.assertEqual(github.installation_token(config),'synthetic-fixture-token')
+            self.assertEqual(request.call_count,2)
+            github.installation_token(config|{'repository':'owner/second'})
+            self.assertEqual(request.call_count,4)
+            clock.return_value=1241
+            github.installation_token(config)
+            self.assertEqual(request.call_count,6)
+        github._tokens.clear()
+
+    def test_failed_grant_is_not_cached(self):
+        from unittest.mock import patch
+        import github
+        github._tokens.clear()
+        config={'app_id':7,'app_key':'/host-only/key','repository':'owner/repo'}
+        with patch.object(github.subprocess,'check_output',return_value=b'synthetic-signature'),patch.object(github,'request',side_effect=RuntimeError('unavailable')):
+            with self.assertRaises(RuntimeError):github.installation_token(config)
+        self.assertEqual(github._tokens,{})
+
 if __name__=='__main__':unittest.main()
