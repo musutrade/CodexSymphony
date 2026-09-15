@@ -437,5 +437,79 @@
     "method": "GET",
     "path": "/api/requirements",
     "status": 200
+  },
+  {
+    "id": "execution-status",
+    "method": "GET",
+    "path": "/api/execution",
+    "status": 200
+  },
+  {
+    "id": "pause-global",
+    "method": "POST",
+    "path": "/api/execution/pause",
+    "status": 200,
+    "body": {
+      "pause": true
+    }
+  },
+  {
+    "id": "pause-global-repeat",
+    "method": "POST",
+    "path": "/api/execution/pause",
+    "status": 200,
+    "body": {
+      "pause": true
+    },
+    "record": false
+  },
+  {
+    "id": "pause-global-invalid",
+    "method": "POST",
+    "path": "/api/execution/pause",
+    "status": 422,
+    "body": {
+      "unknown": true
+    }
+  },
+  {
+    "id": "pause-requirement",
+    "method": "POST",
+    "path": "/api/requirements/{id}/pause",
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "status": 200,
+    "body": {
+      "pause": true
+    }
+  },
+  {
+    "id": "pause-requirement-invalid",
+    "method": "POST",
+    "path": "/api/requirements/{id}/pause",
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "status": 422,
+    "body": {
+      "unknown": true
+    }
+  },
+  {
+    "id": "pause-requirement-missing",
+    "method": "POST",
+    "path": "/api/requirements/{id}/pause",
+    "path_parameters": {
+      "id": 99999
+    },
+    "status": 404,
+    "body": {
+      "pause": true
+    }
   }
 ]

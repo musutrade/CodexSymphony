@@ -10,6 +10,7 @@ use std::{
 };
 
 struct Service(Child);
+static STARTUP: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 impl Drop for Service {
     fn drop(&mut self) {
@@ -20,6 +21,7 @@ impl Drop for Service {
 
 #[test]
 fn serves_a_real_request_and_shuts_down_cleanly() {
+    let _serial = STARTUP.lock().unwrap();
     let database =
         std::env::var("TEST_DATABASE_URL").expect("disposable TEST_DATABASE_URL required");
     let mut child = Service(
@@ -59,6 +61,19 @@ fn serves_a_real_request_and_shuts_down_cleanly() {
     stream.read_to_string(&mut response).unwrap();
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");
     assert!(response.contains(r#"{"status":"ok","database":"ok"}"#));
+    let duplicate = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+        .env("DATABASE_URL", std::env::var("TEST_DATABASE_URL").unwrap())
+        .env("BIND_ADDRESS", "127.0.0.1:0")
+        .current_dir(std::env::temp_dir())
+        .output()
+        .unwrap();
+    assert!(
+        !duplicate.status.success(),
+        "second cwd/port must not bypass host instance lock"
+    );
+    assert!(!String::from_utf8_lossy(&duplicate.stdout).contains("API listening"));
+    // Keep the API alive across a second coordinator tick before shutdown.
+    thread::sleep(Duration::from_millis(300));
     assert!(
         Command::new("kill")
             .args(["-INT", &child.0.id().to_string()])
@@ -80,6 +95,7 @@ fn serves_a_real_request_and_shuts_down_cleanly() {
 
 #[test]
 fn missing_database_configuration_fails_startup() {
+    let _serial = STARTUP.lock().unwrap();
     let result = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
         .env_remove("DATABASE_URL")
         .env_remove("RUST_LOG")
@@ -91,6 +107,7 @@ fn missing_database_configuration_fails_startup() {
 
 #[test]
 fn invalid_bind_address_fails_without_announcing_readiness() {
+    let _serial = STARTUP.lock().unwrap();
     let database =
         std::env::var("TEST_DATABASE_URL").expect("disposable TEST_DATABASE_URL required");
     let result = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
@@ -105,6 +122,7 @@ fn invalid_bind_address_fails_without_announcing_readiness() {
 
 #[test]
 fn connection_and_bind_failures_do_not_announce_readiness() {
+    let _serial = STARTUP.lock().unwrap();
     let database =
         std::env::var("TEST_DATABASE_URL").expect("disposable TEST_DATABASE_URL required");
     let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
