@@ -1,0 +1,59 @@
+{
+  "issue": 16,
+  "baseline": "6c885ca444f5d503116fa558419413ef413ae280",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "target/gh16/fmt-complete.log"
+    },
+    {
+      "command": "python3 /opt/symphony-env/run.py cargo test --workspace --locked",
+      "exit_code": 0,
+      "log": "target/gh16/tests-complete.log"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "target/gh16/clippy-complete.log"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "target/gh16/config-final.log"
+    },
+    {
+      "command": "python3 tools/gate.py secrets",
+      "exit_code": 0,
+      "log": "target/gh16/secrets.log"
+    },
+    {
+      "command": "python3 tools/gate.py audit",
+      "exit_code": 0,
+      "log": "target/gh16/audit.log"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "log": "target/gh16/diff-complete.log"
+    }
+  ],
+  "tests": {
+    "passed": 30,
+    "failed": 0
+  },
+  "source_quality": {
+    "collector": "rust-source-risk 0.1.0-rc.2",
+    "series": "measurement-series/v1:4a24c29f8976307b99f484cdb4e14dab5a2950ae540a5f420ba5a26516c03992",
+    "functions": 305,
+    "max_crap": "10",
+    "min_line_coverage": "4/5",
+    "min_region_coverage": "4/5",
+    "violations": 0,
+    "current_inputs_match": true,
+    "evidence": "target/gh16/source-capture-complete",
+    "bundle_sha256": "ea0a87a8c31065a929ff423474b500cea00a527ffdd0284a6eb0973728c175f6",
+    "metrics_sha256": "c2b70b144479692e46f075424f87ece6bbdeb98fa344c50c6723b453864aef77"
+  },
+  "boundary": "Local HTTP/PostgreSQL/RSA fixtures and host read-only public repository observations. Real Rust App credentials/private repository and write paths unverified; external trigger readiness blocked. Trusted host and exact-published-SHA protected CI pending."
+}

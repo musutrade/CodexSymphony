@@ -83,7 +83,9 @@ async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
     let Some((id, revision, false)) = next else {
         return Ok(None);
     };
-    if !authorized(tx, id, revision).await? {
+    if !authorized(tx, id, revision).await?
+        || !crate::github_store::claim_ready(tx, id, revision).await?
+    {
         return Ok(None);
     }
     Ok(Some((id, revision)))

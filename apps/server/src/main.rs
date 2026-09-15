@@ -20,23 +20,22 @@ fn main() -> Result<(), StartupError> {
 #[tokio::main]
 async fn serve() -> Result<(), StartupError> {
     initialize_logging();
+    if let Some(path) = std::env::args_os().nth(2).filter(|_| {
+        std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("--github-inspect"))
+    }) {
+        return codexsymphony_server::github_service::inspect(std::path::Path::new(&path)).await;
+    }
     let config = Config::from_env()?;
     // A fixed host path deliberately cannot be changed per cwd/database/port.
     // Never unlink the lock inode on shutdown: another instance may hold it.
     let _instance =
         process::InstanceLock::acquire(std::path::Path::new("/tmp/codexsymphony-controller.lock"))?;
-    let pool = connect(&config.database_url).await?;
-    sqlx::migrate!("../../migrations").run(&pool).await?;
+    let pool = prepare_database(&config.database_url).await?;
     let (listener, policy) = listen(config).await?;
     let worker = start_coordinator(&pool).await?;
-    tracing::info!(
-        "CodexSymphony API listening at http://{}",
-        listener.local_addr()?
-    );
-    axum::serve(listener, codexsymphony_server::router(pool, policy))
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
-    worker.abort();
+    let github = codexsymphony_server::github_service::start(&pool).await?;
+    serve_http(listener, pool, policy).await?;
+    stop_workers(worker, github);
     Ok(())
 }
 
@@ -88,4 +87,30 @@ async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
 
 async fn shutdown_signal() {
     let _ = tokio::signal::ctrl_c().await;
+}
+
+async fn serve_http(
+    listener: TcpListener,
+    pool: PgPool,
+    policy: RequestPolicy,
+) -> Result<(), StartupError> {
+    let address = listener.local_addr()?;
+    tracing::info!("CodexSymphony API listening at http://{}", address);
+    axum::serve(listener, codexsymphony_server::router(pool, policy))
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+    Ok(())
+}
+
+fn stop_workers(worker: tokio::task::JoinHandle<()>, github: Option<tokio::task::JoinHandle<()>>) {
+    worker.abort();
+    if let Some(github) = github {
+        github.abort();
+    }
+}
+
+async fn prepare_database(url: &str) -> Result<PgPool, StartupError> {
+    let pool = connect(url).await?;
+    sqlx::migrate!("../../migrations").run(&pool).await?;
+    Ok(pool)
 }
