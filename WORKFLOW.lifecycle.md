@@ -227,3 +227,18 @@ merge, close Issues or edit the host handoff journal. The controller handles
 those actions. On an explicitly dispatched repair, reuse the same PR and branch,
 validate the repair, publish through the host tool using the last confirmed
 remote head as parent, replace the declaration and stop again.
+
+### Explicit blocked handoff
+
+If a required external capability is unavailable and you have retained a concrete
+reproduction, stop immediately by writing `.symphony-handoff.json` with exactly:
+
+```json
+{"status":"blocked","issue_id":"<assigned numeric id>","repo":"musutrade/CodexSymphony","reason":"<confirmed cause>","evidence":"<retained evidence path>","resume_condition":"<machine-checkable recovery>"}
+```
+
+This requests a durable pause, not PR completion. Do not include PR fields, repeat
+unchanged probes, or keep consuming continuation turns. The controller reads it
+after the turn, records the cause, and will not retry until operator recovery.
+The operator archives/removes this declaration only after the cause is resolved.
+Ordinary code/test failures within your ability to fix are not external blockers.

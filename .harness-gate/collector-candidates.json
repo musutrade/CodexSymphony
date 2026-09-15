@@ -4,9 +4,9 @@
   "plugins": {
     "rust_source": {
       "directory": "rust-source",
-      "version": "0.1.0-rc.1",
-      "package": "harness-gate-rust-source-0.1.0-rc.1.tar.gz",
-      "sha256": "b9986c787d33cd4805f00d4f490f5c679887bf74e93633148e47364cc2e10724",
+      "version": "0.1.0-rc.2",
+      "package": "harness-gate-rust-source-0.1.0-rc.2.tar.gz",
+      "sha256": "aabdbbafa78b20afa3e500b58e74a132002996838b9d812e4ea15f1b193f69b8",
       "command": "harness-gate-rust-source-collector",
       "npm_package": null
     },

@@ -12,7 +12,7 @@ import urllib.request
 from isolation import command
 
 PLUGIN_ROOT = Path('/home/gem/.local/share/harness-gate')
-RUST = PLUGIN_ROOT / 'rust-source/0.1.0-rc.1'
+RUST = PLUGIN_ROOT / 'rust-source/0.1.0-rc.2'
 TS = PLUGIN_ROOT / 'typescript/0.1.0-rc.4/node_modules/@harness-gate/typescript-collector'
 HTTP = PLUGIN_ROOT / 'http-contract/0.1.0-rc.4/node_modules/@harness-gate/http-json-contract-collector'
 
@@ -73,6 +73,7 @@ def capture_http(run, repository, container, url):
                 if response.status!=status: raise RuntimeError(f'expected HTTP {status}, got {response.status}')
                 observations.append({'method':'GET','path':'/api/health','status':response.status,'content_type':response.headers['Content-Type'],'body':json.load(response)})
         write(run/'http-observations.json',observations)
+        shutil.copyfile(binary,run/'http-server')
         return observations,sha(binary.read_bytes())
     finally:
         os.killpg(server.pid,signal.SIGTERM)

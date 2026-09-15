@@ -1,18 +1,18 @@
 {
   "series": {
-    "id": "measurement-series/v1:88cd5c7eb121902387853119d6edb34390a8b063df25e14ed284b77fb16c0ced",
+    "id": "measurement-series/v1:b79abd709904548fbed1042b2e1ceb146cc3fedc75bc55744eb475b84cdd1db9",
     "name": "rust-source-function-risk",
     "collector": {
       "name": "rust-source-risk",
-      "version": "0.1.0-rc.1"
+      "version": "0.1.0-rc.2"
     },
     "tool": {
       "name": "rust-llvm-source-coverage",
-      "version": "5866ed00e99273623946604a2bd208668e6b22d2170256e78b2f4bc87a348b70"
+      "version": "9f676e86aafb44ead0fbc54fed412071936bad79ca1938c06b0e64be37daa887"
     },
     "rule": {
       "name": "rust-explicit-decisions",
-      "version": "f95423e16aa895082f1aa1199ee4713033ace2ce4629ac82d315af633ea5da56"
+      "version": "f825e43d5854ea5f28675c5dba1d71abe2085051b07bc58f1b5fae5fb03693aa"
     },
     "runtime": {
       "name": "python",
