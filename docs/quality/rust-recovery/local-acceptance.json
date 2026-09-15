@@ -193,5 +193,15 @@
     "controller_targeted": 33
   },
   "build_cache_pruned": true,
-  "http_binary_retained": true
+  "http_binary_retained": true,
+  "controller_full_gate": {
+    "command": "TMPDIR=/tmp mise exec -- make all",
+    "status": "PASS",
+    "log": "/tmp/gh13-symphony-gate-final.log",
+    "log_sha256": "1734fcccc77d03b810d5d4d3cc76ac042e0c9ceb074a9205b3adade47a472c38",
+    "tests": 342,
+    "failures": 0,
+    "skipped": 6,
+    "coverage_percent": 100
+  }
 }

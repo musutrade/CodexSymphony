@@ -27,3 +27,8 @@ turns or retries, including after restart. The additive host implementation patc
 is retained here against the preexisting local Symphony lifecycle extension.
 The targeted lifecycle/budget suite passes 33 tests, including real runner stop,
 wrong declarations, persistence and restart.
+
+The complete external Symphony `make all` also passes: formatting, lint/specs,
+342 tests (0 failures, 6 opt-in skips), 100% configured coverage and Dialyzer.
+The test profile was rebuilt with a stable TMPDIR to replace a stale compiled
+default from a different temporary-directory path; no threshold was changed.
