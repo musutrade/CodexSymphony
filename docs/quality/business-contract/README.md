@@ -26,3 +26,8 @@ The prior per-issue database/source/cache provisioning fix is now also checked i
 see `docs/symphony-environment-provisioning.md`. The remote installer includes the
 approved host and dependency location in its installation identity, allowing a
 new reviewed collector approval without overwriting an immutable configuration.
+
+The remote bridge reuses a scoped installation token in process memory for at
+most five minutes, refreshing before expiry. This avoids the immediate second
+grant that repeatedly returned HTTP 500 during PR validation. Reuse, expiry,
+repository isolation and failure behavior are covered by host unit tests.
