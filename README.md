@@ -6,6 +6,9 @@
 
 [工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 与远端交付仍等待后续任务。
 
+[GitHub App 预检与只读观察](docs/github-observation.md) 保存仓库能力及独立 PR/CI 事实，
+缺能力或过期时拒绝领取；60 秒轮询及失败退避不启动模型。真实写交接与自动合并未接通。
+
 ## 从这里开始
 
 | 文档 | 效力 |

@@ -1,32 +1,54 @@
 """Run a command with PostgreSQL relays through the configured managed SOCKS proxy."""
-import os, select, socket, socketserver, struct, subprocess, sys, threading
+import errno, os, select, socket, socketserver, struct, subprocess, sys, threading, time
 from pathlib import Path
 from urllib.parse import urlparse
 
-def exact(s, count):
+def exact(s, count, deadline):
     result=b''
     while len(result)<count:
+        s.settimeout(max(.001, deadline-time.monotonic()))
         part=s.recv(count-len(result))
         if not part: raise ConnectionError('SOCKS proxy closed connection')
         result+=part
     return result
 
-def connect(host):
+def connect_once(host, timeout):
+    deadline=time.monotonic()+timeout
     proxy=urlparse(os.environ.get('ALL_PROXY') or os.environ.get('all_proxy') or '')
     if not proxy.hostname: raise RuntimeError('Managed ALL_PROXY is missing')
-    s=socket.create_connection((proxy.hostname,proxy.port),10)
+    s=socket.create_connection((proxy.hostname,proxy.port),timeout)
     try:
         s.sendall(b'\x05\x01\x00')
-        if exact(s,2)!=b'\x05\x00': raise ConnectionError('SOCKS authentication rejected')
+        if exact(s,2,deadline)!=b'\x05\x00': raise PermissionError('SOCKS authentication rejected')
         s.sendall(b'\x05\x01\x00\x01'+socket.inet_aton(host)+struct.pack('!H',5432))
-        reply=exact(s,4)
-        if reply[1]!=0: raise ConnectionError('Database proxy request rejected: '+str(reply[1]))
+        reply=exact(s,4,deadline)
+        if reply[0]!=5 or reply[2]!=0: raise ValueError('Invalid SOCKS reply')
+        if reply[1] in (3,4,5,6): raise ConnectionRefusedError(errno.ECONNREFUSED, 'Database proxy transient rejection: '+str(reply[1]))
+        if reply[1]!=0: raise PermissionError('Database proxy request rejected: '+str(reply[1]))
         size={1:4,4:16}.get(reply[3])
-        if reply[3]==3: size=exact(s,1)[0]
-        exact(s,size+2);s.settimeout(None)
+        if reply[3]==3: size=exact(s,1,deadline)[0]
+        if size is None: raise ValueError('Invalid SOCKS address type')
+        exact(s,size+2,deadline);s.settimeout(None)
         return s
     except BaseException:
         s.close();raise
+
+def connect(host, timeout=30):
+    """Retry only connection establishment; never replay SQL or a child command."""
+    deadline=time.monotonic()+timeout
+    attempts=0
+    while True:
+        attempts+=1
+        try:
+            return connect_once(host, min(5, max(.001, deadline-time.monotonic())))
+        except OSError as error:
+            transient=isinstance(error, (TimeoutError, ConnectionRefusedError, ConnectionResetError)) or error.errno in (errno.ENETUNREACH, errno.EHOSTUNREACH)
+            if not transient: raise
+            remaining=deadline-time.monotonic()
+            if remaining<=0:
+                raise TimeoutError(f'Fixture {host}:5432 unavailable after {attempts} connection attempts in {timeout}s; last error: {error}') from error
+            print(f'Fixture {host}:5432 connection retry {attempts}: {error}',file=sys.stderr)
+            time.sleep(min(remaining, .25*2**min(attempts-1,3)))
 
 class Relay(socketserver.BaseRequestHandler):
     def handle(self):

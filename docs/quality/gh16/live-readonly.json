@@ -1,0 +1,74 @@
+{
+  "status": 200,
+  "id": 1360824360,
+  "private": false,
+  "repository": "musutrade/disposable",
+  "prs": [
+    {
+      "number": 3,
+      "state": "closed",
+      "head": "26bb66ec37c81b34672c4b5e3dac897951dc8589",
+      "base": "2ed9fe96c91da3d64ca9c4d8673e50bec9036e4a",
+      "merge_commit_sha": "0b0dd251d1a3e9b1eead6dd1e13a04e246c82613"
+    },
+    {
+      "number": 2,
+      "state": "closed",
+      "head": "72f10769f4295af45e4ebe74a7993cc0e17702fd",
+      "base": "2ed9fe96c91da3d64ca9c4d8673e50bec9036e4a",
+      "merge_commit_sha": "7744eb40f14b61e60aa8d168f3124d9e51100647"
+    },
+    {
+      "number": 1,
+      "state": "closed",
+      "head": "528998a260dfbab2984a5117abe19515bb18d60f",
+      "base": "07ddf1c1a7175ecf5df0000d56b865473d942537",
+      "merge_commit_sha": "97fa3fc84d108ee962b2b29ee8c1241a1e48f51c"
+    }
+  ],
+  "observed_at": "2026-09-15",
+  "adapter": "Symphony host github_api; not Rust AppClient live authentication",
+  "requests": [
+    {
+      "i": 0,
+      "status": 200,
+      "number": 3,
+      "merged": true,
+      "merged_at": "2026-09-10T06:41:41Z",
+      "state": "closed",
+      "merge_commit_sha": "0b0dd251d1a3e9b1eead6dd1e13a04e246c82613",
+      "head": "26bb66ec37c81b34672c4b5e3dac897951dc8589",
+      "base": "2ed9fe96c91da3d64ca9c4d8673e50bec9036e4a"
+    },
+    {
+      "i": 1,
+      "status": 200,
+      "total_count": 2,
+      "checks": [
+        {
+          "id": 102771803507,
+          "name": "test-job",
+          "head_sha": "26bb66ec37c81b34672c4b5e3dac897951dc8589",
+          "app_id": 15368,
+          "suite_id": 93312971100,
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 102771792151,
+          "name": "test-job",
+          "head_sha": "26bb66ec37c81b34672c4b5e3dac897951dc8589",
+          "app_id": 15368,
+          "suite_id": 93312960668,
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "i": 2,
+      "status": 200,
+      "statuses": []
+    }
+  ]
+}

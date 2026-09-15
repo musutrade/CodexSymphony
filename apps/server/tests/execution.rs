@@ -78,9 +78,11 @@ async fn pool() -> PgPool {
 }
 async fn reset(pool: &PgPool, incarnation: &str) {
     sqlx::raw_sql("TRUNCATE business_request,business_event,requirement_revision,requirement,repository,run_event RESTART IDENTITY CASCADE;
-        INSERT INTO repository(id,version,document) VALUES (1,1,'{\"revoked\":false}');
+        INSERT INTO repository(id,version,document) VALUES (1,1,'{\"revoked\":false,\"github_repository_id\":99}');
         INSERT INTO requirement(version,state,contract,revision) VALUES (1,'Ready','{}',1),(1,'Ready','{}',1);
         INSERT INTO requirement_revision(requirement_id,revision,document) SELECT id,1,'{\"repository_version\":1}' FROM requirement;")
+        .execute(pool).await.unwrap();
+    sqlx::raw_sql("INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr,capability,checked_at,stale) VALUES (99,1,'{}',1,'{\"policy\":{},\"blockers\":[]}',extract(epoch FROM now())::bigint,false) ON CONFLICT(repository_id) DO UPDATE SET checked_at=extract(epoch FROM now())::bigint,stale=false;")
         .execute(pool).await.unwrap();
     run_store::begin_incarnation(pool, incarnation)
         .await

@@ -1,6 +1,6 @@
 {
   "series": {
-    "id": "measurement-series/v1:ce7717cb7f2eb0ebe8dde1561fe6eee6f2dac5be65df83e671394ac1e9e42ab2",
+    "id": "measurement-series/v1:15ec63dfd083e1f4f0ff39951484bf12b60f714d4745d9e3ed8fc5ebfc996ef0",
     "name": "typescript-original-function-risk",
     "collector": {
       "name": "typescript-risk",
@@ -8,7 +8,7 @@
     },
     "tool": {
       "name": "typescript-original-instrumentation",
-      "version": "7c9bb7efeb95994df30392350bf7b4d7f7605c18a07a1e212397d1b78f5da811"
+      "version": "af640beb40a9dc1af28d1a966b4e4becfeb3408c9beff5dde1e24249cbdb776d"
     },
     "rule": {
       "name": "typescript-decision-count-innermost-lines",

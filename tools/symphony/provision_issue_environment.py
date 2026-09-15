@@ -70,6 +70,11 @@ def main(workspace):
         source=Path('/etc/codex/requirements.toml').read_text()
         source=source.replace('domains = {',f'domains = {{ "{subnet}.2" = "allow", "{subnet}.3" = "allow",')
         (provision/'requirements.toml').write_text(source)
+    # Refresh the launcher on every provision, including existing workspaces.
+    launcher=provision/'client/run.py'
+    pending=launcher.with_suffix('.new')
+    pending.write_text(adapt((TEMPLATE/'client/run.py').read_text()))
+    pending.replace(launcher)
     known={}
     names=run('docker','ps','-a','--format','{{.Names}}').splitlines()
     for role,last in [('test','2'),('dev','3')]:
