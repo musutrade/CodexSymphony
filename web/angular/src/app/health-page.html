@@ -1,0 +1,35 @@
+<header class="page-header">
+  <p>CodexSymphony</p>
+  <h1>服务状态</h1>
+</header>
+<mat-card class="ui-card" appearance="outlined">
+  <mat-card-header>
+    <mat-card-title>工作台连接</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div role="status" aria-live="polite">
+      @if (health.response.isLoading()) {
+        <p>正在检查连接…</p>
+      } @else if (
+        health.response.hasValue() &&
+        health.response.value()?.status === 'ok' &&
+        health.response.value()?.database === 'ok'
+      ) {
+        <p>连接正常</p>
+        <p>服务和数据存储均可用。</p>
+      } @else {
+        <p>暂时无法连接</p>
+        <p>请稍后重试。</p>
+      }
+    </div>
+  </mat-card-content>
+  <mat-card-actions>
+    <button
+      matButton="outlined"
+      (click)="health.response.reload()"
+      [disabled]="health.response.isLoading()"
+    >
+      重新检查
+    </button>
+  </mat-card-actions>
+</mat-card>

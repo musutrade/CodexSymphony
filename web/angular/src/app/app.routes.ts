@@ -1,3 +1,9 @@
 import { Routes } from '@angular/router';
-
-export const routes: Routes = [];
+import { HealthPage } from './health-page';
+export const routes: Routes = [
+  { path: '', component: HealthPage },
+  {
+    path: 'requirements',
+    loadComponent: () => import('./requirements/requirements').then((m) => m.Requirements),
+  },
+];

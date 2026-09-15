@@ -69,6 +69,743 @@
           }
         }
       }
+    },
+    "/api/repository": {
+      "get": {
+        "operationId": "getRepository",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "repositories",
+                    "deployment_network",
+                    "network_status",
+                    "runtime_ready",
+                    "repository_ready"
+                  ],
+                  "properties": {
+                    "repositories": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "version",
+                          "repository"
+                        ],
+                        "properties": {
+                          "version": {
+                            "type": "integer"
+                          },
+                          "repository": {
+                            "$ref": "#/components/schemas/Repository"
+                          }
+                        }
+                      }
+                    },
+                    "deployment_network": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "network_status": {
+                      "type": "string"
+                    },
+                    "runtime_ready": {
+                      "type": "boolean"
+                    },
+                    "repository_ready": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "configureRepository",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "version",
+                    "repository"
+                  ],
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    },
+                    "repository": {
+                      "$ref": "#/components/schemas/Repository"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "version",
+                  "repository"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "repository": {
+                    "$ref": "#/components/schemas/Repository"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements": {
+      "get": {
+        "operationId": "listRequirements",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "requirements"
+                  ],
+                  "properties": {
+                    "requirements": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "version",
+                          "state",
+                          "title",
+                          "revision"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "version": {
+                            "type": "integer"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "revision": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRequirement",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Requirement"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "version",
+                  "contract"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "contract": {
+                    "$ref": "#/components/schemas/Contract"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}": {
+      "get": {
+        "operationId": "getRequirement",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Requirement"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "updateRequirement",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Requirement"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "version",
+                  "contract"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "contract": {
+                    "$ref": "#/components/schemas/Contract"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/requirements/{id}/ready": {
+      "post": {
+        "operationId": "readyRequirement",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Requirement"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "version",
+                  "repository_version"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "repository_version": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/requirements/{id}/withdraw": {
+      "post": {
+        "operationId": "withdrawRequirement",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Requirement"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_id",
+                  "version",
+                  "repository_version"
+                ],
+                "properties": {
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "integer"
+                  },
+                  "repository_version": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Contract": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "description",
+          "acceptance_criteria",
+          "validation_plan",
+          "network_access"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "description",
+                "verification_ref"
+              ],
+              "properties": {
+                "description": {
+                  "type": "string"
+                },
+                "verification_ref": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "validation_plan": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "check",
+                "selector",
+                "expected_result",
+                "timeout_seconds"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "check": {
+                  "type": "string"
+                },
+                "selector": {
+                  "type": "string"
+                },
+                "expected_result": {
+                  "type": "string"
+                },
+                "timeout_seconds": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "network_access": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Repository": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "project",
+          "remote",
+          "github_repository_id",
+          "base_branch",
+          "policy",
+          "revoked",
+          "reason"
+        ],
+        "properties": {
+          "project": {
+            "type": "string"
+          },
+          "remote": {
+            "type": "string"
+          },
+          "github_repository_id": {
+            "type": "integer"
+          },
+          "base_branch": {
+            "type": "string"
+          },
+          "policy": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "allowed_checks",
+              "max_timeout_seconds",
+              "token_limit",
+              "turn_limit",
+              "model_work_seconds",
+              "gate_recovery_policy"
+            ],
+            "properties": {
+              "allowed_checks": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "max_timeout_seconds": {
+                "type": "integer"
+              },
+              "token_limit": {
+                "type": "integer"
+              },
+              "turn_limit": {
+                "type": "integer"
+              },
+              "model_work_seconds": {
+                "type": "integer"
+              },
+              "gate_recovery_policy": {
+                "type": "string"
+              }
+            }
+          },
+          "revoked": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "Requirement": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "state",
+          "contract",
+          "revision",
+          "created_at",
+          "creator",
+          "authorization_valid",
+          "snapshots"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "contract": {
+            "$ref": "#/components/schemas/Contract"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "creator": {
+            "type": "string"
+          },
+          "authorization_valid": {
+            "type": "boolean"
+          },
+          "snapshots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "revision",
+                "contract",
+                "ac_ids",
+                "repository_version",
+                "repository",
+                "reviewer"
+              ],
+              "properties": {
+                "revision": {
+                  "type": "integer"
+                },
+                "contract": {
+                  "$ref": "#/components/schemas/Contract"
+                },
+                "ac_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "repository_version": {
+                  "type": "integer"
+                },
+                "repository": {
+                  "$ref": "#/components/schemas/Repository"
+                },
+                "reviewer": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      }
     }
   }
 }

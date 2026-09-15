@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { App } from './app';
+import { HealthPage as App } from './health-page';
 
 describe('Health overview', () => {
   beforeEach(() => {
@@ -15,9 +15,13 @@ describe('Health overview', () => {
   it('shows confirmed service and database health', async () => {
     const fixture = TestBed.createComponent(App);
     TestBed.tick();
-    TestBed.inject(HttpTestingController).expectOne('/api/health').flush({ status: 'ok', database: 'ok' });
+    TestBed.inject(HttpTestingController)
+      .expectOne('/api/health')
+      .flush({ status: 'ok', database: 'ok' });
     await fixture.whenStable();
-    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain('连接正常');
+    expect(fixture.nativeElement.querySelector('[role="status"]').textContent).toContain(
+      '连接正常',
+    );
     expect(fixture.nativeElement.querySelectorAll('h1').length).toBe(1);
   });
 
