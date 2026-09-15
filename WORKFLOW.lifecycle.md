@@ -40,6 +40,7 @@ hooks:
     python3 tools/gate.py config check
     mkdir -p target
     test -w target
+    python3 /home/gem/.local/share/codexsymphony/symphony/provision_issue_environment.py "$PWD"
 agent:
   serial_delivery: true
   max_concurrent_agents: 1
@@ -99,6 +100,26 @@ use a worktree per Run, matching app-server cwd, protected Git metadata and
 platform-owned Git delivery. Do not transplant this development controller's
 development handoff protocol into the product. Cloudflare/Bark belong to 0b;
 independent executor UID and the newly pinned Harness-Gate integration to 0c.
+
+## Provisioned serial-development environment
+
+The host before_run hook provisions an independent disposable
+PostgreSQL 16 test fixture, a synthetic persistent fixture, offline npm cache and
+read-only browser/source resources per assigned Issue. Read `.agent-env/README.md`
+before probing services. Previous preparation reports may describe an earlier
+unprovisioned environment; confirm the current fixture using the commands below.
+
+Run database-dependent commands using `python3 /opt/symphony-env/run.py COMMAND ...`.
+The launcher injects TEST_DATABASE_URL, DATABASE_URL and DEV_DATABASE_URL and
+starts command-local relays through the managed proxy. Direct host localhost
+ports and raw Docker socket access are intentionally unavailable and are not
+prerequisites for the supplied fixtures. The fixed `/opt/symphony-env/dbctl.py`
+interface provides status/recreate for test/dev only. For frontend dependencies,
+use `npm ci --offline --no-audit --no-fund` in web/angular. For E2E, use
+`python3 /opt/symphony-env/run.py python3 /opt/symphony-env/e2e.py`; it starts the
+real API with the expected test Origin, runs the repository tests, and stops it.
+Run actual sandbox readiness checks before implementation; host provisioning is
+not product acceptance. Preserve existing progress and all Gate requirements.
 
 ## Preparation and recovery
 
