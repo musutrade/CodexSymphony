@@ -23,7 +23,7 @@ def redact(text):
 
 
 def read_log(path):
-    if not path.is_file() or path.is_symlink():return None
+    if not path.is_file() or path.resolve()!=path.absolute():return None
     # Redact before truncation so truncation cannot expose a partial private key.
     if path.stat().st_size>8*1024*1024:
         return '[Log exceeds export limit; host review required]'
@@ -72,6 +72,12 @@ def export(base=BASE):
                     for name in LOGS:
                         value=read_log(run/name)
                         if value is not None:logs[name]=value
+                    reports=run/'workspace/.harness-gate/reports'
+                    report_paths=[reports/'test_result.json',reports/'test_result.md',reports/'review_context.json']
+                    report_paths+=sorted(reports.glob('invocations/*/secret_scan.json'))
+                    for path in report_paths:
+                        value=read_log(path)
+                        if value is not None:logs[str(path.relative_to(run))]=value
                     approval=job/'gate-approval.json'
                     if approval.exists():
                         for name,approved in json.loads(approval.read_text()).get('config_files',{}).items():
