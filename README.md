@@ -2,7 +2,7 @@
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。
 
-当前为 **设计规格 + spike 阶段，尚无平台主体代码**。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
+当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 工程骨架，打通 `/api/health` 与真实数据库；需求和 AgentRun 业务闭环尚未实现。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
 
 ## 从这里开始
 
@@ -37,3 +37,12 @@
 实验结论绑定当时版本，不替代当前部署和实现验收。尤其 workspace-write 不限制同 UID 读取，0a 只接管本人可信仓库。
 
 参考：[OpenAI Symphony](https://github.com/openai/symphony)、[Harness-Gate](https://github.com/musutrade/Harness-Gate)。
+
+## 开发环境与本仓库门禁
+
+- `codex-version.lock` 固定 Codex 0.154.0；协议生成与兼容性检查绑定该版本。
+- `harness-gate-version.lock` 固定 Core 0.4.5 与 Rust collector rc.6。独立源码／前端／合约插件见 `.harness-gate/collector-candidates.json`。
+- 本仓库从开发阶段启用 Harness-Gate，CRAP ≤10，覆盖率 ≥80%；不改变未来平台对受管仓库的分期。
+- [本机开发](docs/local-development.md)、[完整门禁验收](docs/quality/complete-local/README.md)、[Symphony 启用](docs/symphony-development-setup.md)。
+- `WORKFLOW.lifecycle.md` 供现有 Elixir Symphony 开发本项目；Agent 使用宿主 `github_api` 交付，不能执行 shell git push。
+- 首个未来平台接管仓库为 `musutrade/disposable`，沿用 S2/S2b 的测试授权；与当前开发本仓库的 Symphony 验收分开。

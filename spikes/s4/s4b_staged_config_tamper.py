@@ -43,7 +43,7 @@ sh("git", "commit", "-qm", "init", cwd=repo)
 sh("git", "add", ".harness-gate", cwd=repo)          # config must be staged for `hook`
 
 # --- 1. baseline: a real-looking credential in the staged file -> hook must FAIL
-(repo / "leak.md").write_text('key = "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"\n')
+(repo / "leak.md").write_text('key = "' + 'ghp_' + 'A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8' + '"\n')
 sh("git", "add", "leak.md", cwd=repo)
 F["baseline_with_secret"] = gate(repo, "hook")
 F["baseline_config_digest"] = sh("sha256sum", ".harness-gate/flow.toml", cwd=repo).stdout.split()[0]

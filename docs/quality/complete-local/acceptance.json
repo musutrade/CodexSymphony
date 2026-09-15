@@ -1,0 +1,408 @@
+{
+  "schema": "codexsymphony-complete-local-acceptance/v1",
+  "status": "PASS",
+  "scope": "complete-local-isolated-ci-profile",
+  "run": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4",
+  "source_identity": "working-tree:162b7734abdb3c514f50807f45febeeb9fcb1787",
+  "source_inputs_sha256": "32b290ad2f4916ec20bc3af291767464f731debbe7a58fe66ef6462fd6c5ae82",
+  "source_note": "Source snapshot includes the working tree changes listed in source-inputs.json; source commit alone does not identify this run. Acceptance documentation was added afterwards.",
+  "configuration_digest": "sha256:71346509ec0bf29ef702d02f4cfb1eb98a1b239315377a1f4a12f8c2ac4a3964",
+  "host_approval": "/home/gem/.local/share/codexsymphony/gate-host/approvals/f3d999766a189f3c.json",
+  "host_approval_sha256": "c79fad2d8d401046705272fe8ef896cb94ff29630cf258d65beb4e837c7a161d",
+  "host_release": "/home/gem/.local/share/codexsymphony/gate-host/releases/f3d999766a189f3c",
+  "policy": {
+    "crap_max": 10,
+    "coverage_min_percent": 80
+  },
+  "evidence_complete": true,
+  "evidence_records": 20,
+  "producers": 3,
+  "steps": [
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": null,
+          "duration_ms": 999,
+          "finished_at": null,
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/secret_scan.json",
+          "started_at": null,
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": null,
+      "duration_ms": 999,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "secret scan",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/secret_scan.json",
+      "parser": null,
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "builtin.secret-scan",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": "0 violation(s), 0 blocker(s), 0 error(s), 0 warning(s)",
+          "duration_ms": 20,
+          "finished_at": null,
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/review_context.json",
+          "started_at": null,
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": "0 violation(s), 0 blocker(s), 0 error(s), 0 warning(s)",
+      "duration_ms": 20,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "architecture audit",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/review_context.json",
+      "parser": null,
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "builtin.architecture-audit",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": null,
+          "duration_ms": 85,
+          "finished_at": "2026-09-15T05:40:15.030442982+00:00",
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_fmt.log",
+          "started_at": "2026-09-15T05:40:14.944576842+00:00",
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": null,
+      "duration_ms": 85,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "backend format",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_fmt.log",
+      "parser": null,
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "backend.format",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": null,
+          "duration_ms": 33116,
+          "finished_at": "2026-09-15T05:40:48.147036015+00:00",
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_clippy.log",
+          "started_at": "2026-09-15T05:40:15.030822425+00:00",
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": null,
+      "duration_ms": 33116,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "backend Clippy",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_clippy.log",
+      "parser": null,
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "backend.clippy",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": null,
+          "duration_ms": 575,
+          "finished_at": "2026-09-15T05:40:48.723029641+00:00",
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_check.log",
+          "started_at": "2026-09-15T05:40:48.147335561+00:00",
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": null,
+      "duration_ms": 575,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "backend compile",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_check.log",
+      "parser": null,
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "backend.compile",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": "5 result(s)",
+          "duration_ms": 1537,
+          "finished_at": "2026-09-15T05:40:50.260625425+00:00",
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_tests.log",
+          "started_at": "2026-09-15T05:40:48.723417116+00:00",
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": "5 result(s)",
+      "duration_ms": 1537,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "backend tests",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/backend_tests.log",
+      "parser": {
+        "complete": true,
+        "minimum": 1,
+        "mode": "regex",
+        "observed": 5,
+        "version": 1
+      },
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "backend.tests",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": null,
+          "duration_ms": 4339,
+          "finished_at": "2026-09-15T05:40:54.600323227+00:00",
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/frontend_lint.log",
+          "started_at": "2026-09-15T05:40:50.261230593+00:00",
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": null,
+      "duration_ms": 4339,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "frontend lint",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/frontend_lint.log",
+      "parser": null,
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "frontend.lint",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": "6 result(s)",
+          "duration_ms": 6424,
+          "finished_at": "2026-09-15T05:41:01.025001360+00:00",
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/frontend_tests.log",
+          "started_at": "2026-09-15T05:40:54.600645611+00:00",
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": "6 result(s)",
+      "duration_ms": 6424,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "frontend tests",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/frontend_tests.log",
+      "parser": {
+        "complete": true,
+        "minimum": 1,
+        "mode": "regex",
+        "observed": 6,
+        "version": 1
+      },
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "frontend.tests",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    },
+    {
+      "attempts": [
+        {
+          "attempt": 1,
+          "cancelled": false,
+          "detail": null,
+          "duration_ms": 6750,
+          "finished_at": "2026-09-15T05:41:07.776173415+00:00",
+          "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/frontend_build.log",
+          "started_at": "2026-09-15T05:41:01.026082632+00:00",
+          "status": "PASS",
+          "timed_out": false
+        }
+      ],
+      "cancelled": false,
+      "detail": null,
+      "duration_ms": 6750,
+      "failure_code": null,
+      "flaky": false,
+      "invocation_id": "inv-1789450813-858024495-2-1",
+      "label": "frontend production build",
+      "log": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-ed89edc306d4/workspace/.harness-gate/reports/invocations/inv-1789450813-858024495-2-1/logs/frontend_build.log",
+      "parser": null,
+      "passed": true,
+      "retry_class": null,
+      "retry_count": 0,
+      "runner": null,
+      "status": "PASS",
+      "step_id": "frontend.build",
+      "timed_out": false,
+      "waived": false,
+      "waiver": null
+    }
+  ],
+  "host_unit_tests": {
+    "passed": 4,
+    "log": "validation-tools/host-unit-tests.log"
+  },
+  "negative_checks": [
+    {
+      "case": "replay",
+      "rejected": true,
+      "exit": 1
+    },
+    {
+      "case": "signature-tampering",
+      "rejected": true,
+      "exit": 1
+    },
+    {
+      "case": "stale-context",
+      "rejected": true,
+      "exit": 1
+    },
+    {
+      "case": "artifact-tampering",
+      "rejected": true,
+      "exit": 1
+    },
+    {
+      "case": "missing-contract-producer",
+      "rejected": true,
+      "exit": 1
+    }
+  ],
+  "core_issue": "https://github.com/musutrade/Harness-Gate/issues/269",
+  "replay_guard": "Host-owned durable nonce broker; first-use claims accepted, replay rejected across broker restart. Core 0.4.5 is not patched.",
+  "plugins": {
+    "rust_source": {
+      "directory": "rust-source",
+      "version": "0.1.0-rc.1",
+      "package": "harness-gate-rust-source-0.1.0-rc.1.tar.gz",
+      "sha256": "b9986c787d33cd4805f00d4f490f5c679887bf74e93633148e47364cc2e10724",
+      "command": "harness-gate-rust-source-collector",
+      "npm_package": null
+    },
+    "typescript": {
+      "directory": "typescript",
+      "version": "0.1.0-rc.4",
+      "package": "harness-gate-typescript-collector-0.1.0-rc.4.tgz",
+      "sha256": "d8358566248c73c93fc3dd561b675eff481256fb63e0a0fb61eab779dec4254c",
+      "command": "harness-gate-typescript-collector",
+      "npm_package": "@harness-gate/typescript-collector"
+    },
+    "http_contract": {
+      "directory": "http-contract",
+      "version": "0.1.0-rc.3",
+      "package": "harness-gate-http-json-contract-collector-0.1.0-rc.3.tgz",
+      "sha256": "f4b74a1af9ba6939a1d021baf45ee9d9737872cbafbb0fed3407135277fb7c0e",
+      "command": "harness-gate-http-contract-collector",
+      "npm_package": "@harness-gate/http-json-contract-collector"
+    }
+  },
+  "plugin_source_commits": {
+    "rust_source": "337c363",
+    "typescript": "588e9ac",
+    "http_contract": "845dd82"
+  },
+  "archive": {
+    "path": "evidence.tar.gz",
+    "sha256": "d54ff0c24920f78e7cba2f0697ef7b677101afe03d1560eb9b046b5c6714fecd",
+    "bytes": 243546,
+    "manifest": "archive-manifest.json",
+    "manifest_sha256": "7966f5e5556bdc9476d63b718245ff7fabee2102f0d767051635fa80bdbea37f"
+  },
+  "limitations": [
+    "Local Linux host only; hosted CI and protected checks not accepted.",
+    "Symphony service and Issue-to-PR-to-CI handoff not accepted.",
+    "Candidate plugins are not official signed upstream releases.",
+    "Archive contains public verification inputs, not reusable execution authorization. Native binaries and full raw capture remain in the external run directory."
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "series": {
+    "id": "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e",
+    "name": "rust-source-function-risk",
+    "collector": {
+      "name": "rust-source-risk",
+      "version": "0.1.0-rc.1"
+    },
+    "tool": {
+      "name": "rust-llvm-source-coverage",
+      "version": "9a063a7b1ae6196ba3045f3d43908d45f2dd17f9c296d2b43ac37aa5fda89ce7"
+    },
+    "rule": {
+      "name": "rust-explicit-decisions",
+      "version": "f95423e16aa895082f1aa1199ee4713033ace2ce4629ac82d315af633ea5da56"
+    },
+    "runtime": {
+      "name": "python",
+      "version": "3.14.4"
+    },
+    "target": "x86_64-unknown-linux-gnu",
+    "source_identity": {
+      "name": "rust-source-ast/v1",
+      "version": "1"
+    },
+    "normalization": {
+      "name": "llvm-source-innermost-lines/v1",
+      "version": "1"
+    },
+    "metrics": [
+      {
+        "name": "complexity.cyclomatic",
+        "type": "count"
+      },
+      {
+        "name": "coverage.function",
+        "type": "ratio"
+      },
+      {
+        "name": "coverage.line",
+        "type": "ratio"
+      },
+      {
+        "name": "coverage.region",
+        "type": "ratio"
+      },
+      {
+        "name": "risk.crap",
+        "type": "rational"
+      }
+    ]
+  },
+  "states": {
+    "complexity.cyclomatic": "supported",
+    "coverage.function": "supported",
+    "coverage.line": "supported",
+    "coverage.region": "supported",
+    "risk.crap": "supported"
+  }
+}

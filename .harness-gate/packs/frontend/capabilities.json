@@ -1,0 +1,55 @@
+{
+  "series": {
+    "id": "measurement-series/v1:6356e441c3c91e689c8cf17e0d1bde801615ea6caf77c9417f61a28c2cb18749",
+    "name": "typescript-original-function-risk",
+    "collector": {
+      "name": "typescript-risk",
+      "version": "0.1.0-rc.4"
+    },
+    "tool": {
+      "name": "typescript-original-instrumentation",
+      "version": "2332a4ac6e87a9685b41fcd34bdf8e4903a2a6f535cd951d7d431be2d4d0195f"
+    },
+    "rule": {
+      "name": "typescript-decision-count-innermost-lines",
+      "version": "8dfbe2c4a02459752c046421ebfba39f1b8fd236e6645a49224c8e79c943bd5d"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "24.18.0"
+    },
+    "target": "x86_64-unknown-linux-gnu",
+    "source_identity": {
+      "name": "typescript-ast-risk/v1",
+      "version": "1"
+    },
+    "normalization": {
+      "name": "istanbul-original-lines-innermost/v1",
+      "version": "1"
+    },
+    "metrics": [
+      {
+        "name": "complexity.cyclomatic",
+        "type": "count"
+      },
+      {
+        "name": "coverage.function",
+        "type": "ratio"
+      },
+      {
+        "name": "coverage.line",
+        "type": "ratio"
+      },
+      {
+        "name": "risk.crap",
+        "type": "rational"
+      }
+    ]
+  },
+  "states": {
+    "complexity.cyclomatic": "supported",
+    "coverage.line": "supported",
+    "coverage.function": "supported",
+    "risk.crap": "supported"
+  }
+}
