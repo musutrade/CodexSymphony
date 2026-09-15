@@ -2,6 +2,11 @@
 pub mod business;
 pub mod config;
 pub mod contract;
+pub mod coordinator;
+pub mod execution;
+pub mod execution_api;
+pub mod process;
+pub mod run_store;
 pub mod security;
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use serde::Serialize;
@@ -19,6 +24,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
         Router::new()
             .route("/api/health", get(health))
             .merge(business::routes())
+            .merge(execution_api::routes())
             .with_state(pool),
     )
 }

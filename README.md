@@ -2,7 +2,7 @@
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。
 
-当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。AgentRun 与 PR 交付尚未实现，Ready 保持排队。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
+当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。真实编码与 PR 交付尚未接通，Ready 保持排队。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
 
 ## 从这里开始
 

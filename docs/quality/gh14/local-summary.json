@@ -1,0 +1,54 @@
+{
+  "issue": 14,
+  "baseline": "a6a9ca994abe8311d0b2d5fc18bc4355cce2eba3",
+  "kind": "unsigned-local-rehearsal",
+  "rust": {
+    "functions": 141,
+    "max_crap": 10.0,
+    "min_line_coverage": 0.8,
+    "min_region_coverage": 0.8,
+    "violations": []
+  },
+  "rust_source_sha256": {
+    "apps/server/src/business.rs": "e1d214a25cf03ee236d620328b75aa94afa11bf0b64c2b15983502bcd3a067af",
+    "apps/server/src/config.rs": "508a052dc87b767703f7122e4d6d851970917bb8c5f736f9aec41c37e0410cb5",
+    "apps/server/src/contract.rs": "c17c2ccfc4a1f27faac90ef72b500060264804dcdce51f23943d61d5276546df",
+    "apps/server/src/coordinator.rs": "e60c9ce0ac8d091a9e149f49b68bca7b33948aa0f1e016f911dcbef21573f77f",
+    "apps/server/src/execution.rs": "cf81994c90e9361c680371b4fcf0a75dd3c6041dd582e1c6324da3226b5ee2ee",
+    "apps/server/src/execution_api.rs": "b9a1094fbb98e99a02767dfa8239683978b1eb763287faaad29ec9764084513a",
+    "apps/server/src/lib.rs": "8495e78a94a0cc7a37fb8259ca48fc189acd37ef9e44656d76e6aad9df631154",
+    "apps/server/src/main.rs": "01964201caa180af43a96defd1307697eda9069885705ea2ef16eba0ff74ea1e",
+    "apps/server/src/process.rs": "686f7b873bd734ffeb520544827eac7aebaa789c6f4a42c75b3b114b47f49e37",
+    "apps/server/src/run_store.rs": "e00cdc3962dbf4d42dbecca53ff9ac5a585cffd3d35b00c4972d2c64769343a7",
+    "apps/server/src/security.rs": "63d0ef6830877b64fee9a35904fd6063df1fbe74b62f7ce22384f0faff723ee7"
+  },
+  "rust_series": "measurement-series/v1:b79abd709904548fbed1042b2e1ceb146cc3fedc75bc55744eb475b84cdd1db9",
+  "rust_tests": 14,
+  "frontend_tests": 11,
+  "browser_e2e": 10,
+  "http": {
+    "observed_variants": 25,
+    "schemas": "PASS",
+    "generated_types": "PASS",
+    "contract_sha256": "f4a4e3ff532d75b79baccb2ee81d66b542c5418ddfbbb9dfaf5ca609d055a4a3",
+    "host_capture_remaining": [
+      "GET /api/health:503"
+    ]
+  },
+  "evidence_sha256": {
+    "target/gh14/source-capture-final/metrics.json": "4619e4198d5fe70710c757719c2763d8914c9e8140c4348fa6a3e09036827161",
+    "target/gh14/source-capture-final/summary.json": "1a0ba5d21f2bf7f53dcc9c20dd851f84eb619c4cfc7202e1bbf1d006c866cce0",
+    "target/gh14/workspace-tests.log": "863e1920d0d13f0ee55cd329ba3a4f08fa72e0974b3111005bca4fb7d10348e8",
+    "target/gh14/clippy.log": "8a585f69cb3fad2a6574e17e25dfbff468f385d37cb80a6718c2b45f2f25aed4",
+    "target/gh14/fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "target/gh14/check.log": "51526d5e09f381efe16534f434c7411b3b0a7659165beec1f4c602f4d3d5825f",
+    "target/gh14/e2e.log": "16f25cbbeec653497ffbc15d03eb0a2ba51b5b5ba1654babc7deec3209419dec",
+    "target/gh14/frontend-tests-final.log": "5d46f90b30c1931ab150eb103e18adb6db2c84f6e6486a13fce370cedd133fce",
+    "target/gh14/frontend-lint.log": "d2310db709eb23deebb604e34d576aa7f433b61a1982e1980439242f1a1f2839",
+    "target/gh14/frontend-build.log": "1abfab8935f60c4bc48900556543859f4e130e151768a618c5e4e9fa6deb7db0",
+    "target/gh14/http-schema-summary.json": "49a5732d958836b04a1af1f4c7c5c45962ec98f7be573d9af1ec97589fef0462",
+    "target/gh13-contract-observations.json": "90f0c974ef54e34018ceb1a1dd3f61034a82aba8397cba4f43a786aeeed7d244",
+    "target/gh14-environment-verified.json": "0b2a9c4523d50a62703126a8e0b552b9bab64e29c3d435437003af357cc26784"
+  },
+  "protected_checks": "pending host verification on published SHA"
+}
