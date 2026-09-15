@@ -7,8 +7,8 @@
 
 - 将本工作流、版本锁及实施所需规格提交到开发仓库，否则 clone 无法取得这些输入。
 - 提交并实际运行 `.github/workflows/quality.yml`，其 job 名为 `Harness-Gate`，已写入
-  `lifecycle_required_checks`。在 GitHub 保护规则中将其设为必需并验收；本次未修改远端规则。
-  门禁配置与源码骨架已经落地；本机受信宿主及三路插件已完成完整隔离 PASS；远端受信输入供给仍待接通，详见
+  `lifecycle_required_checks`。main 已保护该检查与独立 App 的 `Trusted Harness-Gate`。
+  门禁配置与源码骨架已经落地；本机受信宿主及三路插件已完成完整隔离 PASS；远端受信输入和真实完整 CI 已接通，详见
   `.harness-gate/QUALITY.md`。必须取得真实完整 PASS 后才能自动交付。
 - 为此仓库准备独立的 `CODEXSYMPHONY_WORKSPACE_ROOT` 和受限服务环境中的
   `GITHUB_TOKEN`；控制器需要查询 Issue/PR/Checks/Review 及交付所需权限。
@@ -48,3 +48,12 @@
 Harness-Gate 的现存 WORKFLOW 文本仍使用 “final push” 措辞，但其交接台账
 GH-182 的 validation_summary 记录了 `.git` 只读时通过 Git blob/tree/commit/ref API
 发布并核验 PR head 的实际路径。本项目以该路径和源码为依据，不照抄旧措辞或特殊可写根。
+
+## 本次部署记录
+
+受信 CI、服务安装及 Ubuntu 嵌套沙箱前置项见 `docs/remote-gate.md`；实际验收记录见
+`docs/quality/remote-environment/`。服务是 `symphony-codexsymphony.service`，
+端口 4011，状态目录 `~/.local/share/codexsymphony/symphony/`。当前部署文件在
+`symphony-ready` 之外还要求 `symphony-environment-acceptance`，因此不领取现有
+0a #12–#25；这些 Issue 保留原有依赖和状态。正式切换到 0a 时先核对 #12 与准备
+PR #26 的覆盖关系，再调整已审定的部署路由，不能把环境验收当成 0a 完成。

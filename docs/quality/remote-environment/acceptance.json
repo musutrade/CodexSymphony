@@ -1,0 +1,307 @@
+{
+  "schema": "codexsymphony-environment-acceptance/v1",
+  "recorded_at_utc": "2026-09-15",
+  "scope": "Development environment only; 0a issues remain open and excluded from dispatch.",
+  "runs": [
+    {
+      "run_id": 34935125598,
+      "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34935125598",
+      "event": "pull_request",
+      "source_sha": "7442368555d056696b52b4372b749cc4c89a71f5",
+      "conclusion": "success",
+      "host_receipt": {
+        "identity": "34935125598/1",
+        "check_id": 104271367795,
+        "source_sha": "7442368555d056696b52b4372b749cc4c89a71f5",
+        "finished": true,
+        "run": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-d0df7f47f822",
+        "report_sha256": "c303d84b8e84ff7df4ac2f9081bc63087bf30ca6bc5ba21cfe0ae1a648e7a33e",
+        "records": 20,
+        "producers": 3,
+        "status": "PASS"
+      },
+      "checks": [
+        {
+          "name": "Trusted Harness-Gate",
+          "app_id": 4867361,
+          "conclusion": "success",
+          "external_id": "34935125598/1",
+          "url": "https://github.com/musutrade/CodexSymphony/runs/104271367795"
+        },
+        {
+          "name": "Harness-Gate",
+          "app_id": 15368,
+          "conclusion": "success",
+          "external_id": "e0ae4bdf-fff9-5c78-bb37-fe66853d98da",
+          "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34935125598/job/104271285911"
+        }
+      ]
+    },
+    {
+      "run_id": 34935433483,
+      "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34935433483",
+      "event": "push",
+      "source_sha": "b9ec6593759907e1c9c254339fb1efe2802084df",
+      "conclusion": "success",
+      "host_receipt": {
+        "identity": "34935433483/1",
+        "check_id": 104272220786,
+        "source_sha": "b9ec6593759907e1c9c254339fb1efe2802084df",
+        "finished": true,
+        "run": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-3c7d23ad0fa0",
+        "report_sha256": "7d4578a2cfedd733141f3f7215e145c17ecc4fe618ef700e906baaacadeca881",
+        "records": 20,
+        "producers": 3,
+        "status": "PASS"
+      },
+      "checks": [
+        {
+          "name": "Trusted Harness-Gate",
+          "app_id": 4867361,
+          "conclusion": "success",
+          "external_id": "34935433483/1",
+          "url": "https://github.com/musutrade/CodexSymphony/runs/104272220786"
+        },
+        {
+          "name": "Harness-Gate",
+          "app_id": 15368,
+          "conclusion": "success",
+          "external_id": "f4518868-d242-514b-a4ec-0b4a879a2f76",
+          "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34935433483/job/104272198019"
+        }
+      ]
+    },
+    {
+      "run_id": 34936449798,
+      "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34936449798",
+      "event": "pull_request",
+      "source_sha": "dca2d9c8ef0ac02c760eac13018d319cbb4a1855",
+      "conclusion": "success",
+      "host_receipt": {
+        "identity": "34936449798/1",
+        "check_id": 104275335356,
+        "source_sha": "dca2d9c8ef0ac02c760eac13018d319cbb4a1855",
+        "finished": true,
+        "run": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-8a55d2d93bfc",
+        "report_sha256": "c5ac3dd7780c8b52d690a62db883b3c2a5415af7e50fc25263a19dd863441871",
+        "records": 20,
+        "producers": 3,
+        "status": "PASS"
+      },
+      "checks": [
+        {
+          "name": "Trusted Harness-Gate",
+          "app_id": 4867361,
+          "conclusion": "success",
+          "external_id": "34936449798/1",
+          "url": "https://github.com/musutrade/CodexSymphony/runs/104275335356"
+        },
+        {
+          "name": "Harness-Gate",
+          "app_id": 15368,
+          "conclusion": "success",
+          "external_id": "16f684ff-df69-5b6b-839f-685ec9dbc3da",
+          "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34936449798/job/104275298327"
+        }
+      ]
+    },
+    {
+      "run_id": 34936704483,
+      "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34936704483",
+      "event": "push",
+      "source_sha": "a3104222da62549fe8d0b7d707528cf5077313ea",
+      "conclusion": "success",
+      "host_receipt": {
+        "identity": "34936704483/1",
+        "check_id": 104276153921,
+        "source_sha": "a3104222da62549fe8d0b7d707528cf5077313ea",
+        "finished": true,
+        "run": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-471358c13148",
+        "report_sha256": "2a123c4e88d19c31c02017cd007b638e056750d0ce92d5ce0f90874a6bf7db27",
+        "records": 20,
+        "producers": 3,
+        "status": "PASS"
+      },
+      "checks": [
+        {
+          "name": "Trusted Harness-Gate",
+          "app_id": 4867361,
+          "conclusion": "success",
+          "external_id": "34936704483/1",
+          "url": "https://github.com/musutrade/CodexSymphony/runs/104276153921"
+        },
+        {
+          "name": "Harness-Gate",
+          "app_id": 15368,
+          "conclusion": "success",
+          "external_id": "0c9ddf6c-6592-5eea-8a65-651aa344b583",
+          "url": "https://github.com/musutrade/CodexSymphony/actions/runs/34936704483/job/104276079434"
+        }
+      ]
+    }
+  ],
+  "controller": {
+    "issue": 27,
+    "issue_url": "https://github.com/musutrade/CodexSymphony/issues/27",
+    "closed_at": "2026-09-15T06:23:19Z",
+    "pr": 28,
+    "pr_url": "https://github.com/musutrade/CodexSymphony/pull/28",
+    "merged_at": "2026-09-15T06:23:15Z",
+    "merge_commit": "a3104222da62549fe8d0b7d707528cf5077313ea",
+    "phase": "done",
+    "repairs": 0,
+    "budget": {
+      "cached_input_tokens": 787840,
+      "consecutive_errors": 0,
+      "input_tokens": 881807,
+      "output_tokens": 10475,
+      "run_attempts": 2,
+      "runtime_ms": 466600,
+      "total_tokens": 892282
+    },
+    "publication": "Elixir host github_api Git Data API; no Agent shell git push",
+    "journal_path": "/home/gem/.local/share/codexsymphony/symphony/WORKFLOW.lifecycle.md.handoffs.json"
+  },
+  "nested_sandbox": {
+    "command_exec": "PASS",
+    "codex": "0.154.0",
+    "proof": {
+      "git_readonly": true,
+      "app_key_visible": false,
+      "host_approval_visible": false,
+      "core_version": "harness-gate 0.4.5"
+    }
+  },
+  "bwrap_sha256": "0abea81db798ebf6b4742ac0664802d97521547a353c2a0dbdc21d76cbbfd2c0",
+  "retained_failures": [
+    {
+      "actions_run": 34934986669,
+      "status": "interrupted",
+      "reason": "Operator restarted publisher during initial workflow discovery repair; retained as failure."
+    },
+    {
+      "issue": 27,
+      "attempt": 1,
+      "reason": "System bwrap AppArmor child profile prevented nested command sandbox; budget and workspace retained."
+    },
+    {
+      "issue": 27,
+      "attempt": 2,
+      "reason": "Initial config check selected Core 0.4.2; explicit pinned PATH passed. Default PATH corrected in installed launcher and independently checked by command/exec."
+    }
+  ],
+  "deferred_0a_issues": [
+    {
+      "number": 12,
+      "title": "[0a-01] 工程基线：Rust、PostgreSQL、Angular 与可重复 CI",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 13,
+      "title": "[0a-02] 需求纵切：不可变 Contract、策略快照与 Ready 入口",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 14,
+      "title": "[0a-03] 执行控制：全局串行、进程监督与冷启动恢复闸门",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 15,
+      "title": "[0a-04] 工作区与 Git Broker：候选提交、完整保全及恢复",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 16,
+      "title": "[0a-05] GitHub App：仓库能力预检与精确外部事实观察",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 17,
+      "title": "[0a-06] 真实环境预检：静态网络边界、依赖与磁盘保护",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 18,
+      "title": "[0a-07] 额度控制：跨 Run 预留、去重结算与有限重试",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 19,
+      "title": "[0a-08] Codex Runtime：协议、动态工具与隔夜问题接续",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 20,
+      "title": "[0a-09] 固定候选验证：受信证据、阶段恢复与一次代码修复",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 21,
+      "title": "[0a-10] 可靠交接：outbox、PR 发布、暂停与取消收尾",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 22,
+      "title": "[0a-11] 操作闭环：四个页面、阻塞六问与必要指标",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 23,
+      "title": "[0a-12] 周期清理：唯一目录删除与恢复资料保留",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 24,
+      "title": "[0a-13] 单仓集成验收：真实需求到 PR 与故障恢复证据",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    },
+    {
+      "number": 25,
+      "title": "[0a-14] 0a 尾部：第二仓接入、严格串行与发布核对",
+      "state": "open",
+      "labels": [
+        "symphony-ready"
+      ]
+    }
+  ]
+}

@@ -9,7 +9,7 @@ GitHub Actions 的 `Harness-Gate` 不执行带凭据的项目代码。仓库外�
 external ID（run ID/attempt）全部匹配且 conclusion=success 的结果。
 缺失、失败、超时、旧 attempt 或其他发布者均不能成功。
 
-main 需要同时保护两个检查：`Harness-Gate`（GitHub Actions）和
+main 已同时保护两个检查：`Harness-Gate`（GitHub Actions）和
 `Trusted Harness-Gate`（上述独立 App），并禁止 force push、删除与管理员绕过。
 Symphony 继续检查 `github-actions` 发布的 `Harness-Gate`，GitHub 分支规则额外
 强制独立 App 检查。普通 GitHub 授权创建的同名结果不具有该 App 身份。
@@ -52,7 +52,27 @@ App 需安装到本仓库，具有 Checks 读写、Actions 只读、Contents 只
 仅挂载该 Issue 工作区、模型认证目录与构建工具；App 私钥、GitHub CLI 凭据、
 宿主批准文件及交接台账不挂载。GitHub REST 仍由外部 Elixir 动态工具执行。
 `.git` 在 Agent 命名空间中只读，模型认证目录不等同于 GitHub 凭据隔离。
-当前预检已确认 Codex 版本和 App 私钥／门禁批准文件不可见；真实模型交接待远端验收。
+真实 command/exec 预检通过；环境 Issue #27 已由模型经宿主 API 发布 PR #28，
+两个受保护检查通过后，控制器自动合并并关闭 Issue。完整记录见
+[远端环境验收](quality/remote-environment/README.md)。现有 0a #12–#25 未领取。
 
 Codex 认证复用项目已有的独立 CODEX_HOME；官方说明见
 [Codex authentication](https://learn.chatgpt.com/docs/auth)。
+
+## Ubuntu AppArmor 的嵌套沙箱前置项
+
+当前主机的 `/etc/apparmor.d/bwrap-userns-restrict` 将子进程叠加到
+`unpriv_bwrap`，其中 `audit deny capability` 阻止 Codex 再创建内层命令沙箱。
+仅 app-server initialize 成功不足以证明命令可执行；实际 `command/exec` 必须通过。
+
+`sudo bash tools/symphony/install-apparmor.sh` 安装 root 拥有、仅 root/gem 可执行的
+专用外层 bwrap 副本及独立 AppArmor profile；系统 `/usr/bin/bwrap`、默认 profile
+与全局 sysctl 保持原值。外层仍执行既定只读/可写挂载，内层仍由 Codex workspace-write
+策略限制。该操作须管理员安装；未知 bwrap 二进制摘要会拒绝安装。
+
+修复后先通过真实 `command/exec` 验证普通命令可运行、`.git` 不可写、App 私钥与
+宿主批准文件不可见，再恢复测试任务。原失败、已用预算和工作区均保留。
+
+安装或升级后运行 `python3 tools/symphony/check_sandbox.py`，它不调用模型，
+而是通过真实 app-server `command/exec` 检查嵌套沙箱、Core 0.4.5 的 PATH 优先级、
+Git 元数据写保护及两个宿主敏感路径的不可见性。结果在服务状态目录留存。
