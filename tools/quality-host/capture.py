@@ -41,24 +41,43 @@ def database(run):
     port=subprocess.check_output(['docker','port',name,'5432/tcp'],text=True).strip().split(':')[-1]
     return name, f'postgres://gate_test:gate_test@127.0.0.1:{port}/gate_test'
 
+def wait_http_address(server, output, timeout=20):
+    """Drain OS pipe chunks; buffered readline can hide subsequent ready lines."""
+    import selectors
+    pending=b''
+    deadline=time.monotonic()+timeout
+    with selectors.DefaultSelector() as selector:
+        selector.register(server.stdout,selectors.EVENT_READ)
+        while time.monotonic()<deadline:
+            if selector.select(min(.5,max(0,deadline-time.monotonic()))):
+                chunk=os.read(server.stdout.fileno(),65536)
+                if not chunk:
+                    raise RuntimeError('server exited before readiness; inspect http-server.stderr')
+                output.write(chunk);output.flush();pending+=chunk
+                while b'\n' in pending:
+                    line,pending=pending.split(b'\n',1)
+                    if b'API listening at http://' in line:
+                        return line.split(b'API listening at http://',1)[1].decode().strip()
+                if len(pending)>1024*1024:
+                    raise RuntimeError('server startup line too large')
+            if server.poll() is not None:
+                raise RuntimeError('server exited before readiness; inspect http-server.stderr')
+    raise RuntimeError('server readiness timeout; inspect http-server.stdout and http-server.stderr')
+
 def capture_http(run, repository, container, url):
     binary=run/'target/debug/codexsymphony-server'
     args=command(['cargo','build','--locked','--bin','codexsymphony-server'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
     run_logged(run,'http-build',args)
     args=command([binary],run=run,repository=repository,plugins=PLUGIN_ROOT,readonly=[binary],environment={'DATABASE_URL':url,'BIND_ADDRESS':'127.0.0.1:0','RUST_LOG':'info'})
     # Server stdout contains the actual listener address, never a guessed port.
-    server=subprocess.Popen(args,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,start_new_session=True)
+    stderr=(run/'http-server.stderr').open('wb')
     try:
-        import selectors
-        selector=selectors.DefaultSelector();selector.register(server.stdout,selectors.EVENT_READ)
-        address=None; deadline=time.monotonic()+20
-        while time.monotonic()<deadline:
-            if selector.select(.5):
-                line=server.stdout.readline()
-                if 'API listening at http://' in line:
-                    address=line.split('API listening at http://',1)[1].strip();break
-            if server.poll() is not None: raise RuntimeError('server exited before readiness: '+server.stderr.read())
-        if address is None: raise RuntimeError('server readiness timeout')
+        server=subprocess.Popen(args,stdout=subprocess.PIPE,stderr=stderr,start_new_session=True)
+    except BaseException:
+        stderr.close();raise
+    try:
+        with (run/'http-server.stdout').open('wb') as output:
+            address=wait_http_address(server,output)
         from http_scenarios import capture
         scenario_path=repository/'api/capture-scenarios.json'
         scenarios=load(scenario_path) if scenario_path.exists() else []
@@ -76,7 +95,9 @@ def capture_http(run, repository, container, url):
         shutil.copyfile(binary,run/'http-server')
         return observations,sha(binary.read_bytes())
     finally:
-        os.killpg(server.pid,signal.SIGTERM)
+        stderr.close()
+        try: os.killpg(server.pid,signal.SIGTERM)
+        except ProcessLookupError: pass
         try: server.wait(timeout=5)
         except subprocess.TimeoutExpired: os.killpg(server.pid,signal.SIGKILL);server.wait()
 
