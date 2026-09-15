@@ -345,7 +345,7 @@ S1 已证明 workspace-write 仅限制写，不能保护同 UID 的可读凭证�
 
 ## 18. 最小界面与阻塞卡
 
-Angular + Material 默认主题；0a 不建设设计 token、暗色或视觉回归体系。
+Angular + Material 复用 arc-admin 的视觉规范、设计 token 与共享样式，来源版本和适配边界见[UI 复用规范](docs/ui-design-system.md)。0a 页面随实现采用该基线；不另建一套设计系统，暗色切换和完整视觉回归体系仍可后置。
 四页内容见第 1 章。表单标签、错误关联、键盘操作、可见焦点、按钮可访问名称和基本对比度随页面实现。
 
 阻塞记录用固定字段回答六问：哪里失败、原因确认程度、已保存什么、平台已尝试什么、用户下一步、解除后从哪里恢复。
@@ -513,4 +513,4 @@ HTTP 状态、工具原生错误保留，不提前枚举未启用功能的全部
 
 Codex 精确版本由 `codex-version.lock` 固定到 0.154.0；schema/codegen 由同版本生成，升级须通过兼容性检查。Rust 构建显式使用工作区内或平台专用 `CARGO_TARGET_DIR`，不继承用户级共享 target 目录。
 
-后续手机阶段复用既有 Tunnel/Access 并重新验收登录和源站隔离；通知使用 Bark JSON POST，device key 不进入 URL、仓库或 Agent 可读凭据。通知器的网络和凭据隔离独立于 Agent。备份阶段保留离机受限加密副本，并做禁用外部写的恢复演练。这些部署选择不提前扩大 Phase 0a。
+后续手机阶段采用平台用户名、密码登录，账号、会话与验收要求以[日常 V1 契约第 6.1 节](docs/daily-use-v1.md#61-用户名密码登录)为准，不依赖 Cloudflare Access。既有 Tunnel 可继续用于网络转发，重新验收 HTTPS、源站隔离和应用认证；通知使用 Bark JSON POST，device key 不进入 URL、仓库或 Agent 可读凭据。通知器的网络和凭据隔离独立于 Agent。备份阶段保留离机受限加密副本，并做禁用外部写的恢复演练。这些部署选择不提前扩大 Phase 0a。

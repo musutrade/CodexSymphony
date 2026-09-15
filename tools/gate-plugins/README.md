@@ -19,6 +19,15 @@ Node 包使用锁定依赖并禁用安装脚本；Rust 源码插件使用独立�
 | TypeScript rc.4 | `~/Harness-Gate-ts-crap` | `588e9ac` |
 | HTTP contract rc.3 | `~/Harness-Gate-api-contract` | `845dd82` |
 
+## GitHub 保存状态（2026-09-15 核实）
+
+三个候选安装包及摘要已随 [CodexSymphony PR #26](https://github.com/musutrade/CodexSymphony/pull/26)
+合并，可从本仓库 `tools/gate-plugins/packages/` 获取。
+上述源码工作树均属于 `musutrade/Harness-Gate`；对应的 `feat/rust-source-risk`、
+`feat/typescript-crap`、`feat/api-contract` 分支及表中三个提交在本次查询时均未出现在
+GitHub，也没有对应 PR。它们已有本地 Git 提交，但尚未推送或合并上游。
+安装包已保存不代表源码开发分支已交付，也不代表正式签名发行已发布。
+
 完整运行通过仓库外宿主入口：
 `~/.local/share/codexsymphony/gate-host/run --repository ~/CodexSymphony`。
 安装插件本身不生成受信请求或批准基线。完整证据见
