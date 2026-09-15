@@ -182,7 +182,10 @@ async fn grant_start(
 }
 
 async fn wait_identity(directory: &Path) -> std::io::Result<Receipt> {
-    for _ in 0..100 {
+    // The helper fsyncs its one-use claim before publishing identity. Real disk
+    // contention can take several seconds; keep a bounded 15-second window.
+    // No start permission is issued until identity is persisted and authorized.
+    for _ in 0..750 {
         if let Ok(receipt) = process::read(&directory.join("identity.json")) {
             return Ok(receipt);
         }
