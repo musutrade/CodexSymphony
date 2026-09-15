@@ -39,6 +39,6 @@ pub fn receipt_matches(key: &RunKey, process: &ProcessIdentity, receipt: &Receip
     &receipt.key == key && &receipt.process == process
 }
 
-/// No coding adapter is enabled until work preservation, worktree/Broker,
-/// preflight, disk and cumulative budget checks are implemented by their issues.
+/// Local worktree/Broker and preservation exist; real coding remains disabled
+/// until Runtime, preflight, disk and cumulative budget checks are implemented.
 pub const CODING_BLOCKER: &str = "coding prerequisites not implemented";

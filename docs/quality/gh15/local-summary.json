@@ -1,0 +1,113 @@
+{
+  "issue": 15,
+  "baseline": "712ee98344bf5fb2432f945c240e1c7b725c0135",
+  "checks": [
+    {
+      "name": "source-capture-final",
+      "command": [
+        "python3",
+        "/opt/symphony-env/run.py",
+        "python3",
+        "/home/gem/.local/share/harness-gate/rust-source/0.1.0-rc.2/capture.py",
+        "--repository",
+        "/home/gem/.local/share/codexsymphony/workspaces/GH-15",
+        "--output",
+        "/home/gem/.local/share/codexsymphony/workspaces/GH-15/target/gh15/source-capture-final",
+        "--target-dir",
+        "/home/gem/.local/share/codexsymphony/workspaces/GH-15/target/gh15/coverage-target",
+        "--source-root",
+        "apps/server/src",
+        "--input",
+        "Cargo.toml",
+        "--input",
+        "Cargo.lock",
+        "--input",
+        "apps",
+        "--input",
+        "migrations",
+        "--manifest",
+        "apps/server/Cargo.toml"
+      ],
+      "exit_code": 0,
+      "log": "target/gh15/source-capture-final.log"
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "target/gh15/fmt.log"
+    },
+    {
+      "name": "tests",
+      "command": [
+        "python3",
+        "/opt/symphony-env/run.py",
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "exit_code": 0,
+      "log": "target/gh15/tests.log"
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "target/gh15/clippy.log"
+    },
+    {
+      "name": "config",
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "config",
+        "check"
+      ],
+      "exit_code": 0,
+      "log": "target/gh15/config.log"
+    },
+    {
+      "name": "diff",
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "target/gh15/diff.log"
+    }
+  ],
+  "source_quality": {
+    "collector": "rust-source-risk 0.1.0-rc.2",
+    "series": "measurement-series/v1:b79abd709904548fbed1042b2e1ceb146cc3fedc75bc55744eb475b84cdd1db9",
+    "functions": 229,
+    "max_crap": "10",
+    "min_line_coverage": "4/5",
+    "min_region_coverage": "4/5",
+    "violations": 0,
+    "current_inputs_match": true,
+    "evidence": "target/gh15/source-capture-final"
+  },
+  "tests": {
+    "passed": 23,
+    "failed": 0,
+    "prior_failure": "Existing supervisor identity handshake timeout; complete rerun passed unchanged. Raw log: target/gh15/tests-first-final-attempt.log"
+  },
+  "boundary": "Local acceptance only; exact-published-SHA trusted host quality and CI pending."
+}

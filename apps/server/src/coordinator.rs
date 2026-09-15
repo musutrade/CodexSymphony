@@ -56,6 +56,15 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
             observe(pool, root, run).await?;
         }
     }
+    match crate::workspace_store::recover_stopped(pool, &root.join("workspaces")).await {
+        Ok(true) => {}
+        Ok(false) => return Ok(false),
+        Err(_) => {
+            return Err(sqlx::Error::Protocol(
+                "workspace preservation requires reconciliation".into(),
+            ));
+        }
+    }
     run_store::finish_recovery(pool, incarnation).await
 }
 
