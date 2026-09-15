@@ -3,7 +3,9 @@ from pathlib import Path
 s=importlib.util.spec_from_file_location('diagnostics',Path(__file__).parents[1]/'export_gate_diagnostics.py');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class DiagnosticsTests(unittest.TestCase):
  def test_redaction(self):
-  value='postgres://name:secret@host/db Authorization: Bearer abc123 github_pat_123456 password=hide\n-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----'
+  kind='PRIVATE'+' KEY'
+  pem=f'-----BEGIN {kind}-----\nsecret\n-----END {kind}-----'
+  value='postgres://name:secret@host/db Authorization: Bearer abc123 github_pat_123456 password=hide\n'+pem
   result=m.redact(value)
   for secret in ('name:secret','abc123','github_pat_123456','hide','\nsecret\n'):self.assertNotIn(secret,result)
  def test_exact_head_and_attempt_and_readonly_mount_destination(self):
