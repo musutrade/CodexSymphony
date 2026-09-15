@@ -48,6 +48,13 @@ def snapshot(repo,run):
     write(run/'source-inputs.json',files)
     return root,files
 
+def prune_build_cache(run):
+    target=run/'target'
+    if target.is_symlink(): raise ValueError('build cache must not be a symlink')
+    # Native objects/counters are already retained under probes, and the HTTP
+    # binary is retained separately. No signed input lives in this build cache.
+    shutil.rmtree(target)
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--repository',type=Path,required=True)
@@ -100,6 +107,7 @@ def main():
         baseline['path']=str(approved_base)
         approval={'schema':'codexsymphony-local-host-approval/v1','repository':str(repo),'config_files':desired,'trusted_files':trusted_files(repo),'runtime_files':runtime_pins(),'baseline':baseline,'series':identities}
         write(args.approval,approval)
+    prune_build_cache(run)
     print(json.dumps({'status':'PASS','scope':'complete-local-isolated-gate','run':str(run),'approval':str(args.approval)}))
 
 if __name__=='__main__': main()

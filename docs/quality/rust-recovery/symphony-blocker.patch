@@ -1,0 +1,106 @@
+--- a/elixir/lib/symphony_elixir/github/client.ex
++++ b/elixir/lib/symphony_elixir/github/client.ex
+@@ -64,6 +64,21 @@
+   end
+ 
+   @spec validate_handoff(Issue.t(), map(), map()) :: {:ok, map()} | {:error, term()}
++  def validate_handoff(issue, %{"status" => "blocked"} = handoff, tracker_settings) do
++    with {:ok, policy} <- lifecycle_policy(tracker_settings),
++         true <- matches_issue?(handoff, issue, policy),
++         true <- Enum.sort(Map.keys(handoff)) == ["evidence", "issue_id", "reason", "repo", "resume_condition", "status"],
++         true <-
++           Enum.all?(["reason", "evidence", "resume_condition"], fn key ->
++             present_string?(handoff[key]) and byte_size(handoff[key]) <= 2048
++           end) do
++      {:error, {:agent_blocked, handoff["reason"], handoff["evidence"], handoff["resume_condition"]}}
++    else
++      false -> {:error, :invalid_blocker_declaration}
++      error -> error
++    end
++  end
++
+   def validate_handoff(issue, handoff, tracker_settings) do
+     with {:ok, policy} <- lifecycle_policy(tracker_settings),
+          true <- valid_declaration?(handoff, issue, policy) do
+--- a/elixir/lib/symphony_elixir/orchestrator.ex
++++ b/elixir/lib/symphony_elixir/orchestrator.ex
+@@ -307,6 +307,9 @@
+ 
+         :none ->
+           continue_or_block_repair(state, issue_id, running_entry, session_id)
++
++        {:error, {:agent_blocked, reason, evidence, recovery}} ->
++          block_issue_from_entry(state, issue_id, running_entry, "agent blocked: #{reason}; evidence: #{evidence}; recovery: #{recovery}")
+ 
+         {:error, reason} ->
+           block_issue_from_entry(state, issue_id, running_entry, "handoff invalid: #{inspect(reason)}")
+--- a/elixir/test/symphony_elixir/github_lifecycle_test.exs
++++ b/elixir/test/symphony_elixir/github_lifecycle_test.exs
+@@ -54,6 +54,67 @@
+     end
+ 
+     assert {:ok, _} = Client.validate_handoff(issue(), declaration(), settings())
++  end
++
++  test "explicit blockers stop the runner and persist without retrying after restart" do
++    configure!()
++    Application.put_env(:symphony_elixir, :github_client_module, FakeClient)
++
++    declaration = %{
++      "status" => "blocked",
++      "issue_id" => "42",
++      "repo" => handoff()["repo"],
++      "reason" => "required collector unsupported",
++      "evidence" => "target/blocker.json",
++      "resume_condition" => "reviewed collector installed"
++    }
++
++    assert {:error, {:agent_blocked, _, _, _} = reason} = Client.validate_handoff(issue(), declaration, settings())
++
++    for changes <- [%{"issue_id" => "wrong"}, %{"repo" => "wrong/repo"}, %{"reason" => ""}, %{"evidence" => String.duplicate("x", 2049)}, %{"number" => 17}] do
++      assert {:error, :invalid_blocker_declaration} = Client.validate_handoff(issue(), Map.merge(declaration, changes), settings())
++    end
++
++    {:ok, workspace} = Workspace.create_for_issue(issue())
++    File.write!(Path.join(workspace, ".symphony-handoff.json"), Jason.encode!(declaration))
++    assert :ok = AgentRunner.run(issue(), self())
++    assert_receive {:agent_handoff_error, _, "42", ^reason}
++    name = Module.concat(__MODULE__, :ExplicitBlock)
++    pid = start_supervised!({Orchestrator, name: name})
++    {ref, worker} = running(pid)
++
++    :sys.replace_state(pid, fn state ->
++      entry = %{
++        issue_id: "42",
++        identifier: "GH-42",
++        issue: issue(),
++        phase: "implementing",
++        handoff: %{},
++        serial_policy: handoff()["policy"],
++        budget: SymphonyElixir.AgentBudget.normalize(%{}),
++        waiting_since: DateTime.utc_now(),
++        repairs: 0,
++        error: nil,
++        next_poll_at: 0,
++        worker_host: nil,
++        workspace_path: workspace,
++        session_id: nil
++      }
++
++      %{state | waiting: %{"42" => entry}}
++    end)
++
++    send(pid, {:agent_handoff_error, worker, "42", reason})
++    send(pid, {:DOWN, ref, :process, worker, :normal})
++    state = :sys.get_state(pid)
++    assert state.waiting["42"].phase == "blocked"
++    assert state.waiting["42"].error =~ "required collector unsupported"
++    assert state.retry_attempts == %{}
++    assert state.running == %{}
++    stop_supervised!(Orchestrator)
++    restarted = start_supervised!({Orchestrator, name: name})
++    assert :sys.get_state(restarted).waiting["42"].phase == "blocked"
++    assert :sys.get_state(restarted).retry_attempts == %{}
+   end
+ 
+   test "missing, pending, skipped, neutral and wrong publisher checks never merge", ctx do
