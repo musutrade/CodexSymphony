@@ -114,16 +114,50 @@ async fn execution_acceptance() {
     permission_lock_timeout(&pool, &root).await;
     restart_live_and_lost_supervisor(&pool, &root).await;
     unknown_identity(&pool, &root).await;
+    storage_watchdog(&pool, &root).await;
     slow_query(&pool, &root).await;
     pause_api(&pool).await;
     sqlx::raw_sql("TRUNCATE business_request,business_event,requirement_revision,requirement,repository,run_event RESTART IDENTITY CASCADE; INSERT INTO execution_control(id) VALUES(1)").execute(&pool).await.unwrap();
+}
+
+async fn storage_watchdog(pool: &PgPool, root: &Path) {
+    use codexsymphony_server::storage;
+    reset(pool, "storage-watchdog").await;
+    recovered(pool, root, "storage-watchdog").await;
+    let launch = launch(root, "storage-watchdog", "touch original; sleep 60");
+    assert!(reserve_fixture(pool, &launch).await.unwrap());
+    let child = coordinator::start_reserved(pool, root, supervisor(), &launch)
+        .await
+        .unwrap();
+    let directory = process::run_directory(root, &launch.key.run_id).unwrap();
+    let _worker = Worker {
+        child,
+        directory: directory.clone(),
+    };
+    wait_file(&Path::new(&launch.workspace).join("original")).await;
+    storage::latch(pool).await;
+    assert!(!run_store::actions_allowed(pool, &launch.key).await.unwrap());
+    assert!(!storage::recover(pool, root).await.unwrap());
+    // No successful heartbeat when control persistence fails. Removing this
+    // lease deterministically exercises the same supervisor stop path.
+    fs::remove_file(directory.join("storage-heartbeat.json")).unwrap();
+    wait_file(&directory.join("quiescent.json")).await;
+    assert!(
+        !coordinator::recover(pool, root, "storage-watchdog")
+            .await
+            .unwrap()
+    );
+    assert!(storage::recover(pool, root).await.unwrap());
+    assert!(Path::new(&launch.workspace).join("original").exists());
+    assert!(!run_store::actions_allowed(pool, &launch.key).await.unwrap());
+    assert_eq!(owner(pool).await, Some(1));
 }
 
 async fn permission_lock_timeout(pool: &PgPool, root: &Path) {
     reset(pool, "permission-contention").await;
     recovered(pool, root, "permission-contention").await;
     let launch = launch(root, "permission-contention", "touch forbidden");
-    assert!(run_store::reserve_prepared(pool, &launch).await.unwrap());
+    assert!(reserve_fixture(pool, &launch).await.unwrap());
     let mut tx = pool.begin().await.unwrap();
     sqlx::query("SELECT pg_advisory_xact_lock(13002)")
         .execute(&mut *tx)
@@ -155,7 +189,7 @@ async fn delayed_identity(pool: &PgPool, root: &Path) {
     reset(pool, "delayed-identity").await;
     recovered(pool, root, "delayed-identity").await;
     let launch = launch(root, "delayed-identity", "touch writer");
-    assert!(run_store::reserve_prepared(pool, &launch).await.unwrap());
+    assert!(reserve_fixture(pool, &launch).await.unwrap());
     let delayed = helper(
         root,
         &format!(
@@ -176,7 +210,16 @@ async fn delayed_identity(pool: &PgPool, root: &Path) {
     assert!(!directory.join("identity.json").exists());
     assert!(!directory.join("start.json").exists());
     assert!(!Path::new(&launch.workspace).join("writer").exists());
+    coordinator::recover(pool, root, "delayed-identity")
+        .await
+        .unwrap();
     fs::write(directory.join("release"), b"release").unwrap();
+    while !task.is_finished() {
+        coordinator::recover(pool, root, "delayed-identity")
+            .await
+            .unwrap();
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
     let result = task.await.unwrap();
     assert!(waiting, "live helper must survive delayed durable identity");
     let _worker = Worker {
@@ -185,18 +228,20 @@ async fn delayed_identity(pool: &PgPool, root: &Path) {
     };
     wait_file(&directory.join("quiescent.json")).await;
     assert!(Path::new(&launch.workspace).join("writer").exists());
-    assert!(
-        run_store::unresolved(pool).await.unwrap()[0]
-            .process_identity
-            .is_some()
-    );
+    let attached: bool =
+        sqlx::query_scalar("SELECT process_identity IS NOT NULL FROM agent_run WHERE id=$1")
+            .bind(&launch.key.run_id)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert!(attached);
 }
 
 async fn failed_and_paused_handshake(pool: &PgPool, root: &Path) {
     reset(pool, "timeout").await;
     recovered(pool, root, "timeout").await;
     let timed = launch(root, "timeout", "touch writer");
-    assert!(run_store::reserve_prepared(pool, &timed).await.unwrap());
+    assert!(reserve_fixture(pool, &timed).await.unwrap());
     assert!(
         coordinator::start_reserved(pool, root, Path::new("/bin/true"), &timed)
             .await
@@ -212,11 +257,7 @@ async fn failed_and_paused_handshake(pool: &PgPool, root: &Path) {
     reset(pool, "mismatch").await;
     recovered(pool, root, "mismatch").await;
     let mismatched = launch(root, "mismatch", "touch writer");
-    assert!(
-        run_store::reserve_prepared(pool, &mismatched)
-            .await
-            .unwrap()
-    );
+    assert!(reserve_fixture(pool, &mismatched).await.unwrap());
     let mut receipt = Receipt {
         key: mismatched.key.clone(),
         process: process::identity(std::process::id()).unwrap(),
@@ -242,7 +283,7 @@ async fn failed_and_paused_handshake(pool: &PgPool, root: &Path) {
     reset(pool, "paused-handshake").await;
     recovered(pool, root, "paused-handshake").await;
     let parked = launch(root, "paused-handshake", "touch writer");
-    assert!(run_store::reserve_prepared(pool, &parked).await.unwrap());
+    assert!(reserve_fixture(pool, &parked).await.unwrap());
     let delayed = helper(
         root,
         &format!(
@@ -272,7 +313,7 @@ async fn restart_live_and_lost_supervisor(pool: &PgPool, root: &Path) {
     reset(pool, "crash-live").await;
     recovered(pool, root, "crash-live").await;
     let launch = launch(root, "crash-live", "echo $$ > parent.pid; sleep 60");
-    assert!(run_store::reserve_prepared(pool, &launch).await.unwrap());
+    assert!(reserve_fixture(pool, &launch).await.unwrap());
     let child = coordinator::start_reserved(pool, root, supervisor(), &launch)
         .await
         .unwrap();
@@ -295,7 +336,7 @@ async fn restart_live_and_lost_supervisor(pool: &PgPool, root: &Path) {
     let mut parked = launch.clone();
     parked.key.run_id = process::new_identity().unwrap();
     parked.key.incarnation = "lost".into();
-    assert!(run_store::reserve_prepared(pool, &parked).await.unwrap());
+    assert!(reserve_fixture(pool, &parked).await.unwrap());
     let directory = process::run_directory(root, &parked.key.run_id).unwrap();
     let mut child = process::spawn(supervisor(), &directory, &parked).unwrap();
     wait_file(&directory.join("identity.json")).await;
@@ -514,13 +555,13 @@ async fn claim_and_pause(pool: &PgPool, root: &Path) {
     reset(pool, "one").await;
     let first = launch(root, "one", "exit 0");
     assert!(
-        !run_store::reserve_prepared(pool, &first).await.unwrap(),
+        !reserve_fixture(pool, &first).await.unwrap(),
         "cold gate closed"
     );
     recovered(pool, root, "one").await;
     run_store::pause(pool, Some(1)).await.unwrap();
     assert!(
-        !run_store::reserve_prepared(pool, &first).await.unwrap(),
+        !reserve_fixture(pool, &first).await.unwrap(),
         "paused head cannot be skipped"
     );
     sqlx::query("UPDATE requirement SET paused=false")
@@ -531,15 +572,15 @@ async fn claim_and_pause(pool: &PgPool, root: &Path) {
         .execute(pool)
         .await
         .unwrap();
-    assert!(!run_store::reserve_prepared(pool, &first).await.unwrap());
+    assert!(!reserve_fixture(pool, &first).await.unwrap());
     sqlx::query("UPDATE repository SET revoked_through_version=0")
         .execute(pool)
         .await
         .unwrap();
     let second = launch(root, "one", "exit 0");
     let (a, b) = tokio::join!(
-        run_store::reserve_prepared(pool, &first),
-        run_store::reserve_prepared(pool, &second)
+        reserve_fixture(pool, &first),
+        reserve_fixture(pool, &second)
     );
     assert_ne!(a.as_ref().unwrap(), b.as_ref().unwrap());
     let selected = if a.unwrap() { first } else { second };
@@ -579,7 +620,7 @@ async fn claim_and_pause(pool: &PgPool, root: &Path) {
             .await
             .unwrap();
         assert!(
-            !run_store::reserve_prepared(pool, &launch(root, "one", "exit 0"))
+            !reserve_fixture(pool, &launch(root, "one", "exit 0"))
                 .await
                 .unwrap()
         );
@@ -596,7 +637,7 @@ async fn claim_and_pause(pool: &PgPool, root: &Path) {
             .unwrap()
     );
     assert!(
-        !run_store::reserve_prepared(pool, &launch(root, "two", "exit 0"))
+        !reserve_fixture(pool, &launch(root, "two", "exit 0"))
             .await
             .unwrap()
     );
@@ -610,7 +651,7 @@ async fn live_descendants(pool: &PgPool, root: &Path) {
         "live",
         "setsid sh -c 'echo $$ > escaped.pid; while :; do echo write >> writes; sleep 0.02; done' >/dev/null 2>&1 & exit 0",
     );
-    assert!(run_store::reserve_prepared(pool, &launch).await.unwrap());
+    assert!(reserve_fixture(pool, &launch).await.unwrap());
     let child = coordinator::start_reserved(pool, root, supervisor(), &launch)
         .await
         .unwrap();
@@ -675,7 +716,7 @@ async fn start_record_window(pool: &PgPool, root: &Path) {
     reset(pool, "before-crash").await;
     recovered(pool, root, "before-crash").await;
     let launch = launch(root, "before-crash", "echo started > started; sleep 60");
-    assert!(run_store::reserve_prepared(pool, &launch).await.unwrap());
+    assert!(reserve_fixture(pool, &launch).await.unwrap());
     let directory = process::run_directory(root, &launch.key.run_id).unwrap();
     let child = process::spawn(supervisor(), &directory, &launch).unwrap();
     let _worker = Worker {
@@ -715,7 +756,7 @@ async fn unknown_identity(pool: &PgPool, root: &Path) {
     reset(pool, "unknown").await;
     recovered(pool, root, "unknown").await;
     let launch = launch(root, "unknown", "sleep 60");
-    assert!(run_store::reserve_prepared(pool, &launch).await.unwrap());
+    assert!(reserve_fixture(pool, &launch).await.unwrap());
     run_store::begin_incarnation(pool, "new").await.unwrap();
     sqlx::query("UPDATE agent_run SET state='Failed'")
         .execute(pool)
@@ -836,4 +877,12 @@ fn os_identity_and_lock_boundaries() {
             .unwrap()
             .success()
     );
+}
+
+// The GH-14 fixtures isolate execution ownership from sandbox acquisition.
+// Product admission without this platform-owned test evidence is covered in preparation.rs.
+async fn reserve_fixture(pool: &PgPool, launch: &Launch) -> Result<bool, sqlx::Error> {
+    sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,checked_at) SELECT $1,id,revision,$2,'{}',true,extract(epoch FROM now())::bigint FROM requirement WHERE state='Ready' ORDER BY id LIMIT 1 ON CONFLICT DO NOTHING")
+        .bind(&launch.key.run_id).bind(serde_json::json!(launch)).execute(pool).await?;
+    run_store::reserve_prepared(pool, launch).await
 }

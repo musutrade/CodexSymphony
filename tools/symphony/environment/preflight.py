@@ -4,7 +4,7 @@ from pathlib import Path
 BASE = Path(__file__).parent
 ROOT = Path('/home/gem/.local/share/codexsymphony/workspaces/GH-12')
 
-def execute(command, timeout=120):
+def execute(command, timeout=120, readiness=False):
     with (BASE/f'preflight-{os.getpid()}.stderr').open('w') as err:
         p = subprocess.Popen([str(BASE.parent/'codex-sandbox'), 'app-server'], cwd=ROOT,
                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=err)
@@ -28,8 +28,11 @@ def execute(command, timeout=120):
                         return reply['result']
             raise TimeoutError(method)
         try:
-            call(1,'initialize',{'clientInfo':{'name':'gh12-environment-preflight','version':'1'},'capabilities':{'experimentalApi':True}})
-            result=call(2,'command/exec',{'command':command,'cwd':str(ROOT),'sandboxPolicy':{'type':'workspaceWrite','writableRoots':[],'networkAccess':True},'timeoutMs':timeout*1000})
+            initialized=call(1,'initialize',{'clientInfo':{'name':'gh12-environment-preflight','version':'1'},'capabilities':{'experimentalApi':True}})
+            requirements=call(2,'configRequirements/read',{}) if readiness else None
+            result=call(3,'command/exec',{'command':command,'cwd':str(ROOT),'sandboxPolicy':{'type':'workspaceWrite','writableRoots':[],'networkAccess':True},'timeoutMs':timeout*1000})
+            if readiness:
+                return {'initialize':{'result':initialized},'requirements':requirements,'command_exec':{'result':result},'model_calls':0,'mode':'host-launched-agent-policy'}
             return result
         finally:
             p.terminate()

@@ -50,6 +50,7 @@ async fn start_coordinator(pool: &PgPool) -> Result<tokio::task::JoinHandle<()>,
         std::env::var("EXECUTION_DIRECTORY").unwrap_or(".local-data/execution".into()),
     );
     let incarnation = process::new_identity()?;
+    std::fs::create_dir_all(&root)?;
     run_store::begin_incarnation(pool, &incarnation).await?;
     Ok(tokio::spawn(coordinate(Coordinator::new(
         pool.clone(),

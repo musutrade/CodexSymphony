@@ -10,6 +10,15 @@ WORKSPACES=BASE/'workspaces'
 CODEX=HOME/'.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin'
 
 
+def resolver_mount(resolver=Path('/etc/resolv.conf')):
+    # /etc/resolv.conf commonly points into /run, which we deliberately hide.
+    # Preserve only the resolved DNS configuration, not the host runtime tree.
+    target=resolver.resolve(strict=True)
+    if not target.is_file():
+        raise ValueError('host DNS resolver configuration is not a regular file')
+    return ['--ro-bind',str(target),str(target)]
+
+
 def command(argv):
     cwd=Path.cwd().resolve()
     if not cwd.is_relative_to(WORKSPACES) or cwd==WORKSPACES:
@@ -20,7 +29,7 @@ def command(argv):
     args=['/usr/local/libexec/codexsymphony/bwrap','--die-with-parent','--new-session','--unshare-user','--unshare-pid',
           '--ro-bind','/usr','/usr','--ro-bind','/etc','/etc',
           '--symlink','usr/bin','/bin','--symlink','usr/lib','/lib','--symlink','usr/lib64','/lib64',
-          '--proc','/proc','--dev','/dev','--tmpfs','/run',
+          '--proc','/proc','--dev','/dev','--tmpfs','/run',*resolver_mount(),
           '--bind',str(temporary),'/tmp','--dir',str(HOME),
           '--bind',str(cwd),str(cwd),'--ro-bind',str(cwd/'.git'),str(cwd/'.git'),
           '--bind',str(auth),str(auth),'--ro-bind',str(CODEX),'/opt/codex',

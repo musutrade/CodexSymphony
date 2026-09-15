@@ -63,6 +63,7 @@ pub fn durable_write(path: &Path, value: &impl Serialize) -> io::Result<()> {
 pub fn spawn(supervisor: &Path, directory: &Path, launch: &Launch) -> io::Result<Child> {
     fs::create_dir(directory)?;
     durable_write(&directory.join("launch.json"), launch)?;
+    durable_write(&directory.join("storage-heartbeat.json"), &launch.key)?;
     Command::new(supervisor)
         .arg("--supervise")
         .arg(directory)
@@ -142,6 +143,9 @@ pub fn supervise(directory: &Path) -> io::Result<()> {
 
 fn await_permission(directory: &Path, launch: &Launch) -> io::Result<bool> {
     loop {
+        if !storage_alive(directory) {
+            return Ok(false);
+        }
         if directory.join("stop.json").exists() {
             return Ok(false);
         }
@@ -158,11 +162,21 @@ fn drain(directory: &Path) -> io::Result<()> {
         if reap()? {
             return Ok(());
         }
-        if directory.join("stop.json").exists() {
+        if directory.join("stop.json").exists() || !storage_alive(directory) {
             stop_children()?;
         }
         thread::sleep(Duration::from_millis(20));
     }
+}
+
+/// Fail closed even when ENOSPC prevents writing stop.json, or the controller
+/// cannot reach PostgreSQL. Killing descendants needs no filesystem write.
+/// Match the bounded startup handshake window, including durable fsync latency.
+fn storage_alive(directory: &Path) -> bool {
+    let age = fs::metadata(directory.join("storage-heartbeat.json"))
+        .and_then(|m| m.modified())
+        .and_then(|at| at.elapsed().map_err(io::Error::other));
+    age.is_ok_and(|age| age <= Duration::from_secs(15))
 }
 
 unsafe extern "C" {

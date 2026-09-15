@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Install the reviewed local Elixir development workflow; scheduling starts separately."""
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -25,7 +26,15 @@ def routed_workflow(workflow, previous=None):
 
 def environment_sources():
     directory=ROOT/'tools/symphony/environment'
-    return {path.relative_to(directory):path.read_bytes() for path in directory.rglob('*') if path.is_file() and '__pycache__' not in path.parts}
+    sources={path.relative_to(directory):path.read_bytes() for path in directory.rglob('*') if path.is_file() and '__pycache__' not in path.parts}
+    reviewed=Path('client/reviewed-preparation')
+    manifest={}
+    for name in ['app_server.py','sandbox_probe.py']:
+        content=(ROOT/'tools/preparation'/name).read_bytes()
+        sources[reviewed/name]=content
+        manifest[name]=hashlib.sha256(content).hexdigest()
+    sources[reviewed/'manifest.json']=(json.dumps(manifest,sort_keys=True)+'\n').encode()
+    return sources
 
 def check_environment_resources(state):
     required=['client/pg/psql','client/pg/ld-musl-x86_64.so.1','arc-admin/SOURCE.json','npm-cache-seed/_cacache']

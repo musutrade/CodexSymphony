@@ -66,6 +66,9 @@ pub async fn begin_incarnation(pool: &PgPool, incarnation: &str) -> Result<()> {
 /// Internal reservation boundary. The product tick deliberately does not call
 /// this until downstream preparation capabilities exist. No coding HTTP API.
 pub async fn reserve_prepared(pool: &PgPool, launch: &Launch) -> Result<bool> {
+    if !crate::storage::permit(pool, std::path::Path::new(&launch.workspace)).await {
+        return Ok(false);
+    }
     let mut tx = lock(pool).await?;
     if !claim_allowed(&mut tx, &launch.key.incarnation).await? {
         return Ok(false);
@@ -73,6 +76,9 @@ pub async fn reserve_prepared(pool: &PgPool, launch: &Launch) -> Result<bool> {
     let Some((id, revision)) = queued(&mut tx).await? else {
         return Ok(false);
     };
+    if !crate::preparation_store::claim_ready(&mut tx, launch, id, revision).await? {
+        return Ok(false);
+    }
     commit_claim(tx, id, revision, launch).await
 }
 
@@ -106,7 +112,7 @@ async fn commit_claim(mut tx: Tx<'_>, id: i64, revision: i64, launch: &Launch) -
 }
 
 async fn claim_allowed(tx: &mut Tx<'_>, incarnation: &str) -> Result<bool> {
-    sqlx::query_scalar("SELECT requirement_id IS NULL AND NOT paused AND recovery_complete AND incarnation=$1 FROM execution_control WHERE id=1")
+    sqlx::query_scalar("SELECT requirement_id IS NULL AND NOT paused AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND recovery_complete AND incarnation=$1 FROM execution_control WHERE id=1")
         .bind(incarnation).fetch_one(&mut **tx).await
 }
 
@@ -140,6 +146,20 @@ pub async fn attach_process(pool: &PgPool, receipt: &Receipt) -> Result<bool> {
 }
 
 pub async fn actions_allowed(pool: &PgPool, key: &RunKey) -> Result<bool> {
+    let workspace: Option<String> = sqlx::query_scalar(
+        "SELECT workspace FROM agent_run WHERE id=$1 AND request_id=$2 AND incarnation=$3",
+    )
+    .bind(&key.run_id)
+    .bind(&key.request_id)
+    .bind(&key.incarnation)
+    .fetch_optional(pool)
+    .await?;
+    let Some(workspace) = workspace else {
+        return Ok(false);
+    };
+    if !crate::storage::permit(pool, std::path::Path::new(&workspace)).await {
+        return Ok(false);
+    }
     let result: Option<bool> = sqlx::query_scalar("SELECT c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND NOT a.stop_requested AND NOT a.quiescent AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > p.revoked_through_version FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND p.id=1")
         .bind(&key.run_id).bind(&key.request_id).bind(&key.incarnation).fetch_optional(pool).await?;
     Ok(result == Some(true))
