@@ -124,8 +124,10 @@ def main():
         while True:
             try:
                 token=installation_token(config)
-                runs=request('/repos/'+config['repository']+'/actions/workflows/quality.yml/runs?status=in_progress&per_page=30',token)
-                for run in reversed(runs['workflow_runs']): process(run,config,home)
+                # New PR workflows need not exist on the default branch yet.
+                runs=request('/repos/'+config['repository']+'/actions/runs?status=in_progress&per_page=30',token)
+                for run in reversed(runs['workflow_runs']):
+                    if run['path']=='.github/workflows/quality.yml': process(run,config,home)
             except Exception as error:
                 print(json.dumps({'error':type(error).__name__,'detail':str(error)}),flush=True)
                 if args.once: raise

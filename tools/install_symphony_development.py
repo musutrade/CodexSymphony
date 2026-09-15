@@ -23,7 +23,11 @@ def main():
         if path.exists() and path.read_bytes()!=data:raise ValueError('immutable release differs')
         path.write_bytes(data)
     # Stable journal path is retained across workflow releases.
-    active=state/'WORKFLOW.lifecycle.md';active.write_bytes(workflow)
+    active=state/'WORKFLOW.lifecycle.md'
+    routed=workflow.replace(b'  required_labels:\n    - symphony-ready\n',
+                            b'  required_labels:\n    - symphony-ready\n    - symphony-environment-acceptance\n')
+    if routed==workflow:raise ValueError('expected label filter missing')
+    active.write_bytes(routed)
     command=state/'codex-sandbox';command.write_text('#!/bin/sh\nexec /usr/bin/python3 '+str(release/'codex_sandbox.py')+' "$@"\n');command.chmod(0o700)
     environment=HOME/'.config/symphony/codexsymphony.env'
     if not environment.exists():
