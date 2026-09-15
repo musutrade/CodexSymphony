@@ -12,7 +12,7 @@
 |---|---|---|
 | 1 | 四项命令能否在本项目跑通 | 能。`config check` 0.05s、`doctor --strict --json` 0.20s、`hook` 0.16～0.51s、`verify --all` 0.36～0.38s（项目当前几乎无代码，这是下限基线）。全部以退出码 0 表示通过。 |
 | 2 | `hook` 读哪份配置 | **读暂存区（index），不读工作区。** `.harness-gate/` 未 `git add` 时报 `E1000: read staged workflow configuration .harness-gate/flow.toml: No such file or directory`。把配置物化到 `$TMPDIR/harness-gate-staged-<pid>-<ts>/` 下再校验。这正是 12.6.1 要的"受信快照"语义：Agent 改工作区配置不影响 `hook` 看到的规则。**代价**：配置从未暂存时错误信息误导（看起来像配置缺失，实际是"未暂存"）；平台必须在每次 `hook` 前确保配置已暂存，否则门禁静默失效。 |
-| 3 | 拦截能力（反例） | ① 真实形态的 AWS key（`AKIAQ7XZ2MN4PLK9RTUV`）→ secret scan FAIL，`TEST_SUMMARY: FAIL`，退出码非 0；② 暂存含行尾空白的文件 → `staged Git whitespace check ... FAIL`。**误报控制**：`AKIAIOSFODNN7EXAMPLE` 被占位符规则正确豁免（`example` marker），不是漏报——说明 API key 测试字样会被放行，规则设计合理。 |
+| 3 | 拦截能力（反例） | ① 真实形态的 AWS key（测试串由 `AKIA` 与 `Q7XZ2MN4PLK9RTUV` 拼接，非真实凭据）→ secret scan FAIL，`TEST_SUMMARY: FAIL`，退出码非 0；② 暂存含行尾空白的文件 → `staged Git whitespace check ... FAIL`。**误报控制**：由 `AKIA` 与 `IOSFODNN7EXAMPLE` 拼接的示例串 被占位符规则正确豁免（`example` marker），不是漏报——说明 API key 测试字样会被放行，规则设计合理。 |
 | 4 | 失败码 | 结构化：`test_result.json` 里每个 step 带 `failure_code`（如 `SECRET_SCAN_FAILURE`）、`passed`、`duration_ms`、`log` 路径。可直接映射方案 12.6.4 的 `gate_failure_code`。 |
 | 5 | 执行证据 | 每次 invocation 写 `invocations/<id>/test_result.json`，字段含 `executor_version`、`input_mode`（staged/all）、`source_identity`（`git-tree:<sha>` 或 `working-tree:<sha>`）、`configuration_digest`（`sha256:...`）、`execution_root`。**`configuration_digest` + `source_identity` 就是方案要的"验证策略身份"与"被测源身份"分离**，可直接作为 `trusted_gate_policy_revision` 的指针。 |
 | 6 | 配置形态 | `flow.toml` schema v2，内置 preset：`generic` / `rust-api` / `angular-only` / `angular-rust-postgres`。`init` 会生成 `flow.toml` + `audit.toml` + `secrets.toml` + `.gitignore`（`reports/` 默认忽略）。本项目当前只有文档与 spike 脚本，用 `generic`。 |
@@ -69,3 +69,13 @@ $HG --project-root . verify --all
 - `reports/leases` 的并发语义（多 Run 同时 verify）。
 - 本 spike 生成的 `.harness-gate/` 是用 `generic` preset 的临时配置，未提交；正式配置应在 Phase 0a
   选定 preset 后一次性建立。
+
+## Phase 0c 接入版本目标（2026-09-15）
+
+本次 S4 结论严格对应 Harness-Gate 0.3.7，不能外推到新版。Phase 0a 继续使用 custom gate；Phase 0c
+正式接入目标改为 Harness-Gate **v0.4.5** + **rust-collector-v0.1.0-rc.6**，版本记录见仓库根目录
+`harness-gate-version.lock`。GitHub Releases 当前列出 [v0.4.5](https://github.com/musutrade/Harness-Gate/releases/tag/v0.4.5)
+为最新稳定版，[collector rc.6](https://github.com/musutrade/Harness-Gate/releases/tag/rust-collector-v0.1.0-rc.6)
+标为 pre-release。该组合尚未在本项目重新验收；切换前重跑 config check、doctor、hook、`verify --profile ci --all`、
+配置篡改拒绝采信、secret scan 反例，并核对 invocation 中的版本、二进制摘要、`configuration_digest`、
+`source_identity` 与错误码；任一证据缺失或版本不符均不得采信 Gate PASS。

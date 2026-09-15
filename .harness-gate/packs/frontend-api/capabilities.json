@@ -1,0 +1,50 @@
+{
+  "series": {
+    "id": "measurement-series/v1:fce04fefdc5d9437cf62f8b69aef7ea3933059742f217f70b34f2847d130ccd5",
+    "name": "http-json-contract",
+    "collector": {
+      "name": "http-json-contract",
+      "version": "0.1.0-rc.3"
+    },
+    "tool": {
+      "name": "typescript-ast-http-observations",
+      "version": "6.0.2"
+    },
+    "rule": {
+      "name": "closed-get-response-contract/v1",
+      "version": "67e7e7299215c94d4e5fbec5865427e452a17524b46ed6a0f8ac17776905666b"
+    },
+    "runtime": {
+      "name": "node",
+      "version": "24.18.0"
+    },
+    "target": "x86_64-unknown-linux-gnu",
+    "source_identity": {
+      "name": "http-json-operation-set/v1",
+      "version": "1"
+    },
+    "normalization": {
+      "name": "strict-existing-operation-compatibility",
+      "version": "1"
+    },
+    "metrics": [
+      {
+        "name": "contract.breaking_changes",
+        "type": "count"
+      },
+      {
+        "name": "contract.client_drift",
+        "type": "boolean"
+      },
+      {
+        "name": "contract.compatible",
+        "type": "boolean"
+      }
+    ]
+  },
+  "states": {
+    "contract.breaking_changes": "supported",
+    "contract.client_drift": "supported",
+    "contract.compatible": "supported"
+  }
+}

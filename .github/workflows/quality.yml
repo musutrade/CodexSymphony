@@ -1,0 +1,47 @@
+name: Quality
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+  checks: read
+concurrency:
+  group: trusted-gate-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+jobs:
+  quality:
+    name: Harness-Gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Await independently authenticated host gate
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const expected = context.payload.pull_request?.head.sha || context.sha;
+            const identity = `${context.runId}/${process.env.GITHUB_RUN_ATTEMPT}`;
+            const deadline = Date.now() + 27 * 60 * 1000;
+            core.info(`Waiting for trusted host: ${expected}, attempt ${identity}`);
+            while (Date.now() < deadline) {
+              const checks = await github.paginate(github.rest.checks.listForRef, {
+                ...context.repo, ref: expected, check_name: 'Trusted Harness-Gate',
+                filter: 'all', per_page: 100
+              });
+              const matches = checks.filter(check =>
+                check.head_sha === expected && check.external_id === identity &&
+                check.app?.id === 4867361 && check.app?.slug === 'my-disposable-bot');
+              const check = matches.sort((a, b) => b.id - a.id)[0];
+              if (check?.status === 'completed') {
+                await core.summary.addRaw(check.output?.summary || 'Missing host summary').write();
+                if (check.conclusion !== 'success') {
+                  core.setFailed(`Trusted host concluded ${check.conclusion}`);
+                } else {
+                  core.info(`Verified App check ${check.id} for ${expected}, ${identity}`);
+                }
+                return;
+              }
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            }
+            core.setFailed('No successful trusted host evidence before deadline');

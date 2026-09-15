@@ -41,4 +41,19 @@ python3 s1b_sandbox_probe.py     # 不经模型，用 command/exec 探沙箱边�
 - macOS（seatbelt）行为，仅测 Linux landlock。
 - `thread/start` 的 `cwd` 与 app-server cwd 不同时，模型工具（非 command/exec）的可写根是否也只看进程 cwd——S1 两次模型运行 thread cwd 都等于或位于进程 cwd 之下，未单独区分。0a 实现时两者取同一值即可回避。
 - 多 turn 长会话下 dynamicTools 回包顺序与并行调用。
-- `turn/interrupt` 后 `item/tool/call` 的挂起请求如何终结（8.3 验收第 4 条）。
+- `turn/interrupt` 后尚未回包的 `item/tool/call` 如何终结（8.3 验收第 4 条）；本次只验证了正在执行的 commandExecution 被中断。
+
+## 0.154.0 兼容性补测（2026-09-15）
+
+版本基线锁在仓库根目录 [`codex-version.lock`](../../codex-version.lock)。本节保留 0.153.4 的历史结果，以下是升级后的独立补测。官方 App Server 文档说明生成的 schema bundle 与生成它的 Codex 版本绑定：[Codex App Server](https://learn.chatgpt.com/docs/app-server)。
+
+| 检查 | 结果 |
+|---|---|
+| 版本与 schema | `codex-cli 0.154.0`；`codex app-server generate-json-schema --experimental` 成功，生成 426 个 JSON 文件。schema 仍包含 `dynamicTools`、`item/tool/call`、`turn/interrupt`、`command/exec`；`TurnInterruptParams` 要求 `threadId` 和 `turnId`。 |
+| dynamicTools 真实往返 | 通过。真实模型在临时 worktree 中依次调用 `create_local_commit`、`report_completion`；平台回包后 turn 正常完成，受控提交存在且 worktree 干净。探针副本及临时仓库均已清理。 |
+| Git 写保护（正确 cwd） | 通过。app-server 进程 cwd = worktree 时，普通工作区文件可写；`git add` / `git commit` 因 `.git/index.lock` 只读失败，`.git` 直接写入与 `git config` 写入失败；worktree 外写入失败，`/tmp` 可写。 |
+| cwd 负向对照 | 从 worktree 父目录启动时，探针观察到 Git 元数据及父目录写入成功。因此 `app-server cwd = Run worktree` 必须作为启动硬约束，不能只设置 `thread/start.cwd`。 |
+| 网络策略 | `networkAccess=false` 时访问 `api.github.com` 被拒（curl exit 7、HTTP 000）；`networkAccess=true` 且系统白名单包含 `registry.npmjs.org` 时，请求 npm registry 返回 HTTP 200。 |
+| 中断 | 通过。让隔离命令执行 60 秒睡眠，在收到 commandExecution 开始事件后发送 `turn/interrupt(threadId, turnId)`；RPC 成功，随后 `turn/completed.status = interrupted`。 |
+
+**安全边界仍需明确：** workspace-write 限制写入，但不限制同 UID 进程读取；探针仍可读取 `~/.codex/auth.json` 与 `~/.ssh/`。因此 0a 只接管可信仓库，且不得把该沙箱描述为凭证隔离。0.154.0 的版本锁尚由文档声明；平台启动器实现后必须校验实际版本与锁一致，并在升级时重跑本节回归。

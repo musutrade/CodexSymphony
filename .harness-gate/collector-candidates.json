@@ -1,0 +1,30 @@
+{
+  "schema": "codexsymphony-collector-candidates/v1",
+  "status": "local-candidates-not-published-releases",
+  "plugins": {
+    "rust_source": {
+      "directory": "rust-source",
+      "version": "0.1.0-rc.1",
+      "package": "harness-gate-rust-source-0.1.0-rc.1.tar.gz",
+      "sha256": "b9986c787d33cd4805f00d4f490f5c679887bf74e93633148e47364cc2e10724",
+      "command": "harness-gate-rust-source-collector",
+      "npm_package": null
+    },
+    "typescript": {
+      "directory": "typescript",
+      "version": "0.1.0-rc.4",
+      "package": "harness-gate-typescript-collector-0.1.0-rc.4.tgz",
+      "sha256": "d8358566248c73c93fc3dd561b675eff481256fb63e0a0fb61eab779dec4254c",
+      "command": "harness-gate-typescript-collector",
+      "npm_package": "@harness-gate/typescript-collector"
+    },
+    "http_contract": {
+      "directory": "http-contract",
+      "version": "0.1.0-rc.3",
+      "package": "harness-gate-http-json-contract-collector-0.1.0-rc.3.tgz",
+      "sha256": "f4b74a1af9ba6939a1d021baf45ee9d9737872cbafbb0fed3407135277fb7c0e",
+      "command": "harness-gate-http-contract-collector",
+      "npm_package": "@harness-gate/http-json-contract-collector"
+    }
+  }
+}

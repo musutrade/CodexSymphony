@@ -1,0 +1,464 @@
+{
+  "scope": "local-backend-source-only",
+  "package_sha256": "b9986c787d33cd4805f00d4f490f5c679887bf74e93633148e47364cc2e10724",
+  "series": {
+    "collector": {
+      "name": "rust-source-risk",
+      "version": "0.1.0-rc.1"
+    },
+    "id": "measurement-series/v1:4e5c32ca13421e532aad997c33701b94828b94dce0d3660e48f171f9b3a7f67e",
+    "metrics": [
+      {
+        "name": "complexity.cyclomatic",
+        "type": "count"
+      },
+      {
+        "name": "coverage.function",
+        "type": "ratio"
+      },
+      {
+        "name": "coverage.line",
+        "type": "ratio"
+      },
+      {
+        "name": "coverage.region",
+        "type": "ratio"
+      },
+      {
+        "name": "risk.crap",
+        "type": "rational"
+      }
+    ],
+    "name": "rust-source-function-risk",
+    "normalization": {
+      "name": "llvm-source-innermost-lines/v1",
+      "version": "1"
+    },
+    "rule": {
+      "name": "rust-explicit-decisions",
+      "version": "f95423e16aa895082f1aa1199ee4713033ace2ce4629ac82d315af633ea5da56"
+    },
+    "runtime": {
+      "name": "python",
+      "version": "3.14.4"
+    },
+    "source_identity": {
+      "name": "rust-source-ast/v1",
+      "version": "1"
+    },
+    "target": "x86_64-unknown-linux-gnu",
+    "tool": {
+      "name": "rust-llvm-source-coverage",
+      "version": "9a063a7b1ae6196ba3045f3d43908d45f2dd17f9c296d2b43ac37aa5fda89ce7"
+    }
+  },
+  "source_baseline": "7d6c87b64e8a24a19b9c4eae7b1f93065f4d1f65",
+  "source_hashes": {
+    "apps/server/src/lib.rs": "5d9d8dbaecc4c433b7fe8c3d3c608b1a91141ff389a332fa35a634f162a8e6ad",
+    "apps/server/src/main.rs": "2da0b1550631151b47fe620c45c9d10291f8249c8a00bfdc017aa01625ce8f5e"
+  },
+  "acceptance": {
+    "scope": "local-backend-only",
+    "host": "/home/gem/.local/share/codexsymphony/gate-acceptance/rust-source-rc1-final/host-_t0vfvra",
+    "collection": "pass",
+    "evaluation_exit": 0,
+    "report": {
+      "blockers": [],
+      "state": "pass"
+    },
+    "negative_cases": [
+      "stale-context",
+      "expired",
+      "tampered-signature",
+      "replay",
+      "tampered-artifact"
+    ],
+    "source_functions": 10,
+    "threshold_cases": [
+      {
+        "name": "crap-10",
+        "exit": 0,
+        "scope": "synthetic-policy-comparison"
+      },
+      {
+        "name": "crap-11",
+        "exit": 1,
+        "scope": "synthetic-policy-comparison"
+      },
+      {
+        "name": "crap-10-plus-fraction",
+        "exit": 1,
+        "scope": "synthetic-policy-comparison"
+      }
+    ]
+  },
+  "tests": {
+    "ast": 5,
+    "measurement_and_protocol": 12,
+    "backend_integration": 5,
+    "core_negative": 5,
+    "core_threshold_comparisons": 3
+  },
+  "compact_evidence": {
+    "file": "evidence.tar.gz",
+    "sha256": "b3f3a37e1e21aacf33096cd7c5ac197c9342b7b9862a327b9c1bd0c9b8c42df1",
+    "bytes": 109564
+  },
+  "native_replay": {
+    "path": "/home/gem/.local/share/codexsymphony/gate-acceptance/rust-source-rc1-native-replay.tar.gz",
+    "sha256": "a7f1d61b0143afbdb2a3369949ec534219a512f56dd53296c1393398c3eec583",
+    "bytes": 77364321
+  },
+  "functions": [
+    {
+      "path": "apps/server/src/lib.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 17,
+        "start_column": 1,
+        "start_line": 13
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 1
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 5,
+          "total": 5,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 8,
+          "total": 8,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 1,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/lib.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 21,
+        "start_column": 1,
+        "start_line": 19
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 1
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 3,
+          "total": 3,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 5,
+          "total": 5,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 1,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/lib.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 26,
+        "start_column": 1,
+        "start_line": 23
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 1
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 4,
+          "total": 4,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 11,
+          "total": 11,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 1,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/lib.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 30,
+        "start_column": 1,
+        "start_line": 28
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 2
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 3,
+          "total": 3,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 4,
+          "total": 4,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 2,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/lib.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 43,
+        "start_column": 1,
+        "start_line": 32
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 2
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 10,
+          "total": 10,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 10,
+          "total": 10,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 2,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/main.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 24,
+        "start_column": 1,
+        "start_line": 8
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 7
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 12,
+          "total": 13,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 28,
+          "total": 34,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 2197,
+          "numerator": 15428,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/main.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 30,
+        "start_column": 1,
+        "start_line": 26
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 1
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 5,
+          "total": 5,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 7,
+          "total": 7,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 1,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/main.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 34,
+        "start_column": 1,
+        "start_line": 32
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 1
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 3,
+          "total": 3,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 3,
+          "total": 3,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 1,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/main.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 42,
+        "start_column": 1,
+        "start_line": 36
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 1
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 7,
+          "total": 7,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 8,
+          "total": 8,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 1,
+          "type": "rational"
+        }
+      }
+    },
+    {
+      "path": "apps/server/src/main.rs",
+      "span": {
+        "end_column": 2,
+        "end_line": 46,
+        "start_column": 1,
+        "start_line": 44
+      },
+      "metrics": {
+        "complexity.cyclomatic": {
+          "type": "count",
+          "value": 1
+        },
+        "coverage.function": {
+          "covered": 1,
+          "total": 1,
+          "type": "ratio"
+        },
+        "coverage.line": {
+          "covered": 3,
+          "total": 3,
+          "type": "ratio"
+        },
+        "coverage.region": {
+          "covered": 4,
+          "total": 4,
+          "type": "ratio"
+        },
+        "risk.crap": {
+          "denominator": 1,
+          "numerator": 1,
+          "type": "rational"
+        }
+      }
+    }
+  ]
+}

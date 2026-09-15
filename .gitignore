@@ -1,0 +1,8 @@
+/.harness-gate/reports/
+/.harness-gate/runtime/
+/.symphony-handoff.json
+/target/
+/web/angular/node_modules/
+/web/angular/dist/
+/web/angular/.angular/
+__pycache__/

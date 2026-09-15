@@ -506,3 +506,11 @@ Current: Phase 0a。队列以下列可演示结果推进，不并行开展多个
 | unknown | 保留原始错误与缺失信息，不猜测自动修复 |
 
 HTTP 状态、工具原生错误保留，不提前枚举未启用功能的全部错误码。
+
+## 开发环境补充（2026-09-15）
+
+本仓库开发门禁立即使用 Harness-Gate，CRAP 上限 10、覆盖率至少 80%，独立于未来平台的 custom／Harness-Gate 分期。发布二进制版本与摘要由 `harness-gate-version.lock` 固定；候选测量插件与完整本机证据见 `.harness-gate/QUALITY.md`。版本升级须重新验收，不复用 S4 历史结论。
+
+Codex 精确版本由 `codex-version.lock` 固定到 0.154.0；schema/codegen 由同版本生成，升级须通过兼容性检查。Rust 构建显式使用工作区内或平台专用 `CARGO_TARGET_DIR`，不继承用户级共享 target 目录。
+
+后续手机阶段复用既有 Tunnel/Access 并重新验收登录和源站隔离；通知使用 Bark JSON POST，device key 不进入 URL、仓库或 Agent 可读凭据。通知器的网络和凭据隔离独立于 Agent。备份阶段保留离机受限加密副本，并做禁用外部写的恢复演练。这些部署选择不提前扩大 Phase 0a。

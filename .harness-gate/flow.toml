@@ -1,0 +1,323 @@
+version = 2
+
+[project]
+name = "codexsymphony"
+default_profile = "full"
+hook_profile = "hook"
+
+[paths]
+reports = ".harness-gate/reports"
+audit_config = ".harness-gate/audit.toml"
+secrets_config = ".harness-gate/secrets.toml"
+
+[paths.aliases.backend]
+path = "."
+
+[paths.aliases.frontend]
+path = "web/angular"
+
+[policy]
+required_steps = [
+    "backend.format",
+    "backend.clippy",
+    "backend.compile",
+    "backend.tests",
+    "frontend.lint",
+    "frontend.tests",
+    "frontend.build",
+]
+waivers = []
+
+[[doctor.checks]]
+id = "tool.git"
+label = "git"
+required = true
+timeout_secs = 15
+kind = "command"
+program = "git"
+args = ["--version"]
+
+[[doctor.checks]]
+id = "tool.cargo"
+label = "cargo"
+required = true
+timeout_secs = 15
+kind = "command"
+program = "cargo"
+args = ["--version"]
+
+[[doctor.checks]]
+id = "tool.node"
+label = "node"
+required = true
+timeout_secs = 15
+kind = "command"
+program = "node"
+args = ["--version"]
+
+[[doctor.checks]]
+id = "tool.npm"
+label = "npm"
+required = true
+timeout_secs = 15
+kind = "command"
+program = "npm"
+args = ["--version"]
+
+[[doctor.checks]]
+id = "frontend.dependencies"
+label = "frontend dependencies"
+required = true
+help = "run `cd web/angular && npm ci`"
+timeout_secs = 15
+kind = "path"
+path = "{frontend}/node_modules"
+path_type = "directory"
+
+[[doctor.checks]]
+id = "test.database"
+label = "test database"
+required = false
+help = "configure TEST_DATABASE_URL or Docker"
+timeout_secs = 15
+kind = "service"
+service = "test-postgres"
+
+[services.test-postgres]
+kind = "docker"
+runtime = "docker"
+image = "postgres:16-alpine"
+external_env = "TEST_DATABASE_URL"
+inject_env = "TEST_DATABASE_URL"
+external_value_policy = "isolated-postgres"
+startup_timeout_secs = 30
+container_port = 5432
+healthcheck = [
+    "pg_isready",
+    "-h",
+    "127.0.0.1",
+    "-U",
+    "app_test",
+    "-d",
+    "app_test",
+]
+connection = "postgres://app_test:app_test@127.0.0.1:{host_port}/app_test"
+
+[services.test-postgres.environment]
+POSTGRES_DB = "app_test"
+POSTGRES_PASSWORD = "app_test"
+POSTGRES_USER = "app_test"
+
+[parsers.angular]
+kind = "regex"
+patterns = ['Tests\s+([0-9]+) passed']
+capture = 1
+minimum = 1
+
+[parsers.rust]
+kind = "regex"
+patterns = ["(?m)^running ([0-9]+) tests?$"]
+capture = 1
+minimum = 1
+
+[report_templates]
+
+[execution]
+parallel = false
+
+[execution.retries]
+
+[execution.shards]
+
+[notifications]
+webhooks = []
+
+[scope]
+unmatched = "all"
+
+[[scope.rules]]
+patterns = ["apps/**", "crates/**", "Cargo.toml", "Cargo.lock", "migrations/**"]
+components = ["backend"]
+
+[[scope.rules]]
+patterns = ["web/angular/**"]
+components = ["frontend"]
+
+[[scope.rules]]
+patterns = [".harness-gate/**"]
+components = [
+    "backend",
+    "frontend",
+]
+
+[[steps]]
+id = "backend.format"
+label = "backend format"
+component = "backend"
+profiles = [
+    "ci",
+    "full",
+    "hook",
+]
+program = "cargo"
+args = [
+    "fmt",
+    "--manifest-path",
+    "{backend}/Cargo.toml",
+    "--all",
+    "--",
+    "--check",
+]
+cwd = "{root}"
+log = "backend_fmt.log"
+timeout_secs = 180
+services = []
+remove_env = []
+depends_on = []
+input = "snapshot"
+
+[[steps]]
+id = "backend.clippy"
+label = "backend Clippy"
+component = "backend"
+profiles = [
+    "ci",
+    "full",
+    "hook",
+]
+program = "cargo"
+args = [
+    "clippy",
+    "--manifest-path",
+    "{backend}/Cargo.toml",
+    "--locked",
+    "--all-targets",
+    "--all-features",
+    "--",
+    "-D",
+    "warnings",
+]
+cwd = "{root}"
+log = "backend_clippy.log"
+timeout_secs = 300
+services = []
+remove_env = []
+depends_on = []
+input = "snapshot"
+
+[[steps]]
+id = "backend.compile"
+label = "backend compile"
+component = "backend"
+profiles = [
+    "ci",
+    "full",
+]
+program = "cargo"
+args = [
+    "check",
+    "--manifest-path",
+    "{backend}/Cargo.toml",
+    "--locked",
+    "--all-targets",
+]
+cwd = "{root}"
+log = "backend_check.log"
+timeout_secs = 300
+services = []
+remove_env = []
+depends_on = []
+input = "snapshot"
+
+[[steps]]
+id = "backend.tests"
+label = "backend tests"
+component = "backend"
+profiles = [
+    "ci",
+    "full",
+]
+program = "cargo"
+args = [
+    "test",
+    "--manifest-path",
+    "{backend}/Cargo.toml",
+    "--locked",
+    "--",
+    "--nocapture",
+]
+cwd = "{root}"
+log = "backend_tests.log"
+timeout_secs = 300
+parser = "rust"
+services = ["test-postgres"]
+remove_env = ["DATABASE_URL"]
+depends_on = []
+input = "snapshot"
+
+[[steps]]
+id = "frontend.lint"
+label = "frontend lint"
+component = "frontend"
+profiles = [
+    "ci",
+    "full",
+    "hook",
+]
+program = "npm"
+args = [
+    "run",
+    "lint",
+]
+cwd = "{frontend}"
+log = "frontend_lint.log"
+timeout_secs = 180
+services = []
+remove_env = []
+depends_on = []
+input = "snapshot"
+
+[[steps]]
+id = "frontend.tests"
+label = "frontend tests"
+component = "frontend"
+profiles = [
+    "ci",
+    "full",
+]
+program = "npm"
+args = [
+    "test",
+    "--",
+    "--watch=false",
+
+]
+cwd = "{frontend}"
+log = "frontend_tests.log"
+timeout_secs = 300
+parser = "angular"
+services = []
+remove_env = []
+depends_on = []
+input = "snapshot"
+
+[[steps]]
+id = "frontend.build"
+label = "frontend production build"
+component = "frontend"
+profiles = [
+    "ci",
+    "full",
+]
+program = "npm"
+args = [
+    "run",
+    "build",
+]
+cwd = "{frontend}"
+log = "frontend_build.log"
+timeout_secs = 300
+services = []
+remove_env = []
+depends_on = []
+input = "snapshot"

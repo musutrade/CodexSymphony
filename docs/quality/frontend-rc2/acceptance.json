@@ -1,0 +1,30 @@
+{
+  "scope": "local-frontend-only",
+  "host": "/mnt/dev-ssd/dev-tmp/codexsymphony-ts-risk-912NcC/host-7n5qb0ct",
+  "collection": "pass",
+  "evaluation_exit": 0,
+  "report": {
+    "blockers": [],
+    "state": "pass"
+  },
+  "negative_cases": [
+    "stale-context",
+    "expired",
+    "tampered-signature",
+    "replay",
+    "tampered-artifact"
+  ],
+  "declaration_only": [
+    "src/app/health-response.ts"
+  ],
+  "archive_sha256": "ae4733adc652f22ee4b17a0bcc0202496b30ec28fc31cf30649dca995679169c",
+  "package_sha256": "609a87af608149324938a3f9fd608b14b8718fc47bfe067c6bdae6ff80ee4b8d",
+  "tests": {
+    "plugin": 15,
+    "integration": 4,
+    "angular": 6,
+    "negative_cases": 5
+  },
+  "source_commit": "7d6c87b",
+  "series": "measurement-series/v1:be4c554a3e544240f3f96f248808110d14eac4616ea334317fb2578454031206"
+}

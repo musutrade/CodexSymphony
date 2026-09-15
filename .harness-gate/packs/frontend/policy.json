@@ -1,0 +1,81 @@
+{
+  "schema": "harness-policy/v1",
+  "rules": [
+    {
+      "id": "frontend.coverage.line",
+      "scope": {
+        "kind": "subject",
+        "subject": "frontend-files"
+      },
+      "metric": "coverage.line",
+      "operator": "ge",
+      "limit": {
+        "type": "ratio",
+        "covered": 80,
+        "total": 100
+      },
+      "required": true,
+      "on_violation": "fail",
+      "remediation_classes": [
+        "review_retained_evidence"
+      ]
+    },
+    {
+      "id": "frontend.functions.coverage.line",
+      "scope": {
+        "kind": "subject",
+        "subject": "frontend-functions"
+      },
+      "metric": "coverage.line",
+      "operator": "ge",
+      "limit": {
+        "type": "ratio",
+        "covered": 80,
+        "total": 100
+      },
+      "required": true,
+      "on_violation": "fail",
+      "remediation_classes": [
+        "review_retained_evidence"
+      ]
+    },
+    {
+      "id": "frontend.coverage.function",
+      "scope": {
+        "kind": "subject",
+        "subject": "frontend-functions"
+      },
+      "metric": "coverage.function",
+      "operator": "ge",
+      "limit": {
+        "type": "ratio",
+        "covered": 80,
+        "total": 100
+      },
+      "required": true,
+      "on_violation": "fail",
+      "remediation_classes": [
+        "review_retained_evidence"
+      ]
+    },
+    {
+      "id": "frontend.risk.crap",
+      "scope": {
+        "kind": "subject",
+        "subject": "frontend-functions"
+      },
+      "metric": "risk.crap",
+      "operator": "le",
+      "limit": {
+        "type": "rational",
+        "numerator": 10,
+        "denominator": 1
+      },
+      "required": true,
+      "on_violation": "fail",
+      "remediation_classes": [
+        "review_retained_evidence"
+      ]
+    }
+  ]
+}
