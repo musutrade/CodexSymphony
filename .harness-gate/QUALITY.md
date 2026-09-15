@@ -78,6 +78,9 @@ API 的初始合约基线与 MIR 历史风险基线是不同输入。
 
 安装器来自固定 tag v0.4.5；安装时通过 SHA256、Sigstore 签名及证书身份验证。
 本机默认命令位于 `~/.local/bin`，指向版本目录；旧 v0.4.2 目录保留。
+`~/.cargo/bin/harness-gate` 同样指向 v0.4.5 版本文件，已验证 Cargo 优先的 PATH
+也通过 `tools/gate.py --version` 的版本与 SHA256 校验。升级时需同步这两个入口，
+并一起审查版本锁、启动器摘要与下述项目副本。
 项目专用副本位于 `~/.local/share/codexsymphony/harness-gate/bin`。
 
 - Core Linux amd64：`70721282c751826ed4d57e14bd7de9516e73e833aa058d758dbd2154c0aa5e10`
