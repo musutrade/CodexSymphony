@@ -1,0 +1,84 @@
+{
+  "issue": 13,
+  "date": "2026-09-15",
+  "baseline": "9ca3d94503584aca9f13c11ed8f8dec535347772",
+  "status": "issue-local-acceptance-passed; exact-published-head trusted checks pending",
+  "rust": {
+    "functions": 68,
+    "coverage.line": 0.9,
+    "coverage.region": 0.8108108108108109,
+    "risk.crap": 10.0
+  },
+  "rust_series": "measurement-series/v1:b79abd709904548fbed1042b2e1ceb146cc3fedc75bc55744eb475b84cdd1db9",
+  "typescript": {
+    "minimum_runtime_file_line_coverage": 1.0,
+    "maximum_function_crap": 6.0,
+    "function_count": 32,
+    "declaration_only": [
+      "src/app/health-response.ts"
+    ],
+    "raw_directory": "/tmp/codexsymphony-ts-risk-G9nqXZ"
+  },
+  "http": {
+    "contract.breaking_changes": {
+      "type": "count",
+      "value": 0
+    },
+    "contract.client_drift": {
+      "type": "boolean",
+      "value": false
+    },
+    "contract.compatible": {
+      "type": "boolean",
+      "value": true
+    }
+  },
+  "rust_source_and_test_inputs": {
+    "Cargo.lock": "1f63edeb206e160f0e42d32920455aafd672f4fa25a2396593714fa7aa3e7b32",
+    "Cargo.toml": "b61af0338b601821d910f1aea2b2c69ee0d758184a4910d57d4e6082a8dfe9ac",
+    "apps/server/Cargo.toml": "8ef7e542e7e29d8e84cfcd7c4421023554bfec4d44b7d6a2b3624bde2f9bcf1a",
+    "apps/server/src/business.rs": "e1d214a25cf03ee236d620328b75aa94afa11bf0b64c2b15983502bcd3a067af",
+    "apps/server/src/config.rs": "508a052dc87b767703f7122e4d6d851970917bb8c5f736f9aec41c37e0410cb5",
+    "apps/server/src/contract.rs": "c17c2ccfc4a1f27faac90ef72b500060264804dcdce51f23943d61d5276546df",
+    "apps/server/src/lib.rs": "513483b386597ba7aa417078453966f1c108a97dba47f5a557c3a848f43f1d8e",
+    "apps/server/src/main.rs": "0173e8974b589366ad1c13c42f914b0ed4ed711d19a52cc9f1d97b9505c4a2ed",
+    "apps/server/src/security.rs": "63d0ef6830877b64fee9a35904fd6063df1fbe74b62f7ce22384f0faff723ee7",
+    "apps/server/tests/health.rs": "68f72e22b9a1c0458627871cded4b0391e43697e58cdc66589a4b0adb7ff5017",
+    "apps/server/tests/requirements.rs": "38efb499808b800597661b0eea76c63a0cb16616656067d148b110ed21b85c55",
+    "apps/server/tests/startup.rs": "4db80ce648ecd3b94dd99a01e434f1f3538f21b5d53d820e8a9f426abeaff1d9",
+    "apps/server/tests/support/security.rs": "eb0f81c377edd832bb17200380aabb0d890f01a1c9329e87f6b59116dd30182a",
+    "migrations/0001_requirements.sql": "302e54bdb3be27b7a4ba495f90a7fcb0e0fe9594cf33f49cd640c59fce93aaad",
+    "migrations/README.md": "6fb176ef3c947976f14aa567af8a83e150c340b37e7a4b6f8d7c77d46e17231b"
+  },
+  "frontend_measured_sources": {
+    "src/app/app.config.ts": "3a695c5453a1b4e5c6fd320447cc74acfbaffe02326fbe8be0689188cd0d5835",
+    "src/app/app.routes.ts": "50b9115c723c810f5e3862a3a1516c8e1994301bc07dc16ed4c8f3bc7e158ce2",
+    "src/app/app.ts": "ab1b4bc8c03d7f2054fd4ad08599fbd97f1d3eee43bd0b510b16321ca5cfc031",
+    "src/app/health-page.ts": "bd70182b665f43d154a1eef2ede72b0aba1840ecf96d20d52ce48998e1eb3950",
+    "src/app/health-response.ts": "608c24de19bbad628898335c64bfdf8e8d830e1accb527033b3eb8fe7d743fc6",
+    "src/app/health.ts": "6a6b3a3f2732f995352c6e8d7c3d7e6de75601fd54ee1c13c846f30a7ab2def2",
+    "src/app/requirements/requirements-api.ts": "4a8491e2b641d5bb2f747d2e30e7bcf53d059bd7f72ddd5b7a94f95a777143d9",
+    "src/app/requirements/requirements.ts": "347b5ea69e39ddbb1fd2bad76ca901bd1c3af6599e81980a4fd28a5a2595c7c1",
+    "src/main.ts": "2341253f1a947c37dfa27838951cf7e224f7abb32dff45a8d425f042b5eeed13"
+  },
+  "local_artifacts": {
+    "target/gh13-environment-verified.json": "33358f07cb55404fe830051e8c1d3551fbb71db7e7e83cbeda79676f3d1ff2f8",
+    "target/gh13-npm-ci-resume.log": "e55699f5e12b0839141d7ef17f751997a6e01c8396e1f2be18d28f66c08dd32c",
+    "target/gh13-rust-tests-resume.log": "e7ea1bcd999c3c46334d588debd9ae872a396b0d47acf707704bf2ef5b850973",
+    "target/gh13-clippy-resume.log": "1ad6f46813e8e0312220519e9338ea8f7b4c70ef0e2fcb162e508ece2a023aea",
+    "target/gh13-ui-lint-final.log": "d2310db709eb23deebb604e34d576aa7f433b61a1982e1980439242f1a1f2839",
+    "target/gh13-ui-tests-final.log": "4b95e09ca433f6fcbee3dbcb21abe494130fe6ff7ccb8270f9ec4282ec8c75a8",
+    "target/gh13-ui-build-final.log": "228138a9d496ddb7abf9e197336ebdb3eef90f1bb3576d6d7529f5b4e9d6cd8a",
+    "target/gh13-e2e-final.log": "d8f408d9fbf4a415673cebffe263684d62840bce675d7f2a1a0bfb03a4f7ab84",
+    "target/gh13-gate-config-resume.log": "5139abe9163785ba9d79a96ff06b803d986e3c627e9d4964fb4686a880be796a",
+    "target/gh13-ts-risk-final.log": "f0434f8ef71980c2b4260445f2590f94ab220f6e184018ef3cb5a5fa62918c86",
+    "target/gh13-contract-observations.json": "fb9e4a3ebf77e0d4040bd6c538376b406c2ea1c504581a85439f290e4d62d95f",
+    "target/gh13-business-contract-metrics.json": "dd7b0a5fffc47c866a6f2eba543eec0a07df76ce0d5ab87537ffc9d2b8ebfdb5",
+    "target/gh13-rust-risk-final/measurements.json": "55ebf0717053b422354f6586babc1f6597d1a3b39b76f65617742b13a43a765a"
+  },
+  "boundaries": [
+    "Unsigned local measurement rehearsals; no trusted signing inputs available in agent workspace.",
+    "HTTP local rehearsal excludes live health 503 and historical baseline comparison; trusted host performs those checks.",
+    "Ready persistence only: Run, repository delivery readiness, deployment network enforcement and M2 login remain unimplemented."
+  ]
+}

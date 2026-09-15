@@ -16,6 +16,13 @@
   );
   @include tokens.foundation;
   @include tokens.light;
+  // Darker action labels retain AA contrast over Material focus/hover layers.
+  @include mat.button-overrides(
+    (
+      outlined-label-text-color: #1248b3,
+      text-label-text-color: #1248b3,
+    )
+  );
 }
 
 *,
@@ -84,11 +91,13 @@ a {
   color: var(--ui-color-text-secondary);
 }
 .ui-card {
-  @include mat.card-overrides((
-    outlined-container-color: var(--ui-color-surface-panel),
-    outlined-outline-color: var(--ui-color-border),
-    outlined-container-shape: var(--ui-radius-lg),
-  ));
+  @include mat.card-overrides(
+    (
+      outlined-container-color: var(--ui-color-surface-panel),
+      outlined-outline-color: var(--ui-color-border),
+      outlined-container-shape: var(--ui-radius-lg),
+    )
+  );
   box-shadow: var(--ui-shadow-sm);
 }
 .ui-card mat-card-content {
@@ -123,5 +132,52 @@ a {
   }
   .ui-card {
     border: 1px solid CanvasText;
+  }
+}
+
+// Shared business-page patterns adapted from the pinned arc-admin design rules.
+.ui-panel {
+  background: var(--ui-color-surface-panel);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-lg);
+  padding: var(--ui-space-4);
+  margin-block: var(--ui-space-4);
+}
+.ui-actions,
+.ui-list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ui-space-2);
+  align-items: center;
+}
+.ui-list {
+  list-style: none;
+  padding: 0;
+}
+.ui-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ui-space-4);
+}
+fieldset {
+  min-width: 0;
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-md);
+  padding: var(--ui-space-4);
+  margin-block: var(--ui-space-4);
+}
+mat-form-field {
+  display: block;
+  width: 100%;
+  margin-block: var(--ui-space-2);
+}
+.ui-panel button {
+  min-height: var(--ui-control-md);
+  max-width: 100%;
+  white-space: normal;
+}
+@media (max-width: 767px) {
+  .ui-form-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

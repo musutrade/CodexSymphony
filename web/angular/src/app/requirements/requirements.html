@@ -1,0 +1,273 @@
+<header class="page-header">
+  <p>CodexSymphony · Phase 0a</p>
+  <h1>需求工作台</h1>
+  <p>保存可验证的需求，评审后进入持久化 Ready 队列。</p>
+</header>
+<div role="status" aria-live="polite">
+  @if (loading()) {
+    <p>正在加载需求与仓库…</p>
+  }
+  @if (busy() && !loading()) {
+    <p>正在提交，请稍候…</p>
+  }
+  @if (message()) {
+    <p>{{ message() }}</p>
+  }
+</div>
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+<div class="ui-actions">
+  <button matButton="outlined" (click)="reload()" [disabled]="busy()">刷新列表</button>
+  <button matButton="outlined" (click)="newDraft()" [disabled]="busy()">新建需求</button>
+</div>
+@if (repository(); as context) {
+  <section class="ui-panel" aria-labelledby="network-title">
+    <h2 id="network-title">部署与授权边界</h2>
+    <p>静态部署网络集合：{{ context.deployment_network.join(', ') || '尚未配置或验证' }}。</p>
+    <p>
+      需求联网声明仅为意图。空声明不表示拒绝所有网络；Agent
+      可访问部署授权集合。超出集合的声明须经部署预检处理。
+    </p>
+    <p>运行能力未就绪；仓库交付能力尚未检查。Ready 表示已评审并排队，不表示已开始执行。</p>
+  </section>
+  @if (context.repositories.length === 0) {
+    <section class="ui-panel" aria-labelledby="setup-title">
+      <h2 id="setup-title">登记首个可信仓库</h2>
+      <p>
+        仅启用一个仓库。初始策略允许 cargo_test / npm_test 检查，超时上限 3600
+        秒，最多一次代码修复。请评审以下累计预算。
+      </p>
+      <form [formGroup]="setup" (ngSubmit)="configure()">
+        <fieldset [disabled]="busy()">
+          <legend>仓库身份与预算</legend>
+          <div class="ui-form-grid">
+            <mat-form-field
+              ><mat-label>项目名称</mat-label
+              ><input matInput formControlName="project" required /><mat-error
+                >请输入项目名称</mat-error
+              ></mat-form-field
+            >
+            <mat-form-field
+              ><mat-label>GitHub 仓库（owner/repository）</mat-label
+              ><input matInput formControlName="remote" required /><mat-error
+                >请输入仓库身份</mat-error
+              ></mat-form-field
+            >
+            <mat-form-field
+              ><mat-label>GitHub 仓库数字 ID</mat-label
+              ><input
+                matInput
+                type="number"
+                formControlName="github_repository_id"
+                required
+              /><mat-error>请输入正整数 ID</mat-error></mat-form-field
+            >
+            <mat-form-field
+              ><mat-label>基线分支</mat-label
+              ><input matInput formControlName="base_branch" required /><mat-error
+                >请输入基线分支</mat-error
+              ></mat-form-field
+            >
+            <mat-form-field
+              ><mat-label>Token 累计上限</mat-label
+              ><input matInput type="number" formControlName="token_limit" /><mat-error
+                >请输入正数</mat-error
+              ></mat-form-field
+            >
+            <mat-form-field
+              ><mat-label>Turn 累计上限</mat-label
+              ><input matInput type="number" formControlName="turn_limit" /><mat-error
+                >请输入正数</mat-error
+              ></mat-form-field
+            >
+            <mat-form-field
+              ><mat-label>模型工作时间上限（秒）</mat-label
+              ><input matInput type="number" formControlName="model_work_seconds" /><mat-error
+                >请输入正数</mat-error
+              ></mat-form-field
+            >
+          </div>
+          <button matButton="filled" type="submit">确认仓库与初始策略</button>
+        </fieldset>
+      </form>
+    </section>
+  } @else {
+    <section class="ui-panel" aria-labelledby="repository-title">
+      <h2 id="repository-title">当前仓库策略</h2>
+      @for (entry of context.repositories; track entry.version) {
+        <p>
+          {{ entry.repository.project }} · {{ entry.repository.remote }} ·
+          {{ entry.repository.base_branch }} · 策略版本 {{ entry.version }}
+        </p>
+        <p>
+          累计预算：{{ entry.repository.policy.token_limit }} tokens /
+          {{ entry.repository.policy.turn_limit }} turns /
+          {{ entry.repository.policy.model_work_seconds }} 秒；代码修复最多一次。
+        </p>
+        <p>
+          检查：{{ entry.repository.policy.allowed_checks.join(', ') }}；超时上限
+          {{ entry.repository.policy.max_timeout_seconds }} 秒。
+        </p>
+        @if (entry.repository.revoked) {
+          <p role="alert">仓库授权已撤销，后续动作被阻止。</p>
+        }
+      }
+    </section>
+  }
+}
+<section class="ui-panel" aria-labelledby="list-title">
+  <h2 id="list-title">需求列表</h2>
+  @if (!loading() && items().length === 0) {
+    <p>暂无需求。填写下方表单创建第一条需求。</p>
+  }
+  <ul class="ui-list">
+    @for (item of items(); track item.id) {
+      <li>
+        <button matButton="text" (click)="open(item.id)" [disabled]="busy()">
+          #{{ item.id }} {{ item.title }}</button
+        ><span>{{ item.state }} · 版本 {{ item.version }}</span>
+      </li>
+    }
+  </ul>
+</section>
+<section class="ui-panel" aria-labelledby="form-title">
+  <h2 id="form-title">{{ selected() ? '需求 #' + selected()?.id : '新建 Draft' }}</h2>
+  @if (selected(); as item) {
+    <p>状态 {{ item.state }} · 对象版本 {{ item.version }} · 已评审修订 {{ item.revision }}</p>
+  }
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <fieldset [disabled]="busy() || (!!selected() && selected()?.state !== 'Draft')">
+      <legend>需求 Contract</legend>
+      <mat-form-field
+        ><mat-label>标题</mat-label><input matInput formControlName="title" required /><mat-error
+          >请输入标题</mat-error
+        ></mat-form-field
+      >
+      <mat-form-field
+        ><mat-label>需求描述</mat-label
+        ><textarea matInput formControlName="description" required rows="3"></textarea
+        ><mat-error>请输入需求描述</mat-error></mat-form-field
+      >
+      <div formArrayName="acceptance_criteria">
+        @for (ac of form.controls.acceptance_criteria.controls; track ac; let i = $index) {
+          <fieldset [formGroupName]="i">
+            <legend>验收条件 {{ i + 1 }}（AC ID 在评审时生成）</legend>
+            <mat-form-field
+              ><mat-label>验收条件 {{ i + 1 }} 描述</mat-label
+              ><textarea matInput formControlName="description" required></textarea
+              ><mat-error>请输入可验证的条件</mat-error></mat-form-field
+            >
+            <mat-form-field
+              ><mat-label>验收条件 {{ i + 1 }} 验证引用</mat-label
+              ><input matInput formControlName="verification_ref" required /><mat-hint
+                >填写下方步骤 ID，可引用未来新增测试</mat-hint
+              ><mat-error>请输入验证步骤 ID</mat-error></mat-form-field
+            >
+            @if (form.controls.acceptance_criteria.length > 1) {
+              <button
+                matButton
+                type="button"
+                (click)="form.controls.acceptance_criteria.removeAt(i)"
+              >
+                删除验收条件 {{ i + 1 }}
+              </button>
+            }
+          </fieldset>
+        }
+      </div>
+      <button matButton type="button" (click)="addCriterion()">添加验收条件</button>
+      <div formArrayName="validation_plan">
+        @for (step of form.controls.validation_plan.controls; track step; let i = $index) {
+          <fieldset [formGroupName]="i">
+            <legend>验证步骤 {{ i + 1 }}</legend>
+            <div class="ui-form-grid">
+              <mat-form-field
+                ><mat-label>步骤 {{ i + 1 }} ID</mat-label
+                ><input matInput formControlName="id" required /><mat-error
+                  >请输入唯一 ID</mat-error
+                ></mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>步骤 {{ i + 1 }} 检查类型</mat-label
+                ><select matNativeControl formControlName="check">
+                  <option value="cargo_test">cargo_test</option>
+                  <option value="npm_test">npm_test</option>
+                </select></mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>步骤 {{ i + 1 }} 测试选择器</mat-label
+                ><input matInput formControlName="selector" required /><mat-hint
+                  >测试名称或路径，不填写 shell 命令</mat-hint
+                ><mat-error>请输入测试选择器</mat-error></mat-form-field
+              >
+              <mat-form-field
+                ><mat-label>步骤 {{ i + 1 }} 超时（秒）</mat-label
+                ><input
+                  matInput
+                  type="number"
+                  formControlName="timeout_seconds"
+                  required
+                /><mat-error>请输入 1–3600 秒</mat-error></mat-form-field
+              >
+            </div>
+            <mat-form-field
+              ><mat-label>步骤 {{ i + 1 }} 预期结果</mat-label
+              ><input matInput formControlName="expected_result" required /><mat-error
+                >请输入预期结果</mat-error
+              ></mat-form-field
+            >
+            @if (form.controls.validation_plan.length > 1) {
+              <button matButton type="button" (click)="form.controls.validation_plan.removeAt(i)">
+                删除验证步骤 {{ i + 1 }}
+              </button>
+            }
+          </fieldset>
+        }
+      </div>
+      <button matButton type="button" (click)="addStep()">添加验证步骤</button>
+      <mat-form-field
+        ><mat-label>联网意图（可选，逗号分隔）</mat-label
+        ><input matInput formControlName="network_access" /><mat-hint
+          >仅供评审与预检，不授予逐任务网络权限</mat-hint
+        ></mat-form-field
+      >
+      <button matButton="filled" type="submit">保存 Draft</button>
+    </fieldset>
+  </form>
+  @if (selected(); as item) {
+    @if (item.state === 'Draft') {
+      <button matButton="outlined" (click)="reviewing.set(true)" [disabled]="busy() || form.dirty">
+        评审已保存版本
+      </button>
+      @if (form.dirty) {
+        <p>请先保存修改再评审。</p>
+      }
+      @if (reviewing()) {
+        <section aria-labelledby="review-title">
+          <h3 id="review-title">确认评审：{{ item.contract.title }}</h3>
+          <p>
+            将冻结以上已保存 Contract 及当前仓库策略和累计预算。验证可引用未来测试；Ready 不再要求
+            Start 审批。
+          </p>
+          <button matButton="filled" (click)="control('ready')" [disabled]="busy() || form.dirty">
+            确认评审并 Ready
+          </button>
+        </section>
+      }
+    }
+    @if (item.state === 'Ready') {
+      <button matButton="outlined" (click)="control('withdraw')" [disabled]="busy()">
+        撤回 Draft
+      </button>
+    }
+    @for (snapshot of item.snapshots; track snapshot.revision) {
+      <p>
+        冻结修订 {{ snapshot.revision }} · 策略版本 {{ snapshot.repository_version }} ·
+        {{ snapshot.ac_ids.join(', ') }} · 预算 {{ snapshot.repository.policy.token_limit }} tokens
+        / {{ snapshot.repository.policy.turn_limit }} turns /
+        {{ snapshot.repository.policy.model_work_seconds }} 秒。
+      </p>
+    }
+  }
+</section>

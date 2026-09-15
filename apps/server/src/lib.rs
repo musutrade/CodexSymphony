@@ -1,5 +1,7 @@
 //! Minimal localhost API; no scheduler or business completion state is implied.
+pub mod business;
 pub mod config;
+pub mod contract;
 pub mod security;
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use serde::Serialize;
@@ -16,6 +18,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
     policy.protect(
         Router::new()
             .route("/api/health", get(health))
+            .merge(business::routes())
             .with_state(pool),
     )
 }

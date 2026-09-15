@@ -1,1 +1,441 @@
-[]
+[
+  {
+    "id": "repository",
+    "method": "GET",
+    "path": "/api/repository",
+    "status": 200
+  },
+  {
+    "id": "configured",
+    "method": "PUT",
+    "path": "/api/repository",
+    "status": 200,
+    "body": {
+      "request_id": "capture-configure",
+      "version": 0,
+      "repository": {
+        "project": "Capture fixture",
+        "remote": "musutrade/disposable",
+        "github_repository_id": 123,
+        "base_branch": "main",
+        "revoked": false,
+        "reason": "Explicit initial local review",
+        "policy": {
+          "allowed_checks": [
+            "cargo_test"
+          ],
+          "max_timeout_seconds": 120,
+          "token_limit": 10000,
+          "turn_limit": 10,
+          "model_work_seconds": 600,
+          "gate_recovery_policy": "one_code_repair"
+        }
+      }
+    }
+  },
+  {
+    "id": "stale-policy",
+    "method": "PUT",
+    "path": "/api/repository",
+    "status": 409,
+    "body": {
+      "request_id": "capture-stale-policy",
+      "version": 0,
+      "repository": {
+        "project": "Capture fixture",
+        "remote": "musutrade/disposable",
+        "github_repository_id": 123,
+        "base_branch": "main",
+        "revoked": false,
+        "reason": "Explicit initial local review",
+        "policy": {
+          "allowed_checks": [
+            "cargo_test"
+          ],
+          "max_timeout_seconds": 120,
+          "token_limit": 10000,
+          "turn_limit": 10,
+          "model_work_seconds": 600,
+          "gate_recovery_policy": "one_code_repair"
+        }
+      }
+    }
+  },
+  {
+    "id": "invalid-policy",
+    "method": "PUT",
+    "path": "/api/repository",
+    "status": 422,
+    "body": {
+      "request_id": "capture-invalid-policy",
+      "version": 1,
+      "repository": {
+        "project": "Capture fixture",
+        "remote": "musutrade/disposable",
+        "github_repository_id": 123,
+        "base_branch": "main",
+        "revoked": false,
+        "reason": "Explicit initial local review",
+        "policy": {
+          "allowed_checks": [
+            "cargo_test"
+          ],
+          "max_timeout_seconds": 120,
+          "token_limit": 0,
+          "turn_limit": 10,
+          "model_work_seconds": 600,
+          "gate_recovery_policy": "one_code_repair"
+        }
+      }
+    }
+  },
+  {
+    "id": "created",
+    "method": "POST",
+    "path": "/api/requirements",
+    "status": 201,
+    "body": {
+      "request_id": "capture-create",
+      "version": 0,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      }
+    }
+  },
+  {
+    "id": "invalid-create",
+    "method": "POST",
+    "path": "/api/requirements",
+    "status": 422,
+    "body": {
+      "request_id": "capture-invalid",
+      "version": 0,
+      "contract": {
+        "title": "",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      }
+    }
+  },
+  {
+    "id": "duplicate-key",
+    "method": "POST",
+    "path": "/api/requirements",
+    "status": 409,
+    "body": {
+      "request_id": "capture-create",
+      "version": 0,
+      "contract": {
+        "title": "",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      }
+    }
+  },
+  {
+    "id": "detail",
+    "method": "GET",
+    "path": "/api/requirements/{id}",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    }
+  },
+  {
+    "id": "missing",
+    "method": "GET",
+    "path": "/api/requirements/{id}",
+    "status": 404,
+    "path_parameters": {
+      "id": 999999
+    }
+  },
+  {
+    "id": "edited",
+    "method": "PATCH",
+    "path": "/api/requirements/{id}",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-edit",
+      "version": 1,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      }
+    }
+  },
+  {
+    "id": "stale-edit",
+    "method": "PATCH",
+    "path": "/api/requirements/{id}",
+    "status": 409,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-stale-edit",
+      "version": 1,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      }
+    }
+  },
+  {
+    "id": "invalid-edit",
+    "method": "PATCH",
+    "path": "/api/requirements/{id}",
+    "status": 422,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-invalid-edit",
+      "version": 2,
+      "contract": {
+        "title": "",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      }
+    }
+  },
+  {
+    "id": "ready",
+    "method": "POST",
+    "path": "/api/requirements/{id}/ready",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-ready",
+      "version": 2,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "ready-replay",
+    "method": "POST",
+    "path": "/api/requirements/{id}/ready",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "record": false,
+    "body": {
+      "request_id": "capture-ready",
+      "version": 2,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "stale-ready",
+    "method": "POST",
+    "path": "/api/requirements/{id}/ready",
+    "status": 409,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-stale-ready",
+      "version": 2,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "future",
+    "method": "POST",
+    "path": "/api/requirements",
+    "status": 201,
+    "record": false,
+    "body": {
+      "request_id": "capture-future",
+      "version": 0,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "npm_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      }
+    }
+  },
+  {
+    "id": "unauthorized-ready",
+    "method": "POST",
+    "path": "/api/requirements/{id}/ready",
+    "status": 422,
+    "path_parameters": {
+      "id": {
+        "$response": "future#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-unauthorized-ready",
+      "version": 1,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "withdrawn",
+    "method": "POST",
+    "path": "/api/requirements/{id}/withdraw",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-withdraw",
+      "version": 3,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "stale-withdraw",
+    "method": "POST",
+    "path": "/api/requirements/{id}/withdraw",
+    "status": 409,
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "request_id": "capture-stale-withdraw",
+      "version": 3,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "list",
+    "method": "GET",
+    "path": "/api/requirements",
+    "status": 200
+  }
+]

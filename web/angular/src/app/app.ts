@@ -1,14 +1,13 @@
-import { Component, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
-import { Health } from './health';
-
+import { Component } from '@angular/core';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 @Component({
   selector: 'app-root',
-  imports: [MatButtonModule, MatCardModule],
+  imports: [RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './app.html',
-  styleUrl: './app.scss',
 })
 export class App {
-  protected readonly health = inject(Health);
+  readonly navigation = [
+    { path: '/requirements', label: '需求工作台' },
+    { path: '/', label: '服务状态' },
+  ];
 }
