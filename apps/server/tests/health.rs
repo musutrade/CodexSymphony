@@ -6,6 +6,10 @@ use sqlx::postgres::PgPoolOptions;
 use std::time::Duration;
 use tower::ServiceExt;
 
+// The approved host collects the health and startup integration targets.
+#[path = "support/security.rs"]
+mod security;
+
 #[tokio::test]
 async fn health_checks_a_real_database() {
     let url = std::env::var("TEST_DATABASE_URL")
@@ -15,10 +19,11 @@ async fn health_checks_a_real_database() {
         .connect(&url)
         .await
         .unwrap();
-    let response = codexsymphony_server::router(pool.clone())
+    let response = codexsymphony_server::router(pool.clone(), policy())
         .oneshot(
             Request::builder()
                 .uri("/api/health")
+                .header("host", "127.0.0.1:3081")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -38,10 +43,11 @@ async fn unavailable_database_is_503_without_connection_details() {
         .connect_lazy("postgres://not-a-secret@127.0.0.1:1/unavailable_test")
         .unwrap();
     pool.close().await;
-    let response = codexsymphony_server::router(pool)
+    let response = codexsymphony_server::router(pool, policy())
         .oneshot(
             Request::builder()
                 .uri("/api/health")
+                .header("host", "127.0.0.1:3081")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -54,4 +60,12 @@ async fn unavailable_database_is_503_without_connection_details() {
         json,
         serde_json::json!({"status":"unavailable","database":"unavailable"})
     );
+}
+
+fn policy() -> codexsymphony_server::security::RequestPolicy {
+    codexsymphony_server::security::RequestPolicy::new(
+        "127.0.0.1:3081".parse().unwrap(),
+        "http://localhost:4200".into(),
+    )
+    .unwrap()
 }

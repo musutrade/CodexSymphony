@@ -1,9 +1,10 @@
-<main>
-  <header>
+<a class="skip-link" href="#main-content">跳到主要内容</a>
+<main id="main-content" class="page" tabindex="-1">
+  <header class="page-header">
     <p>CodexSymphony</p>
     <h1>服务状态</h1>
   </header>
-  <mat-card appearance="outlined">
+  <mat-card class="ui-card" appearance="outlined">
     <mat-card-header>
       <mat-card-title>工作台连接</mat-card-title>
     </mat-card-header>
@@ -11,7 +12,11 @@
       <div role="status" aria-live="polite">
         @if (health.response.isLoading()) {
           <p>正在检查连接…</p>
-        } @else if (health.response.hasValue() && health.response.value()?.status === 'ok' && health.response.value()?.database === 'ok') {
+        } @else if (
+          health.response.hasValue() &&
+          health.response.value()?.status === 'ok' &&
+          health.response.value()?.database === 'ok'
+        ) {
           <p>连接正常</p>
           <p>服务和数据存储均可用。</p>
         } @else {
@@ -21,7 +26,11 @@
       </div>
     </mat-card-content>
     <mat-card-actions>
-      <button matButton="outlined" (click)="health.response.reload()" [disabled]="health.response.isLoading()">
+      <button
+        matButton="outlined"
+        (click)="health.response.reload()"
+        [disabled]="health.response.isLoading()"
+      >
         重新检查
       </button>
     </mat-card-actions>

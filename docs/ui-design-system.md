@@ -1,6 +1,6 @@
 # UI 规范与 arc-admin 样式复用
 
-> Current · 2026-09-15 · 已确认的实现与验收要求，尚未移植样式
+> Current · 2026-09-15 · 健康页已移植；业务页面按各自任务验收
 
 CodexSymphony 使用 Angular 22 与 Material 22，复用 arc-admin 的视觉语言：蓝色主操作、语义颜色、统一字体与间距、轻边框卡片、响应式页面及可见交互状态。主规格第 18 章以本文为页面视觉基线。
 
@@ -44,3 +44,20 @@ arc-admin 的账号管理、角色权限、MFA 和其他业务模块不因样式
 | UI05 | 减少动效与强制颜色模式仍可理解和操作；登录页支持密码管理器、错误反馈、会话过期后的返回流程 |
 
 实现提交运行项目已有 lint、相关单元及浏览器测试、生产构建和要求的质量门禁，保留桌面与手机视觉复核记录。本文更新本身不代表样式或认证已实现。
+
+
+## 4. GH-12 移植记录
+
+- `_tokens.scss` 原样纳入 `web/angular/src/styles/_tokens.scss`，SHA-256 为
+  `370defe3413c91bedae7cd77e634a1d8d9c851efb8ba89c495318ab2d41e81a4`。
+- 审阅源 `docs/ui-design-system.md`（SHA-256 `9deaea9bd54e1cf2a8c7d883255e4a3e364567db18072ca461deb7458b89925a`）
+  和 `frontend/src/styles.scss`（SHA-256 `57f31bbee2a728bf55b3c4c2308ab6012d629dfafcde1c67b550f82ef0f99d49`），
+  提取基础亮色主题、字体、reset、焦点、页面和卡片模式到本仓库 `src/styles.scss`；本文继续是正式页面规范。
+- 按 Angular/Material 22 现有 `mat.theme` 与 `mat.card-overrides` 适配；使用系统字体，无外部字体、图标或动画资源依赖。
+  页面 max-width 1200px，内边距 24px/16px；卡片、按钮、焦点共享维护，组件不再重复页面布局。
+  增加跳转主内容、4px 焦点外间距和强制颜色支持；焦点选择器覆盖 Material 默认 outline reset。
+- 仅实例化 foundation/light mixin，保留源文件 dark mixin 不代表暗色功能；账号、导航、表单、筛选和表格样式按实际页面引入。
+- 固定源树未发现 LICENSE/COPYING；复用由用户及 GH-12 明确授权，未虚构许可，也未移除源文件说明。
+  下次同步必须显式审查版本、源差异和适配差异；禁止软链接或构建时读取本机 arc-admin。
+- 健康页空/不完整响应显示“暂时无法连接”并可重试，加载禁用重复检查；此页没有业务空列表、提交表单及表单错误，
+  相应状态与错误关联由 #13 随真实表单验收。浏览器与静态构建验证见 [GH-12 记录](quality/gh12/README.md)。

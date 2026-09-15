@@ -3,20 +3,102 @@
 当前骨架：Rust 1.97.1，Axum 0.8，SQLx 0.8，PostgreSQL 16；Node 24.18.0，
 Angular 22，Material 22，TypeScript 6.0.2。精确依赖见 Cargo.lock 与前端 package-lock.json。
 
-## 启动
+## 干净检出的工具链
 
-在仓库根目录启动临时数据库和 API：
+`rust-toolchain.toml` 选择 Rust **1.97.1**（含 rustfmt/Clippy）；`.node-version` 选择
+Node **24.18.0**，`web/angular/package.json` 的 packageManager 固定 npm **11.16.0**。
+先用本机版本管理器安装/选择这些版本，例如 `nvm install "$(cat .node-version)"`，
+再核对 `rustc --version`、`node --version`、`npm --version`。依赖只从已提交锁文件安装。
 
 ```sh
-docker compose up -d --wait postgres
-export DATABASE_URL=postgres://codexsymphony_test:codexsymphony_test@127.0.0.1:54329/codexsymphony_test
+export CARGO_TARGET_DIR="$PWD/target"
+rustup show active-toolchain
+cd web/angular
+npm ci
+```
+
+受管 GH-12 沙箱已预装版本和离线缓存，使用 `npm ci --offline --no-audit --no-fund`。
+不需要安装 arc-admin，也没有对另一个源码目录的构建依赖。
+
+## 持久化开发 / 内部试用启动
+
+在仓库根目录执行；示例只有合成的 localhost 凭据，不包含真实密钥。API 读取进程环境，
+不自动加载 `.env`。数据库密码和连接 URL 必须一致；自选密码含 URL 保留字符时须编码 URL。
+
+```sh
+cp .env.example .env
+# 首次初始化前按需要编辑 .env；不提交此文件。
+docker compose --env-file .env -f docker-compose.dev.yml up -d --wait postgres
+set -a
+. ./.env
+set +a
+export CARGO_TARGET_DIR="$PWD/target"
 cargo run --locked -p codexsymphony-server
 ```
 
-另一终端运行 `cd web/angular && npm ci && npm start`，打开 localhost:4200。
-Angular 代理 `/api/**` 至 localhost:3081；健康接口实际执行数据库查询。
-数据库数据在 tmpfs 中，仅供开发测试；`docker compose down` 后丢弃。
-业务表尚未建立，`migrations/` 是后续 SQLx migration 入口。
+另一终端执行 `cd web/angular && npm ci && npm start`，打开 **http://localhost:4200**。
+健康接口为 `http://127.0.0.1:3081/api/health`。Angular 代理 `/api/**` 至 API，
+重写 Host 为目标地址并保留浏览器 Origin。直接使用 127.0.0.1 打开前端时，把
+`WEB_ORIGIN` 改为 `http://127.0.0.1:4200` 后重启 API；预期 Origin 必须含实际端口。
+
+API 启动前校验 DATABASE_URL、数字 IP:port 的 BIND_ADDRESS、WEB_ORIGIN。
+BIND_ADDRESS 仅允许回环 IP，默认 `127.0.0.1:3081`；测试可用端口 0。
+WEB_ORIGIN 仅允许 HTTP 的 localhost、127.0.0.1 或 [::1]，不接受用户信息、路径、查询、
+片段、通配域和非法端口。校验失败不连接数据库、不宣布就绪；配置错误不回显数据库 URL。
+随后连接数据库、执行 SQLx migrations，最后开始监听；业务表由 #13 起按需迁移。
+
+### 持久目录与初始化
+
+| 用途 | 当前路径 / 行为 |
+|---|---|
+| 开发数据库 | 独立项目 `codexsymphony-persistent-dev` 的命名卷 `codexsymphony-persistent-dev_postgres-data`，挂载 `/var/lib/postgresql/data`；端口 54330，用户/库 `codexsymphony_dev` |
+| 测试数据库 | 原 `docker-compose.yml`，端口 54329，用户/库 `codexsymphony_test`，tmpfs，可丢弃 |
+| 未来工作区与证据 | 预留被 Git 忽略的 `.local-data/workspaces/`、`.local-data/evidence/`；后续 Run 任务实现时接入路径配置，目前 API 不读写这些目录 |
+| 构建产物 | 仓库内 `target/`；不能作为工作区、证据或数据库的持久存储 |
+
+需要预留目录时执行 `mkdir -p .local-data/workspaces .local-data/evidence && chmod 700 .local-data`。
+若仓库检出本身会被控制器清理，内部试用须将未来持久目录配置到受控的外部存储；
+本项不假装已有 Run 路径管理、保全或恢复功能。
+
+`docker compose --env-file .env -f docker-compose.dev.yml up -d --force-recreate --wait postgres`
+以及 `down` 后再 `up` 均保留开发卷。`down -v` 会删除开发数据，不能作为普通重启命令。
+PostgreSQL 只在空卷第一次启动时使用 POSTGRES_* 初始化；修改 .env 不会更改已有角色密码。
+升级前保存数据库和恢复资料；命名卷持久化不等于已验证备份/灾难恢复。
+
+### 隔离测试数据库
+
+```sh
+docker compose -f docker-compose.yml up -d --wait postgres
+export TEST_DATABASE_URL=postgres://codexsymphony_test:codexsymphony_test@127.0.0.1:54329/codexsymphony_test
+cargo test --workspace --locked
+```
+
+测试只读取 TEST_DATABASE_URL，绝不从 DATABASE_URL 回退。不要把开发或真实用户库赋给
+TEST_DATABASE_URL。原测试 compose 保持 tmpfs；重建容器即丢弃数据。
+需要运行 E2E 时，给单独 API 进程设置 `DATABASE_URL="$TEST_DATABASE_URL"`、
+`WEB_ORIGIN=http://127.0.0.1:4300`，不要复用持久化内部试用进程。
+
+## Localhost 请求与 CSRF 契约
+
+所有 API 路由最后统一通过 `RequestPolicy::protect` 包装（见 `apps/server/src/security.rs`）。
+合法 Host 为**实际监听 IP:端口**；其他 Host、缺失/重复 Host、矛盾的 absolute-form URI 拒绝为 403。
+存在 Origin 时只接受 WEB_ORIGIN 或实际 API origin 的精确值；无 Origin 的 GET/HEAD 可供健康探测。
+`Forwarded` / `X-Forwarded-*` 不参与授权，无远程代理信任或 CORS 放行。
+
+除 GET/HEAD/OPTIONS 外的请求还必须同时带：
+
+- 合法且唯一的 `Origin`；缺失、`null`、不同 scheme/host/port 均拒绝。
+- 唯一的 `X-CodexSymphony-CSRF: 1`；缺失、错误或重复均拒绝。
+
+这是 [OWASP 的自定义请求头 API CSRF 模式](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#employing-custom-request-headers-for-ajaxapi)，
+利用浏览器不允许普通跨站表单设置此头且跨源脚本需要 CORS 预检的约束。常量不是秘密 token，
+也不是身份认证。即使提供正确头，非预期 Origin 仍拒绝；预检不返回 CORS 授权头。
+本机非浏览器进程可伪造头，0a 仅限本人可信主机/代码，不能据此开放远端。
+
+#13 必须将真实写路由放在同一中间件内，Angular 写请求添加上述头，并通过开发代理保持 Origin；
+补真实浏览器/数据库的成功、恶意来源、缺头/错头负例，验证拒绝请求无业务副作用。
+不得把 GET/HEAD/OPTIONS 实现为写操作。当前只有健康 GET，专用写路由仅存在于测试，
+没有业务写接口集成验收。用户名/密码登录仍按 M2，Cloudflare Access 不是产品认证。
 
 ## 验证
 

@@ -1,39 +1,127 @@
-// Include theming for Angular Material with `mat.theme()`.
-// This Sass mixin will define CSS variables that are used for styling Angular Material
-// components according to the Material 3 design spec.
-// Learn more about theming and how to use it for your application's
-// custom components at https://material.angular.dev/guide/theming
+// Adapted from arc-admin 2faa1ca6c1a2b1a45956540e97e68a01532a40f7.
+// See docs/ui-design-system.md for provenance and reviewed adaptations.
 @use '@angular/material' as mat;
+@use './styles/tokens';
 
-html {
-  height: 100%;
+:root {
   @include mat.theme(
     (
       color: (
         primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        tertiary: mat.$azure-palette,
       ),
       typography: system-ui,
       density: 0,
     )
   );
+  @include tokens.foundation;
+  @include tokens.light;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
 body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
-
-  // Set a default background, font and text colors for the application using
-  // Angular Material's system-level CSS variables. Learn more about these
-  // variables at https://material.angular.dev/guide/system-variables
-  background-color: var(--mat-sys-surface);
-  color: var(--mat-sys-on-surface);
-  font: var(--mat-sys-body-medium);
-
-  // Reset the user agent margin.
   margin: 0;
-  height: 100%;
+  min-height: 100%;
 }
-/* You can add global styles to this file, and also import other style files */
+body {
+  font-family: var(--ui-font-sans);
+  background: var(--ui-color-surface-page);
+  color: var(--ui-color-text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+a {
+  color: var(--ui-color-link);
+}
+:where(a, button, input, select, textarea, [tabindex]):focus-visible,
+.page button:focus-visible {
+  outline: 2px solid var(--ui-color-primary);
+  outline-offset: 4px;
+}
+:where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
+}
+
+.skip-link {
+  position: absolute;
+  top: var(--ui-space-2);
+  left: var(--ui-space-4);
+  transform: translateY(-200%);
+  padding: var(--ui-space-2) var(--ui-space-4);
+  background: var(--ui-color-surface-panel);
+  z-index: 1;
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--ui-space-6);
+  overflow-wrap: anywhere;
+}
+.page-header {
+  margin-bottom: var(--ui-space-6);
+}
+.page-header h1 {
+  margin: 0 0 var(--ui-space-2);
+  font-size: 28px;
+  font-weight: 600;
+}
+.page-header p {
+  margin: 0;
+  color: var(--ui-color-text-secondary);
+}
+.ui-card {
+  @include mat.card-overrides((
+    outlined-container-color: var(--ui-color-surface-panel),
+    outlined-outline-color: var(--ui-color-border),
+    outlined-container-shape: var(--ui-radius-lg),
+  ));
+  box-shadow: var(--ui-shadow-sm);
+}
+.ui-card mat-card-content {
+  padding-top: var(--ui-space-4);
+}
+.ui-card mat-card-actions {
+  padding: var(--ui-space-4);
+}
+.ui-card button {
+  min-height: var(--ui-control-md);
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding: var(--ui-space-4);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible,
+  .page button:focus-visible {
+    outline-color: Highlight;
+  }
+  .ui-card {
+    border: 1px solid CanvasText;
+  }
+}

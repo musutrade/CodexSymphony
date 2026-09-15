@@ -50,7 +50,10 @@ fn serves_a_real_request_and_shuts_down_cleanly() {
         .set_read_timeout(Some(Duration::from_secs(3)))
         .unwrap();
     stream
-        .write_all(b"GET /api/health HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+        .write_all(
+            format!("GET /api/health HTTP/1.1\r\nHost: {address}\r\nConnection: close\r\n\r\n")
+                .as_bytes(),
+        )
         .unwrap();
     let mut response = String::new();
     stream.read_to_string(&mut response).unwrap();
@@ -98,4 +101,30 @@ fn invalid_bind_address_fails_without_announcing_readiness() {
         .unwrap();
     assert!(!result.status.success());
     assert!(!String::from_utf8_lossy(&result.stdout).contains("API listening"));
+}
+
+#[test]
+fn connection_and_bind_failures_do_not_announce_readiness() {
+    let database =
+        std::env::var("TEST_DATABASE_URL").expect("disposable TEST_DATABASE_URL required");
+    let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    for (url, address) in [
+        (
+            "postgres://synthetic@127.0.0.1:1/unavailable_test",
+            "127.0.0.1:0".into(),
+        ),
+        (
+            database.as_str(),
+            occupied.local_addr().unwrap().to_string(),
+        ),
+    ] {
+        let result = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+            .env("DATABASE_URL", url)
+            .env("BIND_ADDRESS", address)
+            .env("RUST_LOG", "info")
+            .output()
+            .unwrap();
+        assert!(!result.status.success());
+        assert!(!String::from_utf8_lossy(&result.stdout).contains("API listening"));
+    }
 }

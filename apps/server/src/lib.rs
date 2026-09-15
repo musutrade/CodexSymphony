@@ -1,4 +1,6 @@
 //! Minimal localhost API; no scheduler or business completion state is implied.
+pub mod config;
+pub mod security;
 use axum::{Json, Router, extract::State, http::StatusCode, routing::get};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -10,10 +12,12 @@ pub struct Health {
     database: &'static str,
 }
 
-pub fn router(pool: PgPool) -> Router {
-    Router::new()
-        .route("/api/health", get(health))
-        .with_state(pool)
+pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
+    policy.protect(
+        Router::new()
+            .route("/api/health", get(health))
+            .with_state(pool),
+    )
 }
 
 async fn health(State(pool): State<PgPool>) -> (StatusCode, Json<Health>) {

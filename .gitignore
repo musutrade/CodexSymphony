@@ -6,3 +6,5 @@
 /web/angular/dist/
 /web/angular/.angular/
 __pycache__/
+/.env
+/.local-data/
