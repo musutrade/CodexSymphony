@@ -8,8 +8,8 @@ permissions:
   contents: read
   checks: read
 concurrency:
-  group: trusted-gate-${{ github.event.pull_request.head.sha || github.sha }}
-  cancel-in-progress: false
+  group: trusted-gate-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   quality:
     name: Harness-Gate
