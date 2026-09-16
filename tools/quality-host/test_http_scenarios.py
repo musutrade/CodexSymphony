@@ -3,6 +3,11 @@ import http.server
 import json
 import threading
 import unittest
+import subprocess
+import tempfile
+from pathlib import Path
+from unittest.mock import patch
+from capture import prepare_http_fixture
 from http_scenarios import capture, resolve
 
 
@@ -56,6 +61,35 @@ class ScenarioTests(unittest.TestCase):
             capture('example.com:80', {'paths': {}}, [])
         with self.assertRaises(ValueError):
             resolve({'$response': 'created#/id', 'extra': True}, {})
+
+
+class FixtureTests(unittest.TestCase):
+    def test_fixture_runs_in_supplied_disposable_container_and_errors_abort(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); (root/'api').mkdir()
+            fixture=root/'api/capture-fixture.sql'
+            with patch('capture.run_logged') as run:
+                prepare_http_fixture(root,root,'capture-owned-db')
+                run.assert_not_called()
+                fixture.write_text("INSERT INTO example VALUES ('fixture');\n")
+                prepare_http_fixture(root,root,'capture-owned-db')
+                args=run.call_args.args[2]
+                self.assertEqual(args[:6],['docker','exec','--interactive','--user','postgres','capture-owned-db'])
+                self.assertIn('--single-transaction',args)
+                self.assertEqual(run.call_args.kwargs['input'],fixture.read_bytes())
+                self.assertNotIn('shell',run.call_args.kwargs)
+                run.side_effect=subprocess.CalledProcessError(1,args)
+                with self.assertRaises(subprocess.CalledProcessError):
+                    prepare_http_fixture(root,root,'capture-owned-db')
+
+    def test_fixture_cannot_read_outside_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory); repo=root/'repo';(repo/'api').mkdir(parents=True)
+            outside=root/'private.sql';outside.write_text('secret')
+            fixture=repo/'api/capture-fixture.sql';fixture.symlink_to(outside)
+            with patch('capture.run_logged') as run:
+                with self.assertRaises(ValueError): prepare_http_fixture(root,repo,'owned-db')
+                run.assert_not_called()
 
 
 if __name__ == '__main__':
