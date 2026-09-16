@@ -19,6 +19,15 @@ pub struct GitBroker {
 }
 
 impl GitBroker {
+    pub(crate) fn delivery_repository(&self, manifest: &Manifest) -> Result<PathBuf> {
+        self.check()?;
+        self.verify(manifest)?;
+        require(
+            self.head(&manifest.workspace)? == manifest.head,
+            "candidate changed before delivery",
+        )?;
+        Ok(self.canonical())
+    }
     /// A fresh platform-owned canonical repository. Import only a local bundle;
     /// remote acquisition and credentials belong to the later delivery adapter.
     pub fn initialize(root: &Path, bundle: &Path) -> Result<Self> {

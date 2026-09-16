@@ -1,0 +1,21 @@
+{
+  "scope": "GH-21 development rehearsal; not a signed Gate or real A01",
+  "base_commit": "5df5eb45f84b2f42e773ece77f7c568e620ea769",
+  "series": "measurement-series/v1:dbc5db23730d06fb28287d45da2f2acdddcccecf19a2b895fb90098582561afc",
+  "source_inputs_sha256": "0b32c1dd5b718bf155671d0734cd07e2011e7f16f80e816cf21021be589f21d4",
+  "subjects": 690,
+  "unsupported": 0,
+  "risk.crap.max": {
+    "numerator": 10,
+    "denominator": 1
+  },
+  "over_crap_limit": 0,
+  "coverage.line": {
+    "covered": 6722,
+    "total": 6936
+  },
+  "coverage.region": {
+    "covered": 11818,
+    "total": 12971
+  }
+}

@@ -149,9 +149,7 @@ pub async fn finish(
         trusted,
         &saved_required,
     );
-    sqlx::query("UPDATE candidate_validation SET stage=CASE WHEN $2='succeeded' THEN 'handoff' ELSE 'validation' END,result=$2,source_after=$3,entry_after=$4 WHERE id=$1")
-        .bind(id).bind(result).bind(source).bind(entry).execute(&mut *tx).await?;
-    sqlx::query("UPDATE repair_reservation p SET status=CASE WHEN $2='succeeded' THEN 'succeeded' ELSE 'failed' END FROM candidate_validation v WHERE v.id=$1 AND p.repair_run_id=v.source_run_id AND p.status='started'").bind(id).bind(result).execute(&mut *tx).await?;
+    save_outcome(&mut tx, id, result, source, entry).await?;
     tx.commit().await?;
     Ok(result == "succeeded")
 }
@@ -265,4 +263,20 @@ pub async fn reserve_repair(
     }
     tx.commit().await?;
     Ok(result.rows_affected() == 1)
+}
+
+async fn save_outcome(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: &str,
+    result: &str,
+    source: &str,
+    entry: &str,
+) -> Result<()> {
+    sqlx::query("UPDATE candidate_validation SET stage=CASE WHEN $2='succeeded' THEN 'handoff' ELSE 'validation' END,result=$2,source_after=$3,entry_after=$4 WHERE id=$1")
+        .bind(id).bind(result).bind(source).bind(entry).execute(&mut **tx).await?;
+    sqlx::query("UPDATE repair_reservation p SET status=CASE WHEN $2='succeeded' THEN 'succeeded' ELSE 'failed' END FROM candidate_validation v WHERE v.id=$1 AND p.repair_run_id=v.source_run_id AND p.status='started'").bind(id).bind(result).execute(&mut **tx).await?;
+    if result == "succeeded" {
+        crate::delivery_store::enqueue(tx, id).await?;
+    }
+    Ok(())
 }

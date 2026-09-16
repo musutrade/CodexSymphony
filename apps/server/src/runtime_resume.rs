@@ -49,7 +49,7 @@ async fn eligible(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     incarnation: &str,
 ) -> Result<Option<(String, i64, i64)>> {
-    let sources: Vec<String> = sqlx::query_scalar("SELECT DISTINCT q.run_id FROM runtime_question q JOIN agent_run a ON a.id=q.run_id WHERE q.resume_state='pending' AND a.quiescent ORDER BY q.run_id").fetch_all(&mut **tx).await?;
+    let sources: Vec<String> = sqlx::query_scalar("SELECT a.id FROM agent_run a WHERE a.quiescent AND (a.user_paused OR EXISTS(SELECT 1 FROM runtime_question q WHERE q.run_id=a.id AND q.resume_state='pending')) ORDER BY a.run_sequence").fetch_all(&mut **tx).await?;
     for source in sources {
         if let Some((id, revision)) = runtime_questions::resumable(tx, &source, incarnation).await?
             && runtime_questions::budget_available(tx, id).await?

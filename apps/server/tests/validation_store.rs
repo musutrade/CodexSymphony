@@ -33,12 +33,17 @@ async fn database() -> PgPool {
     for id in [1i64, 2] {
         sqlx::query("INSERT INTO requirement_revision VALUES($1,1,$2)")
             .bind(id)
-            .bind(json!({"contract":contract}))
+            .bind(json!({"contract":contract,"repository":{"github_repository_id":7,"remote":"owner/repo","base_branch":"main"}}))
             .execute(&pool)
             .await
             .unwrap();
         sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,quiescent) VALUES($1,$2,1,'boot','req','/tmp','owned','{}','Succeeded',true)").bind(format!("run{id}")).bind(id).execute(&pool).await.unwrap();
-        sqlx::query("INSERT INTO workspace_snapshot(run_id,manifest,candidate) VALUES($1,'{\"head\":\"a\"}',true)").bind(format!("run{id}")).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO workspace_snapshot(run_id,manifest,candidate) VALUES($1,$2,true)")
+            .bind(format!("run{id}"))
+            .bind(json!({"head":"a","workspace":{"branch":format!("ai/req-{id}")}}))
+            .execute(&pool)
+            .await
+            .unwrap();
     }
     pool
 }
@@ -383,11 +388,13 @@ async fn real_validation_service_success_failure_and_recovery() {
     let (root, repo, plan) = runner_fixture::fixture();
     let c = runner::candidate(&repo).unwrap();
     let trusted = plan.identity().unwrap();
-    sqlx::query("UPDATE workspace_snapshot SET manifest=jsonb_build_object('head',$1::text)")
-        .bind(&c.sha)
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE workspace_snapshot SET manifest=jsonb_set(manifest,'{head}',to_jsonb($1::text))",
+    )
+    .bind(&c.sha)
+    .execute(&pool)
+    .await
+    .unwrap();
     let directory = root.join("service");
     let request = || Request {
         id: "service1",
@@ -470,11 +477,13 @@ async fn reconciles_durable_process_result_and_rejects_corrupt_ledger() {
     let c = runner::candidate(&repo).unwrap();
     let t = plan.identity().unwrap();
     let directory = root.join("reconcile");
-    sqlx::query("UPDATE workspace_snapshot SET manifest=jsonb_build_object('head',$1::text)")
-        .bind(&c.sha)
-        .execute(&pool)
-        .await
-        .unwrap();
+    sqlx::query(
+        "UPDATE workspace_snapshot SET manifest=jsonb_set(manifest,'{head}',to_jsonb($1::text))",
+    )
+    .bind(&c.sha)
+    .execute(&pool)
+    .await
+    .unwrap();
     assert!(
         store::create(
             &pool,
@@ -544,7 +553,7 @@ async fn reconciles_durable_process_result_and_rejects_corrupt_ledger() {
     );
     let contract = json!({"title":"x","description":"x","acceptance_criteria":[],"validation_plan":[],"network_access":[]});
     sqlx::query("UPDATE requirement_revision SET document=$1 WHERE requirement_id=2")
-        .bind(json!({"contract":contract}))
+        .bind(json!({"contract":contract,"repository":{"github_repository_id":7,"remote":"owner/repo","base_branch":"main"}}))
         .execute(&pool)
         .await
         .unwrap();

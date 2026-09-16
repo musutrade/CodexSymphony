@@ -42,6 +42,42 @@ pub struct AppClient {
     tokens: HashMap<u64, Token>,
 }
 impl AppClient {
+    pub(crate) async fn write(
+        &mut self,
+        policy: &Policy,
+        method: Method,
+        path: &str,
+        body: Value,
+        now: i64,
+    ) -> Result<Value> {
+        self.ensure_token(policy, now).await?;
+        self.request(
+            method,
+            path,
+            &self.tokens[&policy.repository_id].value,
+            Some(body),
+        )
+        .await
+    }
+    /// Push an authorized candidate; credentials remain inside this App client.
+    pub async fn push(
+        &mut self,
+        policy: &Policy,
+        repository: &std::path::Path,
+        head: &str,
+        branch: &str,
+        now: i64,
+    ) -> Result<Value> {
+        self.ensure_token(policy, now).await?;
+        let command = push_command(
+            policy,
+            repository,
+            head,
+            branch,
+            &self.tokens[&policy.repository_id].value,
+        );
+        push_git(command, head).await
+    }
     /// api.github.com in production; loopback HTTP solely for deterministic fixtures.
     pub fn new(api: &str, app_id: u64, pem: &[u8]) -> Result<Self> {
         let api = Url::parse(api).or(Err(invalid()))?;
@@ -192,6 +228,29 @@ impl AppClient {
     }
 }
 
+pub fn encode_basic(value: &str) -> String {
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut output = String::new();
+    for chunk in value.as_bytes().chunks(3) {
+        let n = (u32::from(chunk[0]) << 16)
+            | (u32::from(*chunk.get(1).unwrap_or(&0)) << 8)
+            | u32::from(*chunk.get(2).unwrap_or(&0));
+        output.push(ALPHABET[((n >> 18) & 63) as usize] as char);
+        output.push(ALPHABET[((n >> 12) & 63) as usize] as char);
+        output.push(if chunk.len() > 1 {
+            ALPHABET[((n >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        output.push(if chunk.len() > 2 {
+            ALPHABET[(n & 63) as usize] as char
+        } else {
+            '='
+        });
+    }
+    output
+}
+
 fn decode_token(grant: &Value, now: i64) -> Result<Token> {
     let expires =
         chrono::DateTime::parse_from_rfc3339(grant["expires_at"].as_str().ok_or_else(invalid)?)
@@ -222,4 +281,57 @@ fn page_values<'a>(response: &'a Value, field: Option<&str>) -> Result<&'a Vec<V
         None => response,
     };
     values.as_array().ok_or_else(invalid)
+}
+
+fn push_command(
+    policy: &Policy,
+    repository: &std::path::Path,
+    head: &str,
+    branch: &str,
+    token: &str,
+) -> tokio::process::Command {
+    let authorization = encode_basic(&format!("x-access-token:{token}"));
+    let mut command = tokio::process::Command::new("git");
+    command
+        .env_clear()
+        .env("PATH", "/usr/bin:/bin")
+        .env("GIT_CONFIG_NOSYSTEM", "1")
+        .env("GIT_CONFIG_GLOBAL", "/dev/null")
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .env("GIT_CONFIG_COUNT", "2")
+        .env("GIT_CONFIG_KEY_0", "http.https://github.com/.extraHeader")
+        .env(
+            "GIT_CONFIG_VALUE_0",
+            format!("Authorization: Basic {authorization}"),
+        )
+        .env("GIT_CONFIG_KEY_1", "credential.helper")
+        .env("GIT_CONFIG_VALUE_1", "")
+        .arg("--git-dir")
+        .arg(repository)
+        .args(["push", "--porcelain", "--no-verify", "--"])
+        .arg(format!("https://github.com/{}.git", policy.repository))
+        .arg(format!("{head}:refs/heads/{branch}"))
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .kill_on_drop(true);
+    command
+}
+/// Execute an already platform-authorized Git push. The App adapter builds the
+/// fixed origin and non-forcing refspec; local fixtures exercise real Git here.
+pub async fn push_git(mut command: tokio::process::Command, head: &str) -> Result<Value> {
+    let status = tokio::time::timeout(std::time::Duration::from_secs(30), command.status())
+        .await
+        .or(Err(Error {
+            code: "github_transient_or_unknown",
+            status: None,
+        }))?
+        .or(Err(invalid()))?;
+    if !status.success() {
+        return Err(Error {
+            code: "github_transient_or_unknown",
+            status: None,
+        });
+    }
+    Ok(json!({"push":"accepted","head":head}))
 }

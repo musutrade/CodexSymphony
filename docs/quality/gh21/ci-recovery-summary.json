@@ -1,0 +1,26 @@
+{
+  "scope": "GH-21 CI recovery, local source measurement; formal Gate remains required",
+  "prior_failed_head": "ed90902557747a8212b6038ad5db85b3f11aa0a9",
+  "functions": 687,
+  "violations": [],
+  "risk.crap.max": {
+    "numerator": 10,
+    "denominator": 1
+  },
+  "coverage.line": {
+    "covered": 6798,
+    "total": 6931,
+    "minimum_function_ratio": {
+      "numerator": 4,
+      "denominator": 5
+    }
+  },
+  "coverage.region": {
+    "covered": 11901,
+    "total": 12969,
+    "minimum_function_ratio": {
+      "numerator": 16,
+      "denominator": 20
+    }
+  }
+}
