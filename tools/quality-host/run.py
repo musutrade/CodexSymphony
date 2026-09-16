@@ -17,7 +17,7 @@ HOME=Path('/home/gem/.local/share/codexsymphony/gate-host')
 def runtime_pins():
     roots=[RUST,TS,HTTP,TS.parent.parent/'typescript',HTTP.parent.parent/'typescript']
     pins={str(p):sha(p.read_bytes()) for base in roots for p in sorted(base.rglob('*')) if p.is_file() and '__pycache__' not in p.parts}
-    for name in ('harness-gate','harness-gate-rust-collector','node','python3','cargo-llvm-cov'):
+    for name in ('harness-gate','harness-gate-rust-collector','node','python3','cargo-llvm-cov','/usr/local/libexec/codexsymphony/bwrap'):
         p=Path(shutil.which(name)).resolve();pins[str(p)]=sha(p.read_bytes())
     pins.update({str(p):sha(p.read_bytes()) for p in Path(__file__).parent.glob('*.py')})
     return pins

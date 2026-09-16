@@ -11,7 +11,9 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     cargo.mkdir(exist_ok=True)
     temporary = run / 'tmp'
     temporary.mkdir(exist_ok=True)
-    args = ['bwrap', '--die-with-parent', '--new-session', '--unshare-user', '--unshare-pid',
+    # Dedicated AppArmor transition permits nested user namespaces without
+    # weakening the inner command's filesystem, PID or network isolation.
+    args = ['/usr/local/libexec/codexsymphony/bwrap', '--die-with-parent', '--new-session', '--unshare-user', '--unshare-pid',
             '--ro-bind', '/usr', '/usr', '--ro-bind', '/etc', '/etc',
             '--symlink', 'usr/bin', '/bin', '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64',
             '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/run', '--bind', str(temporary), '/tmp',

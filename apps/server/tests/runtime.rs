@@ -501,6 +501,7 @@ async fn full_client_scenario(root: &Path, git: &GitBroker, code: &str, turns: u
             git,
             "boot",
             &codexsymphony_server::runtime_service::Config {
+                validation: None,
                 settings,
                 preparation_adapter: "/bin/true".into(),
                 preparation: json!({"launcher":["/bin/true"]}),
@@ -759,6 +760,7 @@ p=json.load(sys.stdin)
 print(json.dumps({'deployment_identity':'fixture','sandbox_identity':'sandbox','network':{'configuration_identity':'fixture','allowed_domains':[],'enforced':True,'allowed_probe':True,'denied_probe':True,'direct_connection_rejected':True},'failures':[],'sample':{'cwd':p['workspace']}}))
 "#).unwrap();
     let mut config = runtime_service::Config {
+        validation: None,
         settings: runtime_client::Settings {
             startup_seconds: 5,
             response_seconds: 5,

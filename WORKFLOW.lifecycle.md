@@ -55,7 +55,7 @@ codex:
     /home/gem/.local/share/codexsymphony/symphony/codex-sandbox
     --config 'model_provider="openai"'
     --config 'model="gpt-6-astra"'
-    --config 'model_reasoning_effort="high"'
+    --config 'model_reasoning_effort="medium"'
     --config 'features.goals=false'
     --config 'tool_output_token_limit=2000'
     app-server

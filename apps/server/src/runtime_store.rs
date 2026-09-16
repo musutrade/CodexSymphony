@@ -219,7 +219,12 @@ pub async fn input(pool: &PgPool, key: &RunKey) -> Result<String> {
         .bind(&key.run_id).fetch_one(pool).await?;
     let answers:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('question_id',id,'version',version,'original',original,'answer',answer,'source_run',run_id) FROM runtime_question WHERE resumed_run=$1 ORDER BY created_at,id")
         .bind(&key.run_id).fetch_all(pool).await?;
-    Ok(json!({"reviewed_requirement":document,"confirmed_answers":answers,"instruction":"Implement only the reviewed contract. Do not ask answered questions again. Use create_local_commit, then report_completion; report_blocker when unable to proceed. External delivery is platform-owned."}).to_string())
+    let repair: Option<Value> =
+        sqlx::query_scalar("SELECT failure FROM repair_reservation WHERE repair_run_id=$1")
+            .bind(&key.run_id)
+            .fetch_optional(pool)
+            .await?;
+    Ok(json!({"reviewed_requirement":document,"confirmed_answers":answers,"repair_context":repair,"instruction":"Implement only the reviewed contract. Do not ask answered questions again. Use create_local_commit, then report_completion; report_blocker when unable to proceed. External delivery is platform-owned."}).to_string())
 }
 
 async fn ending_allowed(tx: &mut Tx<'_>, key: &RunKey, kind: &str, payload: &Value) -> Result<()> {

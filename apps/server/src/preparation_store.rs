@@ -19,9 +19,7 @@ pub async fn begin(
     now: i64,
 ) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
-    if paused(&mut tx, requirement).await?
-        && !crate::runtime_resume::preparation_allowed(&mut tx, launch).await?
-    {
+    if !permitted(&mut tx, launch, requirement).await? {
         return Ok(false);
     }
     let Some(mut retry) =
@@ -40,6 +38,16 @@ pub async fn begin(
     .await?;
     tx.commit().await?;
     Ok(began)
+}
+
+async fn permitted(
+    tx: &mut Transaction<'_, Postgres>,
+    launch: &Launch,
+    requirement: i64,
+) -> Result<bool> {
+    Ok(!paused(tx, requirement).await?
+        || crate::runtime_resume::preparation_allowed(tx, launch).await?
+        || crate::validation_repair::preparation_allowed(tx, launch).await?)
 }
 
 async fn load_for_begin(

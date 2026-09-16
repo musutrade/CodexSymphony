@@ -12,6 +12,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
+    pub validation: Option<crate::validation_runner::Plan>,
     pub settings: runtime_client::Settings,
     pub preparation_adapter: PathBuf,
     pub preparation: Value,
@@ -67,6 +68,14 @@ pub async fn tick(
     if let Some(launch) = reserved(pool, incarnation).await? {
         return runtime_client::execute(pool, root, supervisor, broker, &launch, &config.settings)
             .await;
+    }
+    if let Some(plan) = &config.validation
+        && crate::validation_worker::tick(pool, root, broker, plan).await?
+    {
+        return Ok(());
+    }
+    if config.validation.is_some() {
+        crate::validation_repair_worker::tick(pool, root, broker, incarnation, config).await?;
     }
     resume(pool, root, supervisor, broker, incarnation, config).await
 }
