@@ -35,6 +35,8 @@ struct Fake {
     lost: bool,
     conflict: bool,
     fail_close: bool,
+    fail_find: bool,
+    fail_head: bool,
     cancel_during_create: Option<PgPool>,
 }
 fn lost() -> Error {
@@ -46,10 +48,16 @@ fn lost() -> Error {
 impl Remote for Fake {
     async fn find(&mut self, _: &Pending) -> Result<Option<Value>, Error> {
         self.calls.push("find");
+        if self.fail_find {
+            return Err(lost());
+        }
         Ok(self.pr.clone())
     }
     async fn head(&mut self, _: &Pending) -> Result<Option<String>, Error> {
         self.calls.push("head");
+        if self.fail_head {
+            return Err(lost());
+        }
         Ok(self.head.clone())
     }
     async fn push(&mut self, job: &Pending) -> Result<Value, Error> {
@@ -380,7 +388,12 @@ async fn initial_ready_plan_is_durable_and_admission_binds_the_same_worktree() {
             .is_err()
     );
     assert!(!run_store::reserve_prepared(&pool, &launch).await.unwrap());
-    sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,checked_at) VALUES($1,1,1,$2,'{}',true,extract(epoch FROM now())::bigint)").bind(&launch.key.run_id).bind(json!(launch)).execute(&pool).await.unwrap();
+    config.preparation["deployment_identity"] = json!("deployment");
+    runtime_initial::tick(&pool, &root, &broker, "boot", &config)
+        .await
+        .unwrap();
+    assert!(!run_store::reserve_prepared(&pool, &launch).await.unwrap());
+    sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,checked_at) VALUES($1,1,1,$2,'{}',true,extract(epoch FROM now())::bigint) ON CONFLICT(run_id) DO UPDATE SET ready=true,retry='{}',checked_at=EXCLUDED.checked_at").bind(&launch.key.run_id).bind(json!(launch)).execute(&pool).await.unwrap();
     run_store::pause(&pool, Some(1)).await.unwrap();
     assert!(
         runtime_initial::plan(&pool, &broker, "boot", &launcher, &baseline)
@@ -510,4 +523,73 @@ async fn fresh_exact_merge_releases_without_done_and_api_exposes_delivery() {
     );
     control::settle(&pool).await.unwrap();
     assert_eq!(state(&pool).await, ("Cancelled".into(), None, true));
+}
+
+#[tokio::test]
+async fn remote_read_failures_and_disappeared_pr_never_trigger_writes() {
+    for failure in ["find", "head", "missing", "close"] {
+        let pool = database().await;
+        let mut remote = Fake {
+            fail_find: failure == "find",
+            fail_head: failure == "head",
+            ..Default::default()
+        };
+        if failure == "missing" {
+            sqlx::query("UPDATE delivery SET pr_number=12")
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        if failure == "close" {
+            sqlx::query("UPDATE delivery_action SET kind='close'")
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        tick(&pool, &mut remote, 0).await;
+        assert!(
+            remote
+                .calls
+                .iter()
+                .all(|call| matches!(*call, "find" | "head"))
+        );
+        let pending = job(&pool).await;
+        assert_eq!(pending.attempts, 0);
+        assert_eq!(state(&pool).await.1, Some(1));
+        pool.close().await;
+    }
+}
+
+#[tokio::test]
+async fn missing_delivery_identity_rolls_back_and_cancel_reports_absent_requirement() {
+    use tower::ServiceExt;
+    let pool = database().await;
+    sqlx::query(
+        "UPDATE requirement_revision SET document=jsonb_set(document,'{repository,remote}','null')",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    assert!(
+        store::enqueue(&mut tx, "validation")
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("delivery identity missing")
+    );
+    tx.rollback().await.unwrap();
+    assert_eq!(store::due(&pool, i64::MAX).await.unwrap().len(), 1);
+    let app = codexsymphony_server::execution_api::routes().with_state(pool);
+    let response = app
+        .oneshot(
+            axum::http::Request::builder()
+                .method("POST")
+                .uri("/api/requirements/999/cancel")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 404);
 }

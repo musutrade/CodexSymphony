@@ -53,7 +53,7 @@ impl Github<'_> {
                 ("head", &format!("{owner}:{}", job.branch)),
             ],
         )
-        .map_err(|_| invalid())?;
+        .or(Err(invalid()))?;
         path.push('?');
         path.push_str(query.query().ok_or_else(invalid)?);
         Ok(path)

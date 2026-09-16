@@ -933,6 +933,18 @@ async fn delivery_adapter_reconciles_exact_branch_and_rechecks_before_close() {
     value["merged"] = json!(true);
     fixture.put("/repos/owner/repo/pulls/1", value.clone());
     assert_eq!(remote.close(&job, 1).await.unwrap(), value);
+    // A valid local candidate still cannot push when App authentication fails.
+    fixture.fail("/repos/owner/repo/installation", vec![403]);
+    remote.now = 10_000;
+    assert!(remote.push(&job).await.is_err());
+    let saved_manifest = job.manifest.clone();
+    job.manifest = json!({});
+    assert!(remote.create(&job).await.is_err());
+    job.manifest = saved_manifest;
+    // Revalidate the canonical candidate before every external write.
+    std::fs::write(std::path::Path::new(&workspace.path).join("source"), "next").unwrap();
+    broker.commit(&workspace, "advance candidate").unwrap();
+    assert!(remote.create(&job).await.is_err());
     job.head_sha = "changed".into();
     assert!(remote.create(&job).await.is_err());
     assert!(remote.push(&job).await.is_err());
@@ -1118,4 +1130,24 @@ fn git_fixture(root: &std::path::Path, args: &[&str]) -> String {
         String::from_utf8_lossy(&output.stderr)
     );
     String::from_utf8(output.stdout).unwrap().trim().into()
+}
+
+#[tokio::test]
+async fn app_push_reports_local_git_failures_without_remote_writes_or_token_disclosure() {
+    let fixture = Fixture::new().await;
+    let mut client = fixture.client();
+    let missing = fixture.root.join("missing.git");
+    // Git rejects this absent local directory before contacting any remote.
+    let error = client
+        .push(&policy(), &missing, "abc", "ai/test", 100)
+        .await
+        .unwrap_err();
+    assert_eq!(error.code, "github_transient_or_unknown");
+    assert!(!error.to_string().contains("token"));
+    let error =
+        codexsymphony_server::github_http::push_git(tokio::process::Command::new(missing), "abc")
+            .await
+            .unwrap_err();
+    assert_eq!(error.code, "github_identity_conflict");
+    assert_eq!(fixture.data.lock().unwrap().grants, 1);
 }

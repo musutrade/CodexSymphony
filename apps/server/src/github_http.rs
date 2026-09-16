@@ -59,7 +59,8 @@ impl AppClient {
         )
         .await
     }
-    pub(crate) async fn push(
+    /// Push an authorized candidate; credentials remain inside this App client.
+    pub async fn push(
         &mut self,
         policy: &Policy,
         repository: &std::path::Path,
@@ -282,13 +283,6 @@ fn page_values<'a>(response: &'a Value, field: Option<&str>) -> Result<&'a Vec<V
     values.as_array().ok_or_else(invalid)
 }
 
-fn push_timeout(_: tokio::time::error::Elapsed) -> Error {
-    Error {
-        code: "github_transient_or_unknown",
-        status: None,
-    }
-}
-
 fn push_command(
     policy: &Policy,
     repository: &std::path::Path,
@@ -328,8 +322,11 @@ fn push_command(
 pub async fn push_git(mut command: tokio::process::Command, head: &str) -> Result<Value> {
     let status = tokio::time::timeout(std::time::Duration::from_secs(30), command.status())
         .await
-        .map_err(push_timeout)?
-        .map_err(|_| invalid())?;
+        .or(Err(Error {
+            code: "github_transient_or_unknown",
+            status: None,
+        }))?
+        .or(Err(invalid()))?;
     if !status.success() {
         return Err(Error {
             code: "github_transient_or_unknown",
