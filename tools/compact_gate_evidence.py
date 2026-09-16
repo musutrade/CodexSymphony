@@ -127,6 +127,7 @@ def maintain(root=ROOT,cold=COLD,apply=False,now=None,keep=2,hours=24,budget=4*G
             chosen.append(run)
     chosen.sort(key=lambda p:(p/'source-inputs.json').stat().st_mtime,reverse=True)
     for index,run in enumerate(chosen):
+        if (run/'superseded-attempt.json').exists():continue
         age=now-(run/'source-inputs.json').stat().st_mtime
         size=bytes_used(payloads(run))
         result=run/'verify-result.json'
@@ -136,6 +137,9 @@ def maintain(root=ROOT,cold=COLD,apply=False,now=None,keep=2,hours=24,budget=4*G
         if (run/'compact-retention.json').exists() and json.loads((run/'compact-retention.json').read_text()).get('complete'):continue
         output.append(compact(run) if apply else {'run':run.name,'rebuildable_bytes':size})
     output.extend(expire_cold(cold,now,apply=apply))
+    # Import lazily: retry consolidation reuses the durable metadata writer.
+    from retire_pr_attempts import maintain_attempts
+    output.extend(maintain_attempts(root,cold,apply=apply,now=now))
     return output
 
 

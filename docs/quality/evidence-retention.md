@@ -23,7 +23,7 @@ The hourly `codexsymphony-archive` service now runs `compact_gate_evidence.py`:
 - Stop creating new cold archives of rebuildable binaries. Existing cold archives
   expire after seven days or above 4 GiB (oldest first); retain their original manifests
   and an `.expired.json` tombstone. Expired raw archives cannot be restored.
-- Cache cleanup remains separate. This policy does not delete source worktrees, Git
+- Cache cleanup remains separate. This policy does not delete managed issue worktrees, Git
   history, host approvals, tool installations, or historical host acceptance fixtures.
   The 4 GiB limits apply to raw payloads, not all Symphony data.
 
@@ -44,3 +44,25 @@ For code reproduction, fetch the commit recorded in `source-inputs.json`/the fin
 report, use its checked-in lockfiles and recorded tool/pipeline versions, and rerun Gate.
 Uncommitted or environment-dependent behavior may not be reproducible from Git alone;
 retained input hashes and logs expose these limits rather than asserting equivalence.
+
+## Consolidation after PR success
+
+Each hourly sweep also resolves finished Actions attempts to an unambiguous PR using
+GitHub's exact attempt SHA and commit association. The validated association is cached
+in `attempt-context.json`. API failures, ambiguous associations, different repositories,
+and non-PR workflows do not authorize deletion.
+
+After a later successful trusted receipt is at least five minutes old and its retained
+report hash matches, older finished attempts for that PR are reduced to
+`superseded-attempt.json`: attempt/commit identity, original status, failure reason,
+input hashes, tool approval, and key logs. Log excerpts retain up to 64 KiB per file;
+longer logs explicitly record truncation and original hashes. Prior successful retries
+are also superseded; the latest successful run keeps its full compact review record.
+
+The collector removes superseded run payloads and their cold binary archives, and
+removes disposable `remote-gate/jobs/<attempt>/source` clones/dependencies, including
+preparation failures with no Gate run. The final successful job's disposable source
+is also removed; its separate Gate report and review record remain. Open workers,
+unfinished attempts, more recent failures, and unrelated PRs remain protected. Failed
+attempts without a later validated success continue under the ordinary raw retention
+policy. An interrupted deletion resumes from the durably saved summary.

@@ -5,7 +5,7 @@ from pathlib import Path
 
 root=Path(__file__).resolve().parents[1]
 base=Path.home()/'.local/share/codexsymphony'
-names=('archive_gate_evidence.py','storage_maintenance.py','compact_gate_evidence.py')
+names=('archive_gate_evidence.py','storage_maintenance.py','compact_gate_evidence.py','retire_pr_attempts.py')
 content={name:(root/'tools'/name).read_bytes() for name in names}
 version=hashlib.sha256(b''.join(content.values())).hexdigest()[:16]
 release=base/'evidence-archive/releases'/version;release.mkdir(parents=True,exist_ok=True)
