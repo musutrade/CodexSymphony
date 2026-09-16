@@ -140,7 +140,7 @@ async fn database() -> PgPool {
         .await
         .unwrap();
     sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
-    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(1,1,'{\"revoked\":false,\"github_repository_id\":99}'); INSERT INTO requirement(version,state,contract,revision) VALUES(1,'Ready','{}',1); INSERT INTO requirement_revision(requirement_id,revision,document) VALUES(1,1,'{\"repository_version\":1,\"contract\":{\"network_access\":[\"crates.io\"]}}'); UPDATE execution_control SET incarnation='current',recovery_complete=true; INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr,capability,checked_at,stale) VALUES(99,1,'{}',1,'{\"policy\":{},\"blockers\":[]}',extract(epoch FROM now())::bigint,false)")
+    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(1,1,'{\"revoked\":false,\"github_repository_id\":99}'); INSERT INTO requirement(version,state,contract,revision) VALUES(1,'Ready','{}',1); INSERT INTO requirement_revision(requirement_id,revision,document) VALUES(1,1,'{\"repository_version\":1,\"repository\":{\"model\":\"reviewed-model\"},\"contract\":{\"network_access\":[\"crates.io\"]}}'); UPDATE execution_control SET incarnation='current',recovery_complete=true; INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr,capability,checked_at,stale) VALUES(99,1,'{}',1,'{\"policy\":{},\"blockers\":[]}',extract(epoch FROM now())::bigint,false)")
         .execute(&pool).await.unwrap();
     pool
 }
@@ -251,6 +251,12 @@ async fn persisted_attempts_resume_phase_and_preserve_pause() {
     changed.workspace_identity = "different".into();
     assert!(!run_store::reserve_prepared(&pool, &changed).await.unwrap());
     assert!(run_store::reserve_prepared(&pool, &launch).await.unwrap());
+    let model: String = sqlx::query_scalar("SELECT model FROM agent_run WHERE id=$1")
+        .bind(&launch.key.run_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(model, "reviewed-model");
     assert!(PathBuf::from(&launch.workspace).exists());
 }
 

@@ -83,8 +83,22 @@ async fn save(
     id: &str,
     retry: &Retry,
     now: i64,
-    event: Value,
+    mut event: Value,
 ) -> Result<()> {
+    let requirement: i64 =
+        sqlx::query_scalar("SELECT requirement_id FROM preparation_record WHERE run_id=$1")
+            .bind(id)
+            .fetch_one(&mut **tx)
+            .await?;
+    let present: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM requirement_budget WHERE requirement_id=$1)",
+    )
+    .bind(requirement)
+    .fetch_one(&mut **tx)
+    .await?;
+    if present {
+        event["budget"] = json!(crate::budget_store::balance(tx, requirement).await?);
+    }
     sqlx::query("UPDATE preparation_record SET retry=$2 WHERE run_id=$1")
         .bind(id)
         .bind(json!(retry))

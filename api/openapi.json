@@ -900,6 +900,10 @@
           },
           "reason": {
             "type": "string"
+          },
+          "model": {
+            "type": "string",
+            "nullable": true
           }
         }
       },

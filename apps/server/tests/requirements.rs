@@ -15,6 +15,10 @@ async fn fixture() -> (PgPool, Router) {
         .unwrap();
     sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
     sqlx::query("TRUNCATE business_request,business_event,requirement_revision,requirement,repository RESTART IDENTITY CASCADE").execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO execution_control(id) VALUES(1) ON CONFLICT DO NOTHING")
+        .execute(&pool)
+        .await
+        .unwrap();
     let policy = codexsymphony_server::security::RequestPolicy::new(
         "127.0.0.1:3081".parse().unwrap(),
         "http://localhost:4200".into(),
@@ -27,7 +31,7 @@ fn contract() -> Value {
     json!({"title":"Future test", "description":"Implement a verifiable change", "acceptance_criteria":[{"description":"Works", "verification_ref":"test"}],"validation_plan":[{"id":"test","check":"cargo_test","selector":"future_test::works","expected_result":"exit 0; assertion passes","timeout_seconds":60}],"network_access":[]})
 }
 fn repo(version: i64, key: &str) -> Value {
-    json!({"request_id":key,"version":version,"repository":{"project":"Disposable","remote":"musutrade/disposable","github_repository_id":123,"base_branch":"main","policy":{"allowed_checks":["cargo_test"],"max_timeout_seconds":120,"token_limit":10000,"turn_limit":10,"model_work_seconds":600,"gate_recovery_policy":"one_code_repair"},"revoked":false,"reason":"Initial review"}})
+    json!({"request_id":key,"version":version,"repository":{"model":"configured-model","project":"Disposable","remote":"musutrade/disposable","github_repository_id":123,"base_branch":"main","policy":{"allowed_checks":["cargo_test"],"max_timeout_seconds":120,"token_limit":10000,"turn_limit":10,"model_work_seconds":600,"gate_recovery_policy":"one_code_repair"},"revoked":false,"reason":"Initial review"}})
 }
 async fn request(app: &Router, method: &str, path: &str, body: Value) -> (StatusCode, Value) {
     let response = app
@@ -69,6 +73,14 @@ async fn database_api_acceptance() {
             .await
             .0,
         StatusCode::NOT_FOUND
+    );
+    let mut invalid_model = repo(0, "invalid-model");
+    invalid_model["repository"]["model"] = json!(" ");
+    assert_eq!(
+        request(&app, "PUT", "/api/repository", invalid_model)
+            .await
+            .0,
+        StatusCode::UNPROCESSABLE_ENTITY
     );
     let draft = json!({"request_id":"create","version":0,"contract":contract()});
     let created = ok(&app, "POST", "/api/requirements", draft.clone()).await;
@@ -186,7 +198,9 @@ async fn database_api_acceptance() {
         .0,
         StatusCode::UNPROCESSABLE_ENTITY
     );
-    ok(&app, "PUT", "/api/repository", repo(3, "reauthorize")).await;
+    let mut reauthorize = repo(3, "reauthorize");
+    reauthorize["repository"]["policy"]["token_limit"] = json!(20000);
+    ok(&app, "PUT", "/api/repository", reauthorize).await;
     let again = ok(
         &app,
         "POST",
@@ -197,6 +211,20 @@ async fn database_api_acceptance() {
     assert_eq!(again["snapshots"].as_array().unwrap().len(), 2);
     assert_eq!(again["snapshots"][1]["repository_version"], 4);
     assert_eq!(again["authorization_valid"], true);
+    let budget = codexsymphony_server::budget_store::inspect(&pool, id)
+        .await
+        .unwrap();
+    assert_eq!(
+        budget.limits.tokens, 10000,
+        "re-review with a new policy does not refresh the first grant"
+    );
+    let count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM budget_authorization WHERE requirement_id=$1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(count, 1);
     let mut revoke_ready = repo(4, "revoke-ready");
     revoke_ready["repository"]["revoked"] = json!(true);
     ok(&app, "PUT", "/api/repository", revoke_ready).await;

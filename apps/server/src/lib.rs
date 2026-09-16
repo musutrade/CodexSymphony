@@ -1,4 +1,6 @@
 //! Minimal localhost API; no scheduler or business completion state is implied.
+pub mod budget;
+pub mod budget_store;
 pub mod business;
 pub mod config;
 pub mod contract;

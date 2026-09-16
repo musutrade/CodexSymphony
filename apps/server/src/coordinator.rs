@@ -59,9 +59,7 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
         }
         return Ok(false);
     }
-    for run in run_store::unresolved(pool).await? {
-        reconcile_run(pool, root, incarnation, run).await?;
-    }
+    reconcile_runs(pool, root, incarnation).await?;
     match crate::workspace_store::recover_stopped(pool, &root.join("workspaces")).await {
         Ok(true) => {}
         Ok(false) => return Ok(false),
@@ -72,6 +70,14 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
         }
     }
     run_store::finish_recovery(pool, incarnation).await
+}
+
+async fn reconcile_runs(pool: &PgPool, root: &Path, incarnation: &str) -> Result<(), sqlx::Error> {
+    crate::budget_store::expire_runs(pool).await?;
+    for run in run_store::unresolved(pool).await? {
+        reconcile_run(pool, root, incarnation, run).await?;
+    }
+    Ok(())
 }
 
 async fn reconcile_run(

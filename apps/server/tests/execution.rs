@@ -97,7 +97,10 @@ async fn owner(pool: &PgPool) -> Option<i64> {
 async fn recovered(pool: &PgPool, root: &Path, incarnation: &str) {
     let start = Instant::now();
     while !coordinator::recover(pool, root, incarnation).await.unwrap() {
-        assert!(start.elapsed() < Duration::from_secs(5));
+        assert!(
+            start.elapsed() < Duration::from_secs(5),
+            "recovery timed out for incarnation {incarnation}"
+        );
         tokio::time::sleep(Duration::from_millis(30)).await;
     }
 }
