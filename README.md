@@ -2,23 +2,23 @@
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。
 
-当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。真实编码与 PR 交付尚未接通，Ready 保持排队。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
+当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。已接入锁定 Codex Runtime、累计额度和固定候选验证；PR 可靠交付仍由 GH-21 完成。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
 
-[工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 与远端交付仍等待后续任务。
+[工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 已接通，远端交付仍等待 GH-21 完成。
 
 [GitHub App 预检与只读观察](docs/github-observation.md) 保存仓库能力及独立 PR/CI 事实，
 缺能力或过期时拒绝领取；60 秒轮询及失败退避不启动模型。真实写交接与自动合并未接通。
 
-[执行环境预检与磁盘保护](docs/preparation.md) 已加入固定沙箱探针、持久化有限重试、
+[执行环境预检与磁盘保护](docs/preparation.md) 已加入真实开发环境探针、持久化有限重试、
 精确领取证据和存储停止保护；编码与远端写交接仍受后续任务门禁约束。
 
-[需求累计额度](docs/budgets.md) 已加入首次授权冻结、跨 Run 调用预留、累计用量结算和独立等待计时；真实 Runtime 发送仍待后续接入。
+[需求累计额度](docs/budgets.md) 已加入首次授权冻结、跨 Run 调用预留、累计用量结算和独立等待计时；真实 Runtime 已使用该累计额度。
 
 ## 从这里开始
 
 | 文档 | 效力 |
 |---|---|
-| [综合方案 V10.3](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
+| [综合方案 V10.4](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
 | [日常 V1 契约](docs/daily-use-v1.md) | 已确认的多入口、父子队列、手机接续与自动交付要求 |
 | [架构边界](docs/architecture-boundaries.md) | 三个真相分离，Harness-Gate 只提供验证证据 |
 | [演进目录](docs/roadmap-specs/README.md) | 后期候选及启用条件，不构成当前开发/验收要求 |
