@@ -18,7 +18,7 @@
 
 | 文档 | 效力 |
 |---|---|
-| [综合方案 V10.2](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
+| [综合方案 V10.3](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
 | [日常 V1 契约](docs/daily-use-v1.md) | 已确认的多入口、父子队列、手机接续与自动交付要求 |
 | [架构边界](docs/architecture-boundaries.md) | 三个真相分离，Harness-Gate 只提供验证证据 |
 | [演进目录](docs/roadmap-specs/README.md) | 后期候选及启用条件，不构成当前开发/验收要求 |
@@ -53,6 +53,7 @@
 - `codex-version.lock` 固定 Codex 0.154.0；协议生成与兼容性检查绑定该版本。
 - `harness-gate-version.lock` 固定 Core 0.4.5 与 Rust collector rc.6。独立源码／前端／合约插件见 `.harness-gate/collector-candidates.json`。
 - 本仓库从开发阶段启用 Harness-Gate，CRAP ≤10，覆盖率 ≥80%；不改变未来平台对受管仓库的分期。
+- [CI 范围与过期任务](docs/remote-gate.md#ci-范围与过期任务2026-09)：普通文档可复用同策略完整基线，过期 PR 检查自动停止；手动触发仍跑完整门禁。
 - [本机开发](docs/local-development.md)、[完整门禁验收](docs/quality/complete-local/README.md)、[Symphony 启用](docs/symphony-development-setup.md)。
 - `WORKFLOW.lifecycle.md` 供现有 Elixir Symphony 开发本项目；Agent 使用宿主 `github_api` 交付，不能执行 shell git push。
 - 首个未来平台接管仓库为 `musutrade/disposable`，沿用 S2/S2b 的测试授权；与当前开发本仓库的 Symphony 验收分开。
