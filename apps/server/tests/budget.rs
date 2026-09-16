@@ -63,12 +63,14 @@ async fn fixture() -> PgPool {
     pool
 }
 async fn new_run(pool: &PgPool, id: &str, revision: i64) {
+    // Action admission probes storage: the isolated source checkout is read-only.
+    // Use the test namespace's writable temporary filesystem as run storage.
     sqlx::query("UPDATE agent_run SET quiescent=true,state='Interrupted'")
         .execute(pool)
         .await
         .unwrap();
     sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,model) VALUES($1,1,$2,'boot',$3,$4,'worktree','{}','Running','configured-model')")
-        .bind(id).bind(revision).bind(key(id).request_id).bind(std::env::current_dir().unwrap().to_string_lossy().as_ref()).execute(pool).await.unwrap();
+        .bind(id).bind(revision).bind(key(id).request_id).bind(std::env::temp_dir().to_string_lossy().as_ref()).execute(pool).await.unwrap();
 }
 async fn grant(pool: &PgPool) -> Increase {
     let grant = Increase {
