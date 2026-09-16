@@ -122,7 +122,12 @@ async fn authorized(tx: &mut Tx<'_>, id: i64, revision: i64) -> Result<bool> {
     Ok(allowed == Some(true))
 }
 
-async fn insert_run(tx: &mut Tx<'_>, id: i64, revision: i64, launch: &Launch) -> Result<()> {
+pub(crate) async fn insert_run(
+    tx: &mut Tx<'_>,
+    id: i64,
+    revision: i64,
+    launch: &Launch,
+) -> Result<()> {
     sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,model) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'Created',(SELECT document#>>'{repository,model}' FROM requirement_revision WHERE requirement_id=$2 AND revision=$3))")
         .bind(&launch.key.run_id).bind(id).bind(revision).bind(&launch.key.incarnation)
         .bind(&launch.key.request_id).bind(&launch.workspace).bind(&launch.workspace_identity)

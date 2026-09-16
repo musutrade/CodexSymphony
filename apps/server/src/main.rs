@@ -52,16 +52,21 @@ async fn start_coordinator(pool: &PgPool) -> Result<tokio::task::JoinHandle<()>,
     let incarnation = process::new_identity()?;
     std::fs::create_dir_all(&root)?;
     run_store::begin_incarnation(pool, &incarnation).await?;
-    Ok(tokio::spawn(coordinate(Coordinator::new(
+    let runtime = codexsymphony_server::runtime_service::start(
         pool.clone(),
-        root,
-        incarnation,
-    ))))
+        root.clone(),
+        incarnation.clone(),
+    )?;
+    Ok(tokio::spawn(coordinate(
+        Coordinator::new(pool.clone(), root, incarnation),
+        runtime,
+    )))
 }
 
-async fn coordinate(mut coordinator: Coordinator) {
+async fn coordinate(mut coordinator: Coordinator, runtime: Option<tokio::task::JoinHandle<()>>) {
+    let _runtime = RuntimeWorker(runtime);
     let blocker = coordinator.coding_blocker();
-    tracing::info!("coding remains disabled: {}", blocker);
+    tracing::info!("unprepared coding remains disabled: {}", blocker);
     loop {
         coordinator.tick();
         tokio::time::sleep(Duration::from_millis(200)).await;
@@ -114,4 +119,13 @@ async fn prepare_database(url: &str) -> Result<PgPool, StartupError> {
     let pool = connect(url).await?;
     sqlx::migrate!("../../migrations").run(&pool).await?;
     Ok(pool)
+}
+
+struct RuntimeWorker(Option<tokio::task::JoinHandle<()>>);
+impl Drop for RuntimeWorker {
+    fn drop(&mut self) {
+        if let Some(task) = &self.0 {
+            task.abort();
+        }
+    }
 }

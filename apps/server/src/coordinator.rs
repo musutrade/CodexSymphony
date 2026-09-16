@@ -69,11 +69,13 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
             ));
         }
     }
+    crate::runtime_store::finalize(pool).await?;
     run_store::finish_recovery(pool, incarnation).await
 }
 
 async fn reconcile_runs(pool: &PgPool, root: &Path, incarnation: &str) -> Result<(), sqlx::Error> {
     crate::budget_store::expire_runs(pool).await?;
+    crate::runtime_questions::expire(pool, crate::runtime_client::now()).await?;
     for run in run_store::unresolved(pool).await? {
         reconcile_run(pool, root, incarnation, run).await?;
     }
@@ -150,6 +152,21 @@ pub async fn start_reserved(
     let child =
         tokio::task::spawn_blocking(move || process::spawn(&supervisor, &worker_directory, &copy))
             .await??;
+    finish_launch(pool, &directory, launch, child).await
+}
+
+pub async fn start_runtime(
+    pool: &PgPool,
+    root: &Path,
+    supervisor: &Path,
+    launch: &crate::execution::Launch,
+    config: &str,
+) -> Result<std::process::Child, Box<dyn std::error::Error + Send + Sync>> {
+    if !run_store::reserved_launch(pool, launch).await? {
+        return Err("Run not reserved".into());
+    }
+    let directory = process::run_directory(root, &launch.key.run_id)?;
+    let child = process::spawn_with_transport(supervisor, &directory, launch, Some(config))?;
     finish_launch(pool, &directory, launch, child).await
 }
 

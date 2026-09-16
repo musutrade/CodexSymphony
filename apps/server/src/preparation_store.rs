@@ -19,7 +19,9 @@ pub async fn begin(
     now: i64,
 ) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
-    if paused(&mut tx, requirement).await? {
+    if paused(&mut tx, requirement).await?
+        && !crate::runtime_resume::preparation_allowed(&mut tx, launch).await?
+    {
         return Ok(false);
     }
     let Some(mut retry) =
@@ -59,10 +61,14 @@ async fn load_for_begin(
     .bind(revision)
     .fetch_one(&mut **tx)
     .await?;
-    if saved != json!(launch) || ready {
+    if saved != json!(launch) {
         return Ok(None);
     }
-    Ok(Some(decode(value)?))
+    let mut retry: Retry = decode(value)?;
+    if ready && !refresh_success(tx, launch, phase, now, &mut retry).await? {
+        return Ok(None);
+    }
+    Ok(Some(retry))
 }
 
 fn decode<T: serde::de::DeserializeOwned>(value: Value) -> Result<T> {
@@ -224,4 +230,33 @@ pub async fn failed_probe(
     )
     .await?;
     tx.commit().await
+}
+
+async fn refresh_success(
+    tx: &mut Transaction<'_, Postgres>,
+    launch: &Launch,
+    phase: &str,
+    now: i64,
+    retry: &mut Retry,
+) -> Result<bool> {
+    if phase != "answer_resume" {
+        return Ok(false);
+    }
+    let stale: bool =
+        sqlx::query_scalar("SELECT checked_at < $2-60 FROM preparation_record WHERE run_id=$1")
+            .bind(&launch.key.run_id)
+            .bind(now)
+            .fetch_one(&mut **tx)
+            .await?;
+    if !stale {
+        return Ok(false);
+    }
+    // Revalidate successful evidence using the original bounded ledger.
+    // A pause cannot mint a fresh retry group or reset any attempt counter.
+    retry.next_attempt_at = Some(now);
+    sqlx::query("UPDATE preparation_record SET ready=false WHERE run_id=$1")
+        .bind(&launch.key.run_id)
+        .execute(&mut **tx)
+        .await?;
+    Ok(true)
 }
