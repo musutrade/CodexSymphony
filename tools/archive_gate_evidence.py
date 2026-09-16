@@ -6,6 +6,9 @@ from storage_maintenance import ROOT, gate_busy
 
 COLD=Path('/data/codexsymphony-archive')
 
+class ArchiveDeferred(RuntimeError):
+    """A new Gate started; retain original evidence and retry next tick."""
+
 def sha(path):
     with path.open('rb') as f:
         return hashlib.file_digest(f,'sha256').hexdigest()
@@ -40,7 +43,7 @@ def verify(archive, manifest):
 def archive_run(run, cold=COLD, busy=gate_busy):
     runs=run.parent
     if not re.fullmatch(r'run-[0-9a-f]{12}',run.name) or run.resolve()!=run.absolute():raise ValueError('invalid run')
-    if busy(runs):raise RuntimeError('active or unreadable Gate worker; archive deferred')
+    if busy(runs):raise ArchiveDeferred('active or unreadable Gate worker; archive deferred')
     marker=run/'archive.json'
     if marker.exists():return json.loads(marker.read_text())
     payload=run/'probes/backend'
@@ -54,7 +57,8 @@ def archive_run(run, cold=COLD, busy=gate_busy):
     with tarfile.open(temporary,'w:gz',compresslevel=1) as tar:
         for name in manifest:tar.add(payload/name,arcname=name,recursive=False)
     verify(temporary,manifest)
-    if busy(runs) or inventory(payload)!=manifest:raise RuntimeError('source changed or worker started; originals retained')
+    if busy(runs):raise ArchiveDeferred('Gate worker started; originals retained')
+    if inventory(payload)!=manifest:raise RuntimeError('source changed; originals retained')
     with temporary.open('rb') as stream:os.fsync(stream.fileno())
     temporary.replace(destination)
     directory=os.open(cold,os.O_RDONLY|os.O_DIRECTORY)
@@ -109,7 +113,9 @@ def main():
             if not (run/'probes/backend').is_dir():continue
             if args.apply:
                 if gate_busy(runs):print('Deferred: Gate is active');break
-                result=archive_run(run)
+                try:result=archive_run(run)
+                except ArchiveDeferred as error:
+                    print('Deferred: '+str(error),flush=True);break
                 print(json.dumps({k:result[k] for k in ('run','original_bytes','compressed_bytes')}),flush=True)
             else:print(run)
 
