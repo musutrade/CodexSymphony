@@ -36,6 +36,19 @@ class EvidenceArchive(unittest.TestCase):
             with patch.object(archive,'verify',side_effect=ValueError('bad archive')):
                 with self.assertRaises(ValueError):archive.archive_run(run,root/'cold',busy=lambda _:False)
             self.assertTrue((payload/'raw').exists());self.assertFalse((run/'archive.json').exists())
+    def test_gate_start_during_archive_defers_without_removing_original(self):
+        with tempfile.TemporaryDirectory() as tmp,patch.object(archive.os.path,'ismount',return_value=True):
+            root=Path(tmp);run,payload=self.fixture(root);checks=iter([False,True])
+            with self.assertRaises(archive.ArchiveDeferred):
+                archive.archive_run(run,root/'cold',busy=lambda _:next(checks))
+            self.assertTrue((payload/'raw').exists());self.assertFalse((run/'archive.json').exists())
+    def test_timer_treats_new_gate_as_successful_deferral(self):
+        import os
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);run,_=self.fixture(root/'gate-host')
+            os.utime(run,(0,0))
+            with patch.object(archive,'ROOT',root),patch.object(archive,'COLD',root/'cold'),patch.object(sys,'argv',['archive','--apply']),patch.object(archive,'gate_busy',return_value=False),patch.object(archive,'archive_run',side_effect=archive.ArchiveDeferred('new worker')):
+                archive.main()
     def test_symlink_source_rejected(self):
         with tempfile.TemporaryDirectory() as tmp,patch.object(archive.os.path,'ismount',return_value=True):
             root=Path(tmp);run,payload=self.fixture(root);(payload/'link').symlink_to(root)
