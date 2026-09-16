@@ -68,3 +68,26 @@ and checks exact rational CRAP ≤10 and line/region ratios ≥4/5. No measureme
 changed for the rehearsal; measurements used the original source positions and
 complete production inventory. The full original LLVM export and collector output remain in
 the workspace; the independent host recollects from the published commit.
+
+## Host CI recovery (2026-09-16)
+
+The first exact-head CI run failed because the HTTP collector started the new
+storage-aware service in a read-only source checkout without an execution data
+directory. The complete host verification also exposed the same assumption in
+the startup integration test.
+
+The collector now explicitly uses `/tmp/codexsymphony-execution` in its isolated,
+retained per-run temporary mount. The startup test gives its child a unique
+owned temporary directory and removes that test directory after stopping the
+child. Source and policy mounts remain read-only.
+
+Independent complete host acceptance passed in `run-f797a66943a9`: all seven
+execution steps, secret scan, architecture audit, complete CI quality and full
+quality passed. Four HTTP readiness unit tests also passed. The reviewed
+frontend measurement identity changed because the trusted capture code changed;
+quality thresholds and required rules are unchanged. This local acceptance is
+followed by fresh exact-head remote checks; it does not reuse previous signatures.
+
+The controller had reserved one CI repair but did not start it because earlier
+environment stops exhausted the startup limit. The operator delivered this fix
+without another Agent attempt; cumulative usage is retained in the recovery audit.
