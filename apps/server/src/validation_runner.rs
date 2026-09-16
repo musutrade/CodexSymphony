@@ -40,7 +40,7 @@ impl Plan {
             protected_entry: self.entry.to_string_lossy().into_owned(),
             protected_entry_sha256: self.entry_sha256.clone(),
             tool: "trusted-development-process".into(),
-            tool_version: env!("CARGO_PKG_VERSION").into(),
+            tool_version: "1".into(),
         })
     }
     fn validate(&self) -> Result<()> {
