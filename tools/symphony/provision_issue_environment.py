@@ -60,7 +60,7 @@ def main(workspace):
     if not (provision/'client').exists():
         shutil.copytree(TEMPLATE/'client',provision/'client',ignore=shutil.ignore_patterns('__pycache__'))
         for path in (provision/'client').rglob('*'):
-            if path.is_file() and (path.suffix=='.py' or path.parent.name=='bin'):
+            if path.is_file() and 'reviewed-preparation' not in path.parts and (path.suffix=='.py' or path.parent.name=='bin'):
                 path.write_text(adapt(path.read_text()))
         p=provision/'client/e2e.py'
         p.write_text(p.read_text().replace("env['BIND_ADDRESS']='127.0.0.1:3081'", "env['BIND_ADDRESS']='127.0.0.1:3081';env['WEB_ORIGIN']='http://127.0.0.1:4300'"))
@@ -75,6 +75,18 @@ def main(workspace):
     pending=launcher.with_suffix('.new')
     pending.write_text(adapt((TEMPLATE/'client/run.py').read_text()))
     pending.replace(launcher)
+    broker_changed=False
+    for name in ['broker.py','preflight.py','execution_readiness.py','client/execution_readiness.py',
+                 'product_preparation_acceptance.py','client/product_preparation_acceptance.py',
+                 'client/reviewed-preparation/app_server.py','client/reviewed-preparation/sandbox_probe.py',
+                 'client/reviewed-preparation/manifest.json']:
+        destination=provision/name
+        destination.parent.mkdir(parents=True,exist_ok=True)
+        content=(TEMPLATE/name).read_text()
+        if 'reviewed-preparation/' not in name:content=adapt(content)
+        if not destination.exists() or destination.read_text()!=content:
+            pending=destination.with_suffix('.new');pending.write_text(content);pending.replace(destination)
+            broker_changed=True
     known={}
     names=run('docker','ps','-a','--format','{{.Names}}').splitlines()
     for role,last in [('test','2'),('dev','3')]:
@@ -108,7 +120,7 @@ def main(workspace):
         unit.write_text('[Unit]\nDescription='+label+' fixed-policy test database lifecycle\n[Service]\nExecStart=/usr/bin/python3 '+str(provision/'broker.py')+'\nRestart=on-failure\nRestartSec=3\n[Install]\nWantedBy=default.target\n')
         run('systemctl','--user','daemon-reload')
         run('systemctl','--user','enable','--now',unit.name)
-    else:run('systemctl','--user','start',unit.name)
+    else:run('systemctl','--user','restart' if broker_changed else 'start',unit.name)
     print(label+' isolated environment ready; read .agent-env/README.md')
 
 if __name__=='__main__': main(sys.argv[1] if len(sys.argv)>1 else Path.cwd())

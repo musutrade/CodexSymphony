@@ -49,12 +49,18 @@ impl Coordinator {
 /// Called only after acquiring the process-lifetime instance lock. The HTTP
 /// service remains responsive while old execution facts are reconciled.
 pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bool, sqlx::Error> {
-    for run in run_store::unresolved(pool).await? {
-        if run.incarnation != incarnation || run.stop_requested {
-            recover_run(pool, root, run).await?;
-        } else {
+    if !crate::storage::permit(pool, root).await {
+        // No heartbeat renewal on persistence failure. Supervisors stop all
+        // descendants from memory even if this process cannot write stop files.
+        // Still consume stop receipts once persistence returns; otherwise the
+        // storage latch and the quiescence requirement would block each other.
+        for run in run_store::unresolved(pool).await? {
             observe(pool, root, run).await?;
         }
+        return Ok(false);
+    }
+    for run in run_store::unresolved(pool).await? {
+        reconcile_run(pool, root, incarnation, run).await?;
     }
     match crate::workspace_store::recover_stopped(pool, &root.join("workspaces")).await {
         Ok(true) => {}
@@ -66,6 +72,31 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
         }
     }
     run_store::finish_recovery(pool, incarnation).await
+}
+
+async fn reconcile_run(
+    pool: &PgPool,
+    root: &Path,
+    incarnation: &str,
+    run: Run,
+) -> Result<(), sqlx::Error> {
+    if run.incarnation != incarnation || run.stop_requested {
+        return recover_run(pool, root, run).await;
+    }
+    if crate::storage::permit(pool, Path::new(&run.workspace)).await {
+        renew_storage(pool, root, &run).await?;
+    }
+    observe(pool, root, run).await
+}
+
+async fn renew_storage(pool: &PgPool, root: &Path, run: &Run) -> Result<(), sqlx::Error> {
+    let directory = process::run_directory(root, &run.id).map_err(sqlx::Error::Io)?;
+    if directory.exists() {
+        crate::storage::write(pool, &directory.join("storage-heartbeat.json"), &run.key())
+            .await
+            .map_err(sqlx::Error::Io)?;
+    }
+    Ok(())
 }
 
 async fn observe(pool: &PgPool, root: &Path, run: Run) -> Result<(), sqlx::Error> {
@@ -173,7 +204,8 @@ async fn grant_start(
     // is durable. A pause committed first cannot be followed by a new grant.
     let tx = run_store::lock(pool).await?;
     if run_store::actions_allowed(pool, key).await? {
-        process::durable_write(&directory.join("start.json"), key)?;
+        crate::storage::write(pool, &directory.join("storage-heartbeat.json"), key).await?;
+        crate::storage::write(pool, &directory.join("start.json"), key).await?;
     } else {
         process::durable_write(&directory.join("stop.json"), key)?;
     }

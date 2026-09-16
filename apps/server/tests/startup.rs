@@ -9,13 +9,14 @@ use std::{
     time::{Duration, Instant},
 };
 
-struct Service(Child);
+struct Service(Child, std::path::PathBuf);
 static STARTUP: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 impl Drop for Service {
     fn drop(&mut self) {
         let _ = self.0.kill();
         let _ = self.0.wait();
+        let _ = std::fs::remove_dir_all(&self.1);
     }
 }
 
@@ -24,14 +25,18 @@ fn serves_a_real_request_and_shuts_down_cleanly() {
     let _serial = STARTUP.lock().unwrap();
     let database =
         std::env::var("TEST_DATABASE_URL").expect("disposable TEST_DATABASE_URL required");
+    let execution =
+        std::env::temp_dir().join(codexsymphony_server::process::new_identity().unwrap());
     let mut child = Service(
         Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
             .env("DATABASE_URL", database)
             .env("BIND_ADDRESS", "127.0.0.1:0")
             .env("RUST_LOG", "info")
+            .env("EXECUTION_DIRECTORY", &execution)
             .stdout(Stdio::piped())
             .spawn()
             .unwrap(),
+        execution,
     );
     let stdout = child.0.stdout.take().unwrap();
     let (send, receive) = mpsc::channel();

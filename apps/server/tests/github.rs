@@ -453,7 +453,7 @@ async fn persistent_polling_blocks_claims_without_starting_a_model() {
             request_id: "request".into(),
             incarnation: "current".into(),
         },
-        workspace: "/unused".into(),
+        workspace: std::env::temp_dir().to_str().unwrap().into(),
         workspace_identity: "fixture".into(),
         program: "/should-never-start".into(),
         args: vec![],
@@ -500,6 +500,10 @@ async fn persistent_polling_blocks_claims_without_starting_a_model() {
         .await,
         1
     );
+    // This test isolates repository authorization; preparation admission is
+    // separately exercised against real probe results in preparation tests.
+    sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,checked_at) VALUES($1,1,1,$2,'{}',true,extract(epoch FROM now())::bigint)")
+        .bind(&launch.key.run_id).bind(json!(launch)).execute(&pool).await.unwrap();
     assert!(run_store::reserve_prepared(&pool, &launch).await.unwrap());
     assert_eq!(
         count(&pool, "SELECT requirement_id FROM execution_control").await,

@@ -68,7 +68,9 @@ def capture_http(run, repository, container, url):
     binary=run/'target/debug/codexsymphony-server'
     args=command(['cargo','build','--locked','--bin','codexsymphony-server'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
     run_logged(run,'http-build',args)
-    args=command([binary],run=run,repository=repository,plugins=PLUGIN_ROOT,readonly=[binary],environment={'DATABASE_URL':url,'BIND_ADDRESS':'127.0.0.1:0','RUST_LOG':'info'})
+    # Runtime state belongs in the isolated, retained per-run temporary mount.
+    # The source checkout must stay read-only even when the service needs storage.
+    args=command([binary],run=run,repository=repository,plugins=PLUGIN_ROOT,readonly=[binary],environment={'DATABASE_URL':url,'BIND_ADDRESS':'127.0.0.1:0','RUST_LOG':'info','EXECUTION_DIRECTORY':'/tmp/codexsymphony-execution'})
     # Server stdout contains the actual listener address, never a guessed port.
     stderr=(run/'http-server.stderr').open('wb')
     try:
