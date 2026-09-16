@@ -30,6 +30,9 @@ pub mod runtime_tools;
 pub mod runtime_transport;
 pub mod security;
 pub mod storage;
+pub mod validation;
+pub mod validation_api;
+pub mod validation_store;
 pub mod workspace;
 pub mod workspace_files;
 pub mod workspace_store;
@@ -50,6 +53,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .route("/api/health", get(health))
             .merge(business::routes())
             .merge(execution_api::routes())
+            .merge(validation_api::routes())
             .merge(runtime_api::routes())
             .with_state(pool),
     )
