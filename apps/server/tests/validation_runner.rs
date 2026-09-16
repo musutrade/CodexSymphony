@@ -32,10 +32,11 @@ fn fixture() -> (PathBuf, PathBuf, Plan) {
     git(&repo, &["config", "user.name", "test"]);
     git(&repo, &["config", "user.email", "test@example.com"]);
     fs::write(repo.join("source"), "candidate").unwrap();
+    fs::write(repo.join(".gitignore"), "build/\n").unwrap();
     git(&repo, &["add", "."]);
     git(&repo, &["commit", "-qm", "candidate"]);
     let entry = root.join("entry");
-    fs::write(&entry,"#!/bin/sh\ncat source\ncase \"$1\" in fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> source;; *) exit 0;; esac\n").unwrap();
+    fs::write(&entry,"#!/bin/sh\ncat source\ncase \"$1\" in artifact) mkdir -p build; head -c 2097152 /dev/zero > build/output;; fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> source;; *) exit 0;; esac\n").unwrap();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o755)).unwrap();
     let plan = Plan {
         entry_sha256: sha256(fs::read(&entry).unwrap()),
@@ -60,6 +61,16 @@ fn fixed_process_and_reconciliation() {
     assert_eq!(
         runner::execute(&repo, &directory, &candidate, &plan).unwrap(),
         evidence
+    );
+    let mut artifact = plan.clone();
+    artifact.steps[0].command.push("artifact".into());
+    assert_eq!(
+        runner::execute(&repo, &root.join("artifact"), &candidate, &artifact).unwrap()[0].exit_code,
+        Some(0)
+    );
+    assert_eq!(
+        fs::metadata(repo.join("build/output")).unwrap().len(),
+        2097152
     );
     let mut changed = plan.clone();
     changed.steps[0].command.push("fail".into());

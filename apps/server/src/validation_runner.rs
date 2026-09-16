@@ -164,16 +164,16 @@ fn run_step(
         .stdout(Stdio::from(file.try_clone()?))
         .stderr(Stdio::from(file));
     let mut child = command.spawn()?;
-    let exit = wait(&mut child, step.timeout_seconds)?;
+    let exit = wait(&mut child, step.timeout_seconds, &path)?;
     evidence(directory, index, step, exit)
 }
-fn wait(child: &mut std::process::Child, timeout: u64) -> Result<Option<i32>> {
+fn wait(child: &mut std::process::Child, timeout: u64, output: &Path) -> Result<Option<i32>> {
     let deadline = Instant::now() + Duration::from_secs(timeout);
     let exit = loop {
         if let Some(status) = child.try_wait()? {
             break status.code();
         }
-        if Instant::now() >= deadline {
+        if Instant::now() >= deadline || fs::metadata(output)?.len() >= LIMIT {
             stop_group(child.id());
             child.wait()?;
             break None;
@@ -219,11 +219,8 @@ fn evidence(
     })
 }
 fn command(root: &Path, step: &Step, plan: &Plan) -> Command {
-    let mut c = Command::new("/usr/bin/prlimit");
-    c.arg(format!("--fsize={LIMIT}:{LIMIT}"))
-        .arg("--")
-        .arg(&plan.entry)
-        .args(&step.command[1..])
+    let mut c = Command::new(&plan.entry);
+    c.args(&step.command[1..])
         .current_dir(root)
         .process_group(0)
         .stdin(Stdio::null());
