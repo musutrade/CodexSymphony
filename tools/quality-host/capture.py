@@ -28,8 +28,8 @@ def node(plugin, operation, request):
     script = "const p=require(process.argv[1]);const q=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(JSON.stringify(" + operation + "));"
     return json.loads(subprocess.check_output(['node','-e',script,str(plugin / 'protocol.cjs')],input=json.dumps(request),text=True))
 
-def database(run):
-    name = 'codexsymphony-gate-' + run.name[-16:]
+def database(run, purpose=""):
+    name = 'codexsymphony-gate-' + run.name[-16:] + purpose
     subprocess.run(['docker','run','--detach','--name',name,'--publish','127.0.0.1::5432',
                     '--env','POSTGRES_DB=gate_test','--env','POSTGRES_USER=gate_test','--env','POSTGRES_PASSWORD=gate_test',
                     '--tmpfs','/var/lib/postgresql/data','postgres:16-alpine'],check=True,capture_output=True)
@@ -64,6 +64,21 @@ def wait_http_address(server, output, timeout=20):
                 raise RuntimeError('server exited before readiness; inspect http-server.stderr')
     raise RuntimeError('server readiness timeout; inspect http-server.stdout and http-server.stderr')
 
+def prepare_http_fixture(run, repository, container):
+    """Project-owned SQL runs only inside this capture's disposable database."""
+    fixture=repository/'api/capture-fixture.sql'
+    if not fixture.exists() and not fixture.is_symlink(): return
+    if fixture.is_symlink() or not fixture.resolve().is_relative_to(repository.resolve()):
+        raise ValueError('HTTP fixture must be a repository-owned regular file')
+    if not fixture.is_file() or fixture.stat().st_size>1024*1024:
+        raise ValueError('HTTP fixture must be a SQL file of at most 1 MiB')
+    # No host shell or developer-selected database/container. Even psql meta
+    # commands execute inside the disposable container, never on the signer host.
+    args=['docker','exec','--interactive','--user','postgres',container,
+          'psql','--no-psqlrc','--single-transaction','--set','ON_ERROR_STOP=1',
+          '--username=gate_test','--dbname=gate_test']
+    run_logged(run,'http-fixture',args,input=fixture.read_bytes(),timeout=30)
+
 def capture_http(run, repository, container, url):
     binary=run/'target/debug/codexsymphony-server'
     args=command(['cargo','build','--locked','--bin','codexsymphony-server'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
@@ -80,6 +95,7 @@ def capture_http(run, repository, container, url):
     try:
         with (run/'http-server.stdout').open('wb') as output:
             address=wait_http_address(server,output)
+        prepare_http_fixture(run,repository,container)
         from http_scenarios import capture
         scenario_path=repository/'api/capture-scenarios.json'
         scenarios=load(scenario_path) if scenario_path.exists() else []
@@ -111,7 +127,12 @@ def captures(run, repository, root, context, baseline):
         run_logged(run,'backend-capture',args)
         args=command(['node',repository/'web/angular/tools/probe-typescript-risk.cjs'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes'],environment={'HARNESS_GATE_TYPESCRIPT_PLUGIN':str(TS)})
         run_logged(run,'frontend-capture',args)
-        observations,binary_hash=capture_http(run,repository,container,url)
+        # Contract fixtures must not inherit rows left by backend tests.
+        http_container,http_url=database(run,purpose='-http')
+        try:
+            observations,binary_hash=capture_http(run,repository,http_container,http_url)
+        finally:
+            subprocess.run(['docker','rm','--force',http_container],check=True,capture_output=True)
     finally:
         subprocess.run(['docker','rm','--force',container],check=True,capture_output=True)
     runtime=root/'.harness-gate/runtime'; runtime.mkdir(parents=True,exist_ok=True)
@@ -144,7 +165,8 @@ def captures(run, repository, root, context, baseline):
     contract={'schema':'harness-collector-request/v1','project':'codexsymphony','component':'backend','collector':{'name':'http-json-contract','version':'0.1.0-rc.4'},'context':context,'workspace_root':str(root),'output_root':str(output),'requested_capabilities':['contract.breaking_changes','contract.client_drift','contract.compatible'],
               'parameters':{'boundary':'contract','consumer_boundary':'production','contract':'api/openapi.json','client':'web/angular/src/app/health.ts','type_file':'web/angular/src/app/health-response.ts','type_name':'HealthResponse','observations':'.harness-gate/runtime/http-observations.json','artifact_subdir':'frontend-api','relationship':'frontend-api','consumer':'frontend','consumer_source_root':'web/angular/src','exclude':p['exclude']}}
     files=['api/openapi.json','web/angular/src/app/health.ts','web/angular/src/app/health-response.ts','apps/server/src/lib.rs','apps/server/src/main.rs','Cargo.toml','Cargo.lock','apps/server/Cargo.toml']
-    if (root/'api/capture-scenarios.json').exists(): files.append('api/capture-scenarios.json')
+    for name in ('api/capture-scenarios.json','api/capture-fixture.sql'):
+        if (root/name).exists(): files.append(name)
     contract['parameters']['receipt']={'schema':'http-json-capture/v1','context':context,'inputs':{name:sha((root/name).read_bytes()) for name in files},'baseline':baseline,'observations_sha256':sha(observation_path.read_bytes()),'binary_sha256':binary_hash,'consumer_sources':{f['path']:f['sha256'] for f in discovery['sources']}}
     contract['parameters']['subjects']=node(HTTP,'p.discover(q)',contract)['subjects']
     requests={'backend':backend,'frontend':frontend,'frontend-api':contract}

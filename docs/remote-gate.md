@@ -81,3 +81,13 @@ SHA/attempt/report 摘要。main 上仅文档差异可采用同一规则。白�
 
 升级需安装经审查的 remote-gate 版本及 evidence-archive 版本；仅修改 Actions YAML
 不会更新宿主。保护文件发生变化的本次 PR 本身必须通过新宿主的完整门禁。
+
+## 项目拥有的 HTTP 测试数据
+
+HTTP 采集使用独立于后端测试数据库的全新一次性数据库，支持可选的 `api/capture-fixture.sql`。服务完成迁移并报告实际监听地址后、执行 `api/capture-scenarios.json` 前，验收器用 `psql --single-transaction --set ON_ERROR_STOP=1` 加载该文件。脚本错误或超时使采集失败；SQL 及 psql 元命令只在该次采集的一次性 PostgreSQL 容器中执行，不在宿主执行。文件限 1 MiB，执行限 30 秒，不能用软链接读取仓库外文件。stdout/stderr 保存在该次运行的 `http-fixture` 日志。
+
+夹具属于项目代码，和 schema、场景一起评审并按提交绑定；其 SHA-256 纳入 HTTP receipt。新增业务状态通过修改项目夹具和请求场景实现，不要求新安装逐测试宿主入口。场景仍只发送真实 HTTP 请求，不能直接提供“观察结果”或伪造成功响应。
+
+可在夹具中准备所属关系完整的持久化 Run、问题和证据，用于 HTTP 回答/读取契约测试。使用专用 ID，避免干扰现有创建场景；保持任务暂停、无外部授权，避免启动业务副作用。HTTP 采集不需要启用真实模型或 GitHub App，测试数据不冒充真实 Runtime 端到端或 A01 证据。生产接口不增加测试后门，签名密钥和真实凭据仍不进入项目执行环境。
+
+开发者可在自己的干净一次性数据库运行同一 SQL，然后用现有 `http_scenarios.capture` 采集。正式服务自行加载精确提交并再次运行，不信任开发者提供的响应文件。
