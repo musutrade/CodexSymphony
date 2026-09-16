@@ -73,7 +73,16 @@ pub fn verify(
     trusted: &TrustedIdentity,
     required_steps: &[String],
 ) -> Result<(), ValidationError> {
-    if !evidence.candidate.immutable {
+    verify_identity(evidence, candidate, trusted)?;
+    verify_steps(&evidence.steps, required_steps)
+}
+
+fn verify_identity(
+    evidence: &ValidationEvidence,
+    candidate: &Candidate,
+    trusted: &TrustedIdentity,
+) -> Result<(), ValidationError> {
+    if !evidence.candidate.immutable || !candidate.immutable {
         return Err(ValidationError::CandidateMutable);
     }
     if evidence.candidate != *candidate {
@@ -88,23 +97,41 @@ pub fn verify(
     if evidence.entry_before != evidence.entry_after {
         return Err(ValidationError::ProtectedEntryChanged);
     }
+    Ok(())
+}
+
+fn verify_steps(steps: &[StepEvidence], required: &[String]) -> Result<(), ValidationError> {
+    if required.is_empty() {
+        return Err(ValidationError::MissingStep);
+    }
     let mut seen = HashSet::new();
-    for step in &evidence.steps {
+    for step in steps {
         if !seen.insert(&step.id) {
             return Err(ValidationError::MissingStep);
         }
-        if step.output.is_empty() || step.log_ref.is_empty() || step.consumer.is_empty() {
-            return Err(ValidationError::MissingOutput);
-        }
-        if sha256(&step.output) != step.output_sha256 {
-            return Err(ValidationError::OutputDigestMismatch);
-        }
-        if step.exit_code != Some(0) {
-            return Err(ValidationError::ExitFailed);
+        verify_step(step)?;
+    }
+    for id in required {
+        if !seen.contains(id) {
+            return Err(ValidationError::MissingStep);
         }
     }
-    if required_steps.iter().any(|id| !seen.contains(id)) {
-        return Err(ValidationError::MissingStep);
+    Ok(())
+}
+
+fn verify_step(step: &StepEvidence) -> Result<(), ValidationError> {
+    if step.output.is_empty()
+        || step.log_ref.is_empty()
+        || step.consumer.is_empty()
+        || step.command.is_empty()
+    {
+        return Err(ValidationError::MissingOutput);
+    }
+    if sha256(&step.output) != step.output_sha256 {
+        return Err(ValidationError::OutputDigestMismatch);
+    }
+    if step.exit_code != Some(0) {
+        return Err(ValidationError::ExitFailed);
     }
     Ok(())
 }
@@ -162,7 +189,14 @@ pub fn repair_context(
     step_id: &str,
     remaining: &[String],
 ) -> Option<RepairContext> {
-    let step = evidence.steps.iter().find(|step| step.id == step_id)?;
+    let mut found = None;
+    for step in &evidence.steps {
+        if step.id == step_id {
+            found = Some(step);
+            break;
+        }
+    }
+    let step = found?;
     Some(RepairContext {
         candidate: evidence.candidate.clone(),
         failed_step: step.id.clone(),

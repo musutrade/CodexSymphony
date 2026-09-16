@@ -109,7 +109,7 @@ async fn allocate(
     Ok(job)
 }
 
-fn create(
+pub(crate) fn create(
     source: String,
     manifest: Manifest,
     broker: &GitBroker,

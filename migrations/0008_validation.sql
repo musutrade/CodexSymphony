@@ -7,6 +7,8 @@ CREATE TABLE candidate_validation (
   candidate_sha text NOT NULL,
   candidate_tree text NOT NULL,
   trusted jsonb NOT NULL,
+  required_steps jsonb NOT NULL,
+  failure text,
   source_before text NOT NULL,
   source_after text NOT NULL,
   entry_before text NOT NULL,
@@ -23,6 +25,7 @@ CREATE TABLE validation_step (
   exit_code integer,
   output text,
   output_sha256 text,
+  recorded_at timestamptz NOT NULL DEFAULT now(),
   log_ref text,
   consumer text,
   code_failure boolean NOT NULL DEFAULT false,
@@ -31,8 +34,10 @@ CREATE TABLE validation_step (
 );
 CREATE TABLE repair_reservation (
   requirement_id bigint PRIMARY KEY REFERENCES requirement(id),
-  ordinal bigint NOT NULL UNIQUE,
+  ordinal bigint NOT NULL CHECK (ordinal = 1),
   source_validation_id text NOT NULL REFERENCES candidate_validation(id),
+  launch jsonb,
+  workspace jsonb,
   repair_run_id text UNIQUE REFERENCES agent_run(id),
   failure jsonb NOT NULL,
   status text NOT NULL CHECK (status IN ('reserved','started','succeeded','failed'))

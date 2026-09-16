@@ -84,3 +84,9 @@ fn response(available: bool) -> (StatusCode, Json<Health>) {
     };
     (code, Json(Health { status, database }))
 }
+
+pub mod validation_repair;
+pub mod validation_repair_worker;
+pub mod validation_runner;
+pub mod validation_service;
+pub mod validation_worker;
