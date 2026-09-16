@@ -26,6 +26,7 @@ use std::{
 struct Data {
     routes: HashMap<String, Value>,
     errors: HashMap<String, Vec<u16>>,
+    redirects: HashMap<String, (u16, String)>,
     seen: Vec<String>,
     grants: usize,
 }
@@ -53,6 +54,13 @@ async fn handler(
         .unwrap();
     let mut data = data.lock().unwrap();
     data.seen.push(format!("{method} {path}?{query}"));
+    if let Some((status, location)) = data.redirects.get(&path) {
+        return (
+            StatusCode::from_u16(*status).unwrap(),
+            [("location", location.clone())],
+        )
+            .into_response();
+    }
     if let Some(errors) = data.errors.get_mut(&path)
         && !errors.is_empty()
     {
@@ -786,4 +794,35 @@ async fn configured_server_and_transport_failure() {
             .await
             .is_err()
     );
+}
+
+#[tokio::test]
+async fn authenticated_http_never_follows_redirects() {
+    let source = Fixture::new().await;
+    let sink = Fixture::new().await;
+    let mut client = source.client();
+    let now = 1_800_000_000;
+    // Acquire the token normally, then test authenticated repository requests.
+    client.permissions(&policy(), now).await.unwrap();
+    for status in [301, 302, 303, 307, 308] {
+        for destination in [
+            format!("{}destination", source.url),
+            format!("{}destination", sink.url),
+        ] {
+            source.data.lock().unwrap().seen.clear();
+            source
+                .data
+                .lock()
+                .unwrap()
+                .redirects
+                .insert("/repos/owner/repo".into(), (status, destination));
+            let error = client
+                .get(&policy(), "/repos/owner/repo", now)
+                .await
+                .unwrap_err();
+            assert_eq!(error.status, Some(status));
+            assert_eq!(source.data.lock().unwrap().seen.len(), 1);
+            assert!(sink.data.lock().unwrap().seen.is_empty());
+        }
+    }
 }
