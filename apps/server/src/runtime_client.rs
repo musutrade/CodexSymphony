@@ -177,7 +177,7 @@ impl Client<'_> {
             cwd: Some(self.launch.workspace.clone()),
             model: Some(model),
             approval_policy: Some(json!("never")),
-            sandbox: Some(json!("workspace-write")),
+            sandbox: Some(json!("danger-full-access")),
             ephemeral: Some(true),
             dynamic_tools: Some(runtime::tools()),
             allow_provider_model_fallback: Some(false),

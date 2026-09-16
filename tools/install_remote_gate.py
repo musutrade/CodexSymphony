@@ -21,7 +21,7 @@ def main():
     for name,digest in approval['trusted_files'].items():
         if sha(ROOT/name)!=digest:raise ValueError('gate host input changed: '+name)
     names=['.github/workflows/quality.yml','WORKFLOW.lifecycle.md','web/angular/package.json','web/angular/package-lock.json']
-    names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/symphony/codex_sandbox.py']
+    names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/symphony/trusted_environment.py']
     names += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tools/remote-gate').glob('*.py'))]
     protected={name:sha(ROOT/name) for name in names}
     identity={'protected_files':protected,'gate_approval':str(gate.resolve()),

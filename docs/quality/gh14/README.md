@@ -1,3 +1,5 @@
+> 历史验收记录：执行边界已于 2026-09-16 改为可信开发环境。本文旧沙箱、白名单和专用验收入口不再是当前要求；以主规格及 docs/trusted-development.md 为准。历史结果保持原样。
+
 # GH-14 本地验证记录（2026-09-15）
 
 基线为 `a6a9ca994abe8311d0b2d5fc18bc4355cce2eba3`，即前置 GH-13 的 [PR #34](https://github.com/musutrade/CodexSymphony/pull/34) 合并提交。GitHub API 已核实 #34 已合并，其 PR head `07c659a90d9bdf09920e57c34fb1f014a375fd2b` 的 Harness-Gate / Trusted Harness-Gate 均成功。工作区保留控制器分支 `symphony/GH-14`；本地 HEAD 不代表后续发布 SHA。

@@ -35,14 +35,11 @@ pub fn fixture() -> (PathBuf, PathBuf, Plan) {
     git(&repo, &["add", "."]);
     git(&repo, &["commit", "-qm", "candidate"]);
     let entry = root.join("entry");
-    fs::write(&entry,"#!/bin/sh\ncat /candidate/source\ntest ! -e /home/gem/.codex/auth.json || exit 9\ncase \"$1\" in fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> /candidate/source;; *) exit 0;; esac\n").unwrap();
+    fs::write(&entry,"#!/bin/sh\ncat source\ncase \"$1\" in fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> source;; *) exit 0;; esac\n").unwrap();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o755)).unwrap();
-    let sandbox = PathBuf::from("/usr/bin/bwrap");
     let plan = Plan {
         entry_sha256: sha256(fs::read(&entry).unwrap()),
         entry,
-        sandbox_sha256: sha256(fs::read(&sandbox).unwrap()),
-        sandbox,
         steps: vec![Step {
             id: "test".into(),
             command: vec!["/gate-entry".into()],

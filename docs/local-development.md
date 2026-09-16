@@ -17,7 +17,7 @@ cd web/angular
 npm ci
 ```
 
-受管 GH-12 沙箱已预装版本和离线缓存，使用 `npm ci --offline --no-audit --no-fund`。
+项目开发环境已预装版本和离线缓存，使用 `npm ci --offline --no-audit --no-fund`。
 不需要安装 arc-admin，也没有对另一个源码目录的构建依赖。
 
 ## 持久化开发 / 内部试用启动
@@ -212,3 +212,5 @@ cd web/angular
 
 完整本地 PASS 与验收范围见 [完整验收记录](quality/complete-local/README.md)。
 旧 rc.2／Rust rc.1 的单组件目录是历史记录，以完整记录和当前插件清单为准。
+
+执行边界和普通 Runtime 测试要求见 [可信开发环境](trusted-development.md)。

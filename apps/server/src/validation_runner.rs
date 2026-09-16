@@ -1,4 +1,4 @@
-//! Fixed candidate execution in a read-only PID/network namespace. The host
+//! Fixed candidate checks in the trusted development environment. The host
 //! supplies the reviewed plan; neither Agent output nor HTTP can choose it.
 use crate::{
     process,
@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     io::Read,
+    os::unix::process::CommandExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
     time::{Duration, Instant},
@@ -29,8 +30,6 @@ pub struct Plan {
     pub steps: Vec<Step>,
     pub entry: PathBuf,
     pub entry_sha256: String,
-    pub sandbox: PathBuf,
-    pub sandbox_sha256: String,
 }
 impl Plan {
     pub fn identity(&self) -> Result<TrustedIdentity> {
@@ -40,17 +39,15 @@ impl Plan {
             config_sha256: sha256(serde_json::to_vec(self)?),
             protected_entry: self.entry.to_string_lossy().into_owned(),
             protected_entry_sha256: self.entry_sha256.clone(),
-            tool: "bubblewrap".into(),
-            tool_version: self.sandbox_sha256.clone(),
+            tool: "trusted-development-process".into(),
+            tool_version: "1".into(),
         })
     }
     fn validate(&self) -> Result<()> {
-        if self.steps.is_empty() || !self.entry.is_absolute() || !self.sandbox.is_absolute() {
+        if self.steps.is_empty() || !self.entry.is_absolute() {
             return Err("invalid validation plan".into());
         }
-        if digest(&self.entry)? != self.entry_sha256
-            || digest(&self.sandbox)? != self.sandbox_sha256
-        {
+        if digest(&self.entry)? != self.entry_sha256 {
             return Err("protected validation tool changed".into());
         }
         for step in &self.steps {
@@ -167,23 +164,32 @@ fn run_step(
         .stdout(Stdio::from(file.try_clone()?))
         .stderr(Stdio::from(file));
     let mut child = command.spawn()?;
-    let exit = wait(&mut child, step.timeout_seconds)?;
+    let exit = wait(&mut child, step.timeout_seconds, &path)?;
     evidence(directory, index, step, exit)
 }
-fn wait(child: &mut std::process::Child, timeout: u64) -> Result<Option<i32>> {
+fn wait(child: &mut std::process::Child, timeout: u64, output: &Path) -> Result<Option<i32>> {
     let deadline = Instant::now() + Duration::from_secs(timeout);
     let exit = loop {
         if let Some(status) = child.try_wait()? {
             break status.code();
         }
-        if Instant::now() >= deadline {
-            child.kill()?;
+        if Instant::now() >= deadline || fs::metadata(output)?.len() >= LIMIT {
+            stop_group(child.id());
             child.wait()?;
             break None;
         }
         std::thread::sleep(Duration::from_millis(20));
     };
+    stop_group(child.id());
     Ok(exit)
+}
+fn stop_group(pid: u32) {
+    unsafe extern "C" {
+        fn kill(pid: i32, signal: i32) -> i32;
+    }
+    unsafe {
+        kill(-(pid as i32), 9);
+    }
 }
 fn evidence(
     directory: &Path,
@@ -192,7 +198,7 @@ fn evidence(
     exit: Option<i32>,
 ) -> Result<StepEvidence> {
     let path = directory.join(format!("step-{index}.log"));
-    // bwrap owns a PID namespace: its exit tears down all command descendants.
+    // The command process group is stopped before reading retained output.
     let mut bytes = Vec::new();
     fs::File::open(&path)?
         .take(LIMIT + 1)
@@ -213,52 +219,12 @@ fn evidence(
     })
 }
 fn command(root: &Path, step: &Step, plan: &Plan) -> Command {
-    let mut c = Command::new("/usr/bin/prlimit");
-    c.arg(format!("--fsize={LIMIT}:{LIMIT}"))
-        .arg("--")
-        .arg(&plan.sandbox);
-    c.args([
-        "--die-with-parent",
-        "--new-session",
-        "--unshare-all",
-        "--ro-bind",
-        "/usr",
-        "/usr",
-        "--symlink",
-        "usr/bin",
-        "/bin",
-        "--symlink",
-        "usr/lib",
-        "/lib",
-        "--symlink",
-        "usr/lib64",
-        "/lib64",
-        "--proc",
-        "/proc",
-        "--dev",
-        "/dev",
-        "--tmpfs",
-        "/tmp",
-        "--ro-bind",
-    ])
-    .arg(root)
-    .arg("/candidate")
-    .arg("--ro-bind")
-    .arg(&plan.entry)
-    .arg("/gate-entry")
-    .args([
-        "--clearenv",
-        "--setenv",
-        "PATH",
-        "/usr/bin:/bin",
-        "--setenv",
-        "HOME",
-        "/tmp",
-        "--chdir",
-        "/candidate",
-        "--",
-    ])
-    .args(&step.command)
-    .stdin(Stdio::null());
+    let mut c = Command::new(&plan.entry);
+    c.args(&step.command[1..])
+        .current_dir(root)
+        .process_group(0)
+        .stdin(Stdio::null());
+    // Credentials belong to remote-action/signing services, not this worker.
+    process::development_environment(&mut c);
     c
 }

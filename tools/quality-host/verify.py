@@ -14,7 +14,7 @@ def verify(run, repository, root, profile="ci"):
         p=root/name;p.mkdir(parents=True,exist_ok=True);writable.append(p)
     modules=root/'web/angular/node_modules';modules.mkdir(exist_ok=True)
     paths=[str(Path(shutil.which(name)).resolve().parent) for name in ('harness-gate','harness-gate-rust-collector')]
-    environment={'PATH':':'.join(paths+['/home/gem/.cargo/bin','/usr/local/bin','/usr/bin','/bin'])}
+    environment={'PATH':':'.join(paths+['/opt/codex','/home/gem/.cargo/bin','/usr/local/bin','/usr/bin','/bin'])}
     baseline=Path(load(run/'requests.json')['frontend-api']['parameters']['receipt']['baseline']['path'])
     container,url=database(run)
     try:

@@ -11,14 +11,14 @@ manifest=json.loads((source/'SOURCE.json').read_text())
 for name,identity in manifest['files'].items():
     assert hashlib.sha256((source/name).read_bytes()).hexdigest()==identity['sha256']
 assert manifest['commit']=='2faa1ca6c1a2b1a45956540e97e68a01532a40f7'
-for path in [Path('.git/gh12-write-probe'),source/'write-probe']:
+for path in [source/'write-probe']:
     try:
         with path.open('x') as f:f.write('probe')
         path.unlink();raise AssertionError('Protected path is writable: '+str(path))
     except OSError as error: assert error.errno in [errno.EROFS,errno.EACCES,errno.EPERM],error
 assert not Path('/home/gem/.local/share/codexsymphony/gate-host/approval.json').exists()
 assert not Path('/home/gem/.secrets/my-disposable-bot.2026-09-08.private-key.pem').exists()
-proof={'source_sha':manifest['commit'],'source_hashes':'PASS','readonly_source_and_git':'PASS',
+proof={'source_sha':manifest['commit'],'source_hashes':'PASS','readonly_reference_source':'PASS',
        'host_gate_and_key_hidden':True,'select_1':{},'recreation':{}}
 table='environment_probe_'+uuid.uuid4().hex
 for role in ['test','dev']:

@@ -1,4 +1,4 @@
-"""Fixed non-model probes, executed *inside* the Agent command sandbox.
+"""Fixed non-model probes, executed in the actual trusted development environment.
 
 The platform supplies reviewed deployment input through stdin/argv, never code.
 This module does not install dependencies or change network/system policy.
@@ -85,35 +85,10 @@ def fetch(url):
 
 
 def network(config):
-    allowed = fetch(config["allowed_url"])
-    denied = denied_response(config["denied_url"])
-    # A TCP refusal or DNS error is not proof of network isolation. Resolve first
-    # and require an explicit sandbox routing/permission error for every address.
-    addresses = config["direct_addresses"]
-    bypass = bool(addresses)
-    direct_results = []
-    for family, kind, protocol, _, address in addresses:
-        with socket.socket(family, kind, protocol) as connection:
-            connection.settimeout(2)
-            result = connection.connect_ex(tuple(address))
-            direct_results.append({"address": address, "errno": result})
-            bypass = bypass and result in (errno.ENETUNREACH, errno.EACCES, errno.EPERM)
-    return {"allowed_probe": 200 <= allowed[0] < 300,
-            "denied_probe": denied[0] == 403 and "x-proxy-error: blocked-by-allowlist" in denied[1].lower(),
-            "direct_connection_rejected": bypass,
-            "direct_results": direct_results,
-            "responses": {"allowed": allowed, "denied": denied}}
-
-
-def denied_response(url):
-    # Preserve the proxy's CONNECT response headers; generic TLS clients often
-    # raise before making the managed policy-denial header available.
-    result = subprocess.run(["curl", "-sS", "-i", "--max-time", "8", url],
-                            capture_output=True, text=True, timeout=10)
-    headers = result.stdout[:4096]
-    first = headers.splitlines()[0] if headers else ""
-    status = 403 if first.startswith("HTTP/") and first.split()[1:2] == ["403"] else 0
-    return status, headers
+    # Connectivity is checked for required endpoints; no per-task firewall claim.
+    responses = {url: fetch(url) for url in config.get("network_urls", [])}
+    return {"reachable": all(200 <= response[0] < 400 for response in responses.values()),
+            "responses": responses}
 
 
 def failure(error, code):

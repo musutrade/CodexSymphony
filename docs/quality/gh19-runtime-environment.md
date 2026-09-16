@@ -1,3 +1,5 @@
+> 历史验收记录：执行边界已于 2026-09-16 改为可信开发环境。本文旧沙箱、白名单和专用验收入口不再是当前要求；以主规格及 docs/trusted-development.md 为准。历史结果保持原样。
+
 # GH-19 Runtime 环境恢复（2026-09-16）
 
 原阻塞在 initialize 之前退出。仅设置 sqlite_home/log_dir 不足以隔离 Codex 的

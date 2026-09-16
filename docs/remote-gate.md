@@ -48,34 +48,13 @@ App 需安装到本仓库，具有 Checks 读写、Actions 只读、Contents 只
 
 `python3 tools/install_symphony_development.py` 准备独立服务、环境和稳定台账路径，
 不复制 Harness-Gate 的历史台账，也不自动启动调度。当前版本固定 Codex 0.154.0。
-`tools/symphony/codex_sandbox.py` 在另一个文件系统命名空间内启动 app-server，
-仅挂载该 Issue 工作区、模型认证目录与构建工具；App 私钥、GitHub CLI 凭据、
-宿主批准文件及交接台账不挂载。GitHub REST 仍由外部 Elixir 动态工具执行。
-`.git` 在 Agent 命名空间中只读，模型认证目录不等同于 GitHub 凭据隔离。
-真实 command/exec 预检通过；环境 Issue #27 已由模型经宿主 API 发布 PR #28，
-两个受保护检查通过后，控制器自动合并并关闭 Issue。完整记录见
-[远端环境验收](quality/remote-environment/README.md)。现有 0a #12–#25 未领取。
-
-Codex 认证复用项目已有的独立 CODEX_HOME；官方说明见
-[Codex authentication](https://learn.chatgpt.com/docs/auth)。
-
-## Ubuntu AppArmor 的嵌套沙箱前置项
-
-当前主机的 `/etc/apparmor.d/bwrap-userns-restrict` 将子进程叠加到
-`unpriv_bwrap`，其中 `audit deny capability` 阻止 Codex 再创建内层命令沙箱。
-仅 app-server initialize 成功不足以证明命令可执行；实际 `command/exec` 必须通过。
-
-`sudo bash tools/symphony/install-apparmor.sh` 安装 root 拥有、仅 root/gem 可执行的
-专用外层 bwrap 副本及独立 AppArmor profile；系统 `/usr/bin/bwrap`、默认 profile
-与全局 sysctl 保持原值。外层仍执行既定只读/可写挂载，内层仍由 Codex workspace-write
-策略限制。该操作须管理员安装；未知 bwrap 二进制摘要会拒绝安装。
-
-修复后先通过真实 `command/exec` 验证普通命令可运行、`.git` 不可写、App 私钥与
-宿主批准文件不可见，再恢复测试任务。原失败、已用预算和工作区均保留。
-
-安装或升级后运行 `python3 tools/symphony/check_sandbox.py`，它不调用模型，
-而是通过真实 app-server `command/exec` 检查嵌套沙箱、Core 0.4.5 的 PATH 优先级、
-Git 元数据写保护及两个宿主敏感路径的不可见性。结果在服务状态目录留存。
+`tools/symphony/trusted_environment.py` 只负责部署级开发环境边界，省略 GitHub 凭据、签名密钥和控制面状态的挂载。
+环境内 Codex 使用 danger-full-access；普通 Git、构建、数据库、浏览器和真实 Runtime 测试直接运行。
+不要求嵌套命令沙箱、静态网络白名单或逐测试宿主入口。正式 Gate 继续使用独立执行和签名服务。
+此部署采用已有的外层环境启动器；产品不要求所有部署使用同一种隔离技术，也不承诺接管不可信代码。
+安装后运行 `python3 tools/symphony/check_environment.py`，通过真实 command/exec 检查普通命令、
+本地 Git 可写、工具版本及服务凭据不可见。该检查不替代项目测试和精确提交双 Gate。
+完整边界及迁移说明见 [可信开发环境](trusted-development.md)。旧环境验收记录仅是历史证据。
 
 ## CI 范围与过期任务（2026-09）
 

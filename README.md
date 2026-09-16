@@ -2,23 +2,23 @@
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。
 
-当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。真实编码与 PR 交付尚未接通，Ready 保持排队。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
+当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。已接入锁定 Codex Runtime、累计额度和固定候选验证；PR 可靠交付仍由 GH-21 完成。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
 
-[工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 与远端交付仍等待后续任务。
+[工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 已接通，远端交付仍等待 GH-21 完成。
 
 [GitHub App 预检与只读观察](docs/github-observation.md) 保存仓库能力及独立 PR/CI 事实，
 缺能力或过期时拒绝领取；60 秒轮询及失败退避不启动模型。真实写交接与自动合并未接通。
 
-[执行环境预检与磁盘保护](docs/preparation.md) 已加入固定沙箱探针、持久化有限重试、
+[执行环境预检与磁盘保护](docs/preparation.md) 已加入真实开发环境探针、持久化有限重试、
 精确领取证据和存储停止保护；编码与远端写交接仍受后续任务门禁约束。
 
-[需求累计额度](docs/budgets.md) 已加入首次授权冻结、跨 Run 调用预留、累计用量结算和独立等待计时；真实 Runtime 发送仍待后续接入。
+[需求累计额度](docs/budgets.md) 已加入首次授权冻结、跨 Run 调用预留、累计用量结算和独立等待计时；真实 Runtime 已使用该累计额度。
 
 ## 从这里开始
 
 | 文档 | 效力 |
 |---|---|
-| [综合方案 V10.3](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
+| [综合方案 V10.4](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
 | [日常 V1 契约](docs/daily-use-v1.md) | 已确认的多入口、父子队列、手机接续与自动交付要求 |
 | [架构边界](docs/architecture-boundaries.md) | 三个真相分离，Harness-Gate 只提供验证证据 |
 | [演进目录](docs/roadmap-specs/README.md) | 后期候选及启用条件，不构成当前开发/验收要求 |
@@ -36,7 +36,7 @@
 - 一个 Rust 控制面 + PostgreSQL + 最小 Angular Web，60 秒只读 GitHub 轮询。
 - GitHub App；Agent 只通过受控工具提交/声明，平台经持久化 outbox 发布。
 - 严格全局顺序覆盖编码、验证、交接、CI 等待和阻塞；具体释放条件见综合方案第 6 章。
-- 部署期强制静态网络白名单；需求联网声明只是评审意图，不承诺逐任务网络隔离。
+- 采用 Symphony 的可信开发环境；普通命令和测试直接执行，网络声明仅用于依赖准备与连通性检查。
 - 保留启动恢复闸门、工作保全、精确验证身份、0a 一次代码修复、跨 Run 累计预算和磁盘保护。
 - 仓库先做交付能力检查；暂停保留占用，取消按完整收尾流程释放。旧 S2 合并字段推论已纠正，实际规则见综合方案 11.1/11.2。
 - 手机、执行隔离、Harness-Gate 接入及自动合并随后分期；通用租约/诊断/资源/缓存框架按实际需要评估。
@@ -44,7 +44,7 @@
 ## 已有实验
 
 [S1](spikes/s1/README.md)验证动态工具与工作区写边界；[S2](spikes/s2/README.md)及[补测](spikes/s2/README_S2b.md)验证 App、PR、Checks 与 SHA 守卫；[S3](spikes/s3/README.md)验证 Access；[S4](spikes/s4/README.md)验证 Gate 配置身份；[S5](spikes/s5/README.md)验证全局网络配置。
-实验结论绑定当时版本，不替代当前部署和实现验收。尤其 workspace-write 不限制同 UID 读取，0a 只接管本人可信仓库。
+实验结论仅保留为历史记录。当前边界见 [可信开发环境](docs/trusted-development.md)：GitHub 与签名凭据独立托管，开发环境只接管本人可信代码。
 
 参考：[OpenAI Symphony](https://github.com/openai/symphony)、[Harness-Gate](https://github.com/musutrade/Harness-Gate)。
 

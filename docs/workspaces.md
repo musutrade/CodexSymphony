@@ -20,7 +20,7 @@
     manifest.json               SHA-256、Git 执行位、排除项与来源身份
 ```
 
-先调用已有内部 Run reservation（launch cwd 必须等于 Broker 计算的路径），再 Prepare 或 Restore。后续 Runtime 必须把进程与 thread cwd 都设置为该路径，并使 canonical、archive 和 worktree `.git` 指针对 Agent 只读。此项没有复制外部开发控制器的 Git Data API 发布协议，也没有宣称同 UID 的强读隔离已完成。
+先调用已有内部 Run reservation（launch cwd 必须等于 Broker 计算的路径），再 Prepare 或 Restore。后续 Runtime 必须把进程与 thread cwd 都设置为该路径，canonical/archive 由平台保管，worktree 中普通本地 Git 可写，不以只读 `.git` 作为产品要求。此项没有复制外部开发控制器的 Git Data API 发布协议，也没有宣称同 UID 的强读隔离已完成。
 
 固定 `/usr/bin/git`、参数数组、清空继承环境、禁系统/全局配置，并逐次核对 canonical 的最小受管配置。禁 hooks、credential helper、签名、fsmonitor、自动维护及非本地协议；只从已验证的本地 bundle 导入。不运行 Agent 的 Git shell，不提供 push。Commit 由 Broker 暂存源码变更（沿用 Git ignore，并明确排除三个根缓存目录）后提交；消息通过 stdin 输入，结果由 Run/tool request 幂等保存。Git 对象/refs 开启 fsync。
 
