@@ -25,6 +25,7 @@ blocked=['GITHUB_TOKEN','GH_TOKEN','GITHUB_ENTERPRISE_TOKEN','GH_ENTERPRISE_TOKE
 assert all(k not in os.environ for k in blocked)
 assert os.environ['PATH']=='/usr/bin:/bin'
 assert os.environ['LANG']=='C.UTF-8'
+assert os.environ['TEST_DATABASE_URL']=='synthetic-project-test-database'
 assert Path(os.environ['CODEX_HOME']).resolve()==Path.cwd()/'codex-home'
 assert Path(os.environ['TMPDIR']).resolve()==Path.cwd()/'codex-home/tmp'
 Path(os.environ['TMPDIR'],'write-probe').write_text('ok')
@@ -47,7 +48,8 @@ print('environment-boundary-PASS')
         .arg(&root)
         .env_clear()
         .env("PATH", "/usr/bin:/bin")
-        .env("LANG", "C.UTF-8");
+        .env("LANG", "C.UTF-8")
+        .env("TEST_DATABASE_URL", "synthetic-project-test-database");
     for name in [
         "GITHUB_TOKEN",
         "GH_TOKEN",

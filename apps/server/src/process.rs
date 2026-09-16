@@ -167,7 +167,7 @@ pub fn supervise(directory: &Path) -> io::Result<()> {
 
 /// Only deployment tool/network settings cross into Runtime. Unknown names,
 /// including custom tracker credentials and loader hooks, are excluded.
-fn runtime_environment(command: &mut Command, directory: &Path) -> io::Result<()> {
+pub(crate) fn development_environment(command: &mut Command) {
     const ALLOWED: &[&str] = &[
         "PATH",
         "HOME",
@@ -178,6 +178,8 @@ fn runtime_environment(command: &mut Command, directory: &Path) -> io::Result<()
         "CARGO_HOME",
         "RUSTUP_HOME",
         "CARGO_TARGET_DIR",
+        "TEST_DATABASE_URL",
+        "DEV_DATABASE_URL",
         "HTTP_PROXY",
         "HTTPS_PROXY",
         "ALL_PROXY",
@@ -195,6 +197,10 @@ fn runtime_environment(command: &mut Command, directory: &Path) -> io::Result<()
             command.env(name, value);
         }
     }
+}
+
+fn runtime_environment(command: &mut Command, directory: &Path) -> io::Result<()> {
+    development_environment(command);
     let home = directory.join("codex-home").canonicalize()?;
     let temporary = home.join("tmp");
     fs::create_dir_all(&temporary)?;

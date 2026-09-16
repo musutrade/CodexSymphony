@@ -225,6 +225,6 @@ fn command(root: &Path, step: &Step, plan: &Plan) -> Command {
         .process_group(0)
         .stdin(Stdio::null());
     // Credentials belong to remote-action/signing services, not this worker.
-    c.env_remove("GITHUB_TOKEN").env_remove("GH_TOKEN");
+    process::development_environment(&mut c);
     c
 }

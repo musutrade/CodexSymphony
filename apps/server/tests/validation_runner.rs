@@ -36,7 +36,7 @@ fn fixture() -> (PathBuf, PathBuf, Plan) {
     git(&repo, &["add", "."]);
     git(&repo, &["commit", "-qm", "candidate"]);
     let entry = root.join("entry");
-    fs::write(&entry,"#!/bin/sh\ncat source\ncase \"$1\" in artifact) mkdir -p build; head -c 2097152 /dev/zero > build/output;; fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> source;; *) exit 0;; esac\n").unwrap();
+    fs::write(&entry,"#!/bin/sh\ncat source\ntest -z \"$GITHUB_TOKEN$GH_ENTERPRISE_TOKEN$CUSTOM_TRACKER_SECRET$DATABASE_URL\" || exit 9\ncase \"$1\" in artifact) mkdir -p build; head -c 2097152 /dev/zero > build/output;; fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> source;; *) exit 0;; esac\n").unwrap();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o755)).unwrap();
     let plan = Plan {
         entry_sha256: sha256(fs::read(&entry).unwrap()),
@@ -114,4 +114,21 @@ fn protected_plan_rejects_tampering() {
     assert!(bad.identity().is_err());
     fs::write(&plan.entry, "#!/bin/sh\ntrue\n").unwrap();
     assert!(plan.identity().is_err());
+}
+
+#[test]
+fn validation_does_not_inherit_control_plane_credentials() {
+    let output = Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "fixed_process_and_reconciliation"])
+        .env("GITHUB_TOKEN", "synthetic-token")
+        .env("GH_ENTERPRISE_TOKEN", "synthetic-enterprise")
+        .env("CUSTOM_TRACKER_SECRET", "synthetic-custom")
+        .env("DATABASE_URL", "synthetic-control-database")
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
 }
