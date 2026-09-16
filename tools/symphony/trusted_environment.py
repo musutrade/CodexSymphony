@@ -31,7 +31,7 @@ def command(argv, state_home=None):
     temporary=cwd/'.agent-tmp';temporary.mkdir(exist_ok=True)
     auth=BASE/'codex-home'
     args=['/usr/local/libexec/codexsymphony/bwrap','--die-with-parent','--new-session','--unshare-user','--unshare-pid',
-          '--ro-bind','/usr','/usr','--ro-bind','/etc','/etc',
+          '--ro-bind','/usr','/usr','--ro-bind','/etc','/etc','--tmpfs','/etc/codex',
           '--symlink','usr/bin','/bin','--symlink','usr/lib','/lib','--symlink','usr/lib64','/lib64',
           '--proc','/proc','--dev','/dev','--tmpfs','/run',*resolver_mount(),
           '--bind',str(temporary),'/tmp','--dir',str(HOME),

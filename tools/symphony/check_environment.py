@@ -6,11 +6,12 @@ root=Path('/home/gem/.local/share/codexsymphony/workspaces/isolation-preflight')
 base=Path('/home/gem/.local/share/codexsymphony/symphony')
 root.mkdir(parents=True,exist_ok=True)
 subprocess.run(['git','init','--quiet',root],check=True)
-script="""import errno,json
+script="""import errno,json,os
 from pathlib import Path
 import subprocess
 core_version=subprocess.check_output(["harness-gate","--version"],text=True).strip()
 assert core_version=="harness-gate 0.4.5"
+assert 'CODEX_NETWORK_PROXY_ACTIVE' not in os.environ
 p=Path('.git/environment-acceptance-canary')
 p.write_text('probe');p.unlink()
 r={'git_writable':True,'app_key_visible':Path('/home/gem/.secrets/my-disposable-bot.2026-09-08.private-key.pem').exists(),'host_approval_visible':Path('/home/gem/.local/share/codexsymphony/gate-host/approval.json').exists()}
