@@ -16,6 +16,18 @@ pub struct Failure {
 }
 
 impl Failure {
+    /// Only enabled preparation failures are automatically probed. Other current
+    /// errors retain their raw facts and require their phase-specific controller.
+    pub fn automatic_retry(&self) -> bool {
+        matches!(
+            self.code.as_str(),
+            "preparation_dependency_missing"
+                | "preparation_capability_mismatch"
+                | "preparation_path_unwritable"
+                | "network_scope_unavailable"
+        )
+    }
+
     pub fn new(code: &str, detail: &str, evidence: &str) -> Self {
         Self {
             code: code.into(),
@@ -82,7 +94,7 @@ impl Retry {
     }
 
     pub fn fail(&mut self, failure: Failure, now: i64) {
-        let requires_authorization = failure.code == "policy_identity_mismatch";
+        let requires_authorization = !failure.automatic_retry();
         self.last_failure = Some(failure);
         if requires_authorization || self.expired(now) {
             self.exhaust();

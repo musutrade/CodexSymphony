@@ -1,4 +1,4 @@
-// harness-contract-sha256: f4a4e3ff532d75b79baccb2ee81d66b542c5418ddfbbb9dfaf5ca609d055a4a3
+// harness-contract-sha256: 84250004f200f22ec9f5b2ea4bbd2e773d7d60657c1b5cc6a7fcc27f751a3c4e
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -10,6 +10,7 @@ export interface GetRepositoryResponse {
     repository: {
       base_branch: string;
       github_repository_id: number;
+      model?: string | null;
       policy: {
         allowed_checks: string[];
         gate_recovery_policy: string;
@@ -33,6 +34,7 @@ export type ConfigureRepositoryResponse =
       repository: {
         base_branch: string;
         github_repository_id: number;
+        model?: string | null;
         policy: {
           allowed_checks: string[];
           gate_recovery_policy: string;
@@ -53,6 +55,7 @@ export interface ConfigureRepositoryRequest {
   repository: {
     base_branch: string;
     github_repository_id: number;
+    model?: string | null;
     policy: {
       allowed_checks: string[];
       gate_recovery_policy: string;
@@ -70,7 +73,13 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
+  requirements: {
+    id: number;
+    revision: number;
+    state: string;
+    title: string;
+    version: number;
+  }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -110,6 +119,7 @@ export type CreateRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          model?: string | null;
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -186,6 +196,7 @@ export type GetRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          model?: string | null;
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -245,6 +256,7 @@ export type UpdateRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          model?: string | null;
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -321,6 +333,7 @@ export type ReadyRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          model?: string | null;
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -385,6 +398,7 @@ export type WithdrawRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          model?: string | null;
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -419,10 +433,6 @@ export interface ExecutionStatusResponse {
   requirement_id: number | null;
 }
 export type PauseExecutionResponse = { paused: true } | { error: string };
-export interface PauseExecutionRequest {
-  pause: true;
-}
+export interface PauseExecutionRequest { pause: true }
 export type PauseRequirementResponse = { paused: true } | { error: string };
-export interface PauseRequirementRequest {
-  pause: true;
-}
+export interface PauseRequirementRequest { pause: true }

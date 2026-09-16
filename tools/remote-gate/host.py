@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Installed host polls Actions; validates exact commits outside GitHub runners."""
 import argparse
+import errno
 from datetime import datetime,timezone
 import fcntl
 import hashlib
@@ -22,6 +23,31 @@ def write(path,value):
     pending.write_text(json.dumps(value,indent=2)+'\n');pending.replace(path)
 def sha(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def timestamp(): return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
+
+
+def link_or_copy(source, destination):
+    try:
+        os.link(source, destination)
+    except OSError as error:
+        if error.errno != errno.EXDEV: raise
+        shutil.copy2(source, destination)
+    return destination
+
+
+def reconcile_interrupted(config, home, token):
+    # Called under the exclusive service lock, before this process starts work.
+    # Actions may already have timed out, so polling in_progress runs misses these.
+    for receipt in sorted((home/'jobs').glob('*/receipt.json')):
+        if receipt.is_symlink() or receipt.parent.is_symlink():
+            raise ValueError('symlink receipt')
+        prior=load(receipt)
+        if prior.get('finished'): continue
+        if not re.fullmatch(r'\d+/\d+',prior['identity']) or receipt.parent.name!=prior['identity'].replace('/','-'):
+            raise ValueError('invalid interrupted identity')
+        request('/repos/'+config['repository']+'/check-runs/'+str(prior['check_id']),token,'PATCH',
+                {'status':'completed','conclusion':'failure','completed_at':timestamp(),
+                 'output':{'title':'Host interrupted','summary':'Retained evidence is preserved. A fresh Actions attempt is required.'}})
+        write(receipt,prior|{'finished':True,'status':'interrupted'})
 
 
 def validate_run(run,config):
@@ -54,7 +80,7 @@ def prepare(run,config,job):
     deps=Path(config['dependency_source'])
     for name in ('package.json','package-lock.json'):
         if sha(root/'web/angular'/name)!=sha(deps.parent/name): raise ValueError('frontend dependencies need host review')
-    shutil.copytree(deps,root/'web/angular/node_modules',symlinks=True,copy_function=os.link)
+    shutil.copytree(deps,root/'web/angular/node_modules',symlinks=True,copy_function=link_or_copy)
     approved=approval|{'repository':str(root)}
     write(job/'gate-approval.json',approved)
     return root,approved
@@ -105,7 +131,9 @@ def process(run,config,home):
                  f"Report SHA-256: `{result['report_sha256']}`\n\nHost retention: `{result['run']}`")
     except Exception as error:
         result={'status':'FAIL','error':str(error)};conclusion='failure';title='Trusted host rejected validation'
-        summary=f"Commit: `{run['head_sha']}`\n\nActions attempt: `{identity}`\n\n{type(error).__name__}: {error}\n\nLocal receipt: `{job}`"
+        write(job/'failure.json',result)
+        detail=str(error)[:12000]
+        summary=f"Commit: `{run['head_sha']}`\n\nActions attempt: `{identity}`\n\n{type(error).__name__}: {detail}\n\nFull error retained in: `{job}/failure.json`"
     # Refresh the installation token after potentially long native compilation.
     token=installation_token(config)
     request(prefix+'/check-runs/'+str(check['id']),token,'PATCH',
@@ -124,6 +152,7 @@ def main():
         while True:
             try:
                 token=installation_token(config)
+                reconcile_interrupted(config,home,token)
                 # New PR workflows need not exist on the default branch yet.
                 runs=request('/repos/'+config['repository']+'/actions/runs?status=in_progress&per_page=30',token)
                 for run in reversed(runs['workflow_runs']):

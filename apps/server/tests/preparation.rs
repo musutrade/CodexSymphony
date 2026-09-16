@@ -140,7 +140,7 @@ async fn database() -> PgPool {
         .await
         .unwrap();
     sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
-    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(1,1,'{\"revoked\":false,\"github_repository_id\":99}'); INSERT INTO requirement(version,state,contract,revision) VALUES(1,'Ready','{}',1); INSERT INTO requirement_revision(requirement_id,revision,document) VALUES(1,1,'{\"repository_version\":1,\"contract\":{\"network_access\":[\"crates.io\"]}}'); UPDATE execution_control SET incarnation='current',recovery_complete=true; INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr,capability,checked_at,stale) VALUES(99,1,'{}',1,'{\"policy\":{},\"blockers\":[]}',extract(epoch FROM now())::bigint,false)")
+    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(1,1,'{\"revoked\":false,\"github_repository_id\":99}'); INSERT INTO requirement(version,state,contract,revision) VALUES(1,'Ready','{}',1); INSERT INTO requirement_revision(requirement_id,revision,document) VALUES(1,1,'{\"repository_version\":1,\"repository\":{\"model\":\"reviewed-model\"},\"contract\":{\"network_access\":[\"crates.io\"]}}'); UPDATE execution_control SET incarnation='current',recovery_complete=true; INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr,capability,checked_at,stale) VALUES(99,1,'{}',1,'{\"policy\":{},\"blockers\":[]}',extract(epoch FROM now())::bigint,false)")
         .execute(&pool).await.unwrap();
     pool
 }
@@ -251,6 +251,12 @@ async fn persisted_attempts_resume_phase_and_preserve_pause() {
     changed.workspace_identity = "different".into();
     assert!(!run_store::reserve_prepared(&pool, &changed).await.unwrap());
     assert!(run_store::reserve_prepared(&pool, &launch).await.unwrap());
+    let model: String = sqlx::query_scalar("SELECT model FROM agent_run WHERE id=$1")
+        .bind(&launch.key.run_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(model, "reviewed-model");
     assert!(PathBuf::from(&launch.workspace).exists());
 }
 
@@ -476,7 +482,7 @@ async fn preparation_service_persists_real_adapter_errors_and_admits_only_succes
     let now = codexsymphony_server::github_service::now();
     fs::write(
         &adapter,
-        "import sys\nprint('missing capability',file=sys.stderr)\nsys.exit(7)\n",
+        "import sys,time\ntime.sleep(1)\nprint('missing capability',file=sys.stderr)\nsys.exit(7)\n",
     )
     .unwrap();
     assert!(
@@ -484,7 +490,13 @@ async fn preparation_service_persists_real_adapter_errors_and_admits_only_succes
             .await
             .unwrap()
     );
-    let failure = retry(&pool, &launch).await.last_failure.unwrap();
+    let failed = retry(&pool, &launch).await;
+    let next_attempt = failed.next_attempt_at.unwrap();
+    assert!(
+        next_attempt >= now + 31,
+        "backoff starts after the slow probe completes"
+    );
+    let failure = failed.last_failure.unwrap();
     assert!(failure.detail.contains('7'));
     assert!(
         fs::read_to_string(PathBuf::from(failure.evidence).join("stderr.log"))
@@ -492,19 +504,20 @@ async fn preparation_service_persists_real_adapter_errors_and_admits_only_succes
             .contains("missing capability")
     );
     assert!(
-        !preparation_service::prepare(&pool, request(now + 29))
+        !preparation_service::prepare(&pool, request(next_attempt - 1))
             .await
             .unwrap()
     );
     fs::write(&adapter, "print('malformed')\n").unwrap();
     assert!(
-        !preparation_service::prepare(&pool, request(now + 30))
+        !preparation_service::prepare(&pool, request(next_attempt))
             .await
             .unwrap()
     );
+    let next_attempt = retry(&pool, &launch).await.next_attempt_at.unwrap();
     fs::write(&adapter, format!("import json,sys\nconfig=json.load(sys.stdin)\nassert config['workspace']=={0:?}\nprint({1:?})\n", launch.workspace, json!(evidence()).to_string())).unwrap();
     assert!(
-        preparation_service::prepare(&pool, request(now + 150))
+        preparation_service::prepare(&pool, request(next_attempt))
             .await
             .unwrap()
     );

@@ -6,6 +6,19 @@ import unittest
 from host import validate_run,check_files
 
 class TrustedRun(unittest.TestCase):
+    def test_cross_device_dependencies_copy_and_other_errors_propagate(self):
+        import errno,os
+        from unittest.mock import patch
+        from host import link_or_copy
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/'source';destination=Path(tmp)/'destination'
+            source.write_bytes(b'dependency');source.chmod(0o755)
+            with patch('host.os.link',side_effect=OSError(errno.EXDEV,'cross-device')):
+                link_or_copy(source,destination)
+            self.assertEqual(destination.read_bytes(),source.read_bytes())
+            self.assertEqual(destination.stat().st_mode,source.stat().st_mode)
+            with patch('host.os.link',side_effect=OSError(errno.EACCES,'denied')):
+                with self.assertRaises(OSError):link_or_copy(source,Path(tmp)/'denied')
     def setUp(self):
         self.config={'repository':'musutrade/CodexSymphony'}
         self.run={'repository':{'full_name':self.config['repository']},'head_repository':{'full_name':self.config['repository']},
@@ -58,3 +71,18 @@ class InstallationTokens(unittest.TestCase):
         self.assertEqual(github._tokens,{})
 
 if __name__=='__main__':unittest.main()
+
+class InterruptedRecovery(unittest.TestCase):
+    def test_finished_actions_receipt_is_reconciled_once_without_success(self):
+        import json
+        from unittest.mock import patch
+        import host
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);p=home/'jobs/12-1/receipt.json';p.parent.mkdir(parents=True)
+            p.write_text(json.dumps({'identity':'12/1','check_id':9,'source_sha':'a'*40,'finished':False}))
+            with patch.object(host,'request') as request:
+                host.reconcile_interrupted({'repository':'owner/repo'},home,'fixture')
+                self.assertEqual(request.call_args.args[3]['conclusion'],'failure')
+                self.assertEqual(json.loads(p.read_text())['status'],'interrupted')
+                host.reconcile_interrupted({'repository':'owner/repo'},home,'fixture')
+                self.assertEqual(request.call_count,1)

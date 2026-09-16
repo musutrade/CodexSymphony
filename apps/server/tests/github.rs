@@ -567,17 +567,24 @@ async fn control_plane_configuration_and_readonly_cli() {
     let worker = github_service::start_configured(&pool, &config, client)
         .await
         .unwrap();
-    for _ in 0..100 {
-        if count(
-            &pool,
-            "SELECT count(*) FROM github_repository WHERE NOT stale",
-        )
-        .await
-            == 1
-        {
-            break;
+    // Capability is an intermediate result. Require complete PR sync cycles,
+    // including a fresh poll after the worker's sleep, before stopping it.
+    assert!(github_store::link(&pool, 99, 1, 1).await.unwrap());
+    for _ in 0..2 {
+        sqlx::query("UPDATE github_pr SET stale=true,next_attempt_at=0")
+            .execute(&pool)
+            .await
+            .unwrap();
+        for _ in 0..100 {
+            if count(&pool, "SELECT count(*) FROM github_pr WHERE NOT stale").await == 1 {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         }
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        assert_eq!(
+            count(&pool, "SELECT count(*) FROM github_pr WHERE NOT stale AND observation->>'merge'='Unmerged'").await,
+            1
+        );
     }
     assert_eq!(
         count(
@@ -588,6 +595,7 @@ async fn control_plane_configuration_and_readonly_cli() {
         1
     );
     worker.abort();
+    assert!(worker.await.unwrap_err().is_cancelled());
     let binary = env!("CARGO_BIN_EXE_codexsymphony-server");
     let out = std::process::Command::new(binary)
         .arg("--github-inspect")

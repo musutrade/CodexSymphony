@@ -38,6 +38,7 @@ pub struct Policy {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Repository {
+    pub model: Option<String>,
     pub project: String,
     pub remote: String,
     pub github_repository_id: i64,
@@ -78,6 +79,10 @@ pub fn validate_repository(repo: &Repository) -> Result<(), &'static str> {
     require(
         repo.github_repository_id > 0 && identifier(&repo.base_branch),
         "repository identity and base branch are required",
+    )?;
+    require(
+        repo.model.as_ref().is_none_or(|model| identifier(model)),
+        "invalid model identity",
     )?;
     validate_policy(&repo.policy)
 }

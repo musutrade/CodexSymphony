@@ -325,7 +325,7 @@ async fn review(tx: &mut Tx<'_>, id: i64, input: &ControlRequest) -> Result<Valu
     let (policy_version, repository) = current_repository(tx).await?;
     version(policy_version, input.repository_version)?;
     let contract: Contract = serde_json::from_value(row["contract"].clone())?;
-    contract::authorize(&contract, &repository)?;
+    authorize_review(tx, id, &contract, &repository).await?;
     let revision = row["revision"].as_i64().ok_or("invalid stored revision")? + 1;
     let ac_ids: Vec<String> = (1..=contract.acceptance_criteria.len())
         .map(|n| format!("AC-{id}-{revision}-{n}"))
@@ -345,6 +345,16 @@ async fn review(tx: &mut Tx<'_>, id: i64, input: &ControlRequest) -> Result<Valu
     )
     .await?;
     read_requirement(tx, id).await
+}
+async fn authorize_review(
+    tx: &mut Tx<'_>,
+    id: i64,
+    contract: &Contract,
+    repository: &Repository,
+) -> Result<()> {
+    contract::authorize(contract, repository)?;
+    crate::budget_store::freeze(tx, id, &repository.policy).await?;
+    Ok(())
 }
 async fn current_repository(tx: &mut Tx<'_>) -> Result<(i64, Repository)> {
     let (version, document): (i64, String) =
