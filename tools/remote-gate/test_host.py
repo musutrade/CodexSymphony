@@ -58,3 +58,18 @@ class InstallationTokens(unittest.TestCase):
         self.assertEqual(github._tokens,{})
 
 if __name__=='__main__':unittest.main()
+
+class InterruptedRecovery(unittest.TestCase):
+    def test_finished_actions_receipt_is_reconciled_once_without_success(self):
+        import json
+        from unittest.mock import patch
+        import host
+        with tempfile.TemporaryDirectory() as tmp:
+            home=Path(tmp);p=home/'jobs/12-1/receipt.json';p.parent.mkdir(parents=True)
+            p.write_text(json.dumps({'identity':'12/1','check_id':9,'source_sha':'a'*40,'finished':False}))
+            with patch.object(host,'request') as request:
+                host.reconcile_interrupted({'repository':'owner/repo'},home,'fixture')
+                self.assertEqual(request.call_args.args[3]['conclusion'],'failure')
+                self.assertEqual(json.loads(p.read_text())['status'],'interrupted')
+                host.reconcile_interrupted({'repository':'owner/repo'},home,'fixture')
+                self.assertEqual(request.call_count,1)

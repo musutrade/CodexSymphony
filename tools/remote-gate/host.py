@@ -24,6 +24,22 @@ def sha(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 def timestamp(): return datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
 
 
+def reconcile_interrupted(config, home, token):
+    # Called under the exclusive service lock, before this process starts work.
+    # Actions may already have timed out, so polling in_progress runs misses these.
+    for receipt in sorted((home/'jobs').glob('*/receipt.json')):
+        if receipt.is_symlink() or receipt.parent.is_symlink():
+            raise ValueError('symlink receipt')
+        prior=load(receipt)
+        if prior.get('finished'): continue
+        if not re.fullmatch(r'\d+/\d+',prior['identity']) or receipt.parent.name!=prior['identity'].replace('/','-'):
+            raise ValueError('invalid interrupted identity')
+        request('/repos/'+config['repository']+'/check-runs/'+str(prior['check_id']),token,'PATCH',
+                {'status':'completed','conclusion':'failure','completed_at':timestamp(),
+                 'output':{'title':'Host interrupted','summary':'Retained evidence is preserved. A fresh Actions attempt is required.'}})
+        write(receipt,prior|{'finished':True,'status':'interrupted'})
+
+
 def validate_run(run,config):
     if run['repository']['full_name']!=config['repository']: raise ValueError('repository mismatch')
     if run['head_repository']['full_name']!=config['repository']: raise ValueError('fork unsupported')
@@ -124,6 +140,7 @@ def main():
         while True:
             try:
                 token=installation_token(config)
+                reconcile_interrupted(config,home,token)
                 # New PR workflows need not exist on the default branch yet.
                 runs=request('/repos/'+config['repository']+'/actions/runs?status=in_progress&per_page=30',token)
                 for run in reversed(runs['workflow_runs']):
