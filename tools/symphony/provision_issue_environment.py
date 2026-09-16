@@ -77,7 +77,7 @@ def main(workspace):
     pending.replace(launcher)
     broker_changed=False
     for name in ['broker.py','preflight.py','execution_readiness.py','client/execution_readiness.py',
-                 'product_preparation_acceptance.py','client/product_preparation_acceptance.py',
+                 'product_preparation_acceptance.py','client/product_preparation_acceptance.py','client/runtime_smoke.py',
                  'client/reviewed-preparation/app_server.py','client/reviewed-preparation/sandbox_probe.py',
                  'client/reviewed-preparation/manifest.json']:
         destination=provision/name

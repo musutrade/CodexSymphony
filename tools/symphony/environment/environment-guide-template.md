@@ -90,3 +90,24 @@ workspace drift fails closed. Keep these reviewed Python files unchanged during
 integration unless a correction is necessary. If changed, preserve the reason
 and request host review/reinstallation; never replace the receipt or approve
 workspace code from within the Agent. Other source files can change normally.
+
+## Runtime protocol preparation (zero model calls)
+
+For Runtime work, run `python3 /opt/symphony-env/runtime_smoke.py` inside the
+assigned command sandbox. It starts the actual pinned app-server with a fresh,
+writable, per-process CODEX_HOME under workspace target, then removes that state.
+The inherited shared CODEX_HOME is read-only in command/exec; overriding only
+sqlite_home/log_dir does not relocate all app-server state. Do not copy or link
+shared authentication into a workspace to fix startup.
+
+The smoke uses an unauthenticated scripted Responses fixture on loopback inside
+this command's network namespace. No external model request, provider credential,
+network allowlist change or sandbox relaxation is involved. It checks initialize,
+thread/process cwd, a real dynamic-tool request/reply through app-server, and
+turn/interrupt, plus Git read-only and hidden host credentials. JSON output binds
+the workspace, Git HEAD and sampler SHA256. This is environment readiness, **not**
+validation of the Rust product Runtime. Product tests must exercise their actual
+adapter using the same per-Run writable state arrangement and isolation policy.
+The bubblewrap warning alone is not evidence that initialize failed; inspect the
+RPC result. Shell execution deeper inside a nested Runtime is a separate capability
+and is not claimed by this protocol probe.
