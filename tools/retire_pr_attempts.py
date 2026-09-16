@@ -28,6 +28,10 @@ def context(job,receipt,lookup=api):
             or run['event']!='pull_request' or run['path']!='.github/workflows/quality.yml'):
         return None
     prs=run.get('pull_requests') or lookup(f'repos/{REPOSITORY}/commits/{receipt["source_sha"]}/pulls')
+    # A commit can also belong to a later stacked PR. Resolve that only using
+    # the exact Actions head ref among GitHub-confirmed commit associations.
+    if len(prs)>1 and run.get('head_branch'):
+        prs=[p for p in prs if p.get('head',{}).get('ref')==run['head_branch']]
     numbers={p['number'] for p in prs if p.get('base',{}).get('repo',{}).get('full_name')==REPOSITORY}
     if len(numbers)!=1:return None  # Never guess from a branch name or ambiguous commit.
     value={'repository':REPOSITORY,'pr':numbers.pop(),'identity':identity,'source_sha':receipt['source_sha']}

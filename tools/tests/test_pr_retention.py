@@ -85,4 +85,11 @@ class Retention(unittest.TestCase):
             source.mkdir();nested=source/'nested';nested.mkdir()
             with patch.object(Path,'is_mount',lambda p:p==nested):
                 with self.assertRaises(ValueError):r.disposable(source)
+    def test_stacked_pr_commit_uses_verified_workflow_head_ref(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            receipt={'identity':'10/1','source_sha':'a'*40}
+            run={'head_sha':'a'*40,'repository':{'full_name':r.REPOSITORY},'event':'pull_request','path':'.github/workflows/quality.yml','head_branch':'symphony/GH-18','pull_requests':[]}
+            prs=[{'number':n,'head':{'ref':branch},'base':{'repo':{'full_name':r.REPOSITORY}}} for n,branch in [(39,'symphony/GH-18'),(40,'followup')]]
+            value=r.context(Path(tmp),receipt,lookup=lambda path:prs if path.endswith('/pulls') else run)
+            self.assertEqual(value['pr'],39)
 if __name__=='__main__':unittest.main()
