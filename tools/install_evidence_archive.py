@@ -5,7 +5,7 @@ from pathlib import Path
 
 root=Path(__file__).resolve().parents[1]
 base=Path.home()/'.local/share/codexsymphony'
-names=('archive_gate_evidence.py','storage_maintenance.py')
+names=('archive_gate_evidence.py','storage_maintenance.py','compact_gate_evidence.py','retire_pr_attempts.py')
 content={name:(root/'tools'/name).read_bytes() for name in names}
 version=hashlib.sha256(b''.join(content.values())).hexdigest()[:16]
 release=base/'evidence-archive/releases'/version;release.mkdir(parents=True,exist_ok=True)
@@ -15,13 +15,13 @@ for name,data in content.items():
     path.write_bytes(data)
 units=Path.home()/'.config/systemd/user'
 (units/'codexsymphony-archive.service').write_text(f'''[Unit]
-Description=Verified cold storage for completed Gate evidence
+Description=Bounded retention of rebuildable Gate evidence
 ConditionPathIsMountPoint={base}
 ConditionPathIsMountPoint=/data
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 {release}/archive_gate_evidence.py --apply --keep 10 --days 30
+ExecStart=/usr/bin/python3 {release}/compact_gate_evidence.py --apply
 TimeoutStartSec=3600
 Nice=10
 IOSchedulingClass=idle
