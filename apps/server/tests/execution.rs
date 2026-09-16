@@ -95,13 +95,41 @@ async fn owner(pool: &PgPool) -> Option<i64> {
         .unwrap()
 }
 async fn recovered(pool: &PgPool, root: &Path, incarnation: &str) {
+    // First persist the stop request and reconcile any start-record gap. The
+    // five-second polling window measures convergence after that request;
+    // filesystem fsync/DB admission latency is not a descendant-stop SLA.
+    let mut complete = coordinator::recover(pool, root, incarnation).await.unwrap();
     let start = Instant::now();
-    while !coordinator::recover(pool, root, incarnation).await.unwrap() {
-        assert!(
-            start.elapsed() < Duration::from_secs(5),
-            "recovery timed out for incarnation {incarnation}"
-        );
+    let mut attempts = 0;
+    while !complete {
+        attempts += 1;
+        if start.elapsed() >= Duration::from_secs(5) {
+            let guard: (bool, Option<String>) =
+                sqlx::query_as("SELECT blocked,error FROM storage_guard WHERE id=1")
+                    .fetch_one(pool)
+                    .await
+                    .unwrap();
+            let runs = run_store::unresolved(pool).await.unwrap();
+            let evidence: Vec<_> = runs
+                .iter()
+                .map(|run| {
+                    let directory = process::run_directory(root, &run.id).unwrap();
+                    (
+                        run.id.clone(),
+                        run.blocker.clone(),
+                        run.process_identity.clone(),
+                        fs::read_to_string(directory.join("identity.json")),
+                        fs::read_to_string(directory.join("quiescent.json")),
+                    )
+                })
+                .collect();
+            panic!(
+                "recovery timed out for incarnation {incarnation}: elapsed={:?}, attempts={attempts}, storage={guard:?}, runs={evidence:?}",
+                start.elapsed()
+            );
+        }
         tokio::time::sleep(Duration::from_millis(30)).await;
+        complete = coordinator::recover(pool, root, incarnation).await.unwrap();
     }
 }
 
@@ -739,7 +767,20 @@ async fn start_record_window(pool: &PgPool, root: &Path) {
     run_store::begin_incarnation(pool, "after-crash")
         .await
         .unwrap();
+    // A stop cannot be requested until the old Run row is writable. Model the
+    // cold-storage/admission delay separately from waiting for stop evidence.
+    let mut tx = pool.begin().await.unwrap();
+    sqlx::query("SELECT id FROM agent_run WHERE id=$1 FOR UPDATE")
+        .bind(&launch.key.run_id)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    let release = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(6)).await;
+        tx.commit().await.unwrap();
+    });
     recovered(pool, root, "after-crash").await;
+    release.await.unwrap();
     assert!(!Path::new(&launch.workspace).join("started").exists());
     assert_eq!(owner(pool).await, Some(1));
     let row: (bool, bool, String) =

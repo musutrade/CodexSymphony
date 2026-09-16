@@ -56,6 +56,53 @@
 运行均通过。只为恢复断言增加 incarnation 诊断，没有修改时限。最终测量来自
 随后完整成功的同一源码运行，不使用之前失败运行拼接出的报告。
 
+## PR #39 CI 修复（attempt 1）
+
+失败 head 为 `e9f98b25acb57d6b6b66d2237e316cb9b9900c16`，Actions
+`35044911288/1`，`Harness-Gate` check `104632546155`。已核对宿主诊断中的
+source SHA / attempt；后端覆盖率采集在 `execution_acceptance` 的
+`after-crash` 恢复等待超时，没有配置身份变更。脱敏诊断保存在
+`target/gh18-repair-host-diagnostic.json`。
+
+修复仅调整三个集成测试及本记录：
+
+- 恢复测试先提交停止请求、补齐启动记录，再开始原有五秒收敛等待；首次
+  文件 fsync / 数据库准入不再占用这个等待窗口。仍要求匹配身份的真实
+  静止回执，且保留写者未启动、队列未释放等断言；超时附带耗时、轮数、
+  storage latch、Run 身份和回执诊断。增加六秒 Run 行锁竞争场景，旧 helper
+  在同一 `after-crash` 断言失败（exit 101，
+  `target/gh18-repair-regression-before.log`），用于复现计时边界误报。
+  原 CI 日志没有每步耗时，不能据此认定宿主当时也发生了相同的行锁竞争。
+- 准备重试测试以落库的 `next_attempt_at` 驱动后续尝试，不再假设探测
+  零耗时。加入一秒慢失败探测，检查完成后退避以及截止前拒绝执行；保留
+  三次实际尝试和最终准入断言。早期完整覆盖率运行曾实际得到 2 而非 3
+  次尝试，日志为 `target/gh18-repair-before-coverage.log`。
+- 一次完整测试通过后，真实覆盖率测量发现 `github_service::poll` 仅覆盖
+  2/5 行、6/11 region（`target/gh18-repair-measurement-before.log`）。原测试
+  观察到仓库 capability 就中止 worker，该写入尚不是完整轮询结束。
+  改为等待两轮实际 PR 观察落库，包括定时等待后的再次刷新，验证结果为
+  `Unmerged`，最后等待 worker 取消完成；使用本机 HTTP fixture，无外部写入。
+
+排查中一次执行诊断与完整覆盖率共用了 fixture，出现身份记录冲突；该诊断
+（`target/gh18-repair-diagnostic.log`）与重叠的覆盖率报告均不作为验收依据。
+最终数据库测试按顺序执行。普通执行及独立覆盖率排查通过记录分别为
+`target/gh18-repair-reproduction.log`、`target/gh18-repair-diagnostic-coverage.log`。
+
+生产代码、运行时超时、重试策略、门禁配置及阈值均保持失败 head 原样。
+新 head 仍需独立宿主重新采集并通过两个受保护检查。
+
+本次最终验证：
+
+- `cargo fmt --all -- --check`：exit 0。
+- `CARGO_TARGET_DIR="$PWD/target" cargo clippy --workspace --all-targets --locked -- -D warnings`：exit 0，`target/gh18-repair-clippy.log`。
+- `python3 /opt/symphony-env/run.py env CARGO_TARGET_DIR="$PWD/target" cargo test --workspace --locked`：exit 0，41 项通过，`target/gh18-repair-tests.log`。
+- `python3 /opt/symphony-env/run.py env CARGO_TARGET_DIR="$PWD/target" cargo llvm-cov --workspace --locked --json --output-path target/gh18-coverage.json`：exit 0，41 项通过，`target/gh18-repair-coverage.log`。
+- `python3 target/gh18-measure.py`：exit 0；407 个函数零违规，最大 CRAP 10，最低行／region 覆盖率均为 4/5；`target/gh18-repair-measurement-summary.log` 和 `target/gh18-source-measurement.json`。
+- `python3 tools/gate.py config check`、`git diff --check`：exit 0。
+
+前端、OpenAPI 和生产源码与失败 head 相同，本次未重复执行前端／E2E 检查；
+它们此前的本机结果见上文，不替代新 head 的完整宿主门禁。
+
 ## 未验证边界
 
 这是 A08 额度基础与 A02 用量基础的验收；没有真实模型调用或金额计算。
