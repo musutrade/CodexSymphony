@@ -18,6 +18,16 @@ pub mod preparation_service;
 pub mod preparation_store;
 pub mod process;
 pub mod run_store;
+pub mod runtime;
+pub mod runtime_api;
+pub mod runtime_client;
+pub mod runtime_protocol;
+pub mod runtime_questions;
+pub mod runtime_resume;
+pub mod runtime_service;
+pub mod runtime_store;
+pub mod runtime_tools;
+pub mod runtime_transport;
 pub mod security;
 pub mod storage;
 pub mod workspace;
@@ -40,6 +50,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .route("/api/health", get(health))
             .merge(business::routes())
             .merge(execution_api::routes())
+            .merge(runtime_api::routes())
             .with_state(pool),
     )
 }

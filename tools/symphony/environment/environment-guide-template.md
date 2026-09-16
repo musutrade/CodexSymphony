@@ -111,3 +111,46 @@ adapter using the same per-Run writable state arrangement and isolation policy.
 The bubblewrap warning alone is not evidence that initialize failed; inspect the
 RPC result. Shell execution deeper inside a nested Runtime is a separate capability
 and is not claimed by this protocol probe.
+
+## Runtime command execution and product acceptance
+
+The product controller launches Runtime outside an Agent command sandbox.
+Do not require a second Runtime inside that sandbox to create another command
+sandbox: this is not the product deployment topology. Retain any nested failure
+as evidence; never relabel it as a passing test.
+
+Run `python3 /opt/symphony-env/runtime_command_readiness.py` to request the host's
+fixed independent Runtime command check. It uses the pinned launcher with empty
+disposable Codex state, the same workspace, read-only Git, hidden host credentials,
+and unchanged managed network policy. It verifies actual command execution,
+allowed-domain access, explicit denied-domain rejection, and direct-IP rejection.
+The host-owned receipt is `/opt/symphony-env/runtime-command-readiness.json`.
+The request takes no arbitrary command, source path or configuration arguments.
+
+This proves environment capability only. Runtime fixture tests may run in the
+Agent sandbox; real Runtime integration must exercise the actual Rust adapter
+from a reviewed independent test entry with the same deployment boundaries.
+Never run workspace-supplied test code unrestricted on the host. Product
+acceptance still requires protocol, tools, supervision, recovery and credential
+isolation evidence. The Runtime child must use an explicit environment allowlist;
+the development launcher's filtering does not substitute for that product test.
+
+The installed Rust integration entry is
+`python3 /opt/symphony-env/runtime_product_acceptance.py`. It runs the fixed
+`runtime_real::real_runtime_transport_and_supervision` test through actual Rust
+Transport, generated protocol records, dynamic tool reply and supervisor, with
+Codex 0.154.0 and a local scripted provider. It tests real command execution,
+Git/credential protection, interrupt and the separate ECHILD stop receipt.
+Its outer test namespace has no external network. App-server command policy
+still uses the deployed managed-network requirements; external allow/deny/direct
+network checks are covered by runtime_command_readiness in the same deployment.
+
+The operator builds in the normal Agent command sandbox, reviews the test and
+installs copied test/supervisor executables with source inventory and binary
+SHA256. The installation manifest and fresh result are bound together in
+`/opt/symphony-env/runtime-product-acceptance.json`. Source drift fails closed:
+continue coding/fixture tests, then request a reviewed rebuild before the final
+real integration check. It is not a reason to block all implementation at
+preparation. The installer is host-only `tools/symphony/install_runtime_acceptance.py`.
+This integration covers the listed Rust components; SQL lifecycle/answer/client
+fixture tests and final required quality gates remain separate mandatory evidence.

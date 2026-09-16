@@ -61,16 +61,39 @@ pub fn durable_write(path: &Path, value: &impl Serialize) -> io::Result<()> {
 }
 
 pub fn spawn(supervisor: &Path, directory: &Path, launch: &Launch) -> io::Result<Child> {
+    spawn_with_transport(supervisor, directory, launch, None)
+}
+
+/// The single-threaded supervisor passes these pipes directly to app-server;
+/// its own durable stop proof remains independent of stdout/RPC completion.
+pub fn spawn_with_transport(
+    supervisor: &Path,
+    directory: &Path,
+    launch: &Launch,
+    config: Option<&str>,
+) -> io::Result<Child> {
     fs::create_dir(directory)?;
     durable_write(&directory.join("launch.json"), launch)?;
     durable_write(&directory.join("storage-heartbeat.json"), &launch.key)?;
+    if let Some(config) = config {
+        fs::create_dir(directory.join("codex-home"))?;
+        fs::write(directory.join("codex-home/config.toml"), config)?;
+        durable_write(&directory.join("runtime.json"), &launch.key)?;
+    }
+    let stdio = || {
+        if config.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        }
+    };
     Command::new(supervisor)
         .arg("--supervise")
         .arg(directory)
         .process_group(0)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdin(stdio())
+        .stdout(stdio())
+        .stderr(stdio())
         .spawn()
 }
 
@@ -135,10 +158,48 @@ pub fn supervise(directory: &Path) -> io::Result<()> {
         // including descendants that call setsid or change process groups.
         let mut command = Command::new(&launch.program);
         command.args(&launch.args).current_dir(&launch.workspace);
+        configure_runtime(&mut command, directory, &launch)?;
         let _child = command.spawn()?;
         drain(directory)?;
     }
     durable_write(&directory.join("quiescent.json"), &receipt)
+}
+
+/// Only deployment tool/network settings cross into Runtime. Unknown names,
+/// including custom tracker credentials and loader hooks, are excluded.
+fn runtime_environment(command: &mut Command, directory: &Path) -> io::Result<()> {
+    const ALLOWED: &[&str] = &[
+        "PATH",
+        "HOME",
+        "LANG",
+        "LC_ALL",
+        "TZ",
+        "NO_COLOR",
+        "CARGO_HOME",
+        "RUSTUP_HOME",
+        "CARGO_TARGET_DIR",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "NO_PROXY",
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "no_proxy",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+    ];
+    command.env_clear();
+    for name in ALLOWED {
+        if let Some(value) = std::env::var_os(name) {
+            command.env(name, value);
+        }
+    }
+    let home = directory.join("codex-home").canonicalize()?;
+    let temporary = home.join("tmp");
+    fs::create_dir_all(&temporary)?;
+    command.env("CODEX_HOME", home).env("TMPDIR", temporary);
+    Ok(())
 }
 
 fn await_permission(directory: &Path, launch: &Launch) -> io::Result<bool> {
@@ -238,6 +299,17 @@ fn stop_child(pid: &str) -> io::Result<()> {
     let result = unsafe { syscall(424, fd.as_raw_fd(), 9, std::ptr::null::<u8>(), 0) };
     if result < 0 {
         return Err(io::Error::last_os_error());
+    }
+    Ok(())
+}
+
+fn configure_runtime(command: &mut Command, directory: &Path, launch: &Launch) -> io::Result<()> {
+    if directory.join("runtime.json").exists() {
+        let key: crate::execution::RunKey = read(&directory.join("runtime.json"))?;
+        if key != launch.key {
+            return Err(io::Error::other("Runtime identity mismatch"));
+        }
+        runtime_environment(command, directory)?;
     }
     Ok(())
 }
