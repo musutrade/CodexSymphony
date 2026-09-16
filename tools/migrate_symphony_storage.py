@@ -129,7 +129,7 @@ def finalize():
     accepted=[]
     for receipt in (BASE/'remote-gate/jobs').glob('*/receipt.json'):
         value=json.loads(receipt.read_text())
-        if value.get('finished') and value.get('status')=='PASS' and receipt.stat().st_mtime>state['mounted_at']:
+        if value.get('finished') and value.get('status')=='PASS' and value.get('scope','full')=='full' and receipt.stat().st_mtime>state['mounted_at']:
             accepted.append(str(receipt))
     if not accepted:raise ValueError('fresh post-migration full CI PASS required before removing rollback copy')
     backup=Path(state['rollback_source'])

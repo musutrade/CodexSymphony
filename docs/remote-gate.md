@@ -76,3 +76,29 @@ Codex 认证复用项目已有的独立 CODEX_HOME；官方说明见
 安装或升级后运行 `python3 tools/symphony/check_sandbox.py`，它不调用模型，
 而是通过真实 app-server `command/exec` 检查嵌套沙箱、Core 0.4.5 的 PATH 优先级、
 Git 元数据写保护及两个宿主敏感路径的不可见性。结果在服务状态目录留存。
+
+## CI 范围与过期任务（2026-09）
+
+同一 PR 的新 Actions 运行取消旧运行，宿主在出队、准备后、执行期间及发布前
+核对实际 Actions 状态。执行中的旧 PR 按约 15 秒间隔检测，终止整个启动进程组，
+记录 CANCELLED，不能发布成功。API 错误关闭当前执行并报告失败。main push 与手动
+运行不参与 PR 自动取消；手动 workflow_dispatch 始终执行完整门禁。
+
+文档快速检查由安装在宿主的 `ci_policy.py` 决定，PR 不能选择范围。当前白名单只有
+根 README、综合方案与 `docs/evidence-lifecycle-impact.md`。须在最近 100 个宿主回执中
+找到**相同批准配置、完整通过、且为当前提交祖先**的基线，并对基线至当前提交的
+全部差异检查；混合代码、未知文件、WORKFLOW/AGENTS、删除、改名、可执行文件或
+符号链接均回到完整门禁。首次升级无匹配基线，也执行完整门禁。
+
+快速检查验证普通 UTF-8 文件、每文件 2 MiB 上限、冲突标记与 diff 空白错误。
+它不验证文档语义、外链或产品功能，也不宣称重跑覆盖率。独立 App 回执明确标识
+`documentation` 范围，绑定当前 SHA、Actions attempt、批准配置摘要、完整基线
+SHA/attempt/report 摘要。main 上仅文档差异可采用同一规则。白名单扩展必须审查
+文件是否被构建或执行器消费。
+
+文档结果是小 JSON，不复制 node_modules、不生成 Rust target。保留策略单独清理
+其源码克隆；文档通过不淘汰完整测试基线。取消的失败尝试可在同一 PR 后续完整
+通过后归并。构建缓存仍按现行容量策略清理，本次不引入无界缓存。
+
+升级需安装经审查的 remote-gate 版本及 evidence-archive 版本；仅修改 Actions YAML
+不会更新宿主。保护文件发生变化的本次 PR 本身必须通过新宿主的完整门禁。

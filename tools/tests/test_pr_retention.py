@@ -36,6 +36,23 @@ class Retention(unittest.TestCase):
             self.assertFalse((run/'large-binary').exists())
             self.assertTrue((Path(accepted['run'])/'workspace/.harness-gate/reports/test_result.json').exists())
             self.assertFalse((success/'source').exists())
+    def test_documentation_success_cleans_clone_without_retiring_full_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'cold').mkdir()
+            full,accepted=self.fixture(root,'10/1','PASS',age=1000)
+            cancelled,_=self.fixture(root,'11/1','CANCELLED',age=900)
+            docs,receipt=self.fixture(root,'12/1','PASS',age=600,has_run=False)
+            report=docs/'documentation-result.json';report.write_text('{"scope":"documentation"}')
+            receipt.update(scope='documentation',report_sha256=r.sha(report))
+            path=docs/'receipt.json';path.write_text(json.dumps(receipt));os.utime(path,(time.time()-600,)*2)
+            self.run_policy(root)
+            self.assertFalse((docs/'source').exists());self.assertTrue(report.exists())
+            self.assertTrue((Path(accepted['run'])/'workspace/.harness-gate/reports/test_result.json').exists())
+            self.assertTrue((cancelled/'source').exists())
+            self.fixture(root,'13/1','PASS',age=400)
+            self.run_policy(root)
+            self.assertFalse((cancelled/'source').exists())
+
     def test_other_pr_active_recent_and_later_failure_are_retained(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp);(root/'cold').mkdir()

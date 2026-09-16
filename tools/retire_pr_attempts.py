@@ -131,7 +131,17 @@ def maintain_attempts(root,cold,apply=False,now=None,resolve=context,busy=None):
         receipt=json.loads(path.read_text());identity=receipt.get('identity','')
         if not IDENTITY.fullmatch(identity) or path.parent.name!=identity.replace('/','-'):raise ValueError('invalid job identity')
         if not receipt.get('finished') or now-path.stat().st_mtime<300:continue
-        if receipt.get('status') not in ('PASS','FAIL','interrupted'):continue
+        if receipt.get('scope')=='documentation':
+            # A documentation success cannot supersede full-suite evidence.
+            # Its exact small report survives independently of the source clone.
+            report=path.parent/'documentation-result.json'
+            if (receipt.get('status')=='PASS' and report.is_file() and not report.is_symlink()
+                    and sha(report)==receipt.get('report_sha256')):
+                source=path.parent/'source'
+                if apply and source.exists() and not busy(path.parent):
+                    disposable(source);shutil.rmtree(source)
+            continue
+        if receipt.get('status') not in ('PASS','FAIL','interrupted','CANCELLED'):continue
         try:ctx=resolve(path.parent,receipt)
         except (subprocess.SubprocessError,ValueError,KeyError) as error:
             output.append({'job':path.parent.name,'deferred':type(error).__name__});continue

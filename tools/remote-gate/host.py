@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import time
 from github import installation_token,request
+from ci_policy import documentation_result, policy_identity, run_cancellable, SupersededRun
 
 CHECK='Trusted Harness-Gate'
 
@@ -75,6 +76,10 @@ def prepare(run,config,job):
     check_files(root,config['protected_files'])
     approval=load(config['gate_approval'])
     check_files(root,approval['trusted_files']);check_files(root,approval['config_files'])
+    return root,approval
+
+
+def prepare_dependencies(root,approval,config,job):
     # Dependencies are prepared by the operator, never installed by a credentialed PR job.
     # Require exact reviewed lockfiles before exposing the installed dependency tree.
     deps=Path(config['dependency_source'])
@@ -86,12 +91,23 @@ def prepare(run,config,job):
     return root,approved
 
 
+def actions_cancelled(run,config):
+    if run['event']!='pull_request': return False
+    current=request('/repos/'+config['repository']+'/actions/runs/'+str(run['id']),installation_token(config))
+    return current['run_attempt']!=run['run_attempt'] or current['status']=='completed'
+
+
 def evaluate(run,config,job):
     root,approval=prepare(run,config,job)
+    if actions_cancelled(run,config): raise SupersededRun('Actions attempt no longer active')
+    docs=documentation_result(root,run,config,approval,job)
+    if docs is not None: return docs
+    fingerprint=policy_identity(config,approval)
+    root,approval=prepare_dependencies(root,approval,config,job)
     launcher=Path(approval['host_release'])/'run.py'
     with (job/'gate.stdout').open('w') as out,(job/'gate.stderr').open('w') as err:
-        result=subprocess.run(['/usr/bin/python3',launcher,'--repository',root,'--approval',job/'gate-approval.json'],stdout=out,stderr=err,timeout=1500)
-    if result.returncode: raise RuntimeError('complete gate failed; inspect retained gate.stderr and run reports')
+        code=run_cancellable(['/usr/bin/python3',launcher,'--repository',root,'--approval',job/'gate-approval.json'],out,err,lambda: actions_cancelled(run,config))
+    if code: raise RuntimeError('complete gate failed; inspect retained gate.stderr and run reports')
     lines=(job/'gate.stdout').read_text().splitlines()
     accepted=json.loads(lines[-1])
     if accepted.get('status')!='PASS': raise ValueError('missing complete acceptance')
@@ -102,12 +118,14 @@ def evaluate(run,config,job):
         raise ValueError('report source identity mismatch')
     evidence=value['quality']['evidence']
     if any(row['context']['commit']!=run['head_sha'] for row in evidence): raise ValueError('evidence commit mismatch')
-    return {'run':str(retained),'report_sha256':sha(report),'source_sha':run['head_sha'],
+    return {'scope':'full','policy_identity':fingerprint,'run':str(retained),'report_sha256':sha(report),'source_sha':run['head_sha'],
             'records':len(evidence),'producers':len(value['quality']['producers']),'status':'PASS'}
 
 
 def process(run,config,home):
     identity=validate_run(run,config)
+    # The queue snapshot may be stale after another long run. Never start a cancelled PR.
+    if actions_cancelled(run,config): return
     job=home/'jobs'/identity.replace('/','-');job.mkdir(parents=True,exist_ok=True)
     receipt=job/'receipt.json'
     token=installation_token(config);prefix='/repos/'+config['repository']
@@ -125,10 +143,21 @@ def process(run,config,home):
     write(receipt,state)
     try:
         result=evaluate(run,config,job)
+        if actions_cancelled(run,config): raise SupersededRun('Actions attempt superseded before publication')
         conclusion='success';title='Complete isolated gate passed'
-        summary=(f"Commit: `{run['head_sha']}`\n\nActions attempt: `{identity}`\n\n"
+        if result['scope']=='documentation':
+            title='Documentation checks passed; full suite not rerun'
+            summary=(f"Commit: `{run['head_sha']}`; Actions attempt: `{identity}`\n\n"
+                     f"Documentation checks only. Full-suite baseline: `{result['baseline_sha']}` "
+                     f"(attempt `{result['baseline_identity']}`).\n\n"
+                     f"Changed paths: {result['changed_paths']}\n\nReport SHA-256: `{result['report_sha256']}`")
+        else:
+            summary=(f"Commit: `{run['head_sha']}`\n\nActions attempt: `{identity}`\n\n"
                  f"Evidence: {result['records']} records, {result['producers']} producers. CRAP ≤10; coverage ≥80%.\n\n"
                  f"Report SHA-256: `{result['report_sha256']}`\n\nHost retention: `{result['run']}`")
+    except SupersededRun as error:
+        result={'status':'CANCELLED','error':str(error)}
+        conclusion='cancelled';title='Superseded PR attempt stopped';summary=str(error)
     except Exception as error:
         result={'status':'FAIL','error':str(error)};conclusion='failure';title='Trusted host rejected validation'
         write(job/'failure.json',result)
