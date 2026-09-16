@@ -68,16 +68,22 @@ async fn handler(
             .unwrap()
             .into_response();
     }
-    if method == "POST" {
+    if method == "POST" && path == "/app/installations/7/access_tokens" {
         assert_eq!(path, "/app/installations/7/access_tokens");
         let body: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(body["repository_ids"], json!([99]));
+        assert_eq!(
+            body["repository_ids"],
+            json!([data.routes["/repos/owner/repo"]["id"]])
+        );
         assert_eq!(
             body["permissions"],
             json!({"contents":"write","pull_requests":"write","checks":"read","actions":"read"})
         );
         data.grants += 1;
         return Json(data.routes[&path].clone()).into_response();
+    }
+    if let Some(value) = data.routes.get(&format!("{method} {path}")) {
+        return Json(value.clone()).into_response();
     }
     assert_eq!(method, "GET", "preflight must not publish or rerun");
     let key = format!("{path}?{query}");
@@ -825,4 +831,291 @@ async fn authenticated_http_never_follows_redirects() {
             assert!(sink.data.lock().unwrap().seen.is_empty());
         }
     }
+}
+
+#[path = "support/validation_runner.rs"]
+mod delivery_source;
+#[tokio::test]
+async fn delivery_adapter_reconciles_exact_branch_and_rechecks_before_close() {
+    use codexsymphony_server::{
+        delivery_remote::Github, delivery_store::Pending, delivery_worker::Remote,
+        git_broker::GitBroker, workspace::Workspace,
+    };
+    let fixture = Fixture::new().await;
+    let (root, repo, _) = delivery_source::fixture();
+    let baseline = codexsymphony_server::validation_runner::candidate(&repo)
+        .unwrap()
+        .sha;
+    let bundle = root.join("seed.bundle");
+    assert!(
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["bundle", "create"])
+            .arg(&bundle)
+            .arg("--all")
+            .status()
+            .unwrap()
+            .success()
+    );
+    let broker = GitBroker::initialize(&root.join("workspaces"), &bundle).unwrap();
+    let workspace = Workspace {
+        key: RunKey {
+            run_id: "delivery".into(),
+            request_id: "request".into(),
+            incarnation: "boot".into(),
+        },
+        identity: "owned".into(),
+        requirement: 1,
+        revision: 1,
+        phase: "handoff".into(),
+        baseline: baseline.clone(),
+        branch: "ai/req-1-delivery".into(),
+        path: broker
+            .path("delivery")
+            .unwrap()
+            .to_string_lossy()
+            .into_owned(),
+    };
+    broker.prepare(&workspace, true).unwrap();
+    let manifest = broker.preserve(&workspace).unwrap();
+    let mut job = Pending {
+        action_key: "test".into(),
+        kind: "publish".into(),
+        state: "pending".into(),
+        attempts: 0,
+        requirement_id: 1,
+        revision: 1,
+        repository_id: 99,
+        repository: "owner/repo".into(),
+        branch: workspace.branch.clone(),
+        base_branch: "main".into(),
+        head_sha: baseline.clone(),
+        manifest: json!(manifest),
+        pr_number: None,
+    };
+    let mut client = fixture.client();
+    let mut remote = Github {
+        client: &mut client,
+        policy: policy(),
+        broker: &broker,
+        now: 100,
+    };
+    fixture.put("/repos/owner/repo/pulls", json!([]));
+    assert!(remote.find(&job).await.unwrap().is_none());
+    assert!(remote.head(&job).await.unwrap().is_none());
+    fixture.put(
+        &format!("/repos/owner/repo/git/ref/heads/{}", job.branch),
+        json!({"object":{"sha":baseline}}),
+    );
+    assert_eq!(remote.head(&job).await.unwrap(), Some(baseline.clone()));
+    let mut value = pr();
+    value["body"] = json!(job.identity().marker());
+    value["head"] = json!({"repo":{"id":99},"ref":job.branch,"sha":baseline});
+    value["base"]["repo"]["full_name"] = json!("owner/repo");
+    fixture.put("POST /repos/owner/repo/pulls", value.clone());
+    assert_eq!(remote.create(&job).await.unwrap(), value);
+    fixture.put("/repos/owner/repo/pulls", json!([{"number":1}]));
+    fixture.put("/repos/owner/repo/pulls/1", value.clone());
+    assert_eq!(remote.find(&job).await.unwrap(), Some(value.clone()));
+    job.pr_number = Some(2);
+    assert!(remote.find(&job).await.is_err());
+    job.pr_number = Some(1);
+    fixture.put(
+        "/repos/owner/repo/pulls",
+        json!([{"number":1},{"number":2}]),
+    );
+    assert!(remote.find(&job).await.is_err());
+    let mut closed = value.clone();
+    closed["state"] = json!("closed");
+    fixture.put("PATCH /repos/owner/repo/pulls/1", closed.clone());
+    assert_eq!(remote.close(&job, 1).await.unwrap(), closed);
+    value["merged"] = json!(true);
+    fixture.put("/repos/owner/repo/pulls/1", value.clone());
+    assert_eq!(remote.close(&job, 1).await.unwrap(), value);
+    job.head_sha = "changed".into();
+    assert!(remote.create(&job).await.is_err());
+    assert!(remote.push(&job).await.is_err());
+    job.repository_id = 100;
+    assert!(remote.head(&job).await.is_err());
+    let seen = fixture.data.lock().unwrap().seen.clone();
+    assert!(
+        seen.iter()
+            .any(|s| s.contains("state=all") && s.contains("head=owner%3Aai%2Freq-1-delivery"))
+    );
+    assert_eq!(seen.iter().filter(|s| s.starts_with("PATCH")).count(), 1);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn delivery_basic_header_uses_rfc4648_padding() {
+    for (input, expected) in [
+        ("", ""),
+        ("f", "Zg=="),
+        ("fo", "Zm8="),
+        ("foo", "Zm9v"),
+        ("foobar", "Zm9vYmFy"),
+    ] {
+        assert_eq!(
+            codexsymphony_server::github_http::encode_basic(input),
+            expected
+        );
+    }
+}
+
+#[path = "support/delivery.rs"]
+mod delivery_database;
+#[tokio::test]
+async fn configured_delivery_service_and_real_fast_forward_git() {
+    use codexsymphony_server::{
+        delivery_control, delivery_store, git_broker::GitBroker, workspace::Workspace,
+    };
+    let pool = delivery_database::database().await;
+    let fixture = Fixture::new().await;
+    fixture.put("/repos/owner/repo", json!({"id":7}));
+    let (root, repo, _) = delivery_source::fixture();
+    let baseline = codexsymphony_server::validation_runner::candidate(&repo)
+        .unwrap()
+        .sha;
+    let bundle = root.join("seed.bundle");
+    git_fixture(
+        &repo,
+        &["bundle", "create", bundle.to_str().unwrap(), "--all"],
+    );
+    let broker = GitBroker::initialize(&root.join("workspaces"), &bundle).unwrap();
+    let workspace = Workspace {
+        key: RunKey {
+            run_id: "run".into(),
+            request_id: "request".into(),
+            incarnation: "boot".into(),
+        },
+        identity: "owned".into(),
+        requirement: 1,
+        revision: 1,
+        phase: "handoff".into(),
+        baseline: baseline.clone(),
+        branch: "ai/req-1-run".into(),
+        path: broker.path("run").unwrap().to_string_lossy().into_owned(),
+    };
+    broker.prepare(&workspace, true).unwrap();
+    let manifest = broker.preserve(&workspace).unwrap();
+    let mut policy = policy();
+    policy.repository_id = 7;
+    sqlx::raw_sql("DELETE FROM delivery_action; DELETE FROM delivery;")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE candidate_validation SET candidate_sha=$1")
+        .bind(&baseline)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE workspace_snapshot SET manifest=$1")
+        .bind(json!(manifest))
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE github_repository SET policy=$1,capability=jsonb_build_object('blockers','[]'::jsonb,'policy',$1::jsonb)").bind(json!(policy)).execute(&pool).await.unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    delivery_store::enqueue(&mut tx, "validation")
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let job = delivery_store::due(&pool, 0).await.unwrap().remove(0);
+    let mut pr = json!({"number":12,"body":job.identity().marker(),"base":{"repo":{"id":7,"full_name":"owner/repo"},"ref":"main"},"head":{"repo":{"id":7},"ref":workspace.branch,"sha":baseline},"merged":false,"merged_at":null,"state":"open"});
+    fixture.put("/repos/owner/repo/pulls", json!([]));
+    fixture.put(
+        &format!("/repos/owner/repo/git/ref/heads/{}", workspace.branch),
+        json!({"object":{"sha":baseline}}),
+    );
+    fixture.put("POST /repos/owner/repo/pulls", pr.clone());
+    let mut client = fixture.client();
+    github_service::deliver(&pool, &mut client, &root, 0)
+        .await
+        .unwrap();
+    fixture.put("/repos/owner/repo/pulls", json!([{"number":12}]));
+    fixture.put("/repos/owner/repo/pulls/12", pr.clone());
+    github_service::deliver(&pool, &mut client, &root, 60)
+        .await
+        .unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT state FROM requirement")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        "Submitted"
+    );
+    delivery_control::cancel(&pool, 1).await.unwrap();
+    pr["state"] = json!("closed");
+    fixture.put("PATCH /repos/owner/repo/pulls/12", pr.clone());
+    github_service::deliver(&pool, &mut client, &root, 120)
+        .await
+        .unwrap();
+    fixture.put("/repos/owner/repo/pulls/12", pr);
+    github_service::deliver(&pool, &mut client, &root, 180)
+        .await
+        .unwrap();
+    github_service::deliver(&pool, &mut client, &root, 240)
+        .await
+        .unwrap();
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT requirement_id IS NULL FROM execution_control")
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+    );
+    // Real local Git verifies that an accepted push cannot overwrite divergence.
+    let destination = root.join("remote.git");
+    git_fixture(&root, &["init", "--bare", destination.to_str().unwrap()]);
+    let command = || {
+        let mut command = tokio::process::Command::new("git");
+        command
+            .arg("--git-dir")
+            .arg(root.join("workspaces/canonical.git"))
+            .args(["push", "--no-verify", "--"])
+            .arg(&destination);
+        command
+    };
+    let mut first = command();
+    first.arg(format!("{baseline}:refs/heads/check"));
+    codexsymphony_server::github_http::push_git(first, &baseline)
+        .await
+        .unwrap();
+    std::fs::write(
+        std::path::Path::new(&workspace.path).join("source"),
+        "changed",
+    )
+    .unwrap();
+    let next = broker.commit(&workspace, "next").unwrap();
+    let mut advance = command();
+    advance.arg(format!("{next}:refs/heads/check"));
+    codexsymphony_server::github_http::push_git(advance, &next)
+        .await
+        .unwrap();
+    let mut divergent = command();
+    divergent.arg(format!("{baseline}:refs/heads/check"));
+    assert!(
+        codexsymphony_server::github_http::push_git(divergent, &baseline)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        git_fixture(&destination, &["rev-parse", "refs/heads/check"]),
+        next
+    );
+    std::fs::remove_dir_all(root).unwrap();
+}
+fn git_fixture(root: &std::path::Path, args: &[&str]) -> String {
+    let output = std::process::Command::new("git")
+        .arg("-C")
+        .arg(root)
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout).unwrap().trim().into()
 }

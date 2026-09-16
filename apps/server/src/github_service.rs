@@ -79,7 +79,37 @@ pub async fn tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()>
             }
         }
     }
-    sync_prs(pool, client, now).await
+    sync_prs(pool, client, now).await?;
+    delivery_tick(pool, client, now).await
+}
+async fn delivery_tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()> {
+    let root = std::path::PathBuf::from(
+        std::env::var("EXECUTION_DIRECTORY").unwrap_or(".local-data/execution".into()),
+    );
+    deliver(pool, client, &root, now).await
+}
+pub async fn deliver(pool: &PgPool, client: &mut AppClient, root: &Path, now: i64) -> Result<()> {
+    crate::delivery_control::settle(pool).await?;
+    let jobs = crate::delivery_store::due(pool, now).await?;
+    let Some(job) = jobs.first() else {
+        return Ok(());
+    };
+    let broker = crate::git_broker::GitBroker::open(&root.join("workspaces"))?;
+    let policy: Option<serde_json::Value> =
+        sqlx::query_scalar("SELECT policy FROM github_repository WHERE repository_id=$1")
+            .bind(job.repository_id)
+            .fetch_optional(pool)
+            .await?;
+    let Some(policy) = policy else {
+        return Ok(());
+    };
+    let mut remote = crate::delivery_remote::Github {
+        client,
+        policy: serde_json::from_value(policy)?,
+        broker: &broker,
+        now,
+    };
+    crate::delivery_worker::tick(pool, root, &mut remote, now).await
 }
 async fn sync_prs(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()> {
     for (policy, number, failures) in github_store::due_prs(pool, now).await? {

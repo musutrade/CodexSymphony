@@ -2,12 +2,12 @@
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。
 
-当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。已接入锁定 Codex Runtime、累计额度和固定候选验证；PR 可靠交付仍由 GH-21 完成。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
+当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。已接入锁定 Codex Runtime、累计额度和固定候选验证；已加入 [可靠 PR 交接与取消收尾](docs/delivery.md)。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
 
-[工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 已接通，远端交付仍等待 GH-21 完成。
+[工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 与远端交付已接线；真实 A01 的部署条件和未执行边界见交接文档。
 
 [GitHub App 预检与只读观察](docs/github-observation.md) 保存仓库能力及独立 PR/CI 事实，
-缺能力或过期时拒绝领取；60 秒轮询及失败退避不启动模型。真实写交接与自动合并未接通。
+缺能力或过期时拒绝领取；60 秒轮询及失败退避不启动模型。已接通条件 push、PR outbox 与精确合并事实释放；自动合并不属于 0a。
 
 [执行环境预检与磁盘保护](docs/preparation.md) 已加入真实开发环境探针、持久化有限重试、
 精确领取证据和存储停止保护；编码与远端写交接仍受后续任务门禁约束。

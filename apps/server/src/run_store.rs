@@ -82,7 +82,7 @@ pub async fn reserve_prepared(pool: &PgPool, launch: &Launch) -> Result<bool> {
     commit_claim(tx, id, revision, launch).await
 }
 
-async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
+pub(crate) async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
     let next: Option<(i64,i64,bool)> = sqlx::query_as(
         "SELECT id,revision,paused FROM requirement WHERE state='Ready' ORDER BY id LIMIT 1 FOR UPDATE")
         .fetch_optional(&mut **tx).await?;
@@ -99,6 +99,8 @@ async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
 
 async fn commit_claim(mut tx: Tx<'_>, id: i64, revision: i64, launch: &Launch) -> Result<bool> {
     insert_run(&mut tx, id, revision, launch).await?;
+    sqlx::query("INSERT INTO run_workspace(run_id,identity) SELECT $3,workspace FROM initial_run WHERE requirement_id=$1 AND revision=$2 AND launch=$4")
+        .bind(id).bind(revision).bind(&launch.key.run_id).bind(sqlx::types::Json(launch)).execute(&mut *tx).await?;
     sqlx::query("UPDATE execution_control SET requirement_id=$1 WHERE id=1")
         .bind(id)
         .execute(&mut *tx)
@@ -111,7 +113,7 @@ async fn commit_claim(mut tx: Tx<'_>, id: i64, revision: i64, launch: &Launch) -
     Ok(true)
 }
 
-async fn claim_allowed(tx: &mut Tx<'_>, incarnation: &str) -> Result<bool> {
+pub(crate) async fn claim_allowed(tx: &mut Tx<'_>, incarnation: &str) -> Result<bool> {
     sqlx::query_scalar("SELECT requirement_id IS NULL AND NOT paused AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND recovery_complete AND incarnation=$1 FROM execution_control WHERE id=1")
         .bind(incarnation).fetch_one(&mut **tx).await
 }
@@ -193,7 +195,7 @@ pub async fn pause(pool: &PgPool, requirement: Option<i64>) -> Result<()> {
                 .await?;
         }
     }
-    sqlx::query("UPDATE agent_run SET stop_requested=true WHERE NOT quiescent AND ($1::bigint IS NULL OR requirement_id=$1)")
+    sqlx::query("UPDATE agent_run SET stop_requested=true,user_paused=true WHERE NOT quiescent AND ($1::bigint IS NULL OR requirement_id=$1)")
         .bind(requirement).execute(&mut *tx).await?;
     tx.commit().await
 }

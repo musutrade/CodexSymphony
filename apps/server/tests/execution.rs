@@ -439,7 +439,7 @@ async fn pause_api(pool: &PgPool) {
             true
         )
         .await,
-        422
+        409
     );
     assert_eq!(
         api(
@@ -450,7 +450,7 @@ async fn pause_api(pool: &PgPool) {
             true
         )
         .await,
-        422
+        409
     );
     assert_eq!(api(pool, "GET", "/api/execution", "", false).await, 200);
     assert_eq!(

@@ -77,7 +77,8 @@ pub async fn tick(
     if config.validation.is_some() {
         crate::validation_repair_worker::tick(pool, root, broker, incarnation, config).await?;
     }
-    resume(pool, root, supervisor, broker, incarnation, config).await
+    resume(pool, root, supervisor, broker, incarnation, config).await?;
+    crate::runtime_initial::tick(pool, root, broker, incarnation, config).await
 }
 async fn resume(
     pool: &PgPool,

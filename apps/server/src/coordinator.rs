@@ -70,6 +70,7 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
         }
     }
     crate::runtime_store::finalize(pool).await?;
+    crate::delivery_control::settle(pool).await?;
     run_store::finish_recovery(pool, incarnation).await
 }
 
