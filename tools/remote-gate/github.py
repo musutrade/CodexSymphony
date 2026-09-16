@@ -5,6 +5,17 @@ import json
 import subprocess
 import time
 import urllib.request
+import urllib.error
+import urllib.parse
+
+API_ROOT = "https://api.github.com"
+
+
+class RejectRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        # Tokens must never be forwarded to a redirect destination, including
+        # same-origin URLs. Callers handle the HTTP failure without replaying writes.
+        raise urllib.error.HTTPError(req.full_url, code, "GitHub API redirect rejected", headers, fp)
 
 
 def encode(value):
@@ -12,11 +23,14 @@ def encode(value):
 
 
 def request(path, token, method='GET', body=None):
+    parsed=urllib.parse.urlsplit(path)
+    if not path.startswith('/') or path.startswith('//') or parsed.scheme or parsed.netloc or parsed.fragment or any(ord(c)<32 for c in path):
+        raise ValueError('GitHub API path must be an absolute same-origin path')
     data=None if body is None else json.dumps(body).encode()
-    req=urllib.request.Request('https://api.github.com'+path,data=data,method=method,
+    req=urllib.request.Request(API_ROOT+path,data=data,method=method,
         headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json',
                  'Content-Type':'application/json','X-GitHub-Api-Version':'2022-11-28'})
-    with urllib.request.urlopen(req,timeout=45) as response:
+    with urllib.request.build_opener(RejectRedirects()).open(req,timeout=45) as response:
         return json.load(response)
 
 
