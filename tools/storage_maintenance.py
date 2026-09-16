@@ -20,7 +20,7 @@ STOP_FREE = 12 * GIB
 RESUME_FREE = 20 * GIB
 
 
-def gate_busy(runs, proc=Path('/proc')):
+def gate_busy(runs, proc=Path('/proc'), include_launchers=True):
     """Fail closed for unreadable same-user workers; include orphan workers.
 
     A run launcher may not mention its generated run directory yet, so detect
@@ -43,7 +43,7 @@ def gate_busy(runs, proc=Path('/proc')):
             if (len(arguments) == 2 and arguments[0] == '/usr/bin/python3'
                     and re.fullmatch(re.escape(str(broker_root)) + r'/gh\d+-environment/broker.py', arguments[1])):
                 continue
-            if any(arg.endswith('/run.py') and ('/quality-host/' in arg or '/gate-host/releases/' in arg)
+            if include_launchers and any(arg.endswith('/run.py') and ('/quality-host/' in arg or '/gate-host/releases/' in arg)
                    for arg in arguments):
                 return True
             # The OS session manager and PAM/sshd have protected descriptors.
@@ -85,7 +85,13 @@ def collect(root, busy=gate_busy, now=None):
             candidates.append(target)
     removed = []
     for target in candidates:
-        if busy(runs):
+        # A finalized, old UUID cannot be reused by a new Gate run. Check its
+        # own workers instead of letting another PR indefinitely pin its cache.
+        result = target.parent / 'verify-result.json'
+        finalized = result.is_file() and now - result.stat().st_mtime >= 60
+        in_use = (gate_busy(target.parent, include_launchers=False)
+                  if busy is gate_busy and finalized else busy(runs))
+        if in_use:
             return {'removed': removed, 'deferred': True}
         # No active capture can still be populating these old UUID directories.
         # rmtree uses fd-based symlink protection on this Linux host.

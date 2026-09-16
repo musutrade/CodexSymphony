@@ -107,7 +107,15 @@ class StorageMaintenance(unittest.TestCase):
         (child / 'cwd').symlink_to(self.target)
         self.assertTrue(STORAGE.gate_busy(self.run.parent, proc))
 
+    def test_finalized_run_scan_ignores_unrelated_launcher(self):
+        proc, _ = self.process(b'python3\0/home/gem/.local/share/codexsymphony/gate-host/releases/example/run.py\0')
+        self.assertTrue(STORAGE.gate_busy(self.run.parent, proc))
+        self.assertFalse(STORAGE.gate_busy(self.run.parent, proc, include_launchers=False))
+
     def test_real_orphan_worker_blocks_until_it_exits(self):
+        result = self.run / 'verify-result.json'
+        result.write_text('{"exit":1}')
+        os.utime(result, (0, 0))
         worker = subprocess.Popen(['sleep', '60'], cwd=self.target)
         try:
             self.assertTrue(STORAGE.collect(self.root, now=1000)['deferred'])

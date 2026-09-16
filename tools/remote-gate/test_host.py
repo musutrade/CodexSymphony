@@ -6,6 +6,19 @@ import unittest
 from host import validate_run,check_files
 
 class TrustedRun(unittest.TestCase):
+    def test_cross_device_dependencies_copy_and_other_errors_propagate(self):
+        import errno,os
+        from unittest.mock import patch
+        from host import link_or_copy
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/'source';destination=Path(tmp)/'destination'
+            source.write_bytes(b'dependency');source.chmod(0o755)
+            with patch('host.os.link',side_effect=OSError(errno.EXDEV,'cross-device')):
+                link_or_copy(source,destination)
+            self.assertEqual(destination.read_bytes(),source.read_bytes())
+            self.assertEqual(destination.stat().st_mode,source.stat().st_mode)
+            with patch('host.os.link',side_effect=OSError(errno.EACCES,'denied')):
+                with self.assertRaises(OSError):link_or_copy(source,Path(tmp)/'denied')
     def setUp(self):
         self.config={'repository':'musutrade/CodexSymphony'}
         self.run={'repository':{'full_name':self.config['repository']},'head_repository':{'full_name':self.config['repository']},
