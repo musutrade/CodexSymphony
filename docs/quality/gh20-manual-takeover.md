@@ -58,3 +58,13 @@ Commands:
 The one unmerged migration is revised in this PR. Local rehearsal databases
 that applied an earlier PR version must be replaced, not have migration
 checksums rewritten.
+
+## Nested validation deployment
+
+The trusted outer capture uses the existing root-owned
+`/usr/local/libexec/codexsymphony/bwrap` AppArmor entrypoint so product validation
+can create its own nested user/PID/network namespaces. The mount list, cleared
+environment, read-only source, internal namespace isolation and Gate thresholds
+are unchanged. The dedicated executable is included in approved runtime hashes.
+The actual validation integration executable passed inside this exact outer
+mount policy; default `/usr/bin/bwrap` as the outer launcher failed closed.
