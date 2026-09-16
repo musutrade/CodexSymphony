@@ -21,18 +21,6 @@ def info(role):
     return value
 
 def perform(request):
-    if request=={'action':'runtime-product-acceptance'}:
-        from runtime_product_acceptance import probe
-        return probe()
-    if request=={'action':'runtime-command-readiness'}:
-        from runtime_command_readiness import probe
-        return probe()
-    if request=={'action':'product-preparation-acceptance'}:
-        from product_preparation_acceptance import probe
-        return probe()
-    if request=={'action':'execution-readiness'}:
-        from execution_readiness import probe
-        return probe()
     if set(request)!={'action','role'} or request['role'] not in ['test','dev'] or request['action'] not in ['status','recreate']:
         raise ValueError('Only status/recreate of test/dev fixtures is allowed')
     role=request['role'];before=info(role);name='codexsymphony-gh12-'+role

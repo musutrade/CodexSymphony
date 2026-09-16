@@ -27,13 +27,6 @@ def routed_workflow(workflow, previous=None):
 def environment_sources():
     directory=ROOT/'tools/symphony/environment'
     sources={path.relative_to(directory):path.read_bytes() for path in directory.rglob('*') if path.is_file() and '__pycache__' not in path.parts}
-    reviewed=Path('client/reviewed-preparation')
-    manifest={}
-    for name in ['app_server.py','sandbox_probe.py']:
-        content=(ROOT/'tools/preparation'/name).read_bytes()
-        sources[reviewed/name]=content
-        manifest[name]=hashlib.sha256(content).hexdigest()
-    sources[reviewed/'manifest.json']=(json.dumps(manifest,sort_keys=True)+'\n').encode()
     return sources
 
 def check_environment_resources(state):
@@ -47,7 +40,7 @@ def main():
     os.umask(0o077)
     state=BASE/'symphony';state.mkdir(parents=True,exist_ok=True)
     workflow=(ROOT/'WORKFLOW.lifecycle.md').read_bytes()
-    wrapper=(ROOT/'tools/symphony/codex_sandbox.py').read_bytes()
+    wrapper=(ROOT/'tools/symphony/trusted_environment.py').read_bytes()
     provision=(ROOT/'tools/symphony/provision_issue_environment.py').read_bytes()
     sources=environment_sources()
     check_environment_resources(state)
@@ -55,18 +48,37 @@ def main():
     routed=routed_workflow(workflow,active.read_bytes() if active.exists() else None)
     revision=hashlib.sha256(workflow+wrapper+provision+b''.join(sources[key] for key in sorted(sources))).hexdigest()[:16]
     release=state/'releases'/revision;release.mkdir(parents=True,exist_ok=True)
-    for name,data in [('WORKFLOW.lifecycle.md',workflow),('codex_sandbox.py',wrapper)]:
+    for name,data in [('WORKFLOW.lifecycle.md',workflow),('trusted_environment.py',wrapper)]:
         path=release/name
         if path.exists() and path.read_bytes()!=data:raise ValueError('immutable release differs')
         path.write_bytes(data)
     # Stable journal path is retained across workflow releases.
     (state/'provision_issue_environment.py').write_bytes(provision)
+    # Retire superseded executable entrypoints while retaining their artifacts.
+    retired=state/'retired-execution-entries'/revision
+    obsolete=['execution_readiness.py','product_preparation_acceptance.py',
+              'runtime_command_readiness.py','runtime_product_acceptance.py',
+              'backend_test_acceptance.py','reviewed-runtime',
+              'client/execution_readiness.py','client/product_preparation_acceptance.py',
+              'client/runtime_command_readiness.py','client/runtime_product_acceptance.py',
+              'client/runtime_smoke.py','client/backend_tests.py','client/reviewed-preparation']
+    for directory in [state/'environment-template', *state.glob('gh*-environment')]:
+        for name in obsolete:
+            source=directory/name
+            if source.exists():
+                target=retired/directory.name/name
+                target.parent.mkdir(parents=True,exist_ok=True)
+                source.rename(target)
+    legacy=state/'codex-sandbox'
+    if legacy.exists():
+        retired.mkdir(parents=True,exist_ok=True)
+        legacy.rename(retired/'codex-sandbox')
     for name,data in sources.items():
         path=state/'environment-template'/name;path.parent.mkdir(parents=True,exist_ok=True)
         path.write_bytes(data)
         if name==Path('client/bin/psql'):path.chmod(0o755)
     active.write_bytes(routed)
-    command=state/'codex-sandbox';command.write_text('#!/bin/sh\nexec /usr/bin/python3 '+str(release/'codex_sandbox.py')+' "$@"\n');command.chmod(0o700)
+    command=state/'codex-trusted';command.write_text('#!/bin/sh\nexec /usr/bin/python3 '+str(release/'trusted_environment.py')+' "$@"\n');command.chmod(0o700)
     environment=HOME/'.config/symphony/codexsymphony.env'
     if not environment.exists():
         old=(HOME/'.config/symphony/harness-gate.env').read_text().splitlines()

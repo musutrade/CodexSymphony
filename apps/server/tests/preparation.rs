@@ -15,14 +15,10 @@ static DATABASE_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(())
 fn evidence() -> Evidence {
     Evidence {
         deployment_identity: "deployment".into(),
-        sandbox_identity: "uid-cwd-policy-sample".into(),
+        execution_identity: "uid-cwd-policy-sample".into(),
         network: NetworkEvidence {
             configuration_identity: "deployment".into(),
-            allowed_domains: vec!["crates.io".into()],
-            enforced: true,
-            allowed_probe: true,
-            denied_probe: true,
-            direct_connection_rejected: true,
+            reachable: true,
         },
         failures: vec![],
         sample: json!({"model_calls":0}),
@@ -66,47 +62,28 @@ fn fixed_retry_budget_and_pause_are_independent() {
 }
 
 #[test]
-fn enforcement_requires_identity_allow_deny_and_bypass() {
+fn connectivity_requires_identity_without_domain_enforcement() {
     let proof = evidence();
-    assert!(
-        proof.failure("deployment", &[]).is_none(),
-        "empty declaration still permits deployed set"
-    );
+    assert!(proof.failure("deployment", &[]).is_none());
     assert!(network_ready(
-        "deployment",
-        &["crates.io".into()],
-        &proof.network
-    ));
-    assert!(!network_ready(
         "deployment",
         &["example.com".into()],
         &proof.network
     ));
     assert!(proof.failure("changed", &[]).is_some());
+    let mut unavailable = evidence();
+    unavailable.network.reachable = false;
+    assert!(unavailable.failure("deployment", &[]).is_none());
     assert_eq!(
-        proof
+        unavailable
             .failure("deployment", &["example.com".into()])
             .unwrap()
             .code,
         "network_scope_unavailable"
     );
-    for field in [
-        "enforced",
-        "allowed_probe",
-        "denied_probe",
-        "direct_connection_rejected",
-    ] {
-        let mut value = json!(proof.network);
-        value[field] = json!(false);
-        assert!(!network_ready(
-            "deployment",
-            &[],
-            &serde_json::from_value(value).unwrap()
-        ));
-    }
     assert!(!network_ready("", &[], &proof.network));
     let mut unknown = evidence();
-    unknown.sandbox_identity.clear();
+    unknown.execution_identity.clear();
     assert!(unknown.failure("deployment", &[]).is_some());
     let mut missing = evidence();
     missing.failures.push(Failure::new(

@@ -52,7 +52,7 @@ agent:
   max_run_attempts: 3
 codex:
   command: >-
-    /home/gem/.local/share/codexsymphony/symphony/codex-sandbox
+    /home/gem/.local/share/codexsymphony/symphony/codex-trusted
     --config 'model_provider="openai"'
     --config 'model="gpt-6-astra"'
     --config 'model_reasoning_effort="medium"'
@@ -60,10 +60,9 @@ codex:
     --config 'tool_output_token_limit=2000'
     app-server
   approval_policy: never
-  thread_sandbox: workspace-write
+  thread_sandbox: danger-full-access
   turn_sandbox_policy:
-    type: workspaceWrite
-    networkAccess: true
+    type: dangerFullAccess
   turn_timeout_ms: 3600000
   read_timeout_ms: 5000
   stall_timeout_ms: 300000
@@ -96,7 +95,7 @@ Do not implement Gate PASS -> Done or validation FAIL -> AgentRun failed.
 The product Phase 0a uses custom validation and ends at Submitted/PR. This
 repository itself requires Harness-Gate now (see .harness-gate/QUALITY.md).
 Its own runtime must
-use a worktree per Run, matching app-server cwd, protected Git metadata and
+use a worktree per Run, matching app-server cwd, ordinary local Git and
 platform-owned Git delivery. Do not transplant this development controller's
 development handoff protocol into the product. Cloudflare/Bark belong to 0b;
 independent executor UID and the newly pinned Harness-Gate integration to 0c.
@@ -109,35 +108,23 @@ read-only browser/source resources per assigned Issue. Read `.agent-env/README.m
 before probing services. Previous preparation reports may describe an earlier
 unprovisioned environment; confirm the current fixture using the commands below.
 
-Run database-dependent commands using `python3 /opt/symphony-env/run.py COMMAND ...`.
-The launcher injects TEST_DATABASE_URL, DATABASE_URL and DEV_DATABASE_URL and
-starts command-local relays through the managed proxy. Direct host localhost
-ports and raw Docker socket access are intentionally unavailable and are not
-prerequisites for the supplied fixtures. The fixed `/opt/symphony-env/dbctl.py`
-interface provides status/recreate for test/dev only. For frontend dependencies,
-use `npm ci --offline --no-audit --no-fund` in web/angular. For E2E, use
-`python3 /opt/symphony-env/run.py python3 /opt/symphony-env/e2e.py`; it starts the
-real API with the expected test Origin, runs the repository tests, and stops it.
-Run actual sandbox readiness checks before implementation; host provisioning is
-not product acceptance. Preserve existing progress and all Gate requirements.
+Use `python3 /opt/symphony-env/run.py COMMAND ...` to inject the supplied
+project database URLs; this wrapper executes the ordinary command directly.
+Run Cargo tests, including the real Runtime integration, in this same trusted
+development environment. No reviewed binary installation, source manifest,
+backend_tests.py or runtime_product_acceptance.py receipt is required.
+Do not reintroduce per-test host execution endpoints or managed-network probes.
 
 ## Preparation and recovery
 
-Before coding, check the Issue's declared tools, dependencies, writable build
-paths and required test services in the actual execution sandbox. Use a
-workspace-local target directory. Missing PostgreSQL or inaccessible network
-is an environment blocker when required by this Issue, not a code defect.
-The host hook is only a basic check; it does not establish sandbox readiness.
+Before coding, check declared tools, writable build paths and required service
+connectivity in the actual development environment. Run the relevant real smoke
+tests. Missing dependencies are environment failures, not code repair attempts.
 
-Use the injected `github_api` dynamic tool for GitHub operations. Symphony's
-host adapter executes these requests with its configured credentials; the Agent
-shell does not run git push, gh, or credential-bearing curl. Read-only local Git
-commands remain useful. Protected .git is expected and is not a delivery blocker.
-Do not expand writable roots or weaken network policy to publish code.
-Before coding, confirm the tool is available and can read this repository and
-Issue. Report missing tool/host authorization as a preparation blocker.
-Do not read credential files or embed tokens in URLs, files, command output,
-PR text or handoff summaries.
+Use the injected `github_api` tool for authorized GitHub operations. Its service
+holds credentials outside this environment. Local Git is writable and usable.
+Do not read or copy service credentials. Formal Gate signing remains in the
+independent verifier; ordinary local tests neither require nor produce signatures.
 
 On retry, inspect current branch, working tree, existing commits and saved
 evidence first. Preserve uncommitted and untracked implementation. Never reset

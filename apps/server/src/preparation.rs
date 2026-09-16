@@ -156,11 +156,7 @@ impl Retry {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NetworkEvidence {
     pub configuration_identity: String,
-    pub allowed_domains: Vec<String>,
-    pub enforced: bool,
-    pub allowed_probe: bool,
-    pub denied_probe: bool,
-    pub direct_connection_rejected: bool,
+    pub reachable: bool,
 }
 
 /// Identity includes the exact launch, immutable review, deployment and fresh
@@ -168,7 +164,7 @@ pub struct NetworkEvidence {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Evidence {
     pub deployment_identity: String,
-    pub sandbox_identity: String,
+    pub execution_identity: String,
     pub network: NetworkEvidence,
     pub failures: Vec<Failure>,
     pub sample: serde_json::Value,
@@ -176,7 +172,7 @@ pub struct Evidence {
 
 impl Evidence {
     pub fn failure(&self, expected: &str, requested: &[String]) -> Option<Failure> {
-        if self.deployment_identity != expected || self.sandbox_identity.is_empty() {
+        if self.deployment_identity != expected || self.execution_identity.is_empty() {
             return Some(Failure::new(
                 "policy_identity_mismatch",
                 "deployment or execution identity unknown",
@@ -189,7 +185,7 @@ impl Evidence {
         if !network_ready(expected, requested, &self.network) {
             return Some(Failure::new(
                 "network_scope_unavailable",
-                "verify static policy identity, allow/deny and direct bypass probes",
+                "verify required service connectivity in the trusted development environment",
                 "preparation_history",
             ));
         }
@@ -204,15 +200,5 @@ pub fn network_ready(
 ) -> bool {
     !expected_identity.is_empty()
         && expected_identity == evidence.configuration_identity
-        && enforcement_proven(evidence)
-        && requested
-            .iter()
-            .all(|domain| evidence.allowed_domains.contains(domain))
-}
-
-fn enforcement_proven(evidence: &NetworkEvidence) -> bool {
-    evidence.enforced
-        && evidence.allowed_probe
-        && evidence.denied_probe
-        && evidence.direct_connection_rejected
+        && (requested.is_empty() || evidence.reachable)
 }

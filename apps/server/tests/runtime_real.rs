@@ -1,4 +1,4 @@
-//! Run only through the reviewed independent Runtime test entry.
+//! Real pinned Runtime integration in the ordinary trusted development environment.
 use codexsymphony_server::{
     execution::{Launch, RunKey},
     process, runtime, runtime_protocol as wire,
@@ -66,16 +66,10 @@ async fn call(
 }
 
 #[tokio::test]
-#[ignore = "requires the reviewed independent Runtime sandbox entry"]
 async fn real_runtime_transport_and_supervision() {
-    assert_eq!(
-        std::env::var("SYMPHONY_REVIEWED_RUNTIME_TEST").unwrap(),
-        "1"
-    );
     let root = std::env::current_dir().unwrap();
-    let directory = root
-        .join("target")
-        .join(format!("real-runtime-{}", process::new_identity().unwrap()));
+    let directory =
+        std::env::temp_dir().join(format!("real-runtime-{}", process::new_identity().unwrap()));
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let requests = Arc::new(Mutex::new(Vec::<Value>::new()));
@@ -100,7 +94,7 @@ async fn real_runtime_transport_and_supervision() {
 model = "gpt-6-astra"
 model_provider = "runtime_fixture"
 approval_policy = "never"
-sandbox_mode = "workspace-write"
+sandbox_mode = "danger-full-access"
 [model_providers.runtime_fixture]
 name = "Local scripted fixture"
 base_url = "http://127.0.0.1:{port}"
@@ -120,10 +114,21 @@ stream_max_retries = 0
         key: key.clone(),
         workspace: root.to_str().unwrap().into(),
         workspace_identity: "reviewed".into(),
-        program: "/opt/codex/codex".into(),
+        program: std::env::var("CODEX_BINARY").unwrap_or_else(|_| {
+            String::from_utf8(
+                std::process::Command::new("which")
+                    .arg("codex")
+                    .output()
+                    .unwrap()
+                    .stdout,
+            )
+            .unwrap()
+            .trim()
+            .into()
+        }),
         args: vec!["app-server".into()],
     };
-    let supervisor = PathBuf::from(std::env::var("SYMPHONY_REVIEWED_SUPERVISOR").unwrap());
+    let supervisor = PathBuf::from(env!("CARGO_BIN_EXE_codexsymphony-server"));
     let child =
         process::spawn_with_transport(&supervisor, &directory, &launch, Some(&config)).unwrap();
     let mut worker = Worker {
@@ -160,22 +165,15 @@ stream_max_retries = 0
         .send(&json!({"method":"initialized"}))
         .await
         .unwrap();
-    let code = r#"import os,errno,json,pathlib,uuid
+    let code = r#"import os,json,pathlib,tempfile
 root=pathlib.Path.cwd()
-assert os.getuid()==1000
-assert not pathlib.Path('/home/gem/.secrets').exists()
-assert not pathlib.Path('/home/gem/.local/share/codexsymphony/gate-host/approval.json').exists()
-assert not pathlib.Path('/home/gem/.local/share/codexsymphony/codex-home/auth.json').exists()
-p=root/'.git'/('real-runtime-'+uuid.uuid4().hex)
-try:
- p.write_text('probe')
-except OSError as e:
- assert e.errno in (errno.EROFS,errno.EACCES,errno.EPERM)
-else:
- p.unlink();raise AssertionError('Git writable')
-print(json.dumps({'git_readonly':True,'credentials_hidden':True,'cwd':str(root)}))
+assert 'GITHUB_TOKEN' not in os.environ
+assert 'GH_TOKEN' not in os.environ
+with tempfile.TemporaryDirectory() as d:
+ p=pathlib.Path(d)/'ordinary-command';p.write_text('ok');assert p.read_text()=='ok'
+print(json.dumps({'cwd':str(root),'ordinary_command':True}))
 "#;
-    let command=call(&mut transport,&mut saved,"command/exec",json!({"command":["python3","-c",code],"cwd":root,"sandboxPolicy":{"type":"workspaceWrite","writableRoots":[],"networkAccess":true},"timeoutMs":20000})).await;
+    let command=call(&mut transport,&mut saved,"command/exec",json!({"command":["python3","-c",code],"cwd":root,"sandboxPolicy":{"type":"dangerFullAccess"},"timeoutMs":20000})).await;
     assert_eq!(command["exitCode"], 0, "{command}");
     let proof: Value = serde_json::from_str(command["stdout"].as_str().unwrap()).unwrap();
     assert_eq!(proof["cwd"], root.to_str().unwrap());
@@ -186,7 +184,7 @@ print(json.dumps({'git_readonly':True,'credentials_hidden':True,'cwd':str(root)}
         json!(wire::ThreadStartParams {
             cwd: Some(root.to_string_lossy().into_owned()),
             approval_policy: Some(json!("never")),
-            sandbox: Some(json!("workspace-write")),
+            sandbox: Some(json!("danger-full-access")),
             ephemeral: Some(true),
             dynamic_tools: Some(runtime::tools()),
             allow_provider_model_fallback: Some(false),

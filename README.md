@@ -36,7 +36,7 @@
 - 一个 Rust 控制面 + PostgreSQL + 最小 Angular Web，60 秒只读 GitHub 轮询。
 - GitHub App；Agent 只通过受控工具提交/声明，平台经持久化 outbox 发布。
 - 严格全局顺序覆盖编码、验证、交接、CI 等待和阻塞；具体释放条件见综合方案第 6 章。
-- 部署期强制静态网络白名单；需求联网声明只是评审意图，不承诺逐任务网络隔离。
+- 采用 Symphony 的可信开发环境；普通命令和测试直接执行，网络声明仅用于依赖准备与连通性检查。
 - 保留启动恢复闸门、工作保全、精确验证身份、0a 一次代码修复、跨 Run 累计预算和磁盘保护。
 - 仓库先做交付能力检查；暂停保留占用，取消按完整收尾流程释放。旧 S2 合并字段推论已纠正，实际规则见综合方案 11.1/11.2。
 - 手机、执行隔离、Harness-Gate 接入及自动合并随后分期；通用租约/诊断/资源/缓存框架按实际需要评估。
@@ -44,7 +44,7 @@
 ## 已有实验
 
 [S1](spikes/s1/README.md)验证动态工具与工作区写边界；[S2](spikes/s2/README.md)及[补测](spikes/s2/README_S2b.md)验证 App、PR、Checks 与 SHA 守卫；[S3](spikes/s3/README.md)验证 Access；[S4](spikes/s4/README.md)验证 Gate 配置身份；[S5](spikes/s5/README.md)验证全局网络配置。
-实验结论绑定当时版本，不替代当前部署和实现验收。尤其 workspace-write 不限制同 UID 读取，0a 只接管本人可信仓库。
+实验结论仅保留为历史记录。当前边界见 [可信开发环境](docs/trusted-development.md)：GitHub 与签名凭据独立托管，开发环境只接管本人可信代码。
 
 参考：[OpenAI Symphony](https://github.com/openai/symphony)、[Harness-Gate](https://github.com/musutrade/Harness-Gate)。
 

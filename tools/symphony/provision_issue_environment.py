@@ -65,27 +65,12 @@ def main(workspace):
         p=provision/'client/e2e.py'
         p.write_text(p.read_text().replace("env['BIND_ADDRESS']='127.0.0.1:3081'", "env['BIND_ADDRESS']='127.0.0.1:3081';env['WEB_ORIGIN']='http://127.0.0.1:4300'"))
         shutil.copytree(TEMPLATE/'arc-admin',provision/'arc-admin')
-        for name in ['broker.py','preflight.py']:
-            (provision/name).write_text(adapt((TEMPLATE/name).read_text()))
-        source=Path('/etc/codex/requirements.toml').read_text()
-        source=source.replace('domains = {',f'domains = {{ "{subnet}.2" = "allow", "{subnet}.3" = "allow",')
-        (provision/'requirements.toml').write_text(source)
-    # Refresh the launcher on every provision, including existing workspaces.
-    launcher=provision/'client/run.py'
-    pending=launcher.with_suffix('.new')
-    pending.write_text(adapt((TEMPLATE/'client/run.py').read_text()))
-    pending.replace(launcher)
+    (provision/'requirements.toml').write_text('[experimental_network]\nenabled = false\n')
     broker_changed=False
-    for name in ['broker.py','preflight.py','execution_readiness.py','client/execution_readiness.py',
-                 'runtime_command_readiness.py','client/runtime_command_readiness.py',
-                 'runtime_product_acceptance.py','client/runtime_product_acceptance.py',
-                 'product_preparation_acceptance.py','client/product_preparation_acceptance.py','client/runtime_smoke.py',
-                 'client/reviewed-preparation/app_server.py','client/reviewed-preparation/sandbox_probe.py',
-                 'client/reviewed-preparation/manifest.json']:
+    for name in ['broker.py','preflight.py','client/verify.py','client/run.py']:
         destination=provision/name
         destination.parent.mkdir(parents=True,exist_ok=True)
-        content=(TEMPLATE/name).read_text()
-        if 'reviewed-preparation/' not in name:content=adapt(content)
+        content=adapt((TEMPLATE/name).read_text())
         if not destination.exists() or destination.read_text()!=content:
             pending=destination.with_suffix('.new');pending.write_text(content);pending.replace(destination)
             broker_changed=True

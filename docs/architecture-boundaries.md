@@ -59,3 +59,18 @@ An implementation should independently answer:
 - Which orchestration rule authorized the next action?
 
 Behavioral rules have one authoritative definition in the main specification; this file does not repeat their state machines or transaction algorithms.
+
+## 7. Trusted development environment (2026-09-16)
+
+Development follows Symphony's trusted-environment model. Ordinary Agent commands,
+Git, builds, databases, browsers and real Runtime tests use that environment directly.
+No per-command sandbox, mandatory static network allowlist, nested validation
+namespace, reviewed binary manifest or per-test host receipt is a product requirement.
+The deployment may provide a single account/environment boundary; it is not a
+project-specific execution protocol. This phase does not run adversarial code.
+
+GitHub credentials stay in the authorized remote-operation service. Gate signing
+keys stay in the independent verifier, which fetches an exact commit and evaluates
+approved policy. Neither service's credentials enter the development environment.
+Development test output is not a signed Gate decision. Budgets, candidate identity,
+recovery, real CI checks and external-action authorization remain in force.

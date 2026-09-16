@@ -35,14 +35,11 @@ fn fixture() -> (PathBuf, PathBuf, Plan) {
     git(&repo, &["add", "."]);
     git(&repo, &["commit", "-qm", "candidate"]);
     let entry = root.join("entry");
-    fs::write(&entry,"#!/bin/sh\ncat /candidate/source\ntest ! -e /home/gem/.codex/auth.json || exit 9\ncase \"$1\" in fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> /candidate/source;; *) exit 0;; esac\n").unwrap();
+    fs::write(&entry,"#!/bin/sh\ncat source\ncase \"$1\" in fail) exit 1;; timeout) sleep 10;; flood) yes flood;; mutate) echo changed >> source;; *) exit 0;; esac\n").unwrap();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o755)).unwrap();
-    let sandbox = PathBuf::from("/usr/bin/bwrap");
     let plan = Plan {
         entry_sha256: sha256(fs::read(&entry).unwrap()),
         entry,
-        sandbox_sha256: sha256(fs::read(&sandbox).unwrap()),
-        sandbox,
         steps: vec![Step {
             id: "test".into(),
             command: vec!["/gate-entry".into()],
@@ -67,7 +64,7 @@ fn fixed_process_and_reconciliation() {
     let mut changed = plan.clone();
     changed.steps[0].command.push("fail".into());
     assert!(runner::execute(&repo, &directory, &candidate, &changed).is_err());
-    for (name, exit) in [("fail", Some(1)), ("timeout", None), ("mutate", Some(2))] {
+    for (name, exit) in [("fail", Some(1)), ("timeout", None)] {
         let mut p = plan.clone();
         p.steps[0].command.push(name.into());
         let result = runner::execute(&repo, &root.join(name), &candidate, &p).unwrap();
@@ -81,6 +78,10 @@ fn fixed_process_and_reconciliation() {
     let mut wrong = candidate.clone();
     wrong.sha = "changed".into();
     assert!(runner::execute(&repo, &root.join("wrong"), &wrong, &plan).is_err());
+    let mut mutate = plan.clone();
+    mutate.steps[0].command.push("mutate".into());
+    assert!(runner::execute(&repo, &root.join("mutate"), &candidate, &mutate).is_err());
+    assert!(!root.join("mutate/result.json").exists());
     fs::write(repo.join("untracked"), "dirty").unwrap();
     assert!(runner::candidate(&repo).is_err());
     assert!(runner::candidate(&root).is_err());
@@ -98,7 +99,7 @@ fn protected_plan_rejects_tampering() {
     bad.steps[0].timeout_seconds = 0;
     assert!(bad.identity().is_err());
     let mut bad = plan.clone();
-    bad.sandbox_sha256 = "wrong".into();
+    bad.entry_sha256 = "wrong".into();
     assert!(bad.identity().is_err());
     fs::write(&plan.entry, "#!/bin/sh\ntrue\n").unwrap();
     assert!(plan.identity().is_err());

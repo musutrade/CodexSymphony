@@ -578,7 +578,7 @@ async fn worker_drives_fixed_candidate_and_one_repair_to_new_validation() {
         let (root, repo, mut plan) = runner_fixture::fixture();
         fs::write(
             &plan.entry,
-            "#!/bin/sh\ncat /candidate/source\ntest \"$(cat /candidate/source)\" = fixed\n",
+            "#!/bin/sh\ncat source\ntest \"$(cat source)\" = fixed\n",
         )
         .unwrap();
         plan.entry_sha256 = sha256(fs::read(&plan.entry).unwrap());
@@ -622,7 +622,7 @@ async fn worker_drives_fixed_candidate_and_one_repair_to_new_validation() {
         let adapter = root.join("preflight.py");
         fs::write(&adapter,r#"import json,sys
 p=json.load(sys.stdin)
-print(json.dumps({'deployment_identity':'fixture','sandbox_identity':'sandbox','network':{'configuration_identity':'fixture','allowed_domains':[],'enforced':True,'allowed_probe':True,'denied_probe':True,'direct_connection_rejected':True},'failures':[],'sample':{'cwd':p['workspace']}}))
+print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox','network':{'configuration_identity':'fixture','reachable':True},'failures':[],'sample':{'cwd':p['workspace']}}))
 "#).unwrap();
         let config = runtime_service::Config {
             validation: Some(plan.clone()),

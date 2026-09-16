@@ -757,7 +757,7 @@ async fn automatic_answer_recovery(root: &Path) {
     // requires the operator's fixed real command/exec adapter at this boundary.
     std::fs::write(&adapter, r#"import json,sys
 p=json.load(sys.stdin)
-print(json.dumps({'deployment_identity':'fixture','sandbox_identity':'sandbox','network':{'configuration_identity':'fixture','allowed_domains':[],'enforced':True,'allowed_probe':True,'denied_probe':True,'direct_connection_rejected':True},'failures':[],'sample':{'cwd':p['workspace']}}))
+print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox','network':{'configuration_identity':'fixture','reachable':True},'failures':[],'sample':{'cwd':p['workspace']}}))
 "#).unwrap();
     let mut config = runtime_service::Config {
         validation: None,

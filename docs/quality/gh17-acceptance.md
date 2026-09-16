@@ -1,3 +1,5 @@
+> 历史验收记录：执行边界已于 2026-09-16 改为可信开发环境。本文旧沙箱、白名单和专用验收入口不再是当前要求；以主规格及 docs/trusted-development.md 为准。历史结果保持原样。
+
 # GH-17 acceptance evidence
 
 Baseline: `08ff1222b1b9d976245edaef9132f28e2ade9cda` (dependency PR #37 merged;

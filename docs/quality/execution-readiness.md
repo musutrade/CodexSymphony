@@ -1,3 +1,5 @@
+> 历史验收记录：执行边界已于 2026-09-16 改为可信开发环境。本文旧沙箱、白名单和专用验收入口不再是当前要求；以主规格及 docs/trusted-development.md 为准。历史结果保持原样。
+
 # Actual execution readiness
 
 GH-17 preparation attempted to launch another app-server from inside a command

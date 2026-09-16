@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Launch the pinned Codex with no mount of GitHub keys or host gate state."""
+"""Deployment environment boundary only; commands inside run as trusted code.
+
+No per-command sandbox, managed-network policy or test-specific host entry.
+The environment omits GitHub credentials and the independent Gate service.
+"""
 import os
 from pathlib import Path
 import sys
@@ -31,12 +35,12 @@ def command(argv, state_home=None):
           '--symlink','usr/bin','/bin','--symlink','usr/lib','/lib','--symlink','usr/lib64','/lib64',
           '--proc','/proc','--dev','/dev','--tmpfs','/run',*resolver_mount(),
           '--bind',str(temporary),'/tmp','--dir',str(HOME),
-          '--bind',str(cwd),str(cwd),'--ro-bind',str(cwd/'.git'),str(cwd/'.git'),
+          '--bind',str(cwd),str(cwd),
           '--bind',str(state_home or auth),str(auth),'--ro-bind',str(CODEX),'/opt/codex',
           '--bind',str(cargo),str(HOME/'.cargo'),
           '--ro-bind',str(HOME/'.cargo/bin'),str(HOME/'.cargo/bin'),
-          '--ro-bind',str(HOME/'.cargo/registry'),str(HOME/'.cargo/registry'),
-          '--ro-bind',str(HOME/'.rustup'),str(HOME/'.rustup'),
+          '--bind',str(HOME/'.cargo/registry'),str(HOME/'.cargo/registry'),
+                    '--ro-bind',str(HOME/'.rustup'),str(HOME/'.rustup'),
           '--ro-bind',str(HOME/'.agents/skills'),str(HOME/'.agents/skills'),
           '--ro-bind',str(HOME/'.codex/skills'),str(HOME/'.codex/skills'),
           '--ro-bind',str(HOME/'.local/share/harness-gate'),str(HOME/'.local/share/harness-gate')]
@@ -59,49 +63,6 @@ def command(argv, state_home=None):
     return args+['--chdir',str(cwd),'--',*argv]
 
 
-def reviewed_runtime_command(state):
-    """Fixed reviewed test binary, isolated from host networking and credentials."""
-    import hashlib
-    import json
-    cwd = Path.cwd().resolve()
-    provision = BASE/'symphony'/(cwd.name.lower().replace('-', '')+'-environment')
-    reviewed = provision/'reviewed-runtime'
-    manifest = json.loads((reviewed/'manifest.json').read_text())
-    if manifest['workspace'] != str(cwd):
-        raise ValueError('reviewed Runtime workspace mismatch')
-    for name, expected in manifest['sources'].items():
-        path = cwd/name
-        if path.resolve() != path.absolute() or not path.is_relative_to(cwd):
-            raise ValueError('reviewed Runtime source path mismatch')
-        if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
-            raise ValueError('Runtime source changed; rebuild and review installation: '+name)
-    for name in ('test', 'supervisor'):
-        path = reviewed/name
-        if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != manifest['binaries'][name]:
-            raise ValueError('reviewed Runtime binary mismatch')
-    args = command(['/opt/reviewed-runtime/test', '--ignored', '--exact',
-                    'real_runtime_transport_and_supervision', '--nocapture'], state_home=state)
-    at = args.index('--chdir')
-    args[at:at] = ['--unshare-net', '--ro-bind', str(reviewed), '/opt/reviewed-runtime',
-                  '--setenv', 'SYMPHONY_REVIEWED_RUNTIME_TEST', '1',
-                  '--setenv', 'SYMPHONY_REVIEWED_SUPERVISOR', '/opt/reviewed-runtime/supervisor',
-                  '--setenv', 'NO_PROXY', '127.0.0.1,localhost,::1']
-    return args
-
 if __name__=='__main__':
-    if sys.argv[1:] in (['--runtime-readiness-app-server'], ['--runtime-product-acceptance']):
-        # Host-only fixed probe entry. Mount empty disposable state instead of
-        # shared authentication; preserve the same launcher and requirements.
-        import tempfile
-        import subprocess
-        import signal
-        def stop_probe(_signal, _frame):
-            raise SystemExit(0)
-        signal.signal(signal.SIGTERM, stop_probe)
-        with tempfile.TemporaryDirectory(prefix='codexsymphony-runtime-') as state:
-            args = (reviewed_runtime_command(state) if sys.argv[1] == '--runtime-product-acceptance'
-                    else command(['/opt/codex/codex', 'app-server'], state_home=state))
-            result = subprocess.run(args)
-        sys.exit(result.returncode)
     args=command(['/opt/codex/codex',*sys.argv[1:]])
     os.execv(args[0],args)

@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-spec=importlib.util.spec_from_file_location('sandbox',Path(__file__).with_name('codex_sandbox.py'))
+spec=importlib.util.spec_from_file_location('sandbox',Path(__file__).with_name('trusted_environment.py'))
 sandbox=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sandbox)
 

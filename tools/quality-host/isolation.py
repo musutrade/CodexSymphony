@@ -14,7 +14,8 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     # Dedicated AppArmor transition permits nested user namespaces without
     # weakening the inner command's filesystem, PID or network isolation.
     args = ['/usr/local/libexec/codexsymphony/bwrap', '--die-with-parent', '--new-session', '--unshare-user', '--unshare-pid',
-            '--ro-bind', '/usr', '/usr', '--ro-bind', '/etc', '/etc',
+            '--ro-bind', '/usr', '/usr', '--ro-bind', '/etc', '/etc', '--tmpfs', '/etc/codex',
+            '--ro-bind', str(HOME / '.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin'), '/opt/codex',
             '--symlink', 'usr/bin', '/bin', '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64',
             '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/run', '--bind', str(temporary), '/tmp',
             '--dir', str(HOME), '--bind', str(cargo), str(HOME / '.cargo'),
@@ -30,7 +31,7 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     for source, target in mounts:
         args += ['--ro-bind', str(source), str(target)]
     env = {'HOME': str(HOME), 'CARGO_HOME': str(HOME / '.cargo'), 'RUSTUP_HOME': str(HOME / '.rustup'),
-           'PATH': str(HOME / '.cargo/bin') + ':/usr/local/bin:/usr/bin:/bin',
+           'PATH': '/opt/codex:' + str(HOME / '.cargo/bin') + ':/usr/local/bin:/usr/bin:/bin',
            'LANG': 'C.UTF-8', 'TZ': 'UTC', 'CARGO_NET_OFFLINE': 'true',
            'CARGO_TARGET_DIR': str(run / 'target')}
     env.update(environment or {})
