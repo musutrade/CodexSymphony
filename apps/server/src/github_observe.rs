@@ -18,7 +18,7 @@ pub async fn observe(
     }
     let head = required_text(&pr["head"]["sha"])?;
     let base = required_text(&pr["base"]["sha"])?;
-    let checks = collect_checks(client, policy, &head, now).await?;
+    let checks = collect_checks(client, policy, &head, &pr, now).await?;
     let final_pr = client.get(policy, &path, now).await?;
     if pr != final_pr {
         return Err(invalid());
@@ -71,6 +71,7 @@ async fn collect_checks(
     client: &mut AppClient,
     policy: &Policy,
     head: &str,
+    pr: &Value,
     now: i64,
 ) -> Result<Vec<github::Check>> {
     let repo = format!("/repos/{}", policy.repository);
@@ -108,11 +109,17 @@ async fn collect_checks(
         )
         .await?;
     let (runs, jobs) = actions(client, policy, head, now).await?;
-    Ok(policy
+    policy
         .required
         .iter()
-        .map(|selector| github::resolve(selector, &checks, &statuses, &runs, &jobs))
-        .collect())
+        .map(|selector| {
+            let bound =
+                github::bind_pr_source(selector, pr, policy.repository_id).ok_or_else(invalid)?;
+            let mut check = github::resolve(&bound, &checks, &statuses, &runs, &jobs);
+            check.selector = selector.clone();
+            Ok(check)
+        })
+        .collect()
 }
 async fn actions(
     client: &mut AppClient,

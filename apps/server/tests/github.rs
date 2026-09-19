@@ -219,6 +219,7 @@ fn action_policy() -> Policy {
         workflow_sha: "pinned".into(),
         event: "pull_request".into(),
         branch: "feature".into(),
+        branch_from_pr: None,
     };
     p
 }
@@ -236,6 +237,80 @@ fn run() -> Value {
 }
 fn job() -> Value {
     json!({"id":20,"run_id":10,"run_attempt":2,"check_run_url":"https://api.github.com/repos/owner/repo/check-runs/2"})
+}
+
+#[tokio::test]
+async fn generated_pr_branch_requires_explicit_same_repository_source_binding() {
+    let f = Fixture::new().await;
+    f.actions();
+    let mut c = f.client();
+    let mut p = action_policy();
+    let now = github_service::now();
+    let mut actual = pr();
+    actual["head"]["ref"] = json!("ai/req-1-real-run");
+    actual["head"]["repo"] = json!({"id":99});
+    f.put("/repos/owner/repo/pulls/1", actual.clone());
+    let mut workflow = run();
+    workflow["head_branch"] = actual["head"]["ref"].clone();
+    f.put(
+        "/repos/owner/repo/actions/runs",
+        json!({"workflow_runs":[workflow.clone()]}),
+    );
+    let fixed = github_observe::observe(&mut c, &p, 1, now).await.unwrap();
+    assert_eq!(fixed.checks[0].state, CheckState::Missing);
+    if let Source::Actions { branch_from_pr, .. } = &mut p.required[0].source {
+        *branch_from_pr = Some(true);
+    }
+    let observed = github_observe::observe(&mut c, &p, 1, now).await.unwrap();
+    assert_eq!(observed.checks[0].state, CheckState::Success);
+    assert_eq!(observed.policy, p);
+    assert_eq!(observed.checks[0].selector, p.required[0]);
+    assert_eq!(
+        observed.checks[0].evidence[0]["workflow_run"]["head_branch"],
+        actual["head"]["ref"]
+    );
+    for (field, wrong) in [
+        ("event", json!("push")),
+        ("workflow_id", json!(77)),
+        ("head_branch", json!("feature")),
+    ] {
+        let mut unrelated = workflow.clone();
+        unrelated[field] = wrong;
+        f.put(
+            "/repos/owner/repo/actions/runs",
+            json!({"workflow_runs":[unrelated]}),
+        );
+        assert_eq!(
+            github_observe::observe(&mut c, &p, 1, now)
+                .await
+                .unwrap()
+                .checks[0]
+                .state,
+            CheckState::Missing
+        );
+    }
+    f.put(
+        "/repos/owner/repo/actions/runs",
+        json!({"workflow_runs":[workflow]}),
+    );
+    for head in [
+        json!({"repo":{"id":100},"ref":"ai/req-1-real-run","sha":"abc"}),
+        json!({"repo":{"id":99},"ref":"","sha":"abc"}),
+        json!({"repo":{"id":99},"sha":"abc"}),
+    ] {
+        actual["head"] = head;
+        f.put("/repos/owner/repo/pulls/1", actual.clone());
+        assert!(github_observe::observe(&mut c, &p, 1, now).await.is_err());
+    }
+    let mut legacy = serde_json::to_value(action_policy().required[0].clone()).unwrap();
+    legacy["source"]
+        .as_object_mut()
+        .unwrap()
+        .remove("branch_from_pr");
+    assert_eq!(
+        serde_json::from_value::<Selector>(legacy).unwrap(),
+        action_policy().required[0]
+    );
 }
 
 #[tokio::test]
@@ -1150,4 +1225,40 @@ async fn app_push_reports_local_git_failures_without_remote_writes_or_token_disc
             .unwrap_err();
     assert_eq!(error.code, "github_identity_conflict");
     assert_eq!(fixture.data.lock().unwrap().grants, 1);
+}
+
+#[test]
+fn git_push_inherits_only_service_proxy_routing() {
+    use std::ffi::OsString;
+    let mut command = tokio::process::Command::new("git");
+    command.env_clear();
+    let input = [
+        ("HTTPS_PROXY", "http://127.0.0.1:3128"),
+        ("no_proxy", "localhost,127.0.0.1"),
+        ("GIT_CONFIG_GLOBAL", "/untrusted/config"),
+        ("GITHUB_TOKEN", "synthetic-not-a-token"),
+        ("DATABASE_URL", "synthetic-database"),
+    ];
+    codexsymphony_server::github_http::configure_proxy(
+        &mut command,
+        input
+            .into_iter()
+            .map(|(key, value)| (OsString::from(key), OsString::from(value))),
+    );
+    let actual: Vec<_> = command.as_std().get_envs().collect();
+    assert_eq!(actual.len(), 2);
+    assert_eq!(
+        actual[0],
+        (
+            std::ffi::OsStr::new("HTTPS_PROXY"),
+            Some(std::ffi::OsStr::new(input[0].1))
+        )
+    );
+    assert_eq!(
+        actual[1],
+        (
+            std::ffi::OsStr::new("no_proxy"),
+            Some(std::ffi::OsStr::new(input[1].1))
+        )
+    );
 }

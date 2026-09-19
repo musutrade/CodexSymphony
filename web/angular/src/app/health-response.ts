@@ -556,7 +556,7 @@ export type GetOperationsResponse =
   | { error: string };
 export type ControlOperationsResponse = { version: number } | { error: string };
 export interface ControlOperationsRequest {
-  action: 'cancel' | 'pause' | 'recheck' | 'resume' | 'storage_recheck';
+  action: 'cancel' | 'delivery_recheck' | 'pause' | 'recheck' | 'resume' | 'storage_recheck';
   request_id: string;
   version: number;
 }

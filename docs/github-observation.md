@@ -1,5 +1,10 @@
 # GitHub App 预检与外部观察（GH-16）
 
+GH-24 集成支持 Actions 源显式配置 `branch_from_pr: true`，将检查绑定到当前同仓 PR
+的 head ref；未配置或 false 仍使用原精确 `branch`。该选项须经受信配置版本审核，
+不自动迁移旧策略。仓库 ID、workflow ID/blob SHA、App、event、精确 head SHA 及
+suite/job/attempt 仍全部核对；fork 或缺少 head ref 拒绝。历史探针成功不替代新 PR 的证据。
+
 当前 0a 只预检准备、发布与只读观察。控制面按 repository ID 请求短期 installation token：
 Contents / Pull requests write，Checks / Actions read；不请求 rerun、merge 或 Checks write。
 JWT 使用 RS256，回拨 60 秒，5 分钟有效；token 在到期前 60 秒刷新，缓存最多 5 分钟。

@@ -301,20 +301,34 @@ fn load_deployment(root: &Path) -> Result<Option<Deployment>> {
 }
 async fn worker(pool: PgPool, mut listener: sqlx::postgres::PgListener) {
     loop {
-        if crate::storage_cleanup::scan(&pool, crate::runtime_client::now())
-            .await
-            .is_err()
+        if let Err(error) = crate::storage_cleanup::scan(&pool, crate::runtime_client::now()).await
         {
+            let detail: String = crate::operator_view::redact_text(&error.to_string())
+                .chars()
+                .take(1024)
+                .collect();
+            tracing::warn!("storage scan failed; originals retained: {}", detail);
             let _ = block(
                 &pool,
-                "storage scan failed; preserve registered originals and reconcile",
+                &format!(
+                    "storage scan failed; preserve registered originals and reconcile: {detail}"
+                ),
             )
             .await;
         }
-        if let Ok(Err(_)) =
-            tokio::time::timeout(std::time::Duration::from_secs(300), listener.recv()).await
-        {
+        let delay = next_scan_delay(&pool, crate::runtime_client::now())
+            .await
+            .unwrap_or(std::time::Duration::from_secs(30));
+        if let Ok(Err(_)) = tokio::time::timeout(delay, listener.recv()).await {
             tokio::time::sleep(std::time::Duration::from_secs(30)).await;
         }
     }
+}
+
+/// Honor the persisted infrastructure retry deadline even without a phase event.
+/// Healthy/exhausted scans keep the normal five-minute maintenance interval.
+pub async fn next_scan_delay(pool: &PgPool, now: i64) -> Result<std::time::Duration> {
+    let seconds: i64 = sqlx::query_scalar("SELECT CASE WHEN scan_retry->'last_failure' <> 'null'::jsonb THEN LEAST(300,GREATEST(1,COALESCE((scan_retry->>'next_attempt_at')::bigint-$1,300))) ELSE 300 END::bigint FROM storage_guard WHERE id=1")
+        .bind(now).fetch_one(pool).await?;
+    Ok(std::time::Duration::from_secs(seconds as u64))
 }

@@ -82,6 +82,10 @@ pub async fn permit(pool: &PgPool, root: &Path) -> bool {
         || persistence(pool).await.is_err()
         || !crate::storage_service::capacity(pool)
             .await
+            .inspect_err(|error| {
+                let diagnostic = crate::operator_view::redact_text(&error.to_string());
+                tracing::warn!("storage capacity check failed; originals retained: {diagnostic}")
+            })
             .unwrap_or(false)
     {
         latch(pool).await;

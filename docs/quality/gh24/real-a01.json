@@ -1,0 +1,257 @@
+{
+  "schema": "gh24-real-a01/v1",
+  "captured_at": "2026-09-19T23:43:34.420331+00:00",
+  "status": "submitted",
+  "repository": "musutrade/disposable",
+  "repository_id": 1360824360,
+  "baseline": "aa6f08dcd4b36d7f2072fdd408b4a33469297251",
+  "pr_url": "https://github.com/musutrade/disposable/pull/4",
+  "requirement": {
+    "cancel_requested": false,
+    "cleanup_complete": false,
+    "id": 1,
+    "paused": false,
+    "revision": 1,
+    "state": "Submitted",
+    "version": 17
+  },
+  "runs": [
+    {
+      "blocker": null,
+      "created_at": "2026-09-19T14:28:15.844743+00:00",
+      "id": "e6599814-1c3b-479f-bcc8-a8fd1070ea68",
+      "phase": "execution",
+      "quiescent": true,
+      "revision": 1,
+      "state": "Interrupted",
+      "waiting": "{\"ci_seconds\": 0, \"human_seconds\": 0, \"paused_seconds\": 0, \"network_seconds\": 0}"
+    },
+    {
+      "blocker": null,
+      "created_at": "2026-09-19T22:58:18.812603+00:00",
+      "id": "365d7d49-5c30-4d5f-80fb-c05bf47a6e44",
+      "phase": "execution",
+      "quiescent": true,
+      "revision": 1,
+      "state": "Interrupted",
+      "waiting": "{\"ci_seconds\": 0, \"human_seconds\": 0, \"paused_seconds\": 0, \"network_seconds\": 0}"
+    },
+    {
+      "blocker": null,
+      "created_at": "2026-09-19T23:00:57.945048+00:00",
+      "id": "5ac47a42-5804-4812-b133-967ba7cd76e1",
+      "phase": "execution",
+      "quiescent": true,
+      "revision": 1,
+      "state": "Interrupted",
+      "waiting": "{\"ci_seconds\": 0, \"human_seconds\": 0, \"paused_seconds\": 0, \"network_seconds\": 0}"
+    },
+    {
+      "blocker": null,
+      "created_at": "2026-09-19T23:08:10.264567+00:00",
+      "id": "77aca6d3-7bb5-4580-9818-6009529d646f",
+      "phase": "execution",
+      "quiescent": true,
+      "revision": 1,
+      "state": "Interrupted",
+      "waiting": "{\"ci_seconds\": 0, \"human_seconds\": 0, \"paused_seconds\": 0, \"network_seconds\": 0}"
+    },
+    {
+      "blocker": null,
+      "created_at": "2026-09-19T23:30:09.380876+00:00",
+      "id": "f93e5f85-94ac-473e-8ad1-21a34d980dd1",
+      "phase": "execution",
+      "quiescent": true,
+      "revision": 1,
+      "state": "Interrupted",
+      "waiting": "{\"ci_seconds\": 0, \"human_seconds\": 0, \"paused_seconds\": 0, \"network_seconds\": 0}"
+    },
+    {
+      "blocker": null,
+      "created_at": "2026-09-19T23:36:20.624381+00:00",
+      "id": "385911f6-69eb-4ca3-a80f-d2c37e72106c",
+      "phase": "validation",
+      "quiescent": true,
+      "revision": 1,
+      "state": "Succeeded",
+      "waiting": "{\"ci_seconds\": 0, \"human_seconds\": 0, \"paused_seconds\": 0, \"network_seconds\": 0}"
+    }
+  ],
+  "metrics": {
+    "cached": null,
+    "human_seconds": 0,
+    "input": null,
+    "interventions": 8,
+    "model_calls": 5,
+    "output": null,
+    "phases": [
+      {
+        "complete": true,
+        "phase": "Ready",
+        "seconds": 17
+      },
+      {
+        "complete": true,
+        "phase": "execution",
+        "seconds": 2
+      },
+      {
+        "complete": true,
+        "phase": "Running",
+        "seconds": 33273
+      },
+      {
+        "complete": true,
+        "phase": "execution",
+        "seconds": 7
+      },
+      {
+        "complete": true,
+        "phase": "execution",
+        "seconds": 7
+      },
+      {
+        "complete": true,
+        "phase": "execution",
+        "seconds": 17
+      },
+      {
+        "complete": true,
+        "phase": "execution",
+        "seconds": 38
+      },
+      {
+        "complete": true,
+        "phase": "execution",
+        "seconds": 33
+      }
+    ],
+    "reasons": [
+      "storage_recheck",
+      "storage_recheck",
+      "storage_recheck",
+      "storage_recheck",
+      "storage_recheck",
+      "storage_recheck",
+      "storage_recheck",
+      "delivery_recheck"
+    ],
+    "repair_count": 0,
+    "to_pr_seconds": 33286,
+    "zero_intervention": {
+      "denominator": 1,
+      "numerator": 0,
+      "phase": "reviewed_to_submitted"
+    }
+  },
+  "storage": {
+    "blocked": false,
+    "error": null
+  },
+  "validation": {
+    "candidate_sha": "a8e741155953ee97dc01b3aae1e7e77747b5277c",
+    "candidate_tree": "22014e76989d48fdb17eea62a0f1d1ce0082511d",
+    "id": "validation-385911f6-69eb-4ca3-a80f-d2c37e72106c",
+    "requirement_id": 1,
+    "result": "succeeded",
+    "stage": "handoff",
+    "steps": [
+      {
+        "availability": "available",
+        "bytes": 663,
+        "consumer": "pr:1360824360:4:a8e741155953ee97dc01b3aae1e7e77747b5277c",
+        "exit_code": 0,
+        "id": "test",
+        "log_ref": "/home/gem/.local/share/codexsymphony/a01-gh24/execution/validation-385911f6-69eb-4ca3-a80f-d2c37e72106c/step-0.log",
+        "output_sha256": "b24544a27fc64ed73f47acf6431531d75dec27fd03bc627becb6705f80abdd53",
+        "recorded_at": "2026-09-19T23:36:55.459901+00:00",
+        "status": "succeeded"
+      }
+    ],
+    "trusted": {
+      "command_sha256": "ee1bee3b419d012ad0bbf68cd027f93e43af84ae57777a90e42725a53e9638ff",
+      "config_sha256": "3645bc5d47d5929a3ab31daddf1622d88ae477795ec5a340a586792f69641901",
+      "protected_entry": "/home/gem/.local/share/codexsymphony/a01-gh24/gate-entry",
+      "protected_entry_sha256": "f74ad569ca27744d285b8dc8f782e36938c767a4f23ab78877e7746650779d06",
+      "tool": "trusted-development-process",
+      "tool_version": "1"
+    }
+  },
+  "delivery": {
+    "action_key": "faf17c455cacaeba947cdd6a8b90cd41016cf810a709d62c5a23a7c368498c15",
+    "actions": [
+      {
+        "action_key": "faf17c455cacaeba947cdd6a8b90cd41016cf810a709d62c5a23a7c368498c15",
+        "attempt_limit": 6,
+        "attempts": 4,
+        "error": null,
+        "kind": "publish",
+        "next_attempt_at": 1789861426,
+        "state": "confirmed"
+      }
+    ],
+    "attempts": [
+      {
+        "action_key": "faf17c455cacaeba947cdd6a8b90cd41016cf810a709d62c5a23a7c368498c15",
+        "created_at": "2026-09-19T23:36:59.006654+00:00",
+        "id": 1,
+        "kind": "publish",
+        "operation": "push",
+        "ordinal": 1,
+        "result": {
+          "code": "github_transient_or_unknown",
+          "http_status": null
+        }
+      },
+      {
+        "action_key": "faf17c455cacaeba947cdd6a8b90cd41016cf810a709d62c5a23a7c368498c15",
+        "created_at": "2026-09-19T23:37:47.988301+00:00",
+        "id": 2,
+        "kind": "publish",
+        "operation": "push",
+        "ordinal": 2,
+        "result": {
+          "code": "github_transient_or_unknown",
+          "http_status": null
+        }
+      },
+      {
+        "action_key": "faf17c455cacaeba947cdd6a8b90cd41016cf810a709d62c5a23a7c368498c15",
+        "created_at": "2026-09-19T23:39:42.478397+00:00",
+        "id": 3,
+        "kind": "publish",
+        "operation": "push",
+        "ordinal": 3,
+        "result": {
+          "head": "a8e741155953ee97dc01b3aae1e7e77747b5277c",
+          "push": "accepted"
+        }
+      },
+      {
+        "action_key": "faf17c455cacaeba947cdd6a8b90cd41016cf810a709d62c5a23a7c368498c15",
+        "created_at": "2026-09-19T23:42:43.630282+00:00",
+        "id": 4,
+        "kind": "publish",
+        "operation": "create",
+        "ordinal": 4,
+        "result": {
+          "number": 4,
+          "html_url": "https://github.com/musutrade/disposable/pull/4",
+          "state": "open",
+          "created_at": "2026-09-19T23:42:44Z",
+          "author": "my-disposable-bot[bot]"
+        }
+      }
+    ],
+    "branch": "ai/req-1-385911f6-69eb-4ca3-a80f-d2c37e72106c",
+    "consumer": "pr:1360824360:4:a8e741155953ee97dc01b3aae1e7e77747b5277c",
+    "head_sha": "a8e741155953ee97dc01b3aae1e7e77747b5277c",
+    "merged": false,
+    "pr_number": 4,
+    "repository": "musutrade/disposable",
+    "repository_id": 1360824360,
+    "requirement_id": 1,
+    "revision": 1,
+    "validation_id": "validation-385911f6-69eb-4ca3-a80f-d2c37e72106c"
+  }
+}

@@ -17,6 +17,9 @@ pub enum Source {
         workflow_sha: String,
         event: String,
         branch: String,
+        /// Explicit opt-in for platform-generated single-repository PR branches.
+        /// Missing/false retains the historical exact branch constraint.
+        branch_from_pr: Option<bool>,
     },
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -108,6 +111,28 @@ fn repository_name(name: &str) -> bool {
 }
 fn repository_byte(byte: u8) -> bool {
     byte.is_ascii_alphanumeric() || b"_-./".contains(&byte)
+}
+
+/// Bind only an explicitly authorized dynamic source to the coherent same-repo
+/// PR observation. The original policy remains the stored trust identity.
+pub fn bind_pr_source(selector: &Selector, pr: &Value, repository: u64) -> Option<Selector> {
+    let mut bound = selector.clone();
+    if let Source::Actions {
+        branch,
+        branch_from_pr: Some(true),
+        ..
+    } = &mut bound.source
+    {
+        if pr["head"]["repo"]["id"] != repository || pr["base"]["repo"]["id"] != repository {
+            return None;
+        }
+        let head_ref = pr["head"]["ref"].as_str()?;
+        if head_ref.is_empty() {
+            return None;
+        }
+        *branch = head_ref.to_owned();
+    }
+    Some(bound)
 }
 
 /// Resolve only the selected namespace/publisher. Other publishers cannot lend

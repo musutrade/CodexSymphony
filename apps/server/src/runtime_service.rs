@@ -46,12 +46,14 @@ pub fn start(
     let broker = GitBroker::open(&root.join("workspaces"))?;
     Ok(Some(tokio::spawn(async move {
         loop {
-            if tick(&pool, &root, &supervisor, &broker, &incarnation, &config)
-                .await
-                .is_err()
+            if let Err(error) =
+                tick(&pool, &root, &supervisor, &broker, &incarnation, &config).await
             {
                 // Detailed failures remain in their bounded, Run-owned records.
-                tracing::error!("Runtime execution or answer recovery requires reconciliation");
+                tracing::error!(
+                    "Runtime execution or answer recovery requires reconciliation: {}",
+                    crate::operator_view::redact_text(&error.to_string())
+                );
             }
             tokio::time::sleep(Duration::from_secs(1)).await;
         }

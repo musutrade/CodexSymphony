@@ -1,0 +1,209 @@
+{
+  "mode": "local-deterministic",
+  "status": "passed",
+  "checks": [
+    {
+      "name": "database-preflight",
+      "command": [
+        "psql",
+        "-X",
+        "-d",
+        "<TEST_DATABASE_URL>",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "SELECT 1"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "browser-preflight",
+      "command": [
+        "node",
+        "-e",
+        "const {chromium}=require('@playwright/test'); (async()=>{const b=await chromium.launch();await b.close()})().catch(e=>{console.error(e);process.exit(1)})"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/web/angular",
+      "exit_code": 0
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "workspace-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "clippy",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "observer-tests",
+      "command": [
+        "node",
+        "--test",
+        "tools/tests/a01-observe.test.mjs"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "frontend-lint",
+      "command": [
+        "npm",
+        "run",
+        "lint"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/web/angular",
+      "exit_code": 0
+    },
+    {
+      "name": "frontend-unit",
+      "command": [
+        "npm",
+        "test",
+        "--",
+        "--watch=false"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/web/angular",
+      "exit_code": 0
+    },
+    {
+      "name": "frontend-build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/web/angular",
+      "exit_code": 0
+    },
+    {
+      "name": "server-build",
+      "command": [
+        "cargo",
+        "build",
+        "--locked",
+        "-p",
+        "codexsymphony-server"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "browser-schema",
+      "command": [
+        "psql",
+        "-X",
+        "-d",
+        "<TEST_DATABASE_URL>",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "CREATE SCHEMA gh24_browser_b162087d63b34009a512ce6c40926773"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "browser-tests",
+      "command": [
+        "npm",
+        "run",
+        "test:e2e",
+        "--",
+        "--output",
+        "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/final-local-2/browser"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/web/angular",
+      "exit_code": 0
+    },
+    {
+      "name": "gate-config",
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "config",
+        "check"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "gate-secrets",
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "secrets",
+        "--json"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    },
+    {
+      "name": "gate-audit",
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "audit",
+        "--json"
+      ],
+      "cwd": "/home/gem/.local/share/codexsymphony/workspaces/GH-24",
+      "exit_code": 0
+    }
+  ],
+  "real_a01": "not run",
+  "formal_gates": "not run",
+  "browser_schema": "gh24_browser_b162087d63b34009a512ce6c40926773",
+  "counts": {
+    "rust": 98,
+    "frontend_unit": 19,
+    "browser": 14
+  },
+  "logs": {
+    "api.log": "c249c351a0f1edcb49ada83bce29e0e7e1234f09a8c110c5b53bb69e25c9d5c8",
+    "database-preflight.log": "e54d06db710cffc7ed6a3fcad472e65a1b70ebfbed2f801ef9896c47df656f57",
+    "browser-tests.log": "0ee45cf0a978bfff67a4d4d8912b3a6f5ff0d6ab6d6d131ffa9a78c8ceedbd9a",
+    "frontend-build.log": "ef9e8abf707e82d136181a8263ec167baf3f09433569f4610139d6fe23904702",
+    "frontend-lint.log": "b8e85c9119350c4d1fc9258f24919b7d6613994ccc102cba6450a7564779e9c2",
+    "fmt.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "gate-secrets.log": "49fb8eb3f7a3eeae5cf509025b5759003751abf57b629f033cc9ebbb65639151",
+    "clippy.log": "26e2a732a4fc3c01e20b50dad39239a8c596c73a61c56ab8ab68de7c567bf6d6",
+    "browser-preflight.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "server-build.log": "b2c020f27a01faabb96e5d55c11fd219cf7c484c9cf34b3342bfc8444d934c89",
+    "browser-schema.log": "185d73c49badd0f588a9427d2faf8d7b6a1d27e98a490aef920f65667d9feaf6",
+    "frontend-unit.log": "1297026f4247670af367e9331cea1e6b07f69fff4cf515686b3bc0abaf93c724",
+    "workspace-tests.log": "90f286440963e5d0327d4296bfe2cb9f30cc21d487169133b796d4cf70a08fcc",
+    "observer-tests.log": "eb256f502c1a84fa0832c3045348f3d037b1811a1c2a0e093a5db16c78536537",
+    "gate-audit.log": "508f09204b38f89b283e22ada769c51395a89173291633a00aa45f923313d2ac",
+    "gate-config.log": "bfc26fe806009adfbb4c804b698240009c1ae2e208983236d1e479b2714e048b"
+  }
+}

@@ -93,9 +93,11 @@ impl Directory {
         Ok(entries)
     }
     pub fn listing(&self, limit: u64) -> io::Result<Vec<Entry>> {
-        let mut entries = Vec::new();
-        self.visit(Path::new(""), limit, false, &mut entries)?;
-        Ok(entries)
+        retry_listing(|| {
+            let mut entries = Vec::new();
+            self.visit(Path::new(""), limit, false, &mut entries)?;
+            Ok(entries)
+        })
     }
     pub fn usage(&self, limit: u64) -> io::Result<u64> {
         let entries = self.listing(limit)?;
@@ -121,7 +123,12 @@ impl Directory {
                     "material inventory limit; preserve and reconcile",
                 ));
             }
-            let (entry, child) = self.inspect_entry(&name, prefix, hashes)?;
+            let (entry, child) = self.inspect_entry(&name, prefix, hashes).map_err(|error| {
+                io::Error::new(
+                    error.kind(),
+                    format!("storage entry {}: {error}", prefix.join(&name).display()),
+                )
+            })?;
             let path = entry.path.clone();
             entries.push(entry);
             if let Some(child) = child {
@@ -140,6 +147,12 @@ impl Directory {
         let metadata = fs::symlink_metadata(&direct)?;
         if metadata.is_symlink() {
             return Ok((link_entry(&direct, prefix.join(name), &metadata)?, None));
+        }
+        // Runtime sockets/FIFOs occupy disk too. Accounting must not open them;
+        // archive inventories still require regular files and retain originals
+        // on any unsupported entry. Missing entries still fail the whole scan.
+        if !hashes && !metadata.is_dir() {
+            return Ok((measured_entry(prefix.join(name), &metadata), None));
         }
         let mut file = open(self.0.as_raw_fd(), name, false, true, false)?;
         let metadata = file.metadata()?;
@@ -213,6 +226,32 @@ impl Directory {
             entry.directory,
         )?;
         Ok(())
+    }
+}
+
+// Runtime and storage probes atomically rename/remove temporary files. Retry a
+// whole accounting pass, never silently omit an unreadable entry. This does not
+// apply to archive/deletion inventories, which must keep their exact identity.
+pub fn retry_listing(mut scan: impl FnMut() -> io::Result<Vec<Entry>>) -> io::Result<Vec<Entry>> {
+    for _ in 0..2 {
+        match scan() {
+            Ok(entries) => return Ok(entries),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => (),
+            Err(error) => return Err(error),
+        }
+    }
+    scan()
+}
+
+fn measured_entry(path: PathBuf, metadata: &fs::Metadata) -> Entry {
+    Entry {
+        path,
+        identity: FileIdentity::of(metadata),
+        bytes: metadata.blocks().saturating_mul(512),
+        logical_bytes: metadata.len(),
+        sha256: String::new(),
+        directory: false,
+        link: None,
     }
 }
 

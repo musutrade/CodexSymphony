@@ -41,11 +41,20 @@ pub async fn scan(pool: &PgPool, now: i64) -> Result<()> {
     }
     persist_scan(pool, &retry).await?;
     let result = scan_registered(pool, now).await;
-    if result.is_ok() {
-        retry.authorize_retry_group(now);
-        retry.last_failure = None;
-    } else {
-        retry.fail(failure(), now);
+    match &result {
+        Ok(()) => {
+            retry.authorize_retry_group(now);
+            retry.last_failure = None;
+        }
+        Err(error) => {
+            let mut failure = failure();
+            failure.evidence = "storage_guard.scan_retry".into();
+            failure.detail = crate::operator_view::redact_text(&error.to_string())
+                .chars()
+                .take(1024)
+                .collect();
+            retry.fail(failure, now);
+        }
     }
     persist_scan(pool, &retry).await?;
     result

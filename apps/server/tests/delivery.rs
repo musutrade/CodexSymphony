@@ -607,3 +607,73 @@ async fn missing_delivery_identity_rolls_back_and_cancel_reports_absent_requirem
         .unwrap();
     assert_eq!(response.status(), 404);
 }
+
+#[tokio::test]
+async fn operator_retry_preserves_attempts_and_resumes_after_push() {
+    use codexsymphony_server::operator_control::{self, Action, Command};
+    let _serial = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    let mut remote = Fake {
+        conflict: true,
+        ..Default::default()
+    };
+    for now in [0, 200] {
+        tick(&pool, &mut remote, now).await;
+    }
+    remote.conflict = false;
+    tick(&pool, &mut remote, 400).await;
+    tick(&pool, &mut remote, 600).await;
+    assert_eq!(job(&pool).await.state, "blocked");
+    assert!(!remote.calls.contains(&"create"));
+    let command = Command {
+        version: 1,
+        request_id: "retry-delivery".into(),
+        action: Action::DeliveryRecheck,
+    };
+    sqlx::query("UPDATE delivery_action SET error='{}'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(operator_control::execute(&pool, 1, &command).await.is_err());
+    sqlx::query("UPDATE delivery_action SET error='{\"code\":\"delivery_retry_exhausted\"}'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let receipt = operator_control::execute(&pool, 1, &command).await.unwrap();
+    assert_eq!(
+        receipt,
+        operator_control::execute(&pool, 1, &command).await.unwrap()
+    );
+    let ledger: (i32,i32,i64) = sqlx::query_as("SELECT attempts,attempt_limit,(SELECT count(*) FROM delivery_attempt) FROM delivery_action").fetch_one(&pool).await.unwrap();
+    assert_eq!(ledger, (3, 6, 3));
+    let stale = Command {
+        version: 1,
+        request_id: "stale-retry".into(),
+        action: Action::DeliveryRecheck,
+    };
+    assert!(operator_control::execute(&pool, 1, &stale).await.is_err());
+    tick(&pool, &mut remote, 800).await;
+    tick(&pool, &mut remote, 1000).await;
+    assert_eq!(
+        remote.calls.iter().filter(|&&call| call == "push").count(),
+        3
+    );
+    assert_eq!(
+        remote
+            .calls
+            .iter()
+            .filter(|&&call| call == "create")
+            .count(),
+        1
+    );
+    assert_eq!(state(&pool).await.0, "Submitted");
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM operator_intervention WHERE reason='delivery_recheck'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        1
+    );
+}

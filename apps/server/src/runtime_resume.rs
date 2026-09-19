@@ -66,7 +66,7 @@ async fn eligible(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     incarnation: &str,
 ) -> Result<Option<(String, i64, i64)>> {
-    let sources: Vec<String> = sqlx::query_scalar("SELECT a.id FROM agent_run a WHERE a.quiescent AND (a.user_paused OR EXISTS(SELECT 1 FROM runtime_question q WHERE q.run_id=a.id AND q.resume_state='pending')) ORDER BY a.run_sequence").fetch_all(&mut **tx).await?;
+    let sources: Vec<String> = sqlx::query_scalar("SELECT a.id FROM agent_run a WHERE a.quiescent AND (a.user_paused OR a.storage_resume_requested OR EXISTS(SELECT 1 FROM runtime_question q WHERE q.run_id=a.id AND q.resume_state='pending')) ORDER BY a.run_sequence").fetch_all(&mut **tx).await?;
     for source in sources {
         if let Some((id, revision)) = runtime_questions::resumable(tx, &source, incarnation).await?
             && runtime_questions::budget_available(tx, id).await?
@@ -93,7 +93,21 @@ async fn saved(
     if status == "prepared" && job.launch.key.incarnation == incarnation {
         return Ok(Some(Some(job)));
     }
+    if status == "prepared" && retire_prepared(tx, &job).await? {
+        return Ok(None);
+    }
     Ok(Some(None))
+}
+async fn retire_prepared(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    job: &Job,
+) -> Result<bool> {
+    // No Run/process/model was dispatched. Preserve the old job, preparation
+    // records and files; a fresh identity restores the authoritative source
+    // checkpoint and must pass preparation in the new incarnation again.
+    let retired = sqlx::query("WITH retired AS (DELETE FROM runtime_resume WHERE source_run=$1 AND status='prepared' AND NOT EXISTS(SELECT 1 FROM agent_run WHERE id=$2) RETURNING job,status) INSERT INTO runtime_resume_history(source_run,run_id,job,status,reason) SELECT $1,$2,job,status,'controller incarnation changed before dispatch' FROM retired")
+        .bind(&job.source).bind(&job.launch.key.run_id).execute(&mut **tx).await?;
+    Ok(retired.rows_affected() == 1)
 }
 async fn allocate(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,

@@ -314,7 +314,7 @@ async fn persistence_and_full_client_acceptance() {
     pool.close().await;
     ending_race(&root, &git).await;
     full_client(&root, &git).await;
-    automatic_answer_recovery(&root).await;
+    automatic_answer_recovery(&root, false, false).await;
     failed_protocol_sessions(&git).await;
     std::fs::remove_dir_all(root).unwrap();
 }
@@ -436,6 +436,12 @@ async fn full_client(root: &Path, git: &GitBroker) {
 }
 async fn full_client_scenario(root: &Path, git: &GitBroker, code: &str, turns: usize) {
     let pool = fixture(root).await;
+    if turns == 1 {
+        // A real DB write longer than the idle receive poll must not swallow
+        // the already consumed ending RPC. This is not a model timeout.
+        sqlx::raw_sql(r#"CREATE FUNCTION slow_ending_evidence() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.channel='stdout' AND convert_from(NEW.payload,'UTF8') LIKE '%"tool": "report_blocker"%' THEN PERFORM pg_sleep(0.15); END IF; RETURN NEW; END $$; CREATE TRIGGER slow_ending_evidence BEFORE INSERT ON runtime_evidence_chunk FOR EACH ROW EXECUTE FUNCTION slow_ending_evidence();"#)
+            .execute(&pool).await.unwrap();
+    }
     let launch = Launch {
         key: key(),
         workspace: root.to_str().unwrap().into(),
@@ -621,25 +627,27 @@ fn local_git(path: &Path, args: &[&str]) -> String {
     );
     String::from_utf8(output.stdout).unwrap().trim().into()
 }
-async fn automatic_answer_recovery(root: &Path) {
+async fn automatic_answer_recovery(root: &Path, storage_recovery: bool, guard_cleared: bool) {
     use codexsymphony_server::{runtime_resume, runtime_service, workspace::Workspace};
     let pool = fixture(root).await;
     session(&pool).await;
-    let question = questions::ask(&pool, &key(), &question(), 100)
+    if !storage_recovery {
+        let question = questions::ask(&pool, &key(), &question(), 100)
+            .await
+            .unwrap();
+        questions::expire(&pool, 86400).await.unwrap();
+        questions::answer(
+            &pool,
+            &question.id,
+            &questions::Answer {
+                version: 1,
+                answer: json!({"answers":{"choice":{"answers":["saved overnight"]}}}),
+            },
+            86401,
+        )
         .await
         .unwrap();
-    questions::expire(&pool, 86400).await.unwrap();
-    questions::answer(
-        &pool,
-        &question.id,
-        &questions::Answer {
-            version: 1,
-            answer: json!({"answers":{"choice":{"answers":["saved overnight"]}}}),
-        },
-        86401,
-    )
-    .await
-    .unwrap();
+    }
     let seed = root.join("seed");
     std::fs::create_dir(&seed).unwrap();
     local_git(&seed, &["init", "--template=", "-b", "main"]);
@@ -673,16 +681,80 @@ async fn automatic_answer_recovery(root: &Path) {
         "paid unfinished work\n",
     )
     .unwrap();
+    if guard_cleared {
+        broker
+            .commit(&source, "paid commit before declaration")
+            .unwrap();
+    }
     let manifest = broker.preserve(&source).unwrap();
-    sqlx::query("INSERT INTO workspace_snapshot VALUES('runtime-test',$1,false)")
-        .bind(json!(manifest))
-        .execute(&pool)
-        .await
-        .unwrap();
+    if !storage_recovery || guard_cleared {
+        sqlx::query("INSERT INTO workspace_snapshot VALUES('runtime-test',$1,$2)")
+            .bind(json!(manifest))
+            .bind(guard_cleared)
+            .execute(&pool)
+            .await
+            .unwrap();
+    }
     sqlx::query("UPDATE agent_run SET quiescent=true,state='Interrupted'")
         .execute(&pool)
         .await
         .unwrap();
+    if storage_recovery {
+        use codexsymphony_server::{operator_control, storage_service, storage_store};
+        let deployment: storage_store::Deployment =
+            serde_json::from_slice(&std::fs::read(storage_config(root)).unwrap()).unwrap();
+        storage_store::install(&pool, &deployment).await.unwrap();
+        sqlx::query("UPDATE agent_run SET stop_requested=true")
+            .execute(&pool)
+            .await
+            .unwrap();
+        storage_service::block(&pool, "deterministic storage interruption")
+            .await
+            .unwrap();
+        if guard_cleared {
+            // Previous deployment cleared the guard before it could record intent.
+            assert!(
+                codexsymphony_server::storage::recover(&pool, &deployment.execution.path)
+                    .await
+                    .unwrap()
+            );
+        }
+        let version: i64 = sqlx::query_scalar("SELECT version FROM requirement WHERE id=1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let command = operator_control::Command {
+            version,
+            request_id: "storage-resume".into(),
+            action: operator_control::Action::StorageRecheck,
+        };
+        let first = operator_control::execute(&pool, 1, &command).await.unwrap();
+        assert_eq!(
+            first,
+            operator_control::execute(&pool, 1, &command).await.unwrap()
+        );
+        let intent: (bool, bool) = sqlx::query_as(
+            "SELECT storage_resume_requested,user_paused FROM agent_run WHERE id='runtime-test'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(intent, (true, false));
+        if !guard_cleared {
+            // Intent survives without a snapshot; it cannot launch unfinished preservation.
+            assert!(
+                runtime_resume::next(&pool, &broker, "boot", &["/usr/bin/python3".into()])
+                    .await
+                    .unwrap()
+                    .is_none()
+            );
+            sqlx::query("INSERT INTO workspace_snapshot VALUES('runtime-test',$1,false)")
+                .bind(json!(manifest))
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+    }
     let launcher = vec![
         "/usr/bin/python3".into(),
         "-u".into(),
@@ -719,7 +791,7 @@ async fn automatic_answer_recovery(root: &Path) {
         .execute(&pool)
         .await
         .unwrap();
-    let job = runtime_resume::next(&pool, &broker, "boot", &launcher)
+    let mut job = runtime_resume::next(&pool, &broker, "boot", &launcher)
         .await
         .unwrap()
         .unwrap();
@@ -828,6 +900,43 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
     .await
     .unwrap();
     assert_eq!(attempts, 2);
+    let incarnation = if storage_recovery {
+        let old = job.clone();
+        codexsymphony_server::run_store::begin_incarnation(&pool, "restarted")
+            .await
+            .unwrap();
+        assert!(
+            codexsymphony_server::run_store::finish_recovery(&pool, "restarted")
+                .await
+                .unwrap()
+        );
+        job = runtime_resume::next(&pool, &broker, "restarted", &launcher)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_ne!(job.launch.key.run_id, old.launch.key.run_id);
+        assert_eq!(
+            std::fs::read_to_string(Path::new(&old.workspace.path).join("source.txt")).unwrap(),
+            "paid unfinished work\n"
+        );
+        let archived: Value =
+            sqlx::query_scalar("SELECT job FROM runtime_resume_history WHERE run_id=$1")
+                .bind(&old.launch.key.run_id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(archived, json!(old));
+        assert!(
+            !sqlx::query_scalar::<_, bool>("SELECT EXISTS(SELECT 1 FROM agent_run WHERE id=$1)")
+                .bind(&old.launch.key.run_id)
+                .fetch_one(&pool)
+                .await
+                .unwrap()
+        );
+        "restarted"
+    } else {
+        "boot"
+    };
     tokio::time::timeout(
         Duration::from_secs(20),
         runtime_service::tick(
@@ -835,30 +944,32 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
             root,
             Path::new(env!("CARGO_BIN_EXE_codexsymphony-server")),
             &broker,
-            "boot",
+            incarnation,
             &config,
         ),
     )
     .await
     .unwrap()
     .unwrap();
-    let saved = questions::list(&pool, 1).await.unwrap().remove(0);
-    assert_eq!(saved.resume_state, "linked");
-    assert_eq!(
-        saved.resumed_run.as_deref(),
-        Some(job.launch.key.run_id.as_str())
-    );
-    assert!(
-        std::fs::read_to_string(Path::new(&job.launch.workspace).join("received-input"))
-            .unwrap()
-            .contains("saved overnight")
-    );
+    if !storage_recovery {
+        let saved = questions::list(&pool, 1).await.unwrap().remove(0);
+        assert_eq!(saved.resume_state, "linked");
+        assert_eq!(
+            saved.resumed_run.as_deref(),
+            Some(job.launch.key.run_id.as_str())
+        );
+        assert!(
+            std::fs::read_to_string(Path::new(&job.launch.workspace).join("received-input"))
+                .unwrap()
+                .contains("saved overnight")
+        );
+    }
     assert_eq!(
         std::fs::read_to_string(Path::new(&job.launch.workspace).join("turn-count")).unwrap(),
         "1"
     );
     assert!(
-        runtime_resume::next(&pool, &broker, "boot", &config.launcher().unwrap())
+        runtime_resume::next(&pool, &broker, incarnation, &config.launcher().unwrap())
             .await
             .unwrap()
             .is_none()
@@ -880,7 +991,9 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
         .await
         .unwrap();
     assert_eq!(ending, "completion");
-    configured_controller(&pool, root, &config).await;
+    if !storage_recovery {
+        configured_controller(&pool, root, &config).await;
+    }
     pool.close().await;
 }
 
@@ -1085,9 +1198,11 @@ async fn configured_controller(
                 .fetch_one(pool)
                 .await
                 .unwrap();
-            if error.as_deref()
-                == Some("storage scan failed; preserve registered originals and reconcile")
-            {
+            if error.as_deref().is_some_and(|error| {
+                error.starts_with(
+                    "storage scan failed; preserve registered originals and reconcile:",
+                )
+            }) {
                 break;
             }
             assert!(child.try_wait().unwrap().is_none());
@@ -1262,4 +1377,115 @@ async fn stream_errors_and_consumer_cancellation() {
     let (sender, receiver) = tokio::sync::mpsc::channel(4);
     drop(receiver);
     diagnostics(&b"diagnostic"[..], sender).await;
+}
+
+#[tokio::test]
+async fn storage_recheck_restores_paid_work_once_without_a_question_or_pause() {
+    let _ = tracing_subscriber::fmt().with_test_writer().try_init();
+    let root = temporary();
+    automatic_answer_recovery(&root, true, false).await;
+    std::fs::remove_dir_all(root.with_extension("cold")).unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn storage_recheck_recovers_committed_work_without_completion_declaration() {
+    let root = temporary();
+    automatic_answer_recovery(&root, true, true).await;
+    std::fs::remove_dir_all(root.with_extension("cold")).unwrap();
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn pinned_codex_full_client_survives_idle_provider_response() {
+    let root = temporary();
+    let pool = fixture(&root).await;
+    let git = broker(&root.join("broker"));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let app = axum::Router::new().route("/responses", axum::routing::post(|| async {
+        tokio::time::sleep(Duration::from_secs(3)).await;
+        let events = [
+            json!({"type":"response.created","response":{"id":"idle-fixture"}}),
+            json!({"type":"response.output_item.done","item":{"type":"function_call","call_id":"idle-call","name":"report_blocker","arguments":"{\"reason\":\"idle fixture complete\",\"requires_permission\":false}"}}),
+            json!({"type":"response.completed","response":{"id":"idle-fixture","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}),
+        ];
+        ([("content-type", "text/event-stream")], events.iter().map(|v| format!("data: {v}\n\n")).collect::<String>())
+    }));
+    let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let launch = Launch {
+        key: key(),
+        workspace: root.to_str().unwrap().into(),
+        workspace_identity: "fixture".into(),
+        program: std::env::var("CODEX_BINARY").unwrap_or_else(|_| {
+            String::from_utf8(
+                std::process::Command::new("which")
+                    .arg("codex")
+                    .output()
+                    .unwrap()
+                    .stdout,
+            )
+            .unwrap()
+            .trim()
+            .into()
+        }),
+        args: vec!["app-server".into()],
+    };
+    sqlx::query("UPDATE agent_run SET launch=$1 WHERE id='runtime-test'")
+        .bind(json!(launch))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let settings = runtime_client::Settings {
+        startup_seconds: 30,
+        response_seconds: 30,
+        stall_seconds: 30,
+        reservation: Amount {
+            tokens: 100,
+            turns: 1,
+            model_seconds: 30,
+        },
+        codex_config: format!(
+            r#"model = "gpt-6-astra"
+model_provider = "idle_fixture"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+[features]
+apps = false
+plugins = false
+remote_plugin = false
+goals = false
+[model_providers.idle_fixture]
+name = "Local idle fixture"
+base_url = "http://127.0.0.1:{port}"
+wire_api = "responses"
+requires_openai_auth = false
+supports_websockets = false
+request_max_retries = 0
+stream_max_retries = 0
+"#
+        ),
+    };
+    let result = tokio::time::timeout(
+        Duration::from_secs(45),
+        runtime_client::execute(
+            &pool,
+            &root,
+            Path::new(env!("CARGO_BIN_EXE_codexsymphony-server")),
+            &git,
+            &launch,
+            &settings,
+        ),
+    )
+    .await
+    .unwrap();
+    server.abort();
+    result.unwrap();
+    let ending: String =
+        sqlx::query_scalar("SELECT end_kind FROM runtime_session WHERE run_id='runtime-test'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(ending, "blocker");
+    pool.close().await;
 }

@@ -14,7 +14,10 @@
 
 [需求累计额度](docs/budgets.md) 已加入首次授权冻结、跨 Run 调用预留、累计用量结算和独立等待计时；真实 Runtime 已使用该累计额度。
 
-[Localhost 操作闭环](docs/operations.md) 提供需求表单、列表、详情/Run 时间线与待办箱，支持版本化回答和控制、独立事实展示、脱敏证据预览及持久化消耗/介入指标。完整存储生命周期数据等待 GH-23 接入。
+[Localhost 操作闭环](docs/operations.md) 提供需求表单、列表、详情/Run 时间线与待办箱，支持版本化回答和控制、独立事实展示、脱敏证据预览及持久化消耗/介入指标。分类存储、跨重试归并与容量保护见 [证据生命周期](docs/storage-lifecycle.md)。
+
+[单仓集成验收](docs/single-repository-acceptance.md) 汇总 A01–A12 的复用测试、真实边界和部署恢复步骤。
+真实 A01 已在授权仓创建 Requirement 1，但尚因存储故障停在恢复阶段，不能记作产品贯通或完整 0a 发布。
 
 ## 从这里开始
 

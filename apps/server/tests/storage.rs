@@ -286,6 +286,26 @@ fn root(path: PathBuf) -> Root {
         path,
     }
 }
+
+#[test]
+fn live_runtime_socket_is_measured_but_never_archived() {
+    use std::os::unix::{fs::MetadataExt, net::UnixListener};
+    let tree = Tree::new();
+    let path = tree.0.join("runtime.sock");
+    let socket = UnixListener::bind(&path).unwrap();
+    fs::write(tree.0.join("original"), b"saved work").unwrap();
+    let directory = Directory::open(&tree.0).unwrap();
+    let expected = [&tree.0, &path, &tree.0.join("original")]
+        .iter()
+        .map(|path| fs::symlink_metadata(path).unwrap().blocks() * 512)
+        .sum::<u64>();
+    assert_eq!(directory.usage(10).unwrap(), expected);
+    assert!(directory.inventory(10).is_err());
+    assert_eq!(fs::read(tree.0.join("original")).unwrap(), b"saved work");
+    drop(socket);
+    fs::remove_file(path).unwrap();
+    assert_eq!(directory.inventory(10).unwrap().len(), 1);
+}
 fn deployment(tree: &Tree) -> Deployment {
     Deployment {
         policy: policy(),
@@ -384,6 +404,56 @@ async fn material(
     .await
     .unwrap();
     tx.commit().await.unwrap();
+}
+
+#[tokio::test]
+async fn active_runtime_socket_keeps_originals_and_accounts_actual_bytes() {
+    use std::os::unix::net::UnixListener;
+    let pool = fixture().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    store::install(&pool, &config).await.unwrap();
+    run(&pool, "socket-run").await;
+    sqlx::query("UPDATE agent_run SET state='Running',quiescent=false WHERE id='socket-run'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let path = config.execution.path.join("socket-run");
+    fs::create_dir(&path).unwrap();
+    fs::write(path.join("original"), b"saved runtime evidence").unwrap();
+    let _socket = UnixListener::bind(path.join("runtime.sock")).unwrap();
+    material(
+        &pool,
+        &config,
+        "socket-run",
+        "socket-run-runtime",
+        &path,
+        Kind::Retrospective,
+    )
+    .await;
+    storage_cleanup::scan(&pool, 1000).await.unwrap();
+    let (bytes, status, protection): (i64, String, Option<String>) = sqlx::query_as(
+        "SELECT actual_bytes,status,protection FROM storage_material WHERE id='socket-run-runtime'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        bytes as u64,
+        Directory::open(&path).unwrap().usage(100).unwrap()
+    );
+    assert_eq!(status, "available");
+    assert!(protection.is_some());
+    assert_eq!(
+        fs::read(path.join("original")).unwrap(),
+        b"saved runtime evidence"
+    );
+    assert!(storage_service::capacity(&pool).await.unwrap());
+    let blocked: bool = sqlx::query_scalar("SELECT blocked FROM storage_guard")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(!blocked);
 }
 
 #[tokio::test]
@@ -875,8 +945,15 @@ async fn scan_failure_budget(pool: &PgPool, config: &Deployment) {
     fs::rename(&config.cold.path, &displaced).unwrap();
     fs::create_dir(&config.cold.path).unwrap();
     let start = codexsymphony_server::runtime_client::now() + 100;
-    for offset in [0, 30, 150] {
+    for (offset, delay) in [(0, 30), (30, 120), (150, 300)] {
         assert!(storage_cleanup::scan(pool, start + offset).await.is_err());
+        assert_eq!(
+            storage_service::next_scan_delay(pool, start + offset)
+                .await
+                .unwrap()
+                .as_secs(),
+            delay
+        );
     }
     storage_cleanup::scan(pool, start + 1000).await.unwrap();
     let retry: serde_json::Value = sqlx::query_scalar("SELECT scan_retry FROM storage_guard")
@@ -885,6 +962,16 @@ async fn scan_failure_budget(pool: &PgPool, config: &Deployment) {
         .unwrap();
     assert_eq!(retry["todo"], true);
     assert_eq!(retry["group_attempts"], 3);
+    assert_eq!(
+        retry["last_failure"]["evidence"],
+        "storage_guard.scan_retry"
+    );
+    assert!(
+        retry["last_failure"]["detail"]
+            .as_str()
+            .unwrap()
+            .contains("identity changed")
+    );
     assert_eq!(fs::read_dir(&config.cold.path).unwrap().count(), 0);
     fs::remove_dir(&config.cold.path).unwrap();
     fs::rename(displaced, &config.cold.path).unwrap();
@@ -894,6 +981,13 @@ async fn scan_failure_budget(pool: &PgPool, config: &Deployment) {
         .unwrap();
     tx.commit().await.unwrap();
     storage_cleanup::scan(pool, start + 1001).await.unwrap();
+    assert_eq!(
+        storage_service::next_scan_delay(pool, start + 1001)
+            .await
+            .unwrap()
+            .as_secs(),
+        300
+    );
 }
 
 async fn explicit_retry_chain(pool: &PgPool, config: &Deployment) {
@@ -1014,6 +1108,10 @@ async fn database_failure_preserves_verified_package(pool: &PgPool, config: &Dep
 }
 
 async fn policy_and_control(pool: &PgPool, config: &Deployment) {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::Level::WARN)
+        .with_test_writer()
+        .try_init();
     use codexsymphony_server::operator_control::{self, Action, Command};
     sqlx::query("UPDATE storage_attempt SET expires_at=extract(epoch FROM now())::bigint+10000")
         .execute(pool)
@@ -1074,11 +1172,49 @@ async fn policy_and_control(pool: &PgPool, config: &Deployment) {
             .await
             .unwrap()
     );
+    // Execution writes still work, but accounting cannot verify the cold root.
+    // Exercise the actual admission error path and its retained diagnostic.
+    assert!(
+        codexsymphony_server::storage::recover(pool, &config.execution.path)
+            .await
+            .unwrap()
+    );
+    assert!(codexsymphony_server::storage::permit(pool, &config.execution.path).await);
+    let displaced_cold = config.cold.path.with_extension("admission-missing");
+    fs::rename(&config.cold.path, &displaced_cold).unwrap();
+    assert!(!codexsymphony_server::storage::permit(pool, &config.execution.path).await);
+    let blocked: bool = sqlx::query_scalar("SELECT blocked FROM storage_guard")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert!(blocked);
+    assert!(displaced_cold.is_dir());
+    fs::rename(&displaced_cold, &config.cold.path).unwrap();
+    assert!(
+        codexsymphony_server::storage::recover(pool, &config.execution.path)
+            .await
+            .unwrap()
+    );
     sqlx::query("UPDATE storage_attempt SET expires_at=1")
         .execute(pool)
         .await
         .unwrap();
     assert!(!storage_service::capacity(pool).await.unwrap());
+    let version: i64 = sqlx::query_scalar("SELECT version FROM requirement WHERE id=1")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let rejected = Command {
+        version,
+        request_id: "storage-still-full".into(),
+        action: Action::StorageRecheck,
+    };
+    assert!(operator_control::execute(pool, 1, &rejected).await.is_err());
+    let after: i64 = sqlx::query_scalar("SELECT version FROM requirement WHERE id=1")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(version, after);
     let mut lower = config.clone();
     lower.policy.version = "lower-new-admission".into();
     lower.policy.run_bytes = 1;
@@ -1251,4 +1387,92 @@ fn reader_panic_is_reported_to_capture_owner() {
         capture.finish().unwrap_err().to_string(),
         "output reader failed"
     );
+}
+
+#[test]
+fn accounting_restarts_the_whole_pass_only_for_bounded_disappearance() {
+    use codexsymphony_server::storage_files::retry_listing;
+    use std::io;
+    let mut attempts = 0;
+    let entries = retry_listing(|| {
+        attempts += 1;
+        if attempts < 3 {
+            Err(io::Error::from(io::ErrorKind::NotFound))
+        } else {
+            Ok(Vec::new())
+        }
+    })
+    .unwrap();
+    assert!(entries.is_empty());
+    assert_eq!(attempts, 3);
+    attempts = 0;
+    assert!(
+        retry_listing(|| {
+            attempts += 1;
+            Err(io::Error::from(io::ErrorKind::NotFound))
+        })
+        .is_err()
+    );
+    assert_eq!(attempts, 3);
+    attempts = 0;
+    assert!(
+        retry_listing(|| {
+            attempts += 1;
+            Err(io::Error::from(io::ErrorKind::PermissionDenied))
+        })
+        .is_err()
+    );
+    assert_eq!(attempts, 1);
+}
+
+#[tokio::test]
+async fn phase_notifications_require_real_changes() {
+    let pool = fixture().await;
+    run(&pool, "notification-run").await;
+    let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
+        .await
+        .unwrap();
+    listener.listen("storage_phase_ended").await.unwrap();
+    let mut connection = pool.acquire().await.unwrap();
+    let pid: i32 = sqlx::query_scalar("SELECT pg_backend_pid()")
+        .fetch_one(&mut *connection)
+        .await
+        .unwrap();
+    sqlx::raw_sql("UPDATE agent_run SET state=state,phase=phase,quiescent=quiescent; UPDATE candidate_validation SET stage=stage,result=result WHERE false; UPDATE delivery_action SET state=state WHERE false; INSERT INTO preparation_history OVERRIDING SYSTEM VALUE SELECT * FROM preparation_history WHERE false;")
+        .execute(&mut *connection).await.unwrap();
+    assert!(
+        tokio::time::timeout(
+            std::time::Duration::from_millis(150),
+            notification_from(&mut listener, pid)
+        )
+        .await
+        .is_err(),
+        "no-op controller ticks must not wake storage scans"
+    );
+    sqlx::query("UPDATE agent_run SET state='Interrupted' WHERE id='notification-run'")
+        .execute(&mut *connection)
+        .await
+        .unwrap();
+    let notification = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        notification_from(&mut listener, pid),
+    )
+    .await
+    .unwrap();
+    assert_eq!(notification.channel(), "storage_phase_ended");
+    drop(listener);
+    drop(connection);
+    pool.close().await;
+}
+
+async fn notification_from(
+    listener: &mut sqlx::postgres::PgListener,
+    pid: i32,
+) -> sqlx::postgres::PgNotification {
+    loop {
+        let event = listener.recv().await.unwrap();
+        if event.process_id() == pid as u32 {
+            return event;
+        }
+    }
 }

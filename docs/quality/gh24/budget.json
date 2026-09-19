@@ -1,0 +1,169 @@
+{
+  "budget": {
+    "requirement_id": 1,
+    "limits": {
+      "turns": 5,
+      "tokens": 500000,
+      "model_seconds": 4500
+    },
+    "version": 4,
+    "exhausted": false
+  },
+  "authorizations": [
+    {
+      "requirement_id": 1,
+      "version": 1,
+      "request_id": "initial-budget:1",
+      "actor": "local-user",
+      "reason": "initial reviewed authorization",
+      "delta": {
+        "turns": 3,
+        "tokens": 300000,
+        "model_seconds": 1800
+      },
+      "limits": {
+        "turns": 3,
+        "tokens": 300000,
+        "model_seconds": 1800
+      },
+      "created_at": "2026-09-19T14:27:58.412082+00:00"
+    },
+    {
+      "requirement_id": 1,
+      "version": 2,
+      "request_id": "66a41a3a-0690-49ec-95cf-21e62e50171d",
+      "actor": "operator-user-delegated-takeover",
+      "reason": "User requested direct completion on authorized disposable repository. Retain two interrupted calls and unknown usage; add only one 900-second reservation within unchanged three-call and 300000-token limits.",
+      "delta": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 900
+      },
+      "limits": {
+        "turns": 3,
+        "tokens": 300000,
+        "model_seconds": 2700
+      },
+      "created_at": "2026-09-19T23:08:05.397632+00:00"
+    },
+    {
+      "requirement_id": 1,
+      "version": 3,
+      "request_id": "ded9807d-97a2-488f-96d2-ded9f181af8f",
+      "actor": "operator-user-delegated-takeover",
+      "reason": "User requested completing authorized disposable A01. Last permitted turn was interrupted by reproduced budget boundary bug. Grant one bounded recovery turn after verified fix; retain all previous usage and conservative reservations.",
+      "delta": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "limits": {
+        "turns": 4,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "created_at": "2026-09-19T23:16:49.578818+00:00"
+    },
+    {
+      "requirement_id": 1,
+      "version": 4,
+      "request_id": "5729e90f-f93a-4baa-82d6-ed48d70a3ef5",
+      "actor": "operator-user-delegated-takeover",
+      "reason": "User delegated completion of disposable A01. Real model created commit 765976c9120979adca79ee5dcba21496318722a8 then database lock contention interrupted declaration. One bounded recovery call; preserve prior usage and unresolved reservations.",
+      "delta": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "limits": {
+        "turns": 5,
+        "tokens": 500000,
+        "model_seconds": 4500
+      },
+      "created_at": "2026-09-19T23:33:49.420847+00:00"
+    }
+  ],
+  "calls": [
+    {
+      "run_id": "365d7d49-5c30-4d5f-80fb-c05bf47a6e44",
+      "turn_id": "af3d015f-e8bd-43f4-a0c0-a4e4f16718d7",
+      "reserved": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "usage": {
+        "input": null,
+        "cached": null,
+        "output": null,
+        "complete": false,
+        "model_seconds": 4
+      }
+    },
+    {
+      "run_id": "5ac47a42-5804-4812-b133-967ba7cd76e1",
+      "turn_id": "670c663f-4def-498b-9652-157153a049b4",
+      "reserved": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "usage": {
+        "input": null,
+        "cached": null,
+        "output": null,
+        "complete": false,
+        "model_seconds": 2
+      }
+    },
+    {
+      "run_id": "77aca6d3-7bb5-4580-9818-6009529d646f",
+      "turn_id": "7053d119-8e83-47ab-8f72-3e14ff31ec6d",
+      "reserved": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "usage": {
+        "input": 12935,
+        "cached": 0,
+        "output": 288,
+        "complete": false,
+        "model_seconds": 12
+      }
+    },
+    {
+      "run_id": "f93e5f85-94ac-473e-8ad1-21a34d980dd1",
+      "turn_id": "fb56cb7a-d43a-428b-9190-4272fdb060f8",
+      "reserved": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "usage": {
+        "input": 68426,
+        "cached": 53376,
+        "output": 583,
+        "complete": false,
+        "model_seconds": 32
+      }
+    },
+    {
+      "run_id": "385911f6-69eb-4ca3-a80f-d2c37e72106c",
+      "turn_id": "351b4877-480c-4949-b424-5d6c32ee2a9d",
+      "reserved": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "usage": {
+        "input": 54831,
+        "cached": 39936,
+        "output": 514,
+        "complete": false,
+        "model_seconds": 28
+      }
+    }
+  ],
+  "note": "Unknown usage remains unknown; reservations and previous calls retained. Operator human time and monetary cost were not measured."
+}

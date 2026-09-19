@@ -143,6 +143,10 @@ fn cumulative_counters_and_waits_preserve_unknowns_and_overflow() {
     assert!(!amount(-1, 0, 0).nonnegative());
     assert!(!amount(1, 2, 1).fits(amount(1, 1, 1)));
     assert!(amount(1, 1, 2).reached(amount(2, 2, 2)));
+    assert!(!amount(1, 1, 1).execution_exhausted(amount(2, 1, 2)));
+    assert!(amount(2, 1, 1).execution_exhausted(amount(2, 1, 2)));
+    assert!(amount(1, 2, 1).execution_exhausted(amount(2, 1, 2)));
+    assert!(amount(1, 1, 2).execution_exhausted(amount(2, 1, 2)));
     let wait = Waiting {
         human_seconds: 100,
         paused_seconds: 20,
@@ -183,6 +187,7 @@ fn cumulative_counters_and_waits_preserve_unknowns_and_overflow() {
 
 #[tokio::test]
 async fn transactions_reconcile_usage_across_runs_revisions_and_crashes() {
+    last_reserved_turn_can_finish().await;
     let pool = fixture().await;
     let first = call("first", "one", 60);
     sqlx::query("UPDATE agent_run SET model=NULL WHERE id='first'")
@@ -449,6 +454,42 @@ async fn transactions_reconcile_usage_across_runs_revisions_and_crashes() {
     assert!(blocker.starts_with("runtime_timeout"));
     preparation_history_keeps_quota(&pool).await;
     corrupted_accounting_fails_closed(&pool).await;
+    pool.close().await;
+}
+
+async fn last_reserved_turn_can_finish() {
+    let pool = fixture().await;
+    sqlx::query(
+        "UPDATE requirement_budget SET limits='{\"tokens\":100,\"turns\":1,\"model_seconds\":100}'",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    let last = call("first", "last", 60);
+    assert_eq!(
+        budget_store::reserve(&pool, &last).await.unwrap(),
+        Admission::Reserved
+    );
+    for complete in [false, true] {
+        budget_store::settle(
+            &pool,
+            &last.key,
+            "last",
+            &format!("observed-{complete}"),
+            &usage(10, 5, 3, complete),
+        )
+        .await
+        .unwrap();
+        assert!(!budget_store::inspect(&pool, 1).await.unwrap().exhausted);
+        assert!(run_store::actions_allowed(&pool, &last.key).await.unwrap());
+    }
+    assert_eq!(
+        budget_store::reserve(&pool, &call("first", "extra", 1))
+            .await
+            .unwrap(),
+        Admission::Blocked
+    );
+    assert!(budget_store::inspect(&pool, 1).await.unwrap().exhausted);
     pool.close().await;
 }
 

@@ -19,6 +19,7 @@ pub enum Action {
     Cancel,
     Recheck,
     StorageRecheck,
+    DeliveryRecheck,
 }
 type Result<T> = std::result::Result<T, sqlx::Error>;
 fn require(value: bool) -> Result<()> {
@@ -115,6 +116,7 @@ pub fn allowed(state: &str, paused: bool, action: Action) -> bool {
         Action::Resume => paused && ["Ready", "Running", "Submitted"].contains(&state),
         Action::Recheck => ["Ready", "Running"].contains(&state),
         Action::StorageRecheck => true,
+        Action::DeliveryRecheck => state == "Running",
         Action::Cancel => matches!(
             state,
             "Draft" | "Ready" | "Running" | "Submitted" | "Failed"
@@ -132,6 +134,7 @@ async fn apply(
         Action::Cancel => require(delivery_control::cancel_in(tx, id).await?),
         Action::Recheck => recheck(tx, id).await,
         Action::StorageRecheck => storage_recheck(tx, id).await,
+        Action::DeliveryRecheck => delivery_recheck(tx, id).await,
     }
 }
 
@@ -145,15 +148,31 @@ async fn storage_recheck(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64
     crate::storage_cleanup::authorize(tx, id, crate::runtime_client::now())
         .await
         .map_err(storage_error)?;
-    crate::storage::recover_in(tx, &config.execution.path)
+    let recovered = crate::storage::recover_in(tx, &config.execution.path)
         .await
         .map_err(storage_error)?;
+    require(recovered)?;
+    request_storage_resume(tx, id).await?;
     sqlx::query(
         "INSERT INTO operator_intervention(requirement_id,reason) VALUES($1,'storage_recheck')",
     )
     .bind(id)
     .execute(&mut **tx)
     .await?;
+    Ok(())
+}
+
+async fn request_storage_resume(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+) -> Result<()> {
+    // Record intent before preservation, which itself needs the recovered guard.
+    // Rechecking an already clear guard also repairs previously missed intent.
+    // Dispatch still requires a saved checkpoint and all existing recovery guards.
+    // A local commit alone is not a completion declaration. Accepted endings
+    // and validation/delivery retain their own durable recovery stage.
+    sqlx::query("UPDATE agent_run a SET storage_resume_requested=true FROM requirement r WHERE r.id=$1 AND a.requirement_id=r.id AND a.revision=r.revision AND r.state='Running' AND NOT r.cancel_requested AND a.phase='execution' AND a.state='Interrupted' AND a.quiescent AND a.stop_requested AND NOT EXISTS(SELECT 1 FROM runtime_session s WHERE s.run_id=a.id AND s.end_kind IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM candidate_validation v WHERE v.source_run_id=a.id) AND NOT EXISTS(SELECT 1 FROM agent_run newer WHERE newer.requirement_id=r.id AND newer.run_sequence>a.run_sequence)")
+        .bind(id).execute(&mut **tx).await?;
     Ok(())
 }
 fn storage_error(_: Box<dyn std::error::Error + Send + Sync>) -> sqlx::Error {
@@ -172,6 +191,20 @@ async fn recheck(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Res
     .await?;
     sqlx::query(
         "INSERT INTO operator_intervention(requirement_id,reason) VALUES($1,'preparation_recheck')",
+    )
+    .bind(id)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
+// Grant another finite group; identity conflicts cannot be authorized away.
+async fn delivery_recheck(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Result<()> {
+    let changed = sqlx::query("UPDATE delivery_action a SET attempt_limit=a.attempts+3,state='unknown',next_attempt_at=0,error=NULL FROM delivery d JOIN requirement r ON r.id=d.requirement_id WHERE d.action_key=a.action_key AND r.id=$1 AND d.revision=r.revision AND NOT d.released AND a.kind='publish' AND a.state='blocked' AND a.attempts>=a.attempt_limit AND a.error->>'code' IN ('delivery_retry_exhausted','github_transient_or_unknown')")
+        .bind(id).execute(&mut **tx).await?;
+    require(changed.rows_affected() == 1)?;
+    sqlx::query(
+        "INSERT INTO operator_intervention(requirement_id,reason) VALUES($1,'delivery_recheck')",
     )
     .bind(id)
     .execute(&mut **tx)
