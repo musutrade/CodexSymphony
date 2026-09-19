@@ -387,6 +387,43 @@ async fn material(
 }
 
 #[tokio::test]
+async fn measurement_rejects_missing_roots_and_inventory_overflow() {
+    let pool = fixture().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    let evidence = config.execution.path.join("retained-evidence");
+    fs::write(&evidence, b"preserve on measurement failure").unwrap();
+    let mut tx = pool.begin().await.unwrap();
+
+    let mut missing = config.clone();
+    missing.execution.path = tree.0.join("missing-root");
+    let error = storage_measure::measure(&mut tx, &missing)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<std::io::Error>().unwrap().kind(),
+        std::io::ErrorKind::NotFound
+    );
+
+    let mut bounded = config.clone();
+    bounded.policy.entry_count = 0;
+    let error = storage_measure::measure(&mut tx, &bounded)
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("material inventory limit"));
+    assert_eq!(
+        fs::read(&evidence).unwrap(),
+        b"preserve on measurement failure"
+    );
+
+    // Failed measurements must neither poison the transaction nor erase data.
+    let measured = storage_measure::measure(&mut tx, &config).await.unwrap();
+    assert!(measured.categories[&Category::Workspace] > 0);
+    tx.rollback().await.unwrap();
+    pool.close().await;
+}
+
+#[tokio::test]
 async fn persisted_retention_archive_retries_and_cumulative_admission() {
     let pool = fixture().await;
     let tree = Tree::new();
