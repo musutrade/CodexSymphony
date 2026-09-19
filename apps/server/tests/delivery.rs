@@ -9,6 +9,10 @@ use codexsymphony_server::{
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
+// Separate schemas still share PostgreSQL advisory locks. Serialize independent
+// scenarios; concurrency within each recovery/remote-race scenario is unchanged.
+static DATABASE_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 #[path = "support/delivery.rs"]
 mod database_fixture;
 use database_fixture::database;
@@ -127,6 +131,7 @@ fn exact_identity_and_merge_facts() {
 }
 #[tokio::test]
 async fn lost_push_and_create_responses_reconcile_without_duplicate_work() {
+    let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     let mut remote = Fake {
         lost: true,
@@ -161,6 +166,7 @@ async fn lost_push_and_create_responses_reconcile_without_duplicate_work() {
 }
 #[tokio::test]
 async fn crashes_before_send_after_remote_and_during_commit() {
+    let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     let saved = job(&pool).await;
     let attempt = store::begin(&pool, &saved, "push", 0)
@@ -199,6 +205,7 @@ async fn crashes_before_send_after_remote_and_during_commit() {
 }
 #[tokio::test]
 async fn cancel_in_flight_closes_once_and_merge_races_preserve_facts() {
+    let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     let mut remote = Fake {
         head: Some("candidate".into()),
@@ -236,6 +243,7 @@ async fn cancel_in_flight_closes_once_and_merge_races_preserve_facts() {
 }
 #[tokio::test]
 async fn pause_authorization_conflicts_and_bounded_cleanup() {
+    let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     run_store::pause(&pool, Some(1)).await.unwrap();
     let mut remote = Fake::default();
@@ -275,6 +283,7 @@ async fn pause_authorization_conflicts_and_bounded_cleanup() {
 
 #[tokio::test]
 async fn cancelled_unknown_create_and_push_keep_ownership_until_reconciled() {
+    let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     let saved = job(&pool).await;
     store::begin(&pool, &saved, "create", 0)
@@ -308,6 +317,7 @@ async fn cancelled_unknown_create_and_push_keep_ownership_until_reconciled() {
 }
 #[tokio::test]
 async fn transaction_rollback_does_not_lose_outbox_and_wrong_pr_is_never_closed() {
+    let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     sqlx::query("DELETE FROM delivery_action")
         .execute(&pool)
@@ -345,6 +355,7 @@ async fn transaction_rollback_does_not_lose_outbox_and_wrong_pr_is_never_closed(
 mod source_fixture;
 #[tokio::test]
 async fn initial_ready_plan_is_durable_and_admission_binds_the_same_worktree() {
+    let _serial = DATABASE_TEST.lock().await;
     use codexsymphony_server::{git_broker::GitBroker, runtime_initial};
     let pool = database().await;
     sqlx::raw_sql(
@@ -456,6 +467,7 @@ async fn initial_ready_plan_is_durable_and_admission_binds_the_same_worktree() {
 
 #[tokio::test]
 async fn fresh_exact_merge_releases_without_done_and_api_exposes_delivery() {
+    let _serial = DATABASE_TEST.lock().await;
     use tower::ServiceExt;
     let pool = database().await;
     let saved = job(&pool).await;
@@ -527,6 +539,7 @@ async fn fresh_exact_merge_releases_without_done_and_api_exposes_delivery() {
 
 #[tokio::test]
 async fn remote_read_failures_and_disappeared_pr_never_trigger_writes() {
+    let _serial = DATABASE_TEST.lock().await;
     for failure in ["find", "head", "missing", "close"] {
         let pool = database().await;
         let mut remote = Fake {
@@ -562,6 +575,7 @@ async fn remote_read_failures_and_disappeared_pr_never_trigger_writes() {
 
 #[tokio::test]
 async fn missing_delivery_identity_rolls_back_and_cancel_reports_absent_requirement() {
+    let _serial = DATABASE_TEST.lock().await;
     use tower::ServiceExt;
     let pool = database().await;
     sqlx::query(

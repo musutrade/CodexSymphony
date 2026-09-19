@@ -100,6 +100,15 @@ pub fn execute(
     expected: &Candidate,
     plan: &Plan,
 ) -> Result<Vec<StepEvidence>> {
+    execute_limited(root, directory, expected, plan, LIMIT)
+}
+pub fn execute_limited(
+    root: &Path,
+    directory: &Path,
+    expected: &Candidate,
+    plan: &Plan,
+    limit: u64,
+) -> Result<Vec<StepEvidence>> {
     fs::create_dir_all(directory)?;
     let _lock = process::InstanceLock::acquire(&directory.join("lock"))?;
     let identity = plan.identity()?;
@@ -110,7 +119,15 @@ pub fn execute(
     if let Some(evidence) = replay(directory, &binding)? {
         return Ok(evidence);
     }
-    run_plan(root, directory, expected, plan, &identity, &binding)
+    run_plan(
+        root,
+        directory,
+        expected,
+        plan,
+        &identity,
+        &binding,
+        limit.min(LIMIT),
+    )
 }
 fn replay(directory: &Path, binding: &serde_json::Value) -> Result<Option<Vec<StepEvidence>>> {
     if directory.join("binding.json").exists() {
@@ -135,11 +152,12 @@ fn run_plan(
     plan: &Plan,
     identity: &TrustedIdentity,
     binding: &serde_json::Value,
+    limit: u64,
 ) -> Result<Vec<StepEvidence>> {
     process::durable_write(&directory.join("binding.json"), &binding)?;
     let mut evidence = Vec::new();
     for (index, step) in plan.steps.iter().enumerate() {
-        evidence.push(run_step(root, directory, index, step, plan)?);
+        evidence.push(run_step(root, directory, index, step, plan, limit)?);
     }
     if candidate(root)? != *expected || plan.identity()? != *identity {
         return Err("validation source or tool changed".into());
@@ -153,6 +171,7 @@ fn run_step(
     index: usize,
     step: &Step,
     plan: &Plan,
+    limit: u64,
 ) -> Result<StepEvidence> {
     let path = directory.join(format!("step-{index}.log"));
     let file = fs::OpenOptions::new()
@@ -160,20 +179,36 @@ fn run_step(
         .write(true)
         .open(&path)?;
     let mut command = command(root, step, plan);
-    command
-        .stdout(Stdio::from(file.try_clone()?))
-        .stderr(Stdio::from(file));
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = command.spawn()?;
-    let exit = wait(&mut child, step.timeout_seconds, &path)?;
+    let mut capture = crate::storage_output::Capture::default();
+    capture.combined(
+        child.stdout.take().ok_or("stdout unavailable")?,
+        child.stderr.take().ok_or("stderr unavailable")?,
+        file,
+        limit,
+    );
+    let exit = wait(&mut child, step.timeout_seconds, &capture)?;
+    if capture.finish()? {
+        process::durable_write(
+            &path.with_extension("truncated.json"),
+            &serde_json::json!({"kept_range":[0,limit],"reason":"raw output byte limit","complete":false}),
+        )?;
+        return Err("validation output limit reached".into());
+    }
     evidence(directory, index, step, exit)
 }
-fn wait(child: &mut std::process::Child, timeout: u64, output: &Path) -> Result<Option<i32>> {
+fn wait(
+    child: &mut std::process::Child,
+    timeout: u64,
+    output: &crate::storage_output::Capture,
+) -> Result<Option<i32>> {
     let deadline = Instant::now() + Duration::from_secs(timeout);
     let exit = loop {
         if let Some(status) = child.try_wait()? {
             break status.code();
         }
-        if Instant::now() >= deadline || fs::metadata(output)?.len() >= LIMIT {
+        if Instant::now() >= deadline || output.stopped() {
             stop_group(child.id());
             child.wait()?;
             break None;

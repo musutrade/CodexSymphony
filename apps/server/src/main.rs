@@ -50,8 +50,11 @@ async fn start_coordinator(pool: &PgPool) -> Result<tokio::task::JoinHandle<()>,
         std::env::var("EXECUTION_DIRECTORY").unwrap_or(".local-data/execution".into()),
     );
     let incarnation = process::new_identity()?;
-    std::fs::create_dir_all(&root)?;
+    if std::env::var_os("STORAGE_CONFIG").is_none() {
+        std::fs::create_dir_all(&root)?;
+    }
     run_store::begin_incarnation(pool, &incarnation).await?;
+    let storage = codexsymphony_server::storage_service::start(pool, &root).await?;
     let runtime = codexsymphony_server::runtime_service::start(
         pool.clone(),
         root.clone(),
@@ -60,11 +63,17 @@ async fn start_coordinator(pool: &PgPool) -> Result<tokio::task::JoinHandle<()>,
     Ok(tokio::spawn(coordinate(
         Coordinator::new(pool.clone(), root, incarnation),
         runtime,
+        storage,
     )))
 }
 
-async fn coordinate(mut coordinator: Coordinator, runtime: Option<tokio::task::JoinHandle<()>>) {
+async fn coordinate(
+    mut coordinator: Coordinator,
+    runtime: Option<tokio::task::JoinHandle<()>>,
+    storage: Option<tokio::task::JoinHandle<()>>,
+) {
     let _runtime = RuntimeWorker(runtime);
+    let _storage = RuntimeWorker(storage);
     let blocker = coordinator.coding_blocker();
     tracing::info!("unprepared coding remains disabled: {}", blocker);
     loop {

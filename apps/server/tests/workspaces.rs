@@ -1018,3 +1018,224 @@ async fn crash_after_files_leaves_pending_without_reference() {
     );
     pool.close().await;
 }
+
+#[test]
+fn storage_reclaims_only_pushed_clean_snapshots_and_untracked_caches() {
+    let f = Fixture::new();
+    let w = f.workspace("storage-clean");
+    f.broker.prepare(&w, true).unwrap();
+    let manifest = f.broker.preserve(&w).unwrap();
+    assert!(f.broker.rebuildable(&manifest, &manifest.head).unwrap());
+    assert!(
+        !f.broker
+            .rebuildable(&manifest, "0000000000000000000000000000000000000000")
+            .unwrap()
+    );
+    let path = Path::new(&w.path);
+    fs::write(path.join("source.rs"), b"unique dirty content").unwrap();
+    assert!(!f.broker.rebuildable(&manifest, &manifest.head).unwrap());
+    git(path, &["checkout", "--", "source.rs"]);
+    fs::write(path.join("unique.txt"), b"untracked original").unwrap();
+    assert!(!f.broker.rebuildable(&manifest, &manifest.head).unwrap());
+    fs::remove_file(path.join("unique.txt")).unwrap();
+    fs::create_dir(path.join("target")).unwrap();
+    fs::write(path.join("target/build.bin"), b"rebuildable bytes").unwrap();
+    assert!(f.broker.cache_rebuildable(&w, "target").unwrap());
+    assert!(f.broker.cache_rebuildable(&w, "source.rs").is_err());
+    git(path, &["add", "target/build.bin"]);
+    assert!(!f.broker.cache_rebuildable(&w, "target").unwrap());
+    assert!(f.broker.rebuildable(&manifest, &manifest.head).is_err());
+    fs::write(
+        f.broker
+            .archive_path(&w.key.run_id)
+            .unwrap()
+            .join("manifest.json"),
+        b"damaged",
+    )
+    .unwrap();
+    assert!(f.broker.rebuildable(&manifest, &manifest.head).is_err());
+}
+
+#[tokio::test]
+async fn storage_retirement_requires_durable_delivery_and_preserves_reclaim_proof() {
+    use codexsymphony_server::{
+        storage_cleanup, storage_consumers,
+        storage_files::Directory,
+        storage_lifecycle::{CATEGORIES, Limit, Policy},
+        storage_store::{self, Deployment, Root},
+    };
+    let _serial = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    let mut f = Fixture::new();
+    f.broker =
+        GitBroker::initialize(&f.root.join("workspaces"), &f.root.join("seed.bundle")).unwrap();
+    let cold = f.root.with_extension("cold");
+    fs::create_dir(&cold).unwrap();
+    let owned = |path: &Path| Root {
+        path: fs::canonicalize(path).unwrap(),
+        identity: Directory::open(path).unwrap().identity().unwrap(),
+    };
+    let config = Deployment {
+        policy: Policy {
+            version: "retirement-test".into(),
+            reason: "real Git recovery lifecycle".into(),
+            global_bytes: 4 << 30,
+            control_bytes: 256 << 20,
+            run_bytes: 128 << 20,
+            requirement_bytes: 512 << 20,
+            entry_bytes: 1 << 20,
+            entry_count: 10000,
+            categories: CATEGORIES
+                .into_iter()
+                .map(|kind| {
+                    (
+                        kind,
+                        Limit {
+                            bytes: 2 << 30,
+                            seconds: if kind
+                                == codexsymphony_server::storage_lifecycle::Category::Record
+                            {
+                                3600
+                            } else {
+                                10
+                            },
+                            reserve_bytes: 1 << 20,
+                        },
+                    )
+                })
+                .collect(),
+        },
+        execution: owned(&f.root),
+        cold: owned(&cold),
+        database_filesystem: owned(&f.root),
+        database_extras: vec![],
+    };
+    storage_store::install(&pool, &config).await.unwrap();
+    sqlx::query("UPDATE requirement_revision SET document=document || '{\"repository\":{\"remote\":\"owner/repo\"}}'::jsonb").execute(&pool).await.unwrap();
+    let w = f.workspace("retire-run");
+    insert(&pool, &w).await;
+    execute(
+        &pool,
+        &f,
+        &w,
+        "prepare",
+        Operation::Prepare {
+            baseline: f.baseline.clone(),
+        },
+    )
+    .await;
+    fs::create_dir(Path::new(&w.path).join("target")).unwrap();
+    fs::write(
+        Path::new(&w.path).join("target/rebuildable.bin"),
+        b"temporary compiled output",
+    )
+    .unwrap();
+    state(&pool, "retire-run", "Succeeded", true).await;
+    execute(&pool, &f, &w, "preserve", Operation::Preserve).await;
+    storage_cleanup::scan(&pool, 100).await.unwrap();
+    sqlx::raw_sql("UPDATE agent_run SET user_paused=true WHERE id='retire-run'; INSERT INTO requirement_budget(requirement_id,limits) VALUES(1,'{\"tokens\":1000,\"turns\":10,\"model_seconds\":600}');").execute(&pool).await.unwrap();
+    let mut denied = config.clone();
+    denied.policy.version = "denied-restore".into();
+    denied.policy.run_bytes = 1;
+    storage_store::install(&pool, &denied).await.unwrap();
+    assert!(
+        codexsymphony_server::runtime_resume::next(
+            &pool,
+            &f.broker,
+            "current",
+            &["/bin/true".into()]
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM runtime_resume")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert!(Path::new(&w.path).join("source.rs").exists());
+    let mut restored = config.clone();
+    restored.policy.version = "restore-admission-recovered".into();
+    storage_store::install(&pool, &restored).await.unwrap();
+    assert!(
+        codexsymphony_server::storage::recover(&pool, &f.root)
+            .await
+            .unwrap()
+    );
+    sqlx::query("UPDATE agent_run SET user_paused=false WHERE id='retire-run'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    let mut tx = pool.begin().await.unwrap();
+    assert!(
+        storage_consumers::protection(&mut tx, &config, "retire-run", "recovery")
+            .await
+            .unwrap()
+            .unique
+    );
+    tx.rollback().await.unwrap();
+    let manifest: serde_json::Value =
+        sqlx::query_scalar("SELECT manifest FROM workspace_snapshot WHERE run_id='retire-run'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let head = manifest["head"].as_str().unwrap();
+    sqlx::query("INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result) VALUES('retire-v',1,1,'retire-run',$1,'tree','{}','[]','before','after','entry','entry','done','succeeded')").bind(head).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO delivery(action_key,validation_id,requirement_id,revision,repository_id,repository,branch,base_branch,head_sha,manifest,policy,pr_number,released) VALUES('retire-delivery','retire-v',1,1,1,'owner/repo','retire-branch','main',$1,$2,'{}',19,true)").bind(head).bind(&manifest).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO delivery_action(action_key,kind,state) VALUES('retire-delivery','publish','confirmed')").execute(&pool).await.unwrap();
+    fs::write(
+        Path::new(&w.path).join("source.rs"),
+        b"uncommitted work after publication",
+    )
+    .unwrap();
+    let mut guarded = pool.begin().await.unwrap();
+    assert!(
+        storage_consumers::protection(&mut guarded, &config, "retire-run", "recovery")
+            .await
+            .unwrap()
+            .unique
+    );
+    guarded.rollback().await.unwrap();
+    git(Path::new(&w.path), &["checkout", "--", "source.rs"]);
+    storage_cleanup::scan(&pool, 110).await.unwrap();
+    let retired: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM storage_material WHERE run_id='retire-run' AND status='deleted'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(retired, 3);
+    let mut tx = pool.begin().await.unwrap();
+    assert!(
+        !storage_consumers::protection(&mut tx, &config, "retire-run", "recovery")
+            .await
+            .unwrap()
+            .unique
+    );
+    sqlx::query("UPDATE storage_attempt SET reclaim_proof=NULL WHERE run_id='retire-run'")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    assert!(
+        storage_consumers::protection(&mut tx, &config, "retire-run", "recovery")
+            .await
+            .unwrap()
+            .unique
+    );
+    tx.rollback().await.unwrap();
+    assert_eq!(fs::read_dir(&w.path).unwrap().count(), 0);
+    assert_eq!(
+        sqlx::query_scalar::<_, String>(
+            "SELECT result FROM candidate_validation WHERE id='retire-v'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        "succeeded"
+    );
+    fs::remove_dir_all(cold).unwrap();
+}

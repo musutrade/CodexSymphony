@@ -18,6 +18,7 @@ pub enum Action {
     Resume,
     Cancel,
     Recheck,
+    StorageRecheck,
 }
 type Result<T> = std::result::Result<T, sqlx::Error>;
 fn require(value: bool) -> Result<()> {
@@ -69,7 +70,10 @@ async fn apply_current(
     .bind(id)
     .fetch_one(&mut **tx)
     .await?;
-    require(version == command.version && !cancelled)?;
+    require(
+        version == command.version
+            && (!cancelled || matches!(command.action, Action::StorageRecheck)),
+    )?;
     require(allowed(&state, paused, command.action))?;
     apply(tx, id, command.action).await?;
     sqlx::query_scalar(
@@ -107,9 +111,10 @@ async fn record(
 }
 pub fn allowed(state: &str, paused: bool, action: Action) -> bool {
     match action {
-        Action::Pause => !paused && matches!(state, "Ready" | "Running" | "Submitted"),
-        Action::Resume => paused && matches!(state, "Ready" | "Running" | "Submitted"),
-        Action::Recheck => matches!(state, "Ready" | "Running"),
+        Action::Pause => !paused && ["Ready", "Running", "Submitted"].contains(&state),
+        Action::Resume => paused && ["Ready", "Running", "Submitted"].contains(&state),
+        Action::Recheck => ["Ready", "Running"].contains(&state),
+        Action::StorageRecheck => true,
         Action::Cancel => matches!(
             state,
             "Draft" | "Ready" | "Running" | "Submitted" | "Failed"
@@ -126,7 +131,33 @@ async fn apply(
         Action::Resume => require(delivery_control::resume_in(tx, Some(id)).await?),
         Action::Cancel => require(delivery_control::cancel_in(tx, id).await?),
         Action::Recheck => recheck(tx, id).await,
+        Action::StorageRecheck => storage_recheck(tx, id).await,
     }
+}
+
+async fn storage_recheck(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Result<()> {
+    let config = crate::storage_store::deployment(tx)
+        .await
+        .map_err(storage_error)?
+        .ok_or(sqlx::Error::Protocol(
+            "storage configuration missing".into(),
+        ))?;
+    crate::storage_cleanup::authorize(tx, id, crate::runtime_client::now())
+        .await
+        .map_err(storage_error)?;
+    crate::storage::recover_in(tx, &config.execution.path)
+        .await
+        .map_err(storage_error)?;
+    sqlx::query(
+        "INSERT INTO operator_intervention(requirement_id,reason) VALUES($1,'storage_recheck')",
+    )
+    .bind(id)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+fn storage_error(_: Box<dyn std::error::Error + Send + Sync>) -> sqlx::Error {
+    sqlx::Error::Protocol("storage recovery remains blocked; retain originals".into())
 }
 
 async fn recheck(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Result<()> {

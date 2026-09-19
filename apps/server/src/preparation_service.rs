@@ -61,9 +61,7 @@ pub async fn prepare(pool: &PgPool, request: Request<'_>) -> Result<bool> {
     config["tool_lock"] = serde_json::json!({"core_version":CORE_VERSION,
         "core_sha256":CORE_SHA256, "codex_version":CODEX_VERSION});
     let adapter = request.adapter.to_owned();
-    let directory = request
-        .control_directory
-        .join(format!(".preparation-{}", process::new_identity()?));
+    let (directory, output_limit) = preparation_directory(pool, &request).await?;
     let artifacts = directory.clone();
     let broker = request.broker.clone();
     let workspace = request.workspace.clone();
@@ -74,7 +72,7 @@ pub async fn prepare(pool: &PgPool, request: Request<'_>) -> Result<bool> {
             return Err("Broker requirement revision mismatch".into());
         }
         broker_ready(&broker, &workspace, &launch)?;
-        probe(&adapter, &config, &artifacts)
+        probe(&adapter, &config, &artifacts, output_limit)
     })
     .await?;
     let now = request
@@ -84,6 +82,17 @@ pub async fn prepare(pool: &PgPool, request: Request<'_>) -> Result<bool> {
         return Ok(false);
     }
     record_result(pool, request.launch, &expected, result, &directory, now).await
+}
+
+async fn preparation_directory(pool: &PgPool, request: &Request<'_>) -> Result<(PathBuf, u64)> {
+    let directory = request.control_directory.join(format!(
+        ".preparation-{}-{}",
+        request.launch.key.run_id,
+        process::new_identity()?
+    ));
+    fs::create_dir(&directory)?;
+    crate::storage_service::preparation(pool, request.workspace, &directory).await?;
+    Ok((directory, crate::storage_service::entry_limit(pool).await?))
 }
 
 fn nonempty_identity(value: &&str) -> bool {
@@ -159,8 +168,7 @@ fn broker_ready(broker: &GitBroker, workspace: &Workspace, launch: &Launch) -> R
     Ok(())
 }
 
-/// Kill the entire probe process group on exit, error, or deadline. Probe
-/// output goes to retained files so an inherited stdout cannot hang a join.
+/// Kill the entire probe process group before joining bounded output readers.
 struct Probe(Child);
 impl Drop for Probe {
     fn drop(&mut self) {
@@ -174,11 +182,55 @@ impl Drop for Probe {
     }
 }
 
-fn probe(adapter: &Path, config: &Value, directory: &Path) -> Result<Evidence> {
-    fs::create_dir(directory)?;
+fn probe(adapter: &Path, config: &Value, directory: &Path, limit: u64) -> Result<Evidence> {
+    if serde_json::to_vec(config)?.len() as u64 > limit {
+        return Err("preparation input entry limit".into());
+    }
     process::durable_write(&directory.join("input.json"), config)?;
     let stdout = directory.join("stdout.json");
-    let mut child = spawn_probe(adapter, directory, &stdout)?;
+    let mut child = spawn_probe(adapter, directory)?;
+    let capture = capture_probe(&mut child, directory, &stdout, limit)?;
+    let result = wait_probe(&mut child, &capture);
+    drop(child);
+    let truncated = capture.finish()?;
+    record_probe_quiescent(directory, truncated, limit)?;
+    result?;
+    decode_output(stdout)
+}
+fn record_probe_quiescent(directory: &Path, truncated: bool, limit: u64) -> Result<()> {
+    process::durable_write(
+        &directory.join("quiescent.json"),
+        &serde_json::json!({"quiescent":true,"truncated":truncated,"limit":limit}),
+    )?;
+    if truncated {
+        return Err(
+            "preparation output truncated at configured entry limit (at most 1 MiB)".into(),
+        );
+    }
+    Ok(())
+}
+
+fn capture_probe(
+    child: &mut Probe,
+    directory: &Path,
+    stdout: &Path,
+    limit: u64,
+) -> Result<crate::storage_output::Capture> {
+    let mut capture = crate::storage_output::Capture::default();
+    capture.stream(
+        child.0.stdout.take().ok_or("probe stdout unavailable")?,
+        File::create(stdout)?,
+        limit,
+    );
+    capture.stream(
+        child.0.stderr.take().ok_or("probe stderr unavailable")?,
+        File::create(directory.join("stderr.log"))?,
+        limit,
+    );
+    Ok(capture)
+}
+
+fn wait_probe(child: &mut Probe, capture: &crate::storage_output::Capture) -> Result<()> {
     let deadline = Instant::now() + Duration::from_secs(110);
     loop {
         if let Some(status) = child.0.try_wait()? {
@@ -188,23 +240,23 @@ fn probe(adapter: &Path, config: &Value, directory: &Path) -> Result<Evidence> {
                 )
                 .into());
             }
-            return decode_output(stdout);
+            return Ok(());
         }
-        if Instant::now() >= deadline {
+        if Instant::now() >= deadline || capture.stopped() {
             return Err("fixed preparation probe deadline exceeded".into());
         }
         std::thread::sleep(Duration::from_millis(20));
     }
 }
 
-fn spawn_probe(adapter: &Path, directory: &Path, stdout: &Path) -> Result<Probe> {
+fn spawn_probe(adapter: &Path, directory: &Path) -> Result<Probe> {
     Ok(Probe(
         Command::new("python3")
             .arg(adapter)
             .process_group(0)
             .stdin(Stdio::from(File::open(directory.join("input.json"))?))
-            .stdout(Stdio::from(File::create(stdout)?))
-            .stderr(Stdio::from(File::create(directory.join("stderr.log"))?))
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .spawn()?,
     ))
 }

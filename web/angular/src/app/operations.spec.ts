@@ -77,6 +77,68 @@ describe('Durable operator UI', () => {
     await Promise.resolve();
     await Promise.resolve();
   }
+  it('shows retained identities and capacity without claiming replay, and authorizes a bounded recheck', async () => {
+    const fixture = setup();
+    const stored: OperationDetail = {
+      ...item,
+      storage_usage: {
+        configured: true,
+        policy_version: 'storage-v1',
+        actual_bytes: 1024,
+        available_bytes: 8192,
+        measured_at: 200,
+        control_bytes: 1024,
+        global_limit: 16384,
+        reserved_bytes: 4096,
+        requirement_allocated: 6000,
+        protected_bytes: 512,
+        cleanup_todo: 1,
+        classification_todo: 2,
+        categories: [
+          {
+            name: 'cold',
+            actual_bytes: 512,
+            reserved_bytes: 1024,
+            limit_bytes: 8192,
+            retention_seconds: 60,
+          },
+        ],
+        materials: [
+          {
+            id: 'material',
+            run_id: 'old-run',
+            kind: 'retrospective',
+            category: 'hot',
+            status: 'deleted',
+            actual_bytes: 0,
+            expires_at: 100,
+            protection: null,
+            attempts: 2,
+            next_attempt_at: null,
+            failure: null,
+            deleted_at: 200,
+            reason: 'expired',
+            replacement: 'verified-record',
+            resolved_by: 'new-run',
+            identity: 'exact-candidate-sha',
+            summary: 'retained failure reason',
+          },
+        ],
+      },
+    };
+    await read(stored);
+    await fixture.whenStable();
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('6000');
+    expect(text).toContain('exact-candidate-sha');
+    expect(text).toContain('verified-record');
+    const pending = fixture.componentInstance.control(stored, 'storage_recheck');
+    const request = http.expectOne('/api/requirements/1/operations');
+    expect(request.request.body.action).toBe('storage_recheck');
+    request.flush({ version: 2 });
+    await read(stored);
+    await pending;
+  });
   it('refreshes conflicts, suppresses concurrent submissions and retains retry identity', async () => {
     const fixture = setup();
     await read();

@@ -37,7 +37,12 @@ test('persisted inbox, six questions, paused answer, stale answer and cancellati
   );
   await expect(page.locator(`#answer-error-${question}`)).toBeVisible();
   await page.getByLabel('Which option?', { exact: true }).fill('yes');
+  const saved = page.waitForResponse((response) =>
+    response.url().endsWith(`/api/operator/questions/${question}/answer`),
+  );
   await page.getByRole('button', { name: '保存回答', exact: true }).click();
+  const savedResponse = await saved;
+  expect(savedResponse.status(), await savedResponse.text()).toBe(200);
   await expect(page.getByRole('status')).toContainText('操作已保存');
   await expect(page.getByRole('button', { name: '保存回答', exact: true })).toHaveCount(0);
   await expect(page.getByText('暂停意图：已暂停', { exact: false })).toBeVisible();
