@@ -333,7 +333,13 @@ fn control_availability_and_redaction() {
 fn operator_previews_never_expose_multiline_private_keys() {
     use codexsymphony_server::operator_view::redact_text;
     for text in [
-        "-----BEGIN PRIVATE KEY-----\nprivate-body\n-----END PRIVATE KEY-----",
+        // Assemble the synthetic PEM marker so source scanning does not mistake
+        // this redaction fixture for a checked-in credential.
+        concat!(
+            "-----BEGIN ",
+            "PRIVATE KEY-----\nprivate-body\n-----END ",
+            "PRIVATE KEY-----"
+        ),
         "Authorization: Basic private",
         "{\"token\":\"private\"}",
         "credentials: private",
