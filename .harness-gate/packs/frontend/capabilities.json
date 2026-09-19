@@ -1,6 +1,6 @@
 {
   "series": {
-    "id": "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03",
+    "id": "measurement-series/v1:16ecca700feeb9a93bd206d6d77a2a26671508d8bd999850ce17e1700aa072ba",
     "name": "typescript-original-function-risk",
     "collector": {
       "name": "typescript-risk",
@@ -18,7 +18,7 @@
       "name": "node",
       "version": "24.18.0"
     },
-    "target": "node",
+    "target": "x86_64-unknown-linux-gnu",
     "source_identity": {
       "name": "typescript-ast-risk/v1",
       "version": "1"
