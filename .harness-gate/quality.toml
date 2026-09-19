@@ -67,51 +67,51 @@ request = ".harness-gate/runtime/frontend-request.json"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "complexity.cyclomatic"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "coverage.line"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "coverage.function"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-files"}
 capability = "risk.crap"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "complexity.cyclomatic"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "coverage.line"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "coverage.function"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-declarations"}
 capability = "risk.crap"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "complexity.cyclomatic"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "coverage.line"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "coverage.function"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [[collectors.frontend.produces]]
 target = {kind = "subject", id = "frontend-functions"}
 capability = "risk.crap"
-series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"
+series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"
 [collectors.frontend-api]
 protocol = "harness-collector-request/v1"
 request = ".harness-gate/runtime/frontend-api-request.json"
@@ -142,19 +142,19 @@ expectation = {target = {kind = "subject", id = "backend-functions"}, capability
 [policies."frontend.coverage.line"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.coverage.line"
-expectation = {target = {kind = "subject", id = "frontend-files"}, capability = "coverage.line", series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"}
+expectation = {target = {kind = "subject", id = "frontend-files"}, capability = "coverage.line", series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"}
 [policies."frontend.functions.coverage.line"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.functions.coverage.line"
-expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.line", series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"}
+expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.line", series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"}
 [policies."frontend.coverage.function"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.coverage.function"
-expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.function", series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"}
+expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "coverage.function", series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"}
 [policies."frontend.risk.crap"]
 policy_file = ".harness-gate/packs/frontend/policy.json"
 rule = "frontend.risk.crap"
-expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "risk.crap", series = "measurement-series/v1:65e348508e34f44afc70a80e04f692ee52456afe369dd097ce56693093a6af47"}
+expectation = {target = {kind = "subject", id = "frontend-functions"}, capability = "risk.crap", series = "measurement-series/v1:7f724dad55ea999b6d7a31020141a5dcb17db34cb8b88f2c8a7caade83ccdd03"}
 [policies."frontend-api.contract.breaking_changes"]
 policy_file = ".harness-gate/packs/frontend-api/policy.json"
 rule = "frontend-api.contract.breaking_changes"
