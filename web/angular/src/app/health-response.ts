@@ -1,4 +1,4 @@
-// harness-contract-sha256: 84250004f200f22ec9f5b2ea4bbd2e773d7d60657c1b5cc6a7fcc27f751a3c4e
+// harness-contract-sha256: a1891a22c72e116b493fcc5f4837e2eaa530f9ed4b6eb2e9ae5dfbb8bc1a664f
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -436,3 +436,96 @@ export type PauseExecutionResponse = { paused: true } | { error: string };
 export interface PauseExecutionRequest { pause: true }
 export type PauseRequirementResponse = { paused: true } | { error: string };
 export interface PauseRequirementRequest { pause: true }
+export type GetOperationsResponse =
+  | {
+      events: { created_at: string; kind: string; version: number }[];
+      external: {
+        head_sha: string;
+        observation: string | null;
+        pr_number: number | null;
+        repository: string;
+        revision: number;
+        stale: boolean;
+      }[];
+      materials: {
+        channel: string;
+        discarded_bytes: number;
+        kept_bytes: number;
+        run_id: string;
+        status: string;
+      }[];
+      metrics: {
+        cached: number | null;
+        human_seconds: number | null;
+        input: number | null;
+        interventions: number;
+        model_calls: number;
+        output: number | null;
+        phases: { complete: boolean; phase: string; seconds: number }[];
+        reasons: string[];
+        repair_count: number;
+        to_pr_seconds: number | null;
+        zero_intervention: { denominator: number; numerator: number; phase: string };
+      };
+      preparation: {
+        attempts: number;
+        code: string | null;
+        detail: string | null;
+        phase: string;
+        run_id: string;
+        todo: boolean;
+      }[];
+      questions: {
+        answered: boolean;
+        id: string;
+        questions: { id: string; options: string[]; question: string }[];
+        resume_state: string;
+        revision: number;
+        run_id: string;
+        version: number;
+      }[];
+      requirement: {
+        cancel_requested: boolean;
+        cleanup_complete: boolean;
+        id: number;
+        paused: boolean;
+        revision: number;
+        state: string;
+        version: number;
+      };
+      runs: {
+        blocker: string | null;
+        created_at: string;
+        id: string;
+        phase: string;
+        quiescent: boolean;
+        revision: number;
+        state: string;
+        waiting: string;
+      }[];
+      storage: { blocked: boolean; error: string | null };
+      storage_lifecycle: string;
+      validations: {
+        candidate_sha: string;
+        failure: string | null;
+        id: string;
+        result: string;
+        revision: number;
+        source_run_id: string;
+        stage: string;
+      }[];
+    }
+  | { error: string };
+export type ControlOperationsResponse = { version: number } | { error: string };
+export interface ControlOperationsRequest {
+  action: 'cancel' | 'pause' | 'recheck' | 'resume';
+  request_id: string;
+  version: number;
+}
+export type GetEvidenceResponse = { preview_only: boolean; text: string } | { error: string };
+export interface GetInboxResponse { requirement_ids: number[] }
+export type AnswerOperatorQuestionResponse = { saved: boolean } | { error: string };
+export interface AnswerOperatorQuestionRequest {
+  answers: { id: string; text: string }[];
+  version: number;
+}

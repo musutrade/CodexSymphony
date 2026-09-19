@@ -24,12 +24,9 @@
 @if (repository(); as context) {
   <section class="ui-panel" aria-labelledby="network-title">
     <h2 id="network-title">部署与授权边界</h2>
-    <p>静态部署网络集合：{{ context.deployment_network.join(', ') || '尚未配置或验证' }}。</p>
-    <p>
-      需求联网声明仅为意图。空声明不表示拒绝所有网络；Agent
-      可访问部署授权集合。超出集合的声明须经部署预检处理。
-    </p>
-    <p>运行能力未就绪；仓库交付能力尚未检查。Ready 表示已评审并排队，不表示已开始执行。</p>
+    <p>部署依赖声明：{{ context.deployment_network.join(', ') || '尚未配置或验证' }}。</p>
+    <p>需求联网声明用于准备依赖与检查实际连通性；可信开发环境使用正常网络连接。</p>
+    <p>Ready 表示已评审并排队，不表示已开始执行。实际执行与交付事实见需求详情。</p>
   </section>
   @if (context.repositories.length === 0) {
     <section class="ui-panel" aria-labelledby="setup-title">
@@ -126,7 +123,8 @@
       <li>
         <button matButton="text" (click)="open(item.id)" [disabled]="busy()">
           #{{ item.id }} {{ item.title }}</button
-        ><span>{{ item.state }} · 版本 {{ item.version }}</span>
+        ><span>{{ item.state }} · 版本 {{ item.version }}</span
+        ><a [routerLink]="['/requirements', item.id]">详情与 Run</a>
       </li>
     }
   </ul>

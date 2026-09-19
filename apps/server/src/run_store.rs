@@ -182,22 +182,29 @@ pub async fn reserved_launch(pool: &PgPool, launch: &Launch) -> Result<bool> {
 /// never clears an earlier intent, owner, process identity or saved phase.
 pub async fn pause(pool: &PgPool, requirement: Option<i64>) -> Result<()> {
     let mut tx = lock(pool).await?;
+    pause_in(&mut tx, requirement).await?;
+    tx.commit().await
+}
+pub(crate) async fn pause_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    requirement: Option<i64>,
+) -> Result<()> {
     match requirement {
         Some(id) => {
             sqlx::query("UPDATE requirement SET paused=true WHERE id=$1")
                 .bind(id)
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
         }
         None => {
             sqlx::query("UPDATE execution_control SET paused=true WHERE id=1")
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
         }
     }
     sqlx::query("UPDATE agent_run SET stop_requested=true,user_paused=true WHERE NOT quiescent AND ($1::bigint IS NULL OR requirement_id=$1)")
-        .bind(requirement).execute(&mut *tx).await?;
-    tx.commit().await
+        .bind(requirement).execute(&mut **tx).await?;
+    Ok(())
 }
 
 pub async fn block(pool: &PgPool, id: &str, reason: &str) -> Result<()> {

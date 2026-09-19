@@ -4,20 +4,35 @@ use sqlx::PgPool;
 type Result<T> = std::result::Result<T, sqlx::Error>;
 pub async fn cancel(pool: &PgPool, id: i64) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
-    let changed=sqlx::query("UPDATE requirement SET cancel_requested=true,state='Cancelled',version=version+CASE WHEN cancel_requested THEN 0 ELSE 1 END WHERE id=$1").bind(id).execute(&mut *tx).await?;
+    let result = cancel_in(&mut tx, id).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn cancel_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+) -> Result<bool> {
+    let changed=sqlx::query("UPDATE requirement SET cancel_requested=true,state='Cancelled',version=version+CASE WHEN cancel_requested THEN 0 ELSE 1 END WHERE id=$1").bind(id).execute(&mut **tx).await?;
     sqlx::query(
         "UPDATE agent_run SET stop_requested=true WHERE requirement_id=$1 AND NOT quiescent",
     )
     .bind(id)
-    .execute(&mut *tx)
+    .execute(&mut **tx)
     .await?;
-    sqlx::query("INSERT INTO delivery_action(action_key,kind) SELECT action_key,'close' FROM delivery WHERE requirement_id=$1 AND pr_number IS NOT NULL ON CONFLICT DO NOTHING").bind(id).execute(&mut *tx).await?;
-    tx.commit().await?;
+    sqlx::query("INSERT INTO delivery_action(action_key,kind) SELECT action_key,'close' FROM delivery WHERE requirement_id=$1 AND pr_number IS NOT NULL ON CONFLICT DO NOTHING").bind(id).execute(&mut **tx).await?;
     Ok(changed.rows_affected() == 1)
 }
 pub async fn resume(pool: &PgPool, id: Option<i64>) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
-    let safe:bool=sqlx::query_scalar("SELECT recovery_complete AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent AND stop_requested) AND NOT EXISTS(SELECT 1 FROM workspace_operation WHERE status<>'complete') FROM execution_control WHERE id=1").fetch_one(&mut *tx).await?;
+    let result = resume_in(&mut tx, id).await?;
+    tx.commit().await?;
+    Ok(result)
+}
+pub(crate) async fn resume_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: Option<i64>,
+) -> Result<bool> {
+    let safe:bool=sqlx::query_scalar("SELECT recovery_complete AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent AND stop_requested) AND NOT EXISTS(SELECT 1 FROM workspace_operation WHERE status<>'complete') FROM execution_control WHERE id=1").fetch_one(&mut **tx).await?;
     if !safe {
         return Ok(false);
     }
@@ -27,7 +42,7 @@ pub async fn resume(pool: &PgPool, id: Option<i64>) -> Result<bool> {
                 "UPDATE requirement SET paused=false WHERE id=$1 AND NOT cancel_requested",
             )
             .bind(id)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
             if changed.rows_affected() != 1 {
                 return Ok(false);
@@ -35,11 +50,10 @@ pub async fn resume(pool: &PgPool, id: Option<i64>) -> Result<bool> {
         }
         None => {
             sqlx::query("UPDATE execution_control SET paused=false WHERE id=1")
-                .execute(&mut *tx)
+                .execute(&mut **tx)
                 .await?;
         }
     }
-    tx.commit().await?;
     Ok(true)
 }
 pub async fn settle(pool: &PgPool) -> Result<()> {

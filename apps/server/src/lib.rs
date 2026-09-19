@@ -18,6 +18,9 @@ pub mod github_http;
 pub mod github_observe;
 pub mod github_service;
 pub mod github_store;
+pub mod operator_api;
+pub mod operator_control;
+pub mod operator_view;
 pub mod preparation;
 pub mod preparation_service;
 pub mod preparation_store;
@@ -57,6 +60,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
         Router::new()
             .route("/api/health", get(health))
             .merge(business::routes())
+            .merge(operator_api::routes())
             .merge(execution_api::routes())
             .merge(validation_api::routes())
             .merge(runtime_api::routes())
