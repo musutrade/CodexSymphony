@@ -19,6 +19,58 @@ pub struct GitBroker {
 }
 
 impl GitBroker {
+    pub fn cache_rebuildable(&self, workspace: &Workspace, name: &str) -> Result<bool> {
+        require(files::CACHE_ROOTS.contains(&name), "unknown cache class")?;
+        Ok(self
+            .git(Some(workspace), &["ls-files", "-z", "--", name], b"")?
+            .is_empty())
+    }
+    /// Reclamation needs a remote-observed descendant and no private work/index
+    /// content beyond the committed candidate. A GitHub PR number is insufficient.
+    pub fn rebuildable(&self, manifest: &Manifest, pushed: &str) -> Result<bool> {
+        self.verify(manifest)?;
+        self.rebuildable_source(manifest, pushed)
+    }
+    pub fn rebuildable_source(&self, manifest: &Manifest, pushed: &str) -> Result<bool> {
+        if !self.committed_manifest(manifest)? {
+            return Ok(false);
+        }
+        if !self
+            .git(
+                Some(&manifest.workspace),
+                &["status", "--porcelain=v1", "--untracked-files=all"],
+                b"",
+            )?
+            .is_empty()
+        {
+            return Ok(false);
+        }
+        let tracked = self.git(Some(&manifest.workspace), &["ls-files", "-z"], b"")?;
+        let names: std::collections::BTreeSet<&[u8]> = tracked.split(|byte| *byte == 0).collect();
+        if !manifest
+            .files
+            .iter()
+            .all(|file| names.contains(file.path.as_bytes()))
+        {
+            return Ok(false);
+        }
+        Ok(self
+            .git(
+                None,
+                &["merge-base", "--is-ancestor", &manifest.head, pushed],
+                b"",
+            )
+            .is_ok())
+    }
+    fn committed_manifest(&self, manifest: &Manifest) -> Result<bool> {
+        Ok(self.head(&manifest.workspace)? == manifest.head
+            && self.inspect(&manifest.workspace)?.0 == manifest.files
+            && self.oid(
+                Some(&manifest.workspace),
+                &["rev-parse", "HEAD^{tree}"],
+                b"",
+            )? == manifest.index_tree)
+    }
     pub(crate) fn delivery_repository(&self, manifest: &Manifest) -> Result<PathBuf> {
         self.check()?;
         self.verify(manifest)?;

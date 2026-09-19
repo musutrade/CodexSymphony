@@ -25,6 +25,7 @@ impl Failure {
                 | "preparation_capability_mismatch"
                 | "preparation_path_unwritable"
                 | "network_scope_unavailable"
+                | "cleanup_failed"
         )
     }
 

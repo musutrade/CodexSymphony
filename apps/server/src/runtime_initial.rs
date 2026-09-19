@@ -27,6 +27,9 @@ pub async fn tick(
     else {
         return Ok(());
     };
+    if !crate::storage_service::admit_workspace(pool, &workspace).await? {
+        return Ok(());
+    }
     prepare_worktree(broker, &workspace)?;
     prepare_run(pool, root, broker, config, &launch, &workspace).await
 }

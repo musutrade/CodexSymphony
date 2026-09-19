@@ -1,4 +1,4 @@
-// harness-contract-sha256: a1891a22c72e116b493fcc5f4837e2eaa530f9ed4b6eb2e9ae5dfbb8bc1a664f
+// harness-contract-sha256: baab66faa7818699c5047ffdb89ce4e05392ab92226ebc202b3939b49eb3c5ec
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -73,13 +73,7 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: {
-    id: number;
-    revision: number;
-    state: string;
-    title: string;
-    version: number;
-  }[];
+  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -433,9 +427,13 @@ export interface ExecutionStatusResponse {
   requirement_id: number | null;
 }
 export type PauseExecutionResponse = { paused: true } | { error: string };
-export interface PauseExecutionRequest { pause: true }
+export interface PauseExecutionRequest {
+  pause: true;
+}
 export type PauseRequirementResponse = { paused: true } | { error: string };
-export interface PauseRequirementRequest { pause: true }
+export interface PauseRequirementRequest {
+  pause: true;
+}
 export type GetOperationsResponse =
   | {
       events: { created_at: string; kind: string; version: number }[];
@@ -505,6 +503,46 @@ export type GetOperationsResponse =
       }[];
       storage: { blocked: boolean; error: string | null };
       storage_lifecycle: string;
+      storage_usage?: {
+        actual_bytes: number | null;
+        available_bytes: number | null;
+        categories: {
+          actual_bytes: number | null;
+          limit_bytes: number;
+          name: string;
+          reserved_bytes: number;
+          retention_seconds: number;
+        }[];
+        classification_todo: number;
+        cleanup_todo: number;
+        configured: boolean;
+        control_bytes: number | null;
+        global_limit: number | null;
+        materials: {
+          actual_bytes: number;
+          attempts: number;
+          category: string;
+          deleted_at: number | null;
+          expires_at: number;
+          failure: string | null;
+          id: string;
+          identity: string;
+          kind: string;
+          next_attempt_at: number | null;
+          protection: string | null;
+          reason: string | null;
+          replacement: string | null;
+          resolved_by: string | null;
+          run_id: string;
+          status: string;
+          summary: string;
+        }[];
+        measured_at: number | null;
+        policy_version: string | null;
+        protected_bytes: number;
+        requirement_allocated: number;
+        reserved_bytes: number;
+      };
       validations: {
         candidate_sha: string;
         failure: string | null;
@@ -518,12 +556,14 @@ export type GetOperationsResponse =
   | { error: string };
 export type ControlOperationsResponse = { version: number } | { error: string };
 export interface ControlOperationsRequest {
-  action: 'cancel' | 'pause' | 'recheck' | 'resume';
+  action: 'cancel' | 'pause' | 'recheck' | 'resume' | 'storage_recheck';
   request_id: string;
   version: number;
 }
 export type GetEvidenceResponse = { preview_only: boolean; text: string } | { error: string };
-export interface GetInboxResponse { requirement_ids: number[] }
+export interface GetInboxResponse {
+  requirement_ids: number[];
+}
 export type AnswerOperatorQuestionResponse = { saved: boolean } | { error: string };
 export interface AnswerOperatorQuestionRequest {
   answers: { id: string; text: string }[];

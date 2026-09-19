@@ -214,6 +214,17 @@ impl Client<'_> {
         runtime_store::turn(self.pool, &self.launch.key, &self.turn, &self.call, now()).await?;
         Ok(())
     }
+    async fn admit_turn(&self, intent: &CallIntent) -> Result<()> {
+        runtime_store::require(
+            crate::storage::permit(self.pool, Path::new(&self.launch.workspace)).await,
+            "storage continuation not admitted",
+        )?;
+        runtime_store::require(
+            budget_store::reserve(self.pool, intent).await? == Admission::Reserved,
+            "turn budget not admitted",
+        )?;
+        Ok(())
+    }
     async fn dispatch_turn(&mut self, input: String) -> Result<(String, Value)> {
         let call = process::new_identity()?;
         let intent = CallIntent {
@@ -222,10 +233,7 @@ impl Client<'_> {
             purpose: Purpose::Coding,
             reserve: self.settings.reservation,
         };
-        runtime_store::require(
-            budget_store::reserve(self.pool, &intent).await? == Admission::Reserved,
-            "turn budget not admitted",
-        )?;
+        self.admit_turn(&intent).await?;
         let mut tx = run_store::lock(self.pool).await?;
         runtime_store::require(
             runtime_store::allowed(&mut tx, &self.launch.key).await?,

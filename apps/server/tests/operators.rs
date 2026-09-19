@@ -82,7 +82,7 @@ async fn versioned_operations_and_independent_durable_views() {
     assert_eq!(initial["metrics"]["model_calls"], 0);
     assert!(initial["metrics"]["input"].is_null());
     assert_eq!(initial["metrics"]["zero_intervention"]["denominator"], 0);
-    assert_eq!(initial["storage_lifecycle"], "not_ready");
+    assert_eq!(initial["storage_lifecycle"], "not_configured");
     assert_eq!(
         request(
             &app,

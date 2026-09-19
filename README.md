@@ -59,3 +59,5 @@
 - [本机开发](docs/local-development.md)、[完整门禁验收](docs/quality/complete-local/README.md)、[Symphony 启用](docs/symphony-development-setup.md)。
 - `WORKFLOW.lifecycle.md` 供现有 Elixir Symphony 开发本项目；Agent 使用宿主 `github_api` 交付，不能执行 shell git push。
 - 首个未来平台接管仓库为 `musutrade/disposable`，沿用 S2/S2b 的测试授权；与当前开发本仓库的 Symphony 验收分开。
+
+Product Runtime deployments require a finite [storage lifecycle policy](docs/storage-lifecycle.md) via `STORAGE_CONFIG`.

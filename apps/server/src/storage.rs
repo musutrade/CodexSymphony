@@ -61,7 +61,7 @@ pub async fn persistence(pool: &PgPool) -> Result<(), sqlx::Error> {
 
 pub async fn latch(pool: &PgPool) {
     FAILED.store(true, Ordering::SeqCst);
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(2), sqlx::raw_sql("UPDATE storage_guard SET blocked=true,error='storage_unavailable; retain originals and reconcile' WHERE id=1")
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(2), sqlx::raw_sql("UPDATE storage_guard SET blocked=true,error=COALESCE(error,'storage_unavailable; retain originals and reconcile') WHERE id=1")
         .execute(pool)).await;
 }
 
@@ -78,7 +78,12 @@ pub async fn permit(pool: &PgPool, root: &Path) -> bool {
     if FAILED.load(Ordering::SeqCst) {
         return false;
     }
-    if check(root).is_err() || persistence(pool).await.is_err() {
+    if check(root).is_err()
+        || persistence(pool).await.is_err()
+        || !crate::storage_service::capacity(pool)
+            .await
+            .unwrap_or(false)
+    {
         latch(pool).await;
         return false;
     }
@@ -97,9 +102,21 @@ pub async fn recover(
     check(root)?;
     persistence(pool).await?;
     let mut tx = crate::run_store::lock(pool).await?;
-    let result = sqlx::query("UPDATE storage_guard SET blocked=false,error=NULL WHERE id=1 AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent)")
-        .execute(&mut *tx).await?;
+    let result = recover_in(&mut tx, root).await?;
     tx.commit().await?;
+    Ok(result)
+}
+
+pub async fn recover_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    root: &Path,
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    check(root)?;
+    if !crate::storage_service::capacity_in(tx).await? {
+        return Ok(false);
+    }
+    let result = sqlx::query("UPDATE storage_guard SET blocked=false,error=NULL WHERE id=1 AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent)")
+        .execute(&mut **tx).await?;
     if result.rows_affected() == 1 {
         FAILED.store(false, Ordering::SeqCst);
     }

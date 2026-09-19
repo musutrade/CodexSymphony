@@ -11,22 +11,36 @@ pub async fn detail(pool: &PgPool, id: i64) -> Result<Value> {
     let requirement:Value=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'version',version,'revision',revision,'state',state,'paused',paused,'cancel_requested',cancel_requested,'cleanup_complete',cleanup_complete) FROM requirement WHERE id=$1")
         .bind(id).fetch_one(&mut *tx).await?;
     let mut value = timeline(&mut tx, id).await?;
-    let preparation:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('run_id',p.run_id,'phase',p.retry->>'phase','attempts',p.retry->'attempts','todo',p.retry->'todo','code',p.retry#>>'{last_failure,code}','detail',p.retry#>>'{last_failure,detail}') FROM preparation_record p JOIN requirement r ON r.id=p.requirement_id AND r.revision=p.revision WHERE p.requirement_id=$1 ORDER BY p.checked_at DESC")
-        .bind(id).fetch_all(&mut *tx).await?;
-    let storage: Value = sqlx::query_scalar(
-        "SELECT jsonb_build_object('blocked',blocked,'error',error) FROM storage_guard WHERE id=1",
-    )
-    .fetch_one(&mut *tx)
-    .await?;
+    let (preparation, storage, storage_usage) = environment(&mut tx, id).await?;
     tx.commit().await?;
     value["requirement"] = requirement;
     value["preparation"] = json!(preparation);
     value["storage"] = storage;
-    value["storage_lifecycle"] = json!("not_ready");
+    value["storage_lifecycle"] = json!(if storage_usage["configured"] == true {
+        "configured"
+    } else {
+        "not_configured"
+    });
+    value["storage_usage"] = storage_usage;
     value["metrics"] = metrics(pool, id).await?;
     redact(&mut value);
     Ok(value)
 }
+async fn environment(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+) -> Result<(Vec<Value>, Value, Value)> {
+    let preparation:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('run_id',p.run_id,'phase',p.retry->>'phase','attempts',p.retry->'attempts','todo',p.retry->'todo','code',p.retry#>>'{last_failure,code}','detail',p.retry#>>'{last_failure,detail}') FROM preparation_record p JOIN requirement r ON r.id=p.requirement_id AND r.revision=p.revision WHERE p.requirement_id=$1 ORDER BY p.checked_at DESC")
+        .bind(id).fetch_all(&mut **tx).await?;
+    let storage: Value = sqlx::query_scalar(
+        "SELECT jsonb_build_object('blocked',blocked,'error',error) FROM storage_guard WHERE id=1",
+    )
+    .fetch_one(&mut **tx)
+    .await?;
+    let storage_usage = crate::storage_view::detail(tx, id).await?;
+    Ok((preparation, storage, storage_usage))
+}
+
 async fn timeline(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Result<Value> {
     let runs:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'revision',revision,'state',state,'phase',phase,'blocker',blocker,'quiescent',quiescent,'created_at',created_at,'waiting',waiting::text) FROM agent_run WHERE requirement_id=$1 ORDER BY created_at,id")
         .bind(id).fetch_all(&mut **tx).await?;
@@ -38,7 +52,7 @@ async fn timeline(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Re
         .bind(id).fetch_all(&mut **tx).await?;
     let events:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('kind',kind,'version',version,'created_at',created_at) FROM business_event WHERE object_id=$1 ORDER BY id DESC LIMIT 100")
         .bind(format!("requirement:{id}")).fetch_all(&mut **tx).await?;
-    let materials:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('run_id',e.run_id,'channel',e.channel,'kept_bytes',e.kept_bytes,'discarded_bytes',e.discarded_bytes,'status',CASE WHEN e.truncated THEN 'truncated' ELSE 'available' END) FROM runtime_evidence e JOIN agent_run a ON a.id=e.run_id WHERE a.requirement_id=$1 ORDER BY e.run_id,e.channel")
+    let materials:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('run_id',e.run_id,'channel',e.channel,'kept_bytes',e.kept_bytes,'discarded_bytes',e.discarded_bytes,'status',CASE WHEN e.expired_at IS NOT NULL THEN 'expired; retrospective available' WHEN e.truncated THEN 'truncated' ELSE 'available' END) FROM runtime_evidence e JOIN agent_run a ON a.id=e.run_id WHERE a.requirement_id=$1 ORDER BY e.run_id,e.channel")
         .bind(id).fetch_all(&mut **tx).await?;
     Ok(
         json!({"runs":runs,"validations":validations,"external":external,"questions":questions,"events":events,"materials":materials}),
@@ -115,6 +129,16 @@ pub async fn evidence(pool: &PgPool, id: i64, run: &str, channel: &str) -> Resul
         .bind(id).bind(run).bind(channel).fetch_one(pool).await?;
     if !exists {
         return Err(sqlx::Error::RowNotFound);
+    }
+    let retrospective: Option<String> = sqlx::query_scalar(
+        "SELECT retrospective FROM runtime_evidence WHERE run_id=$1 AND channel=$2",
+    )
+    .bind(run)
+    .bind(channel)
+    .fetch_one(pool)
+    .await?;
+    if let Some(text) = retrospective {
+        return Ok(json!({"text":redact_text(&text),"preview_only":true}));
     }
     let chunks:Vec<Vec<u8>>=sqlx::query_scalar("SELECT payload FROM runtime_evidence_chunk WHERE run_id=$1 AND channel=$2 ORDER BY sequence LIMIT 16")
         .bind(run).bind(channel).fetch_all(pool).await?;

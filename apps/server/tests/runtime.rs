@@ -957,6 +957,53 @@ fn completion_code() -> String {
         .replace(" elif r.get('id')==77:", " elif r.get('id')==78:\n  assert r['result']['success'],r\n  sha=json.loads(r['result']['contentItems'][0]['text'])['sha']\n  send({'id':77,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'completion','tool':'report_completion','arguments':{'candidate_sha':sha,'summary':'fixture completion'}}})\n elif r.get('id')==77:")
 }
 
+fn storage_config(root: &Path) -> std::path::PathBuf {
+    use codexsymphony_server::{
+        storage_files::Directory,
+        storage_lifecycle::{CATEGORIES, Limit, Policy},
+        storage_store::Root,
+    };
+    let cold = root.with_extension("cold");
+    std::fs::create_dir(&cold).unwrap();
+    let owned = |path: &Path| Root {
+        path: std::fs::canonicalize(path).unwrap(),
+        identity: Directory::open(path).unwrap().identity().unwrap(),
+    };
+    let policy = Policy {
+        version: "runtime-storage-test".into(),
+        reason: "synthetic controller filesystem with disposable remote PostgreSQL".into(),
+        global_bytes: 16 << 30,
+        control_bytes: 256 << 20,
+        run_bytes: 1 << 30,
+        requirement_bytes: 4 << 30,
+        entry_bytes: 1 << 20,
+        entry_count: 100000,
+        categories: CATEGORIES
+            .into_iter()
+            .map(|category| {
+                (
+                    category,
+                    Limit {
+                        bytes: 8 << 30,
+                        seconds: 86400,
+                        reserve_bytes: 16 << 20,
+                    },
+                )
+            })
+            .collect(),
+    };
+    let deployment = codexsymphony_server::storage_store::Deployment {
+        policy,
+        execution: owned(root),
+        cold: owned(&cold),
+        database_filesystem: owned(root),
+        database_extras: vec![],
+    };
+    let path = root.join("storage-config.json");
+    std::fs::write(&path, serde_json::to_vec(&deployment).unwrap()).unwrap();
+    path
+}
+
 async fn configured_controller(
     pool: &PgPool,
     root: &Path,
@@ -966,6 +1013,7 @@ async fn configured_controller(
         .fetch_one(pool)
         .await
         .unwrap();
+    let storage_path = storage_config(root);
     let config_path = root.join("runtime-config.json");
     std::fs::write(&config_path, json!({"settings":config.settings,"preparation_adapter":config.preparation_adapter,"preparation":config.preparation}).to_string()).unwrap();
     let url = format!(
@@ -981,13 +1029,15 @@ async fn configured_controller(
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     drop(listener);
+    let worker_log = root.join("runtime-worker.log");
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
         .env("DATABASE_URL", url)
         .env("RUNTIME_CONFIG", config_path)
+        .env("STORAGE_CONFIG", &storage_path)
         .env("EXECUTION_DIRECTORY", root)
         .env("BIND_ADDRESS", address.to_string())
         .env_remove("GITHUB_APP_CONFIG")
-        .stdout(std::process::Stdio::null())
+        .stdout(std::fs::File::create(&worker_log).unwrap())
         .stderr(std::process::Stdio::inherit())
         .spawn()
         .unwrap();
@@ -1021,12 +1071,51 @@ async fn configured_controller(
         }
     })
     .await;
+    // A missing archive mount must close admission without killing the scanner.
+    let cold = root.with_extension("cold");
+    let displaced = root.with_extension("displaced-cold");
+    std::fs::rename(&cold, &displaced).unwrap();
+    sqlx::query("NOTIFY storage_phase_ended")
+        .execute(pool)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let error: Option<String> = sqlx::query_scalar("SELECT error FROM storage_guard")
+                .fetch_one(pool)
+                .await
+                .unwrap();
+            if error.as_deref()
+                == Some("storage scan failed; preserve registered originals and reconcile")
+            {
+                break;
+            }
+            assert!(child.try_wait().unwrap().is_none());
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    std::fs::rename(&displaced, &cold).unwrap();
     // A transient unavailable execution table must not kill the control plane.
     sqlx::query("ALTER TABLE runtime_session RENAME TO unavailable_runtime_session")
         .execute(pool)
         .await
         .unwrap();
-    tokio::time::sleep(Duration::from_millis(1200)).await;
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if std::fs::read_to_string(&worker_log)
+                .unwrap()
+                .contains("Runtime execution or answer recovery requires reconciliation")
+            {
+                break;
+            }
+            assert!(child.try_wait().unwrap().is_none());
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
     assert!(child.try_wait().unwrap().is_none());
     sqlx::query("ALTER TABLE unavailable_runtime_session RENAME TO runtime_session")
         .execute(pool)
@@ -1054,6 +1143,7 @@ async fn configured_controller(
             ),
         )
         .env("RUNTIME_CONFIG", root.join("missing-runtime-config"))
+        .env("STORAGE_CONFIG", &storage_path)
         .env("EXECUTION_DIRECTORY", root)
         .env("BIND_ADDRESS", "127.0.0.1:0")
         .env_remove("GITHUB_APP_CONFIG")

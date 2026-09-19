@@ -173,8 +173,8 @@ pub async fn evidence(pool: &PgPool, key: &RunKey, channel: &str, bytes: &[u8]) 
     .bind(channel)
     .execute(&mut *tx)
     .await?;
-    let (kept, records): (i64, i32) = sqlx::query_as(
-        "SELECT kept_bytes,records FROM runtime_evidence WHERE run_id=$1 AND channel=$2 FOR UPDATE",
+    let (kept, records, expired): (i64, i32,Option<i64>) = sqlx::query_as(
+        "SELECT kept_bytes,records,expired_at FROM runtime_evidence WHERE run_id=$1 AND channel=$2 FOR UPDATE",
     )
     .bind(&key.run_id)
     .bind(channel)
@@ -186,6 +186,13 @@ pub async fn evidence(pool: &PgPool, key: &RunKey, channel: &str, bytes: &[u8]) 
             .min(runtime::MAX_REQUEST)
     } else {
         0
+    };
+    let policy: Option<Value> = sqlx::query_scalar("SELECT p.document FROM storage_guard g JOIN storage_policy p ON p.version=g.policy_version WHERE g.id=1")
+        .fetch_optional(&mut *tx).await?;
+    let capacity = if expired.is_some() {
+        0
+    } else {
+        evidence_capacity(capacity, records, policy.as_ref())
     };
     let take = bytes.len().min(capacity);
     if take > 0 {
@@ -200,6 +207,23 @@ pub async fn evidence(pool: &PgPool, key: &RunKey, channel: &str, bytes: &[u8]) 
     sqlx::query("UPDATE runtime_evidence SET kept_bytes=kept_bytes+$3,discarded_bytes=LEAST(9223372036854775807::numeric,discarded_bytes::numeric+$4)::bigint,records=records+$5,truncated=truncated OR $4>0 WHERE run_id=$1 AND channel=$2")
         .bind(&key.run_id).bind(channel).bind(take as i64).bind((bytes.len()-take) as i64).bind(i32::from(take>0)).execute(&mut *tx).await?;
     tx.commit().await
+}
+
+fn evidence_capacity(capacity: usize, records: i32, policy: Option<&Value>) -> usize {
+    let Some(policy) = policy else {
+        return capacity;
+    };
+    let count = policy["entry_count"].as_u64().unwrap_or(0);
+    if records as u64 >= count {
+        return 0;
+    }
+    // Leave room for the row identity and PostgreSQL tuple overhead.
+    capacity.min(
+        policy["entry_bytes"]
+            .as_u64()
+            .unwrap_or(0)
+            .saturating_sub(512) as usize,
+    )
 }
 
 /// Independent success fact: declaration + exact candidate + complete group

@@ -19,6 +19,9 @@ pub async fn tick(
     let Some(job) = job(pool, broker, incarnation, &config.launcher()?).await? else {
         return Ok(());
     };
+    if !crate::storage_service::admit_workspace(pool, &job.workspace).await? {
+        return Ok(());
+    }
     restore(broker, &job)?;
     if repair::bind(pool, &job.launch).await? {
         return Ok(());

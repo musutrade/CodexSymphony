@@ -101,8 +101,9 @@ async fn execute(
     let directory = r.directory.to_owned();
     let candidate = r.candidate.clone();
     let plan = r.plan.clone();
+    let limit = crate::storage_service::entry_limit(pool).await?;
     let steps = tokio::task::spawn_blocking(move || {
-        validation_runner::execute(&checkout, &directory, &candidate, &plan)
+        validation_runner::execute_limited(&checkout, &directory, &candidate, &plan, limit)
     })
     .await??;
     finish(pool, r, trusted, required, &steps).await

@@ -40,7 +40,7 @@
     </p>
     @if (item.storage.blocked) {
       <p role="alert">
-        环境存储保护已锁存：{{ item.storage.error ?? '原因未知' }}。这不是已确认的存储预算超限。
+        存储保护已暂停新增工作：{{ item.storage.error ?? '原因未知' }}。请核对容量与保全待办。
       </p>
     }
     <div class="ui-actions">
@@ -233,11 +233,73 @@
     }
     <h3>材料与存储</h3>
     <p>
-      完整证据生命周期与存储占用、预留、受保护字节、清理失败、容量阻塞数据尚未接入（#23）。缺失材料不改变历史验证结果；可使用上方输入、执行和验证记录复盘。
+      材料过期不改变历史验证结果。历史摘要可用于复盘，不代表完整重放，也不能替代当前候选所需证据。
     </p>
+    @if (item.storage_usage; as usage) {
+      @if (usage.configured) {
+        <p>
+          策略 {{ usage.policy_version }}：全局实际 {{ usage.actual_bytes ?? '尚未测量' }} 字节，
+          在途预留 {{ usage.reserved_bytes }} 字节，上限 {{ usage.global_limit }} 字节。
+          文件系统余量 {{ usage.available_bytes ?? '尚未测量' }} 字节；控制面保留
+          {{ usage.control_bytes }} 字节。
+        </p>
+        <p>
+          本需求跨重试累计分配 {{ usage.requirement_allocated }} 字节，受保护材料
+          {{ usage.protected_bytes }} 字节。 清理待办
+          {{ usage.cleanup_todo }} 项；未分类、须保全的资料
+          {{ usage.classification_todo }} 项。回收不会返还累计分配额度。
+        </p>
+        @if (item.storage.blocked || usage.cleanup_todo > 0) {
+          <button
+            matButton
+            [disabled]="busy() || !!error()"
+            (click)="control(item, 'storage_recheck')"
+          >
+            重新检查存储与清理
+          </button>
+          <p>
+            修复环境后可授权一组有限清理重试。仍有活动进程或容量不足时保持停止保护，不自动解除暂停。
+          </p>
+        }
+        @for (category of usage.categories; track category.name) {
+          <p>
+            {{ category.name }}：实际 {{ category.actual_bytes ?? '尚未测量' }} / 预留
+            {{ category.reserved_bytes }} / 上限 {{ category.limit_bytes }} 字节，保留期
+            {{ category.retention_seconds }} 秒。
+          </p>
+        }
+      } @else {
+        <p>尚未配置产品存储预算；启用 Runtime 前需要完成部署配置。</p>
+      }
+      @for (material of usage.materials; track material.id) {
+        <details>
+          <summary>
+            {{ material.run_id }} · {{ material.kind }} / {{ material.category }} ·
+            {{ material.status }}
+          </summary>
+          <p>
+            实际 {{ material.actual_bytes }} 字节；到期时间（Unix 秒）{{ material.expires_at }}。
+            保护原因：{{ material.protection ?? '无' }}。清理尝试 {{ material.attempts }} 次，
+            下次尝试 {{ material.next_attempt_at ?? '无已安排重试' }}。
+          </p>
+          @if (material.failure) {
+            <p>清理失败：{{ material.failure }}</p>
+          }
+          <p>
+            删除时间 {{ material.deleted_at ?? '尚未删除' }}；原因 {{ material.reason ?? '无' }}。
+            替代引用 {{ material.replacement ?? '无' }}；解决尝试
+            {{ material.resolved_by ?? '无' }}。
+          </p>
+          <pre>{{ material.identity }}</pre>
+          <pre>{{ material.summary }}</pre>
+        </details>
+      } @empty {
+        <p>暂无已登记产品材料。</p>
+      }
+    }
     @for (material of item.materials; track $index) {
       <p>
-        {{ material.run_id }} / {{ material.channel }} · {{ material.status }} · 保留
+        {{ material.run_id }} / {{ material.channel }} · {{ material.status }} · 历史采集
         {{ material.kept_bytes }} 字节 / 丢弃 {{ material.discarded_bytes }} 字节
         <button matButton [disabled]="busy()" (click)="evidence(item.requirement.id, material)">
           查看脱敏日志预览

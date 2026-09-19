@@ -1195,6 +1195,189 @@
                         "blocked",
                         "error"
                       ]
+                    },
+                    "storage_usage": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "configured": {
+                          "type": "boolean"
+                        },
+                        "policy_version": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "actual_bytes": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "available_bytes": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "measured_at": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "control_bytes": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "global_limit": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "reserved_bytes": {
+                          "type": "integer"
+                        },
+                        "requirement_allocated": {
+                          "type": "integer"
+                        },
+                        "protected_bytes": {
+                          "type": "integer"
+                        },
+                        "cleanup_todo": {
+                          "type": "integer"
+                        },
+                        "materials": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "run_id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string"
+                              },
+                              "category": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string"
+                              },
+                              "identity": {
+                                "type": "string"
+                              },
+                              "summary": {
+                                "type": "string"
+                              },
+                              "actual_bytes": {
+                                "type": "integer"
+                              },
+                              "expires_at": {
+                                "type": "integer"
+                              },
+                              "attempts": {
+                                "type": "integer"
+                              },
+                              "next_attempt_at": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "deleted_at": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "protection": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "failure": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "reason": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "replacement": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "resolved_by": {
+                                "type": "string",
+                                "nullable": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "run_id",
+                              "kind",
+                              "category",
+                              "status",
+                              "identity",
+                              "summary",
+                              "actual_bytes",
+                              "expires_at",
+                              "attempts",
+                              "next_attempt_at",
+                              "deleted_at",
+                              "protection",
+                              "failure",
+                              "reason",
+                              "replacement",
+                              "resolved_by"
+                            ]
+                          }
+                        },
+                        "categories": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "actual_bytes": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "reserved_bytes": {
+                                "type": "integer"
+                              },
+                              "limit_bytes": {
+                                "type": "integer"
+                              },
+                              "retention_seconds": {
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "actual_bytes",
+                              "reserved_bytes",
+                              "limit_bytes",
+                              "retention_seconds"
+                            ]
+                          }
+                        },
+                        "classification_todo": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      },
+                      "required": [
+                        "configured",
+                        "policy_version",
+                        "actual_bytes",
+                        "available_bytes",
+                        "measured_at",
+                        "control_bytes",
+                        "global_limit",
+                        "reserved_bytes",
+                        "requirement_allocated",
+                        "protected_bytes",
+                        "cleanup_todo",
+                        "materials",
+                        "categories",
+                        "classification_todo"
+                      ]
                     }
                   },
                   "required": [
@@ -1319,7 +1502,8 @@
                       "pause",
                       "resume",
                       "cancel",
-                      "recheck"
+                      "recheck",
+                      "storage_recheck"
                     ]
                   }
                 },

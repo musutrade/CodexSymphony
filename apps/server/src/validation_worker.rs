@@ -17,6 +17,9 @@ pub async fn tick(pool: &PgPool, root: &Path, broker: &GitBroker, plan: &Plan) -
         return Ok(false);
     };
     let manifest: Manifest = serde_json::from_value(manifest)?;
+    if !crate::storage_service::validation(pool, &source).await? {
+        return Ok(false);
+    }
     let checkout = restore(broker, &source, &manifest)?;
     let candidate = validation_runner::candidate(&checkout)?;
     let id = format!("validation-{source}");
