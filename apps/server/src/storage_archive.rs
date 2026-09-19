@@ -88,7 +88,7 @@ fn verify_file(input: std::fs::File, expected: &str) -> io::Result<()> {
         &mut child
             .stdout
             .take()
-            .ok_or_else(|| io::Error::other("archive pipe unavailable"))?,
+            .ok_or(io::Error::other("archive pipe unavailable"))?,
     );
     let status = child.wait()?;
     if !status.success() || actual? != expected {
@@ -111,7 +111,7 @@ pub fn write_record(target: &Directory, bytes: &[u8]) -> io::Result<()> {
     child
         .stdin
         .take()
-        .ok_or_else(|| io::Error::other("archive stdin unavailable"))?
+        .ok_or(io::Error::other("archive stdin unavailable"))?
         .write_all(bytes)?;
     let status = child.wait()?;
     if !status.success() {

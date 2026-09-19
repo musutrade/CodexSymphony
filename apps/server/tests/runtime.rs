@@ -1029,14 +1029,15 @@ async fn configured_controller(
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     drop(listener);
+    let worker_log = root.join("runtime-worker.log");
     let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
         .env("DATABASE_URL", url)
         .env("RUNTIME_CONFIG", config_path)
-        .env("STORAGE_CONFIG", storage_path)
+        .env("STORAGE_CONFIG", &storage_path)
         .env("EXECUTION_DIRECTORY", root)
         .env("BIND_ADDRESS", address.to_string())
         .env_remove("GITHUB_APP_CONFIG")
-        .stdout(std::process::Stdio::null())
+        .stdout(std::fs::File::create(&worker_log).unwrap())
         .stderr(std::process::Stdio::inherit())
         .spawn()
         .unwrap();
@@ -1070,12 +1071,51 @@ async fn configured_controller(
         }
     })
     .await;
+    // A missing archive mount must close admission without killing the scanner.
+    let cold = root.with_extension("cold");
+    let displaced = root.with_extension("displaced-cold");
+    std::fs::rename(&cold, &displaced).unwrap();
+    sqlx::query("NOTIFY storage_phase_ended")
+        .execute(pool)
+        .await
+        .unwrap();
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            let error: Option<String> = sqlx::query_scalar("SELECT error FROM storage_guard")
+                .fetch_one(pool)
+                .await
+                .unwrap();
+            if error.as_deref()
+                == Some("storage scan failed; preserve registered originals and reconcile")
+            {
+                break;
+            }
+            assert!(child.try_wait().unwrap().is_none());
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
+    std::fs::rename(&displaced, &cold).unwrap();
     // A transient unavailable execution table must not kill the control plane.
     sqlx::query("ALTER TABLE runtime_session RENAME TO unavailable_runtime_session")
         .execute(pool)
         .await
         .unwrap();
-    tokio::time::sleep(Duration::from_millis(1200)).await;
+    tokio::time::timeout(Duration::from_secs(10), async {
+        loop {
+            if std::fs::read_to_string(&worker_log)
+                .unwrap()
+                .contains("Runtime execution or answer recovery requires reconciliation")
+            {
+                break;
+            }
+            assert!(child.try_wait().unwrap().is_none());
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .unwrap();
     assert!(child.try_wait().unwrap().is_none());
     sqlx::query("ALTER TABLE unavailable_runtime_session RENAME TO runtime_session")
         .execute(pool)
@@ -1103,6 +1143,7 @@ async fn configured_controller(
             ),
         )
         .env("RUNTIME_CONFIG", root.join("missing-runtime-config"))
+        .env("STORAGE_CONFIG", &storage_path)
         .env("EXECUTION_DIRECTORY", root)
         .env("BIND_ADDRESS", "127.0.0.1:0")
         .env_remove("GITHUB_APP_CONFIG")

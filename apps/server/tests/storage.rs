@@ -232,6 +232,13 @@ fn archive_verification_and_descriptor_bound_interrupted_deletion() {
     assert!(source.inventory(1).is_err());
     let files = source.inventory(100).unwrap();
     assert!(source.usage(100).unwrap() > 0);
+    let incomplete: Vec<_> = files
+        .iter()
+        .filter(|entry| !entry.directory)
+        .cloned()
+        .collect();
+    assert!(source.remove(&incomplete).is_err());
+    assert!(path.join("nested/log").exists());
     storage_archive::write(&source, &target, &files, 1000).unwrap();
     storage_archive::write(&source, &target, &files, 1000).unwrap();
     let package = Package {
@@ -384,6 +391,72 @@ async fn persisted_retention_archive_retries_and_cumulative_admission() {
     let pool = fixture().await;
     let tree = Tree::new();
     let config = deployment(&tree);
+    let workspace = run(&pool, "unconfigured-run").await;
+    assert!(storage_service::capacity(&pool).await.unwrap());
+    assert!(
+        storage_service::admit_workspace(&pool, &workspace)
+            .await
+            .unwrap()
+    );
+    storage_service::preparation(&pool, &workspace, &tree.0)
+        .await
+        .unwrap();
+    store::install(&pool, &config).await.unwrap();
+    assert_eq!(
+        storage_service::entry_limit(&pool).await.unwrap(),
+        config.policy.entry_bytes
+    );
+    let mut ingress = config.clone();
+    ingress.policy.version = "ingress-limit".into();
+    ingress.policy.entry_bytes = 4096;
+    ingress.policy.entry_count = 2;
+    store::install(&pool, &ingress).await.unwrap();
+    let evidence_run = run(&pool, "ingress-limit").await;
+    codexsymphony_server::runtime_store::evidence(
+        &pool,
+        &evidence_run.key,
+        "stdout",
+        &vec![b'x'; config.policy.entry_bytes as usize],
+    )
+    .await
+    .unwrap();
+    let kept: i64 =
+        sqlx::query_scalar("SELECT kept_bytes FROM runtime_evidence WHERE run_id='ingress-limit'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(kept as u64, ingress.policy.entry_bytes - 512);
+    sqlx::query("UPDATE runtime_evidence SET records=$1 WHERE run_id='ingress-limit'")
+        .bind(ingress.policy.entry_count as i32)
+        .execute(&pool)
+        .await
+        .unwrap();
+    codexsymphony_server::runtime_store::evidence(
+        &pool,
+        &evidence_run.key,
+        "stdout",
+        b"over count",
+    )
+    .await
+    .unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT kept_bytes FROM runtime_evidence WHERE run_id='ingress-limit'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        kept
+    );
+    // Isolate this ingress scenario from later retrospective row-count assertions.
+    sqlx::query("DELETE FROM runtime_evidence_chunk WHERE run_id='ingress-limit'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("DELETE FROM runtime_evidence WHERE run_id='ingress-limit'")
+        .execute(&pool)
+        .await
+        .unwrap();
     store::install(&pool, &config).await.unwrap();
     let oversized=sqlx::query("INSERT INTO business_request VALUES('oversized-entry',jsonb_build_object('raw',repeat('x',1100000)),'{}')").execute(&pool).await.unwrap_err();
     assert_eq!(
@@ -480,6 +553,13 @@ async fn persisted_retention_archive_retries_and_cumulative_admission() {
         Kind::Retrospective,
     )
     .await;
+    let mut interrupted = codexsymphony_server::preparation::Retry::new("cleanup", 100);
+    assert!(interrupted.begin(100, false));
+    sqlx::query("UPDATE storage_material SET retry=$1 WHERE id='permission'")
+        .bind(json!(interrupted))
+        .execute(&pool)
+        .await
+        .unwrap();
     fs::set_permissions(&config.cold.path, fs::Permissions::from_mode(0o500)).unwrap();
     for now in [130, 159, 160, 280, 500] {
         storage_cleanup::scan(&pool, now).await.unwrap();
@@ -611,6 +691,17 @@ async fn raw_retrospective_and_preparation(pool: &PgPool, config: &Deployment) {
         .execute(pool)
         .await
         .unwrap();
+    sqlx::query("INSERT INTO runtime_evidence_chunk SELECT 'failed-run','stderr',n,decode('6162','hex') FROM generate_series(2,6) n").execute(pool).await.unwrap();
+    fs::set_permissions(&config.cold.path, fs::Permissions::from_mode(0o500)).unwrap();
+    storage_db::collect(pool, config, 190).await.unwrap();
+    // Simulate a crash before the export outcome was persisted.
+    let mut interrupted = codexsymphony_server::preparation::Retry::new("cleanup", 100);
+    assert!(interrupted.begin(100, false));
+    sqlx::query("UPDATE runtime_evidence SET cleanup_retry=$1 WHERE run_id='failed-run'")
+        .bind(json!(interrupted))
+        .execute(pool)
+        .await
+        .unwrap();
     fs::set_permissions(&config.cold.path, fs::Permissions::from_mode(0o500)).unwrap();
     for at in [200, 229, 230, 350, 500] {
         storage_db::collect(pool, config, at).await.unwrap();
@@ -716,11 +807,17 @@ async fn raw_retrospective_and_preparation(pool: &PgPool, config: &Deployment) {
         .execution
         .path
         .join(".preparation-resolved-run-abandoned");
+    assert!(
+        storage_service::preparation(pool, &next, &preparing)
+            .await
+            .is_err()
+    );
     fs::create_dir(&preparing).unwrap();
     storage_service::preparation(pool, &next, &preparing)
         .await
         .unwrap();
     fs::write(preparing.join("raw.log"), b"preparation interrupted").unwrap();
+    fs::write(preparing.join("quiescent.json"), br#"{"quiescent":false}"#).unwrap();
     // A marker is a retained producer fact, never guessed from absence of a PID.
     storage_cleanup::scan(pool, codexsymphony_server::runtime_client::now() + 20)
         .await
@@ -835,10 +932,25 @@ async fn database_failure_preserves_verified_package(pool: &PgPool, config: &Dep
         Kind::Retrospective,
     )
     .await;
+    let now = codexsymphony_server::runtime_client::now() + 1;
+    sqlx::raw_sql("CREATE FUNCTION interrupt_storage_manifest() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='db-failure' AND NEW.status='deleting' THEN NEW.manifest=NULL; END IF; RETURN NEW; END $$; CREATE TRIGGER interrupt_storage_manifest BEFORE UPDATE ON storage_material FOR EACH ROW EXECUTE FUNCTION interrupt_storage_manifest();").execute(pool).await.unwrap();
+    storage_cleanup::scan(pool, now).await.unwrap();
+    assert!(path.join("critical.log").exists());
+    let saved_package: serde_json::Value =
+        sqlx::query_scalar("SELECT archive FROM storage_material WHERE id='db-failure'")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    storage_archive::verify(&serde_json::from_value(saved_package.clone()).unwrap()).unwrap();
+    sqlx::raw_sql("DROP TRIGGER interrupt_storage_manifest ON storage_material; DROP FUNCTION interrupt_storage_manifest();").execute(pool).await.unwrap();
+    sqlx::query("UPDATE storage_material SET manifest=$1 WHERE id='db-failure'")
+        .bind(&saved_package["files"])
+        .execute(pool)
+        .await
+        .unwrap();
     sqlx::raw_sql("CREATE FUNCTION reject_storage_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='db-failure' AND NEW.status='deleted' THEN RAISE EXCEPTION 'injected database failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_storage_delete BEFORE UPDATE ON storage_material FOR EACH ROW EXECUTE FUNCTION reject_storage_delete();")
         .execute(pool).await.unwrap();
-    let now = codexsymphony_server::runtime_client::now() + 1;
-    storage_cleanup::scan(pool, now).await.unwrap();
+    storage_cleanup::scan(pool, now + 30).await.unwrap();
     let (status, archive): (String, serde_json::Value) =
         sqlx::query_as("SELECT status,archive FROM storage_material WHERE id='db-failure'")
             .fetch_one(pool)
@@ -854,7 +966,7 @@ async fn database_failure_preserves_verified_package(pool: &PgPool, config: &Dep
             .any(|file| file.path == Path::new("critical.log"))
     );
     sqlx::raw_sql("DROP TRIGGER reject_storage_delete ON storage_material; DROP FUNCTION reject_storage_delete();").execute(pool).await.unwrap();
-    storage_cleanup::scan(pool, now + 30).await.unwrap();
+    storage_cleanup::scan(pool, now + 150).await.unwrap();
     let (status, saved): (String, serde_json::Value) =
         sqlx::query_as("SELECT status,archive FROM storage_material WHERE id='db-failure'")
             .fetch_one(pool)
@@ -882,6 +994,32 @@ async fn policy_and_control(pool: &PgPool, config: &Deployment) {
         request_id: "storage-recovery".into(),
         action: Action::StorageRecheck,
     };
+    let displaced = config.execution.path.with_extension("recovery-missing");
+    fs::rename(&config.execution.path, &displaced).unwrap();
+    assert!(
+        codexsymphony_server::storage::recover(pool, &config.execution.path)
+            .await
+            .is_err()
+    );
+    assert!(storage_service::capacity(pool).await.is_err());
+    let workspace = run(pool, "missing-mount-admission").await;
+    assert!(
+        storage_service::admit_workspace(pool, &workspace)
+            .await
+            .is_err()
+    );
+    assert!(
+        storage_service::validation(pool, "failed-run")
+            .await
+            .is_err()
+    );
+    assert!(operator_control::execute(pool, 1, &request).await.is_err());
+    fs::rename(&displaced, &config.execution.path).unwrap();
+    assert!(
+        codexsymphony_server::storage::recover(pool, &config.execution.path)
+            .await
+            .unwrap()
+    );
     let recovered = operator_control::execute(pool, 1, &request).await.unwrap();
     assert_eq!(
         recovered,
@@ -1049,5 +1187,31 @@ async fn actual_overrun(pool: &PgPool, config: &Deployment) {
         .await
         .unwrap()
             > 1
+    );
+}
+
+#[test]
+fn invalid_storage_category_fails_closed() {
+    assert!(store::name(&json!({"not":"category"})).is_err());
+}
+
+#[test]
+fn reader_panic_is_reported_to_capture_owner() {
+    struct BrokenReader;
+    impl std::io::Read for BrokenReader {
+        fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+            panic!("reader failure")
+        }
+    }
+    let tree = Tree::new();
+    let mut capture = codexsymphony_server::storage_output::Capture::default();
+    capture.stream(
+        BrokenReader,
+        fs::File::create(tree.0.join("output")).unwrap(),
+        100,
+    );
+    assert_eq!(
+        capture.finish().unwrap_err().to_string(),
+        "output reader failed"
     );
 }

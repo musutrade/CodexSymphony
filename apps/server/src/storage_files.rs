@@ -104,7 +104,7 @@ impl Directory {
             |total, entry| {
                 total
                     .checked_add(entry.bytes)
-                    .ok_or_else(|| io::Error::other("storage size overflow"))
+                    .ok_or(io::Error::other("storage size overflow"))
             },
         )
     }
@@ -195,7 +195,7 @@ impl Directory {
             let expected = manifest
                 .iter()
                 .find(|entry| entry.path == parent)
-                .ok_or_else(|| io::Error::other("parent identity missing"))?;
+                .ok_or(io::Error::other("parent identity missing"))?;
             Directory(directory.try_clone()?).matches(&expected.identity)?;
         }
         Ok(directory)

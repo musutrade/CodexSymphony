@@ -70,9 +70,10 @@ fn copy(
         if count == 0 {
             break;
         }
-        let mut output = output
-            .lock()
-            .map_err(|_| io::Error::other("output writer failed"))?;
+        let mut output = match output.lock() {
+            Ok(output) => output,
+            Err(_) => return Err(io::Error::other("output writer failed")),
+        };
         let take = (count as u64).min(output.1) as usize;
         output.0.write_all(&buffer[..take])?;
         output.1 -= take as u64;
@@ -80,9 +81,8 @@ fn copy(
             stopped.store(true, Ordering::SeqCst);
         }
     }
-    output
-        .lock()
-        .map_err(|_| io::Error::other("output writer failed"))?
-        .0
-        .sync_all()
+    match output.lock() {
+        Ok(output) => output.0.sync_all(),
+        Err(_) => Err(io::Error::other("output writer failed")),
+    }
 }
