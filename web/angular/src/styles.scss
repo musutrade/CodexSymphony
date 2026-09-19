@@ -181,3 +181,13 @@ mat-form-field {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+dt {
+  font-weight: 600;
+}
+dd {
+  margin: 0 0 var(--ui-space-4);
+}

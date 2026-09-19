@@ -1,0 +1,27 @@
+<header class="page-header">
+  <h1>需求列表</h1>
+  <p>业务状态与执行、验证、PR 观察分别记录。打开详情接续操作。</p>
+</header>
+<div class="ui-actions">
+  <a routerLink="/requirements">新建或评审需求</a
+  ><button matButton="outlined" (click)="reload()">刷新列表</button>
+</div>
+@if (loading()) {
+  <p role="status">正在加载需求…</p>
+}
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+<ul class="ui-list">
+  @for (item of items(); track item.id) {
+    <li class="ui-panel">
+      <a [routerLink]="['/requirements', item.id]">#{{ item.id }} {{ item.title }}</a
+      ><span>{{ item.state }} · 对象版本 {{ item.version }}</span>
+    </li>
+  } @empty {
+    @if (!loading() && !error()) {
+      <li>暂无需求。</li>
+    }
+  }
+</ul>
+<p>完整材料生命周期与存储统计等待 #23 接入；原始材料状态不会替代历史验证结论。</p>

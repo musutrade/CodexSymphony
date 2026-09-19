@@ -177,27 +177,36 @@ pub async fn authorize_retry(pool: &PgPool, id: &str, now: i64, reason: &str) ->
         return Err(sqlx::Error::Protocol("recovery reason required".into()));
     }
     let mut tx = run_store::lock(pool).await?;
+    authorize_retry_in(&mut tx, id, now, reason).await?;
+    tx.commit().await
+}
+pub(crate) async fn authorize_retry_in(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: &str,
+    now: i64,
+    reason: &str,
+) -> Result<()> {
     let value: Value = sqlx::query_scalar(
         "SELECT retry FROM preparation_record p WHERE run_id=$1 AND NOT EXISTS(SELECT 1 FROM agent_run a WHERE a.id=p.run_id) FOR UPDATE",
     )
     .bind(id)
-    .fetch_one(&mut *tx)
+    .fetch_one(&mut **tx)
     .await?;
     let mut retry: Retry = decode(value)?;
     retry.authorize_retry_group(now);
     sqlx::query("UPDATE preparation_record SET ready=false WHERE run_id=$1")
         .bind(id)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
     save(
-        &mut tx,
+        tx,
         id,
         &retry,
         now,
         json!({"authorized_recovery":reason,"retry":retry}),
     )
     .await?;
-    tx.commit().await
+    Ok(())
 }
 
 pub(crate) async fn claim_ready(

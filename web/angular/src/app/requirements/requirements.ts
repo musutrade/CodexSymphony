@@ -1,3 +1,5 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,6 +19,7 @@ type Requirement = Extract<GetRequirementResponse, { id: number }>;
 @Component({
   selector: 'app-requirements',
   imports: [
+    RouterLink,
     ReactiveFormsModule,
     MatButtonModule,
     MatCardModule,
@@ -92,12 +95,20 @@ export class Requirements {
     this.loading.set(false);
   }
   async run(action: () => Promise<void>) {
+    if (this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     this.message.set('');
     try {
       await action();
-    } catch {
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 409 && this.selected()) {
+        try {
+          this.accept(await firstValueFrom(this.api.detail(this.selected()!.id)));
+        } catch {
+          /* Keep last visible facts; show failure below. */
+        }
+      }
       this.error.set(
         '操作未完成。请检查表单与仓库授权；版本冲突时重新打开需求。网络失败可重试原操作。',
       );

@@ -511,5 +511,176 @@
     "body": {
       "pause": true
     }
+  },
+  {
+    "id": "operator-detail",
+    "method": "GET",
+    "path": "/api/requirements/{id}/operations",
+    "status": 200,
+    "path_parameters": {
+      "id": 900001
+    }
+  },
+  {
+    "id": "operator-inbox",
+    "method": "GET",
+    "path": "/api/inbox",
+    "status": 200
+  },
+  {
+    "id": "operator-evidence",
+    "method": "GET",
+    "path": "/api/requirements/{id}/evidence/{run}/{channel}",
+    "status": 200,
+    "path_parameters": {
+      "id": 900001,
+      "run": "capture-run",
+      "channel": "stdout"
+    }
+  },
+  {
+    "id": "operator-answer",
+    "method": "POST",
+    "path": "/api/operator/questions/{id}/answer",
+    "status": 200,
+    "path_parameters": {
+      "id": "capture-question"
+    },
+    "body": {
+      "version": 1,
+      "answers": [
+        {
+          "id": "choice",
+          "text": "yes"
+        }
+      ]
+    }
+  },
+  {
+    "id": "operator-control",
+    "method": "POST",
+    "path": "/api/requirements/{id}/operations",
+    "status": 200,
+    "path_parameters": {
+      "id": 900001
+    },
+    "body": {
+      "version": 1,
+      "request_id": "capture-operator-resume",
+      "action": "resume"
+    }
+  },
+  {
+    "id": "operator-detail-missing",
+    "path": "/api/requirements/{id}/operations",
+    "method": "GET",
+    "status": 404,
+    "path_parameters": {
+      "id": 99999
+    }
+  },
+  {
+    "id": "operator-control-missing",
+    "path": "/api/requirements/{id}/operations",
+    "method": "POST",
+    "status": 404,
+    "path_parameters": {
+      "id": 99999
+    },
+    "body": {
+      "version": 1,
+      "request_id": "missing-control",
+      "action": "pause"
+    }
+  },
+  {
+    "id": "operator-control-stale",
+    "path": "/api/requirements/{id}/operations",
+    "method": "POST",
+    "status": 409,
+    "path_parameters": {
+      "id": 900001
+    },
+    "body": {
+      "version": 1,
+      "request_id": "stale-control",
+      "action": "pause"
+    }
+  },
+  {
+    "id": "operator-control-invalid",
+    "path": "/api/requirements/{id}/operations",
+    "method": "POST",
+    "status": 422,
+    "path_parameters": {
+      "id": 900001
+    },
+    "body": {
+      "action": "invented"
+    }
+  },
+  {
+    "id": "operator-evidence-foreign",
+    "path": "/api/requirements/{id}/evidence/{run}/{channel}",
+    "method": "GET",
+    "status": 404,
+    "path_parameters": {
+      "id": 99999,
+      "run": "capture-run",
+      "channel": "stdout"
+    }
+  },
+  {
+    "id": "operator-answer-missing",
+    "path": "/api/operator/questions/{id}/answer",
+    "method": "POST",
+    "status": 404,
+    "path_parameters": {
+      "id": "missing-question"
+    },
+    "body": {
+      "version": 1,
+      "answers": []
+    }
+  },
+  {
+    "id": "operator-answer-duplicate",
+    "path": "/api/operator/questions/{id}/answer",
+    "method": "POST",
+    "status": 409,
+    "path_parameters": {
+      "id": "capture-question"
+    },
+    "body": {
+      "version": 1,
+      "answers": [
+        {
+          "id": "choice",
+          "text": "yes"
+        }
+      ]
+    }
+  },
+  {
+    "id": "operator-answer-invalid",
+    "path": "/api/operator/questions/{id}/answer",
+    "method": "POST",
+    "status": 422,
+    "path_parameters": {
+      "id": "capture-question"
+    },
+    "body": {
+      "version": 1,
+      "answers": [
+        {
+          "id": "choice",
+          "text": "yes"
+        },
+        {
+          "id": "choice",
+          "text": "no"
+        }
+      ]
+    }
   }
 ]

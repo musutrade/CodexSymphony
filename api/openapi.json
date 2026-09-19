@@ -756,6 +756,783 @@
           }
         ]
       }
+    },
+    "/api/requirements/{id}/operations": {
+      "get": {
+        "operationId": "getOperations",
+        "responses": {
+          "200": {
+            "description": "Current durable facts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "requirement": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "version": {
+                          "type": "integer"
+                        },
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "state": {
+                          "type": "string"
+                        },
+                        "paused": {
+                          "type": "boolean"
+                        },
+                        "cancel_requested": {
+                          "type": "boolean"
+                        },
+                        "cleanup_complete": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "revision",
+                        "state",
+                        "paused",
+                        "cancel_requested",
+                        "cleanup_complete"
+                      ]
+                    },
+                    "runs": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "revision": {
+                            "type": "integer"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "phase": {
+                            "type": "string"
+                          },
+                          "blocker": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "quiescent": {
+                            "type": "boolean"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "waiting": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "revision",
+                          "state",
+                          "phase",
+                          "blocker",
+                          "quiescent",
+                          "created_at",
+                          "waiting"
+                        ]
+                      }
+                    },
+                    "validations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "revision": {
+                            "type": "integer"
+                          },
+                          "source_run_id": {
+                            "type": "string"
+                          },
+                          "candidate_sha": {
+                            "type": "string"
+                          },
+                          "stage": {
+                            "type": "string"
+                          },
+                          "result": {
+                            "type": "string"
+                          },
+                          "failure": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "revision",
+                          "source_run_id",
+                          "candidate_sha",
+                          "stage",
+                          "result",
+                          "failure"
+                        ]
+                      }
+                    },
+                    "external": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "repository": {
+                            "type": "string"
+                          },
+                          "pr_number": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "head_sha": {
+                            "type": "string"
+                          },
+                          "revision": {
+                            "type": "integer"
+                          },
+                          "observation": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "stale": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "repository",
+                          "pr_number",
+                          "head_sha",
+                          "revision",
+                          "observation",
+                          "stale"
+                        ]
+                      }
+                    },
+                    "questions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer"
+                          },
+                          "revision": {
+                            "type": "integer"
+                          },
+                          "run_id": {
+                            "type": "string"
+                          },
+                          "questions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "question": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "question",
+                                "options"
+                              ]
+                            }
+                          },
+                          "answered": {
+                            "type": "boolean"
+                          },
+                          "resume_state": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "revision",
+                          "run_id",
+                          "questions",
+                          "answered",
+                          "resume_state"
+                        ]
+                      }
+                    },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "kind": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "version",
+                          "created_at"
+                        ]
+                      }
+                    },
+                    "materials": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "run_id": {
+                            "type": "string"
+                          },
+                          "channel": {
+                            "type": "string"
+                          },
+                          "kept_bytes": {
+                            "type": "integer"
+                          },
+                          "discarded_bytes": {
+                            "type": "integer"
+                          },
+                          "status": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "run_id",
+                          "channel",
+                          "kept_bytes",
+                          "discarded_bytes",
+                          "status"
+                        ]
+                      }
+                    },
+                    "storage_lifecycle": {
+                      "type": "string"
+                    },
+                    "metrics": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "model_calls": {
+                          "type": "integer"
+                        },
+                        "input": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "cached": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "output": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "repair_count": {
+                          "type": "integer"
+                        },
+                        "human_seconds": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "interventions": {
+                          "type": "integer"
+                        },
+                        "reasons": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "phases": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "phase": {
+                                "type": "string"
+                              },
+                              "seconds": {
+                                "type": "integer"
+                              },
+                              "complete": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "phase",
+                              "seconds",
+                              "complete"
+                            ]
+                          }
+                        },
+                        "to_pr_seconds": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "zero_intervention": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "phase": {
+                              "type": "string"
+                            },
+                            "denominator": {
+                              "type": "integer"
+                            },
+                            "numerator": {
+                              "type": "integer"
+                            }
+                          },
+                          "required": [
+                            "phase",
+                            "denominator",
+                            "numerator"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "model_calls",
+                        "input",
+                        "cached",
+                        "output",
+                        "repair_count",
+                        "human_seconds",
+                        "interventions",
+                        "reasons",
+                        "phases",
+                        "to_pr_seconds",
+                        "zero_intervention"
+                      ]
+                    },
+                    "preparation": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "run_id": {
+                            "type": "string"
+                          },
+                          "phase": {
+                            "type": "string"
+                          },
+                          "attempts": {
+                            "type": "integer"
+                          },
+                          "todo": {
+                            "type": "boolean"
+                          },
+                          "code": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "detail": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "run_id",
+                          "phase",
+                          "attempts",
+                          "todo",
+                          "code",
+                          "detail"
+                        ]
+                      }
+                    },
+                    "storage": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "blocked": {
+                          "type": "boolean"
+                        },
+                        "error": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "blocked",
+                        "error"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "requirement",
+                    "runs",
+                    "validations",
+                    "external",
+                    "questions",
+                    "events",
+                    "materials",
+                    "storage_lifecycle",
+                    "metrics",
+                    "preparation",
+                    "storage"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "operationId": "controlOperations",
+        "responses": {
+          "200": {
+            "description": "Current durable facts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "version": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "version"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "request_id": {
+                    "type": "string"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "pause",
+                      "resume",
+                      "cancel",
+                      "recheck"
+                    ]
+                  }
+                },
+                "required": [
+                  "version",
+                  "request_id",
+                  "action"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/evidence/{run}/{channel}": {
+      "get": {
+        "operationId": "getEvidence",
+        "responses": {
+          "200": {
+            "description": "Current durable facts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "text": {
+                      "type": "string"
+                    },
+                    "preview_only": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "preview_only"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "run",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/api/inbox": {
+      "get": {
+        "operationId": "getInbox",
+        "responses": {
+          "200": {
+            "description": "Current durable facts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "requirement_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      }
+                    }
+                  },
+                  "required": [
+                    "requirement_ids"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/operator/questions/{id}/answer": {
+      "post": {
+        "operationId": "answerOperatorQuestion",
+        "responses": {
+          "200": {
+            "description": "Current durable facts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "saved": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "saved"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "version": {
+                    "type": "integer"
+                  },
+                  "answers": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "text"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "version",
+                  "answers"
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

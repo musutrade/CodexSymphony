@@ -48,7 +48,9 @@ for (const name of sources.filter((name) => !excluded.includes(name))) {
     produceSourceMap: false,
   });
   fs.writeFileSync(file, instrumenter.instrumentSync(source, file));
-  baseline[file] = instrumenter.lastFileCoverage();
+  // Compare the same JSON representation used by the captured counters. Istanbul
+  // uses undefined coordinates for implicit else branches; JSON omits those keys.
+  baseline[file] = JSON.parse(JSON.stringify(instrumenter.lastFileCoverage()));
   originals[file] = { path: `src/${name}`, text: source, sha256: sha(source) };
 }
 write('originals.json', originals);

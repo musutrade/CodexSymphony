@@ -1,0 +1,256 @@
+<header class="page-header">
+  <h1>{{ inbox ? '待办箱' : '需求详情与 Run 时间线' }}</h1>
+  <p>输入、执行、验证与外部观察分别保存。关闭页面不会停止后台 Run。</p>
+</header>
+<div role="status" aria-live="polite">
+  @if (loading()) {
+    <p>正在加载持久化状态…</p>
+  }
+  @if (busy()) {
+    <p>正在提交，请稍候…</p>
+  }
+  @if (message()) {
+    <p>{{ message() }}</p>
+  }
+</div>
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+<button matButton="outlined" (click)="reload()" [disabled]="busy()">刷新状态</button>
+@if (!loading() && !error() && items().length === 0) {
+  <p>暂无待办。</p>
+}
+@for (item of items(); track item.requirement.id) {
+  <section class="ui-panel" [attr.aria-label]="'需求 ' + item.requirement.id">
+    <h2>
+      <a [routerLink]="['/requirements', item.requirement.id]">需求 #{{ item.requirement.id }}</a>
+    </h2>
+    <p>
+      业务状态 {{ item.requirement.state }} · 对象版本 {{ item.requirement.version }} · 输入修订
+      {{ item.requirement.revision }}
+    </p>
+    <p>
+      暂停意图：{{ item.requirement.paused ? '已暂停' : '未暂停' }}。取消收尾：{{
+        item.requirement.cancel_requested
+          ? item.requirement.cleanup_complete
+            ? '已完成'
+            : '处理中，仍保留占用'
+          : '未请求'
+      }}。
+    </p>
+    @if (item.storage.blocked) {
+      <p role="alert">
+        环境存储保护已锁存：{{ item.storage.error ?? '原因未知' }}。这不是已确认的存储预算超限。
+      </p>
+    }
+    <div class="ui-actions">
+      @if (!item.requirement.cancel_requested) {
+        @if (['Ready', 'Running', 'Submitted'].includes(item.requirement.state)) {
+          <button
+            matButton="outlined"
+            [disabled]="busy() || !!error()"
+            (click)="control(item, item.requirement.paused ? 'resume' : 'pause')"
+          >
+            {{ item.requirement.paused ? '恢复' : '暂停' }}
+          </button>
+        }
+        @if (item.preparation[0]?.todo && ['Ready', 'Running'].includes(item.requirement.state)) {
+          <button
+            matButton="outlined"
+            [disabled]="busy() || !!error()"
+            (click)="control(item, 'recheck')"
+          >
+            重新检查
+          </button>
+        }
+        <button
+          matButton="outlined"
+          [disabled]="busy() || !!error()"
+          (click)="cancelId.set(item.requirement.id)"
+        >
+          取消需求
+        </button>
+      }
+    </div>
+    @if (cancelId() === item.requirement.id) {
+      <section class="ui-panel" aria-label="确认取消">
+        <p>取消会停止执行并保全工作，关闭关联 PR；外部结果未知时继续对账，收尾完成前不释放占用。</p>
+        <button
+          matButton="filled"
+          [disabled]="busy() || !!error()"
+          (click)="control(item, 'cancel')"
+        >
+          确认取消并关闭关联 PR
+        </button>
+        <button matButton [disabled]="busy()" (click)="cancelId.set(null)">返回</button>
+      </section>
+    }
+    <section class="ui-panel" aria-label="聚合阻塞卡">
+      <h3>阻塞与接续六问</h3>
+      <dl>
+        <dt>阶段</dt>
+        <dd>
+          最近 Run：{{ item.runs.at(-1)?.phase ?? '尚无 Run' }}；验证记录：{{
+            item.validations.at(-1)?.stage ?? '尚无验证'
+          }}；准备记录：{{ item.preparation[0]?.phase ?? '尚无准备记录' }}。
+        </dd>
+        <dt>原因确认程度</dt>
+        <dd>
+          原因未知；以下仅为已记录事实：{{
+            item.runs.at(-1)?.blocker ?? '无 Run 阻塞记录'
+          }}。业务问题记录 {{ item.questions.length }} 条。{{ item.preparation[0]?.code }}
+          {{ item.preparation[0]?.detail }}
+          {{ item.validations.at(-1)?.failure }}
+        </dd>
+        <dt>已保存内容</dt>
+        <dd>
+          输入修订 {{ item.requirement.revision }}，{{ item.runs.length }} 个 Run，{{
+            item.validations.length
+          }}
+          条独立验证记录及下方证据索引。
+        </dd>
+        <dt>已尝试动作</dt>
+        <dd>
+          已记录预检尝试 {{ item.preparation[0]?.attempts ?? 0 }} 次。
+          @for (event of item.events; track $index) {
+            <span>{{ event.kind }}（版本 {{ event.version }}）；</span>
+          } @empty {
+            尚无操作事件。
+          }
+        </dd>
+        <dt>下一步</dt>
+        <dd>核对当前事实，回答未过期问题或使用当前可用操作；没有适用操作时需要人工恢复环境。</dd>
+        <dt>恢复位置</dt>
+        <dd>
+          按已保存阶段
+          {{ item.runs.at(-1)?.phase ?? '准备' }}
+          及保全记录重新检查恢复条件；回答不解除暂停，也不自动重置预算。
+        </dd>
+      </dl>
+    </section>
+    @for (question of item.questions; track question.id) {
+      <section class="ui-panel" [attr.aria-label]="'问题 ' + question.id">
+        <h3>业务问题 · 版本 {{ question.version }}</h3>
+        <p>输入修订 {{ question.revision }} · {{ question.resume_state }}</p>
+        @if (invalidQuestion() === question.id) {
+          <p role="alert" [id]="'answer-error-' + question.id">请填写每个问题的回答。</p>
+        }
+        @for (part of question.questions; track part.id) {
+          <p>{{ part.question }}</p>
+          @if (part.options.length) {
+            <p>可选答案：{{ part.options.join(' / ') }}</p>
+          }
+          @if (
+            !question.answered &&
+            question.resume_state === 'waiting' &&
+            question.revision === item.requirement.revision &&
+            !item.requirement.cancel_requested
+          ) {
+            <mat-form-field
+              ><mat-label>{{ part.question }}</mat-label
+              ><input
+                matInput
+                required
+                [readonly]="busy() || !!error()"
+                [formControl]="answerControl(question.id, part.id)"
+              /><mat-error>请填写回答。</mat-error
+              ><mat-hint>回答会持久化；暂停期间不启动执行。</mat-hint></mat-form-field
+            >
+          }
+        }
+        @if (
+          !question.answered &&
+          question.resume_state === 'waiting' &&
+          question.revision === item.requirement.revision &&
+          !item.requirement.cancel_requested
+        ) {
+          <button matButton="filled" [disabled]="busy() || !!error()" (click)="answer(question)">
+            保存回答
+          </button>
+        }
+      </section>
+    }
+    <h3>执行事实</h3>
+    @for (run of item.runs; track run.id) {
+      <p>
+        Run {{ run.id }} · 输入 {{ run.revision }} · {{ run.state }} · {{ run.phase }} · 静止
+        {{ run.quiescent }} · {{ run.created_at }}
+      </p>
+    } @empty {
+      <p>暂无 Run。</p>
+    }
+    <h3>独立验证事实</h3>
+    @for (validation of item.validations; track validation.id) {
+      <p>
+        {{ validation.candidate_sha }} · {{ validation.result }} · {{ validation.stage }} ·
+        {{ validation.failure ?? '无失败记录' }}
+      </p>
+    } @empty {
+      <p>暂无验证证据。</p>
+    }
+    <h3>GitHub / CI 观察</h3>
+    @for (external of item.external; track $index) {
+      <p>
+        修订 {{ external.revision }} · {{ external.head_sha }} ·
+        {{ external.stale ? 'stale：观察已陈旧或缺失' : '当前观察' }}
+      </p>
+      @if (prLink(external.repository, external.pr_number); as link) {
+        <a [href]="link" target="_blank" rel="noopener noreferrer"
+          >查看关联 PR #{{ external.pr_number }}</a
+        >
+      }
+      <pre>{{ external.observation ?? '尚无远端观察' }}</pre>
+    } @empty {
+      <p>尚无 PR 交接。</p>
+    }
+    <h3>跨 Run 消耗</h3>
+    <p>
+      input {{ item.metrics.input ?? '未知' }} / cached {{ item.metrics.cached ?? '未知' }} / output
+      {{ item.metrics.output ?? '未知' }}；cached 属于 input 的子集。
+    </p>
+    <p>
+      模型调用 {{ item.metrics.model_calls }}；代码修复 {{ item.metrics.repair_count }}；人工等待
+      {{ item.metrics.human_seconds ?? '未知' }} 秒；控制介入 {{ item.metrics.interventions }}。
+    </p>
+    <p>
+      介入原因：{{
+        item.metrics.reasons.join('、') || '当前采集期无介入记录；旧历史完整性未知'
+      }}。到 PR：{{ item.metrics.to_pr_seconds ?? '未知' }} 秒。
+    </p>
+    <p>
+      零介入率（阶段 {{ item.metrics.zero_intervention.phase }}）：{{
+        item.metrics.zero_intervention.numerator
+      }}
+      / {{ item.metrics.zero_intervention.denominator }}。仅包含介入采集启用后评审且已 Submitted
+      的需求；分母为 0 时无比率。
+    </p>
+    @for (phase of item.metrics.phases; track $index) {
+      <p>
+        阶段 {{ phase.phase }}：墙钟 {{ phase.seconds }} 秒（{{
+          phase.complete ? '已结束' : '进行中'
+        }}），包含等待，不等同编码耗时。
+      </p>
+    }
+    <h3>材料与存储</h3>
+    <p>
+      完整证据生命周期与存储占用、预留、受保护字节、清理失败、容量阻塞数据尚未接入（#23）。缺失材料不改变历史验证结果；可使用上方输入、执行和验证记录复盘。
+    </p>
+    @for (material of item.materials; track $index) {
+      <p>
+        {{ material.run_id }} / {{ material.channel }} · {{ material.status }} · 保留
+        {{ material.kept_bytes }} 字节 / 丢弃 {{ material.discarded_bytes }} 字节
+        <button matButton [disabled]="busy()" (click)="evidence(item.requirement.id, material)">
+          查看脱敏日志预览
+        </button>
+      </p>
+    } @empty {
+      <p>暂无原始材料索引。</p>
+    }
+  </section>
+}
+@if (preview()) {
+  <section class="ui-panel" aria-label="脱敏日志预览">
+    <h2>日志预览（最多 16 块）</h2>
+    <pre>{{ preview() }}</pre>
+  </section>
+}
