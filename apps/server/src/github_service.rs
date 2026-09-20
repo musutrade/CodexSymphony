@@ -49,9 +49,49 @@ pub async fn start(pool: &PgPool) -> Result<Option<tokio::task::JoinHandle<()>>>
     let Some(path) = std::env::var_os("GITHUB_APP_CONFIG") else {
         return Ok(None);
     };
-    let (config, client) = load(Path::new(&path))?;
-    Ok(Some(start_configured(pool, &config, client).await?))
+    start_path(pool, Path::new(&path)).await.map(Some)
 }
+pub async fn start_path(pool: &PgPool, path: &Path) -> Result<tokio::task::JoinHandle<()>> {
+    let value: serde_json::Value = serde_json::from_slice(&std::fs::read(path)?)?;
+    if value.get("app").is_none() {
+        let (config, client) = load(path)?;
+        return start_configured(pool, &config, client).await;
+    }
+    start_multiple(pool, serde_json::from_value(value)?).await
+}
+async fn start_multiple(
+    pool: &PgPool,
+    deployment: Deployment,
+) -> Result<tokio::task::JoinHandle<()>> {
+    let pem = std::fs::read(&deployment.app.private_key_path)?;
+    let client = AppClient::new(
+        deployment
+            .app
+            .api_url
+            .as_deref()
+            .unwrap_or("https://api.github.com/"),
+        deployment.app.app_id,
+        &pem,
+    )?;
+    github_store::configure(pool, &deployment.app.policy, deployment.app.probe_pr).await?;
+    for repository in deployment.repositories {
+        github_store::configure(pool, &repository.policy, repository.probe_pr).await?;
+    }
+    Ok(tokio::spawn(poll(pool.clone(), client)))
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Deployment {
+    app: Config,
+    repositories: Vec<Repository>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Repository {
+    policy: Policy,
+    probe_pr: u64,
+}
+
 pub async fn start_configured(
     pool: &PgPool,
     config: &Config,

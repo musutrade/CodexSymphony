@@ -651,11 +651,8 @@ async fn control_plane_configuration_and_readonly_cli() {
     let config = json!({"app_id":42,"api_url":f.url,"private_key_path":f.root.join("fixture.pem"),"policy":action_policy(),"probe_pr":1});
     let file = f.root.join("config.json");
     std::fs::write(&file, serde_json::to_vec(&config).unwrap()).unwrap();
-    let (config, client) = github_service::load(&file).unwrap();
     let pool = database().await;
-    let worker = github_service::start_configured(&pool, &config, client)
-        .await
-        .unwrap();
+    let worker = github_service::start_path(&pool, &file).await.unwrap();
     // Capability is an intermediate result. Require complete PR sync cycles,
     // including a fresh poll after the worker's sleep, before stopping it.
     assert!(github_store::link(&pool, 99, 1, 1).await.unwrap());
@@ -685,6 +682,29 @@ async fn control_plane_configuration_and_readonly_cli() {
     );
     worker.abort();
     assert!(worker.await.unwrap_err().is_cancelled());
+    // The same App config installs both exact policies; no second credential path.
+    let original: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+    let mut second = action_policy();
+    second.repository_id = 100;
+    second.repository = "owner/second".into();
+    sqlx::query("INSERT INTO repository(id,version,document) SELECT 2,version,jsonb_set(jsonb_set(document,'{github_repository_id}','100'),'{remote}','\"owner/second\"') FROM repository WHERE id=1").execute(&pool).await.unwrap();
+    std::fs::write(
+        &file,
+        json!({"app":original,"repositories":[{"policy":second,"probe_pr":1}]}).to_string(),
+    )
+    .unwrap();
+    let multi = github_service::start_path(&pool, &file).await.unwrap();
+    multi.abort();
+    assert!(multi.await.unwrap_err().is_cancelled());
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM github_repository WHERE repository_id IN (99,100)"
+        )
+        .await,
+        2
+    );
+    std::fs::write(&file, original.to_string()).unwrap();
     let binary = env!("CARGO_BIN_EXE_codexsymphony-server");
     let out = std::process::Command::new(binary)
         .arg("--github-inspect")
@@ -1261,4 +1281,30 @@ fn git_push_inherits_only_service_proxy_routing() {
             Some(std::ffi::OsStr::new(input[1].1))
         )
     );
+}
+
+#[tokio::test]
+async fn private_actions_do_not_require_unselected_legacy_status_permission() {
+    let f = Fixture::new().await;
+    f.actions();
+    f.fail("/repos/owner/repo/commits/abc/statuses", vec![403]);
+    let now = github_service::now();
+    let mut client = f.client();
+    let capability = github_observe::preflight(&mut client, &action_policy(), 1, now)
+        .await
+        .unwrap();
+    assert!(capability.blockers.is_empty());
+    assert!(
+        !f.data
+            .lock()
+            .unwrap()
+            .seen
+            .iter()
+            .any(|request| request.contains("/statuses"))
+    );
+    // An explicitly selected Status source still fails closed on denied access.
+    let error = github_observe::observe(&mut client, &policy(), 1, now)
+        .await
+        .unwrap_err();
+    assert_eq!(error.status, Some(403));
 }

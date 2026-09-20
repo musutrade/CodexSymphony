@@ -136,7 +136,7 @@ pub(crate) async fn claim_allowed(tx: &mut Tx<'_>, incarnation: &str) -> Result<
 }
 
 async fn authorized(tx: &mut Tx<'_>, id: i64, revision: i64) -> Result<bool> {
-    let allowed: Option<bool> = sqlx::query_scalar("SELECT NOT (r.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > r.revoked_through_version FROM requirement_revision v CROSS JOIN repository r WHERE v.requirement_id=$1 AND v.revision=$2 AND r.id=1")
+    let allowed: Option<bool> = sqlx::query_scalar("SELECT NOT (r.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > r.revoked_through_version FROM requirement_revision v CROSS JOIN repository r WHERE v.requirement_id=$1 AND v.revision=$2 AND r.id=COALESCE((v.document->>'repository_id')::bigint,1)")
         .bind(id).bind(revision).fetch_optional(&mut **tx).await?;
     Ok(allowed == Some(true))
 }
@@ -189,7 +189,7 @@ pub async fn actions_allowed(pool: &PgPool, key: &RunKey) -> Result<bool> {
 }
 
 pub(crate) async fn actions_allowed_in(tx: &mut Tx<'_>, key: &RunKey) -> Result<bool> {
-    let result: Option<bool> = sqlx::query_scalar("SELECT c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT a.stop_requested AND NOT a.quiescent AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > p.revoked_through_version FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND p.id=1")
+    let result: Option<bool> = sqlx::query_scalar("SELECT c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT a.stop_requested AND NOT a.quiescent AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > p.revoked_through_version FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND p.id=COALESCE((v.document->>'repository_id')::bigint,1)")
         .bind(&key.run_id).bind(&key.request_id).bind(&key.incarnation).fetch_optional(&mut **tx).await?;
     Ok(result == Some(true))
 }

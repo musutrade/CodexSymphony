@@ -2,7 +2,7 @@
 
 本入口复用当前 0a 的测试与产品部署，不建立第二套故障矩阵。A01 真实贯通、确定性故障测试、
 开发宿主验收和精确提交双 Gate 分别记录。GH-24 已在原 Requirement 1 完成真实 A01，产品创建 [测试 PR #4](https://github.com/musutrade/disposable/pull/4)，详见
-[集成验收记录](quality/gh24/README.md)。A13 未实施，不能宣称完整 0a 发布。
+[集成验收记录](quality/gh24/README.md)。第二私仓 A13 见 [GH-25 记录](quality/gh25/README.md)；完整 0a 发布仍须第 24 章全部证据和精确提交验收。
 
 ## 普通环境与可重复入口
 

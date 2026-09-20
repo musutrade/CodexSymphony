@@ -382,6 +382,41 @@ async fn initial_ready_plan_is_durable_and_admission_binds_the_same_worktree() {
     );
     let broker = GitBroker::initialize(&root.join("workspaces"), &bundle).unwrap();
     let launcher = vec!["/usr/bin/codex".into()];
+    // The worker may have selected a repository before the user withdrew its
+    // queue head. A different head must not inherit the selected configuration.
+    assert!(
+        runtime_initial::plan_selected(
+            &pool,
+            &broker,
+            "boot",
+            &launcher,
+            &baseline,
+            Some((999, 1))
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    assert!(
+        runtime_initial::plan_selected(
+            &pool,
+            &broker,
+            "boot",
+            &launcher,
+            &baseline,
+            Some((1, 999))
+        )
+        .await
+        .unwrap()
+        .is_none()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM initial_run")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
     let (launch, workspace) = runtime_initial::plan(&pool, &broker, "boot", &launcher, &baseline)
         .await
         .unwrap()
@@ -392,6 +427,21 @@ async fn initial_ready_plan_is_durable_and_admission_binds_the_same_worktree() {
         .unwrap();
     assert_eq!(launch.key, saved.0.key);
     let mut config: codexsymphony_server::runtime_service::Config=serde_json::from_value(json!({"validation":null,"settings":{"startup_seconds":10,"response_seconds":10,"stall_seconds":10,"reservation":{"tokens":100,"turns":1,"model_seconds":10},"codex_config":""},"preparation_adapter":"/missing-adapter","preparation":{"launcher":launcher,"baseline":baseline}})).unwrap();
+    let route_file = root.join("routes.json");
+    std::fs::write(&route_file,json!({"validation":null,"settings":{"startup_seconds":10,"response_seconds":10,"stall_seconds":10,"reservation":{"tokens":100,"turns":1,"model_seconds":10},"codex_config":""},"preparation_adapter":"/missing-adapter","preparation":{"launcher":launcher,"baseline":baseline}}).to_string()).unwrap();
+    let routes = codexsymphony_server::runtime_routes::Deployment::load(&route_file).unwrap();
+    assert!(
+        codexsymphony_server::runtime_service::tick_routes(
+            &pool,
+            &root,
+            std::path::Path::new(env!("CARGO_BIN_EXE_codexsymphony-server")),
+            &broker,
+            "boot",
+            &routes
+        )
+        .await
+        .is_err()
+    );
     // Invalid deployment config creates no probe and cannot bypass admission.
     assert!(
         runtime_initial::tick(&pool, &root, &broker, "boot", &config)

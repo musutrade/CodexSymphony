@@ -1,0 +1,34 @@
+{
+  "risk_max": 7.294515401953419,
+  "violations": [],
+  "source": "artifacts/gh25/frontend-risk/measurement.json",
+  "formal_gate": false,
+  "file_line_below_80": [],
+  "file_line_unavailable": [
+    [
+      "src/app/health-response.ts",
+      {
+        "values": {},
+        "unavailable": [
+          "coverage.line"
+        ]
+      }
+    ]
+  ],
+  "function_line_below_80": [],
+  "current_source_hashes": {
+    "src/app/app.config.ts": "3a695c5453a1b4e5c6fd320447cc74acfbaffe02326fbe8be0689188cd0d5835",
+    "src/app/app.routes.ts": "bff08c3a3b71512ea696bcd2fa231ef5c655ea62a1d9a1439520cab3ab111d15",
+    "src/app/app.ts": "c9cee6adc7e7fc8b9e1440da73264f1728395b35f82f7caac4b7d70a297fc415",
+    "src/app/health-page.ts": "bd70182b665f43d154a1eef2ede72b0aba1840ecf96d20d52ce48998e1eb3950",
+    "src/app/health-response.ts": "76be3b70e0a0543cbdc4f0341785174ba255849f2093eb5ef33c6079e6a5b864",
+    "src/app/health.ts": "6a6b3a3f2732f995352c6e8d7c3d7e6de75601fd54ee1c13c846f30a7ab2def2",
+    "src/app/operations-api.ts": "d1953e554a837bb783d1e070c5d652929619922af419542565d2dd4c914bfbf9",
+    "src/app/operations.ts": "77d93d3f3882926a33a3c73e91013b165d0302228b282bb8c612787cc454aff6",
+    "src/app/requirement-list.ts": "287dd4f04ad96ac5f731ffeb29c873db5e57eefb6ded81736e92cc61f1714d4a",
+    "src/app/requirements/requirements-api.ts": "fc79d42c5088a71ac243dae80ee8693476d9148b4e1b489ccf0f4f47a3460ed7",
+    "src/app/requirements/requirements.ts": "abcdbd099bd9473f599151f82ebe83650b370b76cfcfe16839c4389b5c4a9858",
+    "src/main.ts": "2341253f1a947c37dfa27838951cf7e224f7abb32dff45a8d425f042b5eeed13"
+  },
+  "hashes_checked_current": true
+}

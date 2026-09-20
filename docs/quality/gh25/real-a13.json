@@ -1,0 +1,215 @@
+{
+  "requirement": {
+    "cancel_requested": false,
+    "cleanup_complete": false,
+    "id": 2,
+    "paused": false,
+    "revision": 1,
+    "state": "Submitted",
+    "version": 4
+  },
+  "run": [
+    {
+      "blocker": null,
+      "created_at": "2026-09-20T02:17:45.156227+00:00",
+      "id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "phase": "validation",
+      "quiescent": true,
+      "revision": 1,
+      "state": "Succeeded",
+      "waiting": "{\"ci_seconds\": 0, \"human_seconds\": 0, \"paused_seconds\": 0, \"network_seconds\": 0}"
+    }
+  ],
+  "validation": [
+    {
+      "candidate_sha": "3974acfce705c774d4590c72cd508a40c2f1ff58",
+      "failure": null,
+      "id": "validation-2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "result": "succeeded",
+      "revision": 1,
+      "source_run_id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "stage": "handoff"
+    }
+  ],
+  "delivery": {
+    "repository": "musutrade/disposable-2",
+    "repository_id": 1377749969,
+    "requirement_id": 2,
+    "revision": 1,
+    "branch": "ai/req-2-2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+    "head_sha": "3974acfce705c774d4590c72cd508a40c2f1ff58",
+    "pr_number": 2,
+    "validation_id": "validation-2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+    "merged": false
+  },
+  "private": true,
+  "pr_url": "https://github.com/musutrade/disposable-2/pull/2",
+  "base_branch": "main",
+  "metrics": {
+    "cached": 67328,
+    "human_seconds": 0,
+    "input": 82829,
+    "interventions": 0,
+    "model_calls": 1,
+    "output": 641,
+    "phases": [
+      {
+        "complete": true,
+        "phase": "Ready",
+        "seconds": 757
+      },
+      {
+        "complete": true,
+        "phase": "execution",
+        "seconds": 51
+      },
+      {
+        "complete": true,
+        "phase": "Running",
+        "seconds": 67
+      }
+    ],
+    "reasons": [],
+    "repair_count": 0,
+    "to_pr_seconds": 820,
+    "zero_intervention": {
+      "denominator": 2,
+      "numerator": 1,
+      "phase": "reviewed_to_submitted"
+    }
+  },
+  "external_fresh": true,
+  "storage": {
+    "blocked": false,
+    "error": null
+  },
+  "shared_global_limit": 8589934592,
+  "first_global_limit": 8589934592,
+  "storage_materials": [
+    {
+      "id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25-validation",
+      "run_id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "identity": "{\"pr\": 2, \"run\": \"2a2ae1eb-e147-47f8-a650-8869e98a5e25\", \"stage\": \"execution\", \"policy\": \"0989cde8dfe1d6a536961dce2b0b22523e0acbea6b07e6238f2b571e242940fe\", \"attempt\": 8, \"revision\": 1, \"candidate\": \"3974acfce705c774d4590c72cd508a40c2f1ff58\", \"repository\": \"musutrade/disposable-2\", \"requirement\": 2}",
+      "status": "available",
+      "protection": null
+    },
+    {
+      "id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25-checkout",
+      "run_id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "identity": "{\"pr\": 2, \"run\": \"2a2ae1eb-e147-47f8-a650-8869e98a5e25\", \"stage\": \"execution\", \"policy\": \"0989cde8dfe1d6a536961dce2b0b22523e0acbea6b07e6238f2b571e242940fe\", \"attempt\": 8, \"revision\": 1, \"candidate\": \"3974acfce705c774d4590c72cd508a40c2f1ff58\", \"repository\": \"musutrade/disposable-2\", \"requirement\": 2}",
+      "status": "available",
+      "protection": null
+    },
+    {
+      "id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25-snapshot",
+      "run_id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "identity": "{\"pr\": 2, \"run\": \"2a2ae1eb-e147-47f8-a650-8869e98a5e25\", \"stage\": \"execution\", \"policy\": \"0989cde8dfe1d6a536961dce2b0b22523e0acbea6b07e6238f2b571e242940fe\", \"attempt\": 8, \"revision\": 1, \"candidate\": \"3974acfce705c774d4590c72cd508a40c2f1ff58\", \"repository\": \"musutrade/disposable-2\", \"requirement\": 2}",
+      "status": "available",
+      "protection": null
+    },
+    {
+      "id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25-runtime",
+      "run_id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "identity": "{\"pr\": 2, \"run\": \"2a2ae1eb-e147-47f8-a650-8869e98a5e25\", \"stage\": \"execution\", \"policy\": \"0989cde8dfe1d6a536961dce2b0b22523e0acbea6b07e6238f2b571e242940fe\", \"attempt\": 8, \"revision\": 1, \"candidate\": \"3974acfce705c774d4590c72cd508a40c2f1ff58\", \"repository\": \"musutrade/disposable-2\", \"requirement\": 2}",
+      "status": "available",
+      "protection": null
+    },
+    {
+      "id": ".preparation-2a2ae1eb-e147-47f8-a650-8869e98a5e25-264b85f3-43fb-4b63-946d-a160dfeba93d",
+      "run_id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "identity": "{\"pr\": 2, \"run\": \"2a2ae1eb-e147-47f8-a650-8869e98a5e25\", \"stage\": \"execution\", \"policy\": \"0989cde8dfe1d6a536961dce2b0b22523e0acbea6b07e6238f2b571e242940fe\", \"attempt\": 8, \"revision\": 1, \"candidate\": \"3974acfce705c774d4590c72cd508a40c2f1ff58\", \"repository\": \"musutrade/disposable-2\", \"requirement\": 2}",
+      "status": "available",
+      "protection": null
+    },
+    {
+      "id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25-work",
+      "run_id": "2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+      "identity": "{\"pr\": 2, \"run\": \"2a2ae1eb-e147-47f8-a650-8869e98a5e25\", \"stage\": \"execution\", \"policy\": \"0989cde8dfe1d6a536961dce2b0b22523e0acbea6b07e6238f2b571e242940fe\", \"attempt\": 8, \"revision\": 1, \"candidate\": \"3974acfce705c774d4590c72cd508a40c2f1ff58\", \"repository\": \"musutrade/disposable-2\", \"requirement\": 2}",
+      "status": "available",
+      "protection": null
+    }
+  ],
+  "actions": [
+    {
+      "id": 35483660763,
+      "head_sha": "3974acfce705c774d4590c72cd508a40c2f1ff58",
+      "event": "pull_request",
+      "conclusion": "success",
+      "html_url": "https://github.com/musutrade/disposable-2/actions/runs/35483660763"
+    },
+    {
+      "id": 35483657920,
+      "head_sha": "3974acfce705c774d4590c72cd508a40c2f1ff58",
+      "event": "push",
+      "conclusion": "success",
+      "html_url": "https://github.com/musutrade/disposable-2/actions/runs/35483657920"
+    }
+  ],
+  "occupied_queue": {
+    "observed_at": "2026-09-20T02:05:22.030314+00:00",
+    "first_requirement": {
+      "cancel_requested": false,
+      "cleanup_complete": false,
+      "id": 1,
+      "paused": false,
+      "revision": 1,
+      "state": "Submitted",
+      "version": 18
+    },
+    "second_requirement": {
+      "cancel_requested": false,
+      "cleanup_complete": false,
+      "id": 2,
+      "paused": false,
+      "revision": 1,
+      "state": "Ready",
+      "version": 2
+    },
+    "first_model_calls_before": 5,
+    "first_model_calls_after": 5,
+    "second_model_calls": 0,
+    "first_runs_unchanged": true,
+    "second_runs": [],
+    "second_storage": {
+      "blocked": false,
+      "error": null
+    },
+    "first_storage_blocked": false
+  },
+  "release": {
+    "owner": 2,
+    "first_state": "Submitted",
+    "second_runs": 1,
+    "second_state": "Running",
+    "first_delivery": {
+      "head_sha": "a8e741155953ee97dc01b3aae1e7e77747b5277c",
+      "released": true,
+      "pr_number": 4
+    },
+    "merge_observation": {
+      "head": "a8e741155953ee97dc01b3aae1e7e77747b5277c",
+      "merge": "Merged",
+      "stale": false,
+      "merged_sha": "fbcad73d9b5f1155b44c79a59b828d9f2ae3bf09"
+    }
+  },
+  "first_budget": {
+    "unchanged": true,
+    "budget": {
+      "limits": {
+        "turns": 5,
+        "tokens": 500000,
+        "model_seconds": 4500
+      },
+      "version": 4,
+      "exhausted": false,
+      "requirement_id": 1
+    }
+  },
+  "limitations": [
+    "Product observation payload is redacted by the existing API; fresh flag is observed separately from GitHub Actions readback.",
+    "Development github_api Checks endpoint returned 403; Actions and PR reads succeeded. Product uses its independently held App grant.",
+    "Deployment required an audited storage_recheck and operator first-PR merge; this is not a zero-intervention two-repository deployment.",
+    "Exact published-commit protected Gates remain pending."
+  ]
+}

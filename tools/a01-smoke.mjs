@@ -1,4 +1,4 @@
-// Explicitly invoked real single-repository smoke; never part of default tests.
+// Explicitly invoked real requirement smoke in the designated repository; never part of default tests.
 import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -33,27 +33,31 @@ try {
     const context = await browser.newContext();
     const page = await context.newPage();
     await page.goto(new URL('/requirements', origin).href);
-    const repositoryResponse = await context.request.get(new URL('/api/repository', origin).href);
+    const repositoryResponse = await context.request.get(new URL('/api/multi/repository', origin).href);
     if (!repositoryResponse.ok()) throw new Error('repository read failed');
     const registered = await repositoryResponse.json();
-    if (!registered.repositories?.some(r => r.repository.remote === input.repository && r.repository.github_repository_id === input.repository_id && !r.repository.revoked)) throw new Error('designated repository is not configured');
+    const target = registered.repositories?.find(r => r.repository.remote === input.repository && r.repository.github_repository_id === input.repository_id && !r.repository.revoked);
+    if (!target || !Number.isInteger(target.id)) throw new Error('designated repository is not configured');
+    await page.getByRole('combobox', { name: '需求目标仓库' }).click();
+    await page.getByRole('option', { name: input.repository, exact: true }).click();
     await page.getByLabel('标题', { exact: true }).fill(input.title);
     await page.getByLabel('需求描述', { exact: true }).fill(input.description);
     await page.getByLabel('验收条件 1 描述', { exact: true }).fill(input.acceptance);
     await page.getByLabel('步骤 1 测试选择器', { exact: true }).fill(input.selector);
     await page.getByLabel('步骤 1 预期结果', { exact: true }).fill(input.expected);
     const [draft] = await Promise.all([
-      page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith('/api/requirements')),
+      page.waitForResponse(r => r.request().method() === 'POST' && r.url().endsWith('/api/multi/requirements')),
       page.getByRole('button', { name: '保存 Draft', exact: true }).click(),
     ]);
     if (draft.status() !== 201) throw new Error(`Draft returned ${draft.status()}`);
     const requirement = await draft.json();
+    if (requirement.repository_id !== target.id) throw new Error('Draft repository selection mismatch; do not review');
     evidence.requirement_id = requirement.id;
     await save();
     await page.getByRole('button', { name: '评审已保存版本', exact: true }).click();
     await page.screenshot({ path: resolve(directory, 'review.png'), fullPage: true });
     const [ready] = await Promise.all([
-      page.waitForResponse(r => r.url().endsWith(`/api/requirements/${requirement.id}/ready`)),
+      page.waitForResponse(r => r.url().endsWith(`/api/multi/requirements/${requirement.id}/ready`)),
       page.getByRole('button', { name: '确认评审并 Ready', exact: true }).click(),
     ]);
     if (!ready.ok()) throw new Error(`Ready returned ${ready.status()}`);

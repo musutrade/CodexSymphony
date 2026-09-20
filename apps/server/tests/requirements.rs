@@ -64,6 +64,13 @@ async fn ok(app: &Router, method: &str, path: &str, body: Value) -> Value {
 #[tokio::test]
 async fn database_api_acceptance() {
     let (pool, app) = fixture().await;
+    // The compatibility layer preserves Axum's ordinary bodyless HEAD response.
+    assert_eq!(
+        request(&app, "HEAD", "/api/repository", json!(null))
+            .await
+            .0,
+        StatusCode::OK
+    );
     assert_eq!(
         ok(&app, "GET", "/api/repository", json!(null)).await["repositories"],
         json!([])

@@ -682,5 +682,454 @@
         }
       ]
     }
+  },
+  {
+    "id": "multi-repository",
+    "method": "GET",
+    "path": "/api/multi/repository",
+    "status": 200
+  },
+  {
+    "id": "multi-configured",
+    "method": "PUT",
+    "path": "/api/multi/repository",
+    "status": 200,
+    "body": {
+      "request_id": "multi-capture-configure",
+      "version": 0,
+      "repository": {
+        "project": "Capture fixture",
+        "remote": "musutrade/disposable-2",
+        "github_repository_id": 124,
+        "base_branch": "main",
+        "revoked": false,
+        "reason": "Explicit initial local review",
+        "policy": {
+          "allowed_checks": [
+            "cargo_test"
+          ],
+          "max_timeout_seconds": 120,
+          "token_limit": 10000,
+          "turn_limit": 10,
+          "model_work_seconds": 600,
+          "gate_recovery_policy": "one_code_repair"
+        }
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-stale-policy",
+    "method": "PUT",
+    "path": "/api/multi/repository",
+    "status": 409,
+    "body": {
+      "request_id": "multi-capture-stale-policy",
+      "version": 0,
+      "repository": {
+        "project": "Capture fixture",
+        "remote": "musutrade/disposable-2",
+        "github_repository_id": 124,
+        "base_branch": "main",
+        "revoked": false,
+        "reason": "Explicit initial local review",
+        "policy": {
+          "allowed_checks": [
+            "cargo_test"
+          ],
+          "max_timeout_seconds": 120,
+          "token_limit": 10000,
+          "turn_limit": 10,
+          "model_work_seconds": 600,
+          "gate_recovery_policy": "one_code_repair"
+        }
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-invalid-policy",
+    "method": "PUT",
+    "path": "/api/multi/repository",
+    "status": 422,
+    "body": {
+      "request_id": "multi-capture-invalid-policy",
+      "version": 1,
+      "repository": {
+        "project": "Capture fixture",
+        "remote": "musutrade/disposable-2",
+        "github_repository_id": 124,
+        "base_branch": "main",
+        "revoked": false,
+        "reason": "Explicit initial local review",
+        "policy": {
+          "allowed_checks": [
+            "cargo_test"
+          ],
+          "max_timeout_seconds": 120,
+          "token_limit": 0,
+          "turn_limit": 10,
+          "model_work_seconds": 600,
+          "gate_recovery_policy": "one_code_repair"
+        }
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-created",
+    "method": "POST",
+    "path": "/api/multi/requirements",
+    "status": 201,
+    "body": {
+      "request_id": "multi-capture-create",
+      "version": 0,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-invalid-create",
+    "method": "POST",
+    "path": "/api/multi/requirements",
+    "status": 422,
+    "body": {
+      "request_id": "multi-capture-invalid",
+      "version": 0,
+      "contract": {
+        "title": "",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-duplicate-key",
+    "method": "POST",
+    "path": "/api/multi/requirements",
+    "status": 409,
+    "body": {
+      "request_id": "multi-capture-create",
+      "version": 0,
+      "contract": {
+        "title": "",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-detail",
+    "method": "GET",
+    "path": "/api/multi/requirements/{id}",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    }
+  },
+  {
+    "id": "multi-missing",
+    "method": "GET",
+    "path": "/api/multi/requirements/{id}",
+    "status": 404,
+    "path_parameters": {
+      "id": 999999
+    }
+  },
+  {
+    "id": "multi-edited",
+    "method": "PATCH",
+    "path": "/api/multi/requirements/{id}",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-edit",
+      "version": 1,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-stale-edit",
+    "method": "PATCH",
+    "path": "/api/multi/requirements/{id}",
+    "status": 409,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-stale-edit",
+      "version": 1,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-invalid-edit",
+    "method": "PATCH",
+    "path": "/api/multi/requirements/{id}",
+    "status": 422,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-invalid-edit",
+      "version": 2,
+      "contract": {
+        "title": "",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "cargo_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-ready",
+    "method": "POST",
+    "path": "/api/multi/requirements/{id}/ready",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-ready",
+      "version": 2,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "multi-ready-replay",
+    "method": "POST",
+    "path": "/api/multi/requirements/{id}/ready",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "record": false,
+    "body": {
+      "request_id": "multi-capture-ready",
+      "version": 2,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "multi-stale-ready",
+    "method": "POST",
+    "path": "/api/multi/requirements/{id}/ready",
+    "status": 409,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-stale-ready",
+      "version": 2,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "multi-future",
+    "method": "POST",
+    "path": "/api/multi/requirements",
+    "status": 201,
+    "record": false,
+    "body": {
+      "request_id": "multi-capture-future",
+      "version": 0,
+      "contract": {
+        "title": "Contract capture future test",
+        "description": "Implement a future assertion",
+        "acceptance_criteria": [
+          {
+            "description": "Future test passes",
+            "verification_ref": "test"
+          }
+        ],
+        "validation_plan": [
+          {
+            "id": "test",
+            "check": "npm_test",
+            "selector": "future::passes",
+            "expected_result": "exit 0 and assertions pass",
+            "timeout_seconds": 60
+          }
+        ],
+        "network_access": []
+      },
+      "repository_id": 2
+    }
+  },
+  {
+    "id": "multi-unauthorized-ready",
+    "method": "POST",
+    "path": "/api/multi/requirements/{id}/ready",
+    "status": 422,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-future#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-unauthorized-ready",
+      "version": 1,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "multi-withdrawn",
+    "method": "POST",
+    "path": "/api/multi/requirements/{id}/withdraw",
+    "status": 200,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-withdraw",
+      "version": 3,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "multi-stale-withdraw",
+    "method": "POST",
+    "path": "/api/multi/requirements/{id}/withdraw",
+    "status": 409,
+    "path_parameters": {
+      "id": {
+        "$response": "multi-created#/id"
+      }
+    },
+    "body": {
+      "request_id": "multi-capture-stale-withdraw",
+      "version": 3,
+      "repository_version": 1
+    }
+  },
+  {
+    "id": "multi-list",
+    "method": "GET",
+    "path": "/api/multi/requirements",
+    "status": 200
   }
 ]

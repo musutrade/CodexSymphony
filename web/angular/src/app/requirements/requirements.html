@@ -28,11 +28,11 @@
     <p>需求联网声明用于准备依赖与检查实际连通性；可信开发环境使用正常网络连接。</p>
     <p>Ready 表示已评审并排队，不表示已开始执行。实际执行与交付事实见需求详情。</p>
   </section>
-  @if (context.repositories.length === 0) {
+  @if (context.repositories.length === 0 || registering()) {
     <section class="ui-panel" aria-labelledby="setup-title">
-      <h2 id="setup-title">登记首个可信仓库</h2>
+      <h2 id="setup-title">登记可信仓库</h2>
       <p>
-        仅启用一个仓库。初始策略允许 cargo_test / npm_test 检查，超时上限 3600
+        所有仓库共享一个全局队列占用者。初始策略允许 cargo_test / npm_test 检查，超时上限 3600
         秒，最多一次代码修复。请评审以下累计预算。
       </p>
       <form [formGroup]="setup" (ngSubmit)="configure()">
@@ -89,29 +89,54 @@
         </fieldset>
       </form>
     </section>
-  } @else {
-    <section class="ui-panel" aria-labelledby="repository-title">
-      <h2 id="repository-title">当前仓库策略</h2>
-      @for (entry of context.repositories; track entry.version) {
-        <p>
-          {{ entry.repository.project }} · {{ entry.repository.remote }} ·
-          {{ entry.repository.base_branch }} · 策略版本 {{ entry.version }}
-        </p>
-        <p>
-          累计预算：{{ entry.repository.policy.token_limit }} tokens /
-          {{ entry.repository.policy.turn_limit }} turns /
-          {{ entry.repository.policy.model_work_seconds }} 秒；代码修复最多一次。
-        </p>
-        <p>
-          检查：{{ entry.repository.policy.allowed_checks.join(', ') }}；超时上限
-          {{ entry.repository.policy.max_timeout_seconds }} 秒。
-        </p>
-        @if (entry.repository.revoked) {
-          <p role="alert">仓库授权已撤销，后续动作被阻止。</p>
-        }
-      }
-    </section>
   }
+  <section class="ui-panel" aria-labelledby="repository-title">
+    <h2 id="repository-title">仓库列表与选择</h2>
+    <p>切换仓库仅改变草稿目标。CI 等待、暂停、人工阻塞及取消收尾仍保留全局占用。</p>
+    <button matButton="outlined" (click)="registering.set(true)" [disabled]="busy()">
+      登记另一个仓库
+    </button>
+    <mat-form-field>
+      <mat-label>需求目标仓库</mat-label>
+      <mat-select
+        [value]="selectedRepository()"
+        (selectionChange)="selectRepository($event.value)"
+        [disabled]="busy() || (!!selected() && selected()?.state !== 'Draft')"
+      >
+        @for (
+          entry of context.repositories;
+          track entry.id ?? entry.repository.github_repository_id
+        ) {
+          <mat-option [value]="entry.id ?? 1">{{ entry.repository.remote }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    @for (entry of context.repositories; track entry.id ?? entry.repository.github_repository_id) {
+      <p>
+        {{ entry.repository.project }} · {{ entry.repository.remote }} ·
+        {{ entry.repository.base_branch }} · 策略版本 {{ entry.version }}
+      </p>
+      <p>
+        累计预算：{{ entry.repository.policy.token_limit }} tokens /
+        {{ entry.repository.policy.turn_limit }} turns /
+        {{ entry.repository.policy.model_work_seconds }} 秒；代码修复最多一次。
+      </p>
+      <p>
+        检查：{{ entry.repository.policy.allowed_checks.join(', ') }}；超时上限
+        {{ entry.repository.policy.max_timeout_seconds }} 秒。
+      </p>
+      <p>
+        {{
+          entry.delivery_ready
+            ? 'GitHub 交付能力已检查'
+            : '未就绪：等待检查仓库权限、受信检查来源及触发配置。'
+        }}
+      </p>
+      @if (entry.repository.revoked) {
+        <p role="alert">仓库授权已撤销，后续动作被阻止。</p>
+      }
+    }
+  </section>
 }
 <section class="ui-panel" aria-labelledby="list-title">
   <h2 id="list-title">需求列表</h2>
@@ -245,8 +270,8 @@
         <section aria-labelledby="review-title">
           <h3 id="review-title">确认评审：{{ item.contract.title }}</h3>
           <p>
-            将冻结以上已保存 Contract 及当前仓库策略和累计预算。验证可引用未来测试；Ready 不再要求
-            Start 审批。
+            目标仓库登记 #{{ item.repository_id ?? 1 }}。将冻结以上已保存 Contract
+            及该仓库策略和累计预算。验证可引用未来测试；Ready 不再要求 Start 审批。
           </p>
           <button matButton="filled" (click)="control('ready')" [disabled]="busy() || form.dirty">
             确认评审并 Ready
@@ -261,9 +286,10 @@
     }
     @for (snapshot of item.snapshots; track snapshot.revision) {
       <p>
-        冻结修订 {{ snapshot.revision }} · 策略版本 {{ snapshot.repository_version }} ·
-        {{ snapshot.ac_ids.join(', ') }} · 预算 {{ snapshot.repository.policy.token_limit }} tokens
-        / {{ snapshot.repository.policy.turn_limit }} turns /
+        仓库 {{ snapshot.repository.remote }} · 冻结修订 {{ snapshot.revision }} · 策略版本
+        {{ snapshot.repository_version }} · {{ snapshot.ac_ids.join(', ') }} · 预算
+        {{ snapshot.repository.policy.token_limit }} tokens /
+        {{ snapshot.repository.policy.turn_limit }} turns /
         {{ snapshot.repository.policy.model_work_seconds }} 秒。
       </p>
     }
