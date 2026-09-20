@@ -1,0 +1,48 @@
+{
+  "exactly_preserved_tables": [
+    "requirement_revision",
+    "agent_run",
+    "requirement_budget",
+    "budget_authorization",
+    "model_call",
+    "model_usage_event",
+    "storage_policy",
+    "storage_allocation",
+    "storage_attempt",
+    "storage_material",
+    "workspace_snapshot",
+    "workspace_operation",
+    "run_workspace",
+    "runtime_resume",
+    "runtime_resume_history",
+    "runtime_session",
+    "preparation_record",
+    "preparation_history",
+    "delivery",
+    "candidate_validation"
+  ],
+  "first_repository_unchanged": true,
+  "execution_owner_before_after": 1,
+  "requirement_before_after": "Submitted",
+  "migration_added_repository_id": 1,
+  "expected_restart_changes": [
+    "execution_control.incarnation",
+    "execution_control.recovery_complete",
+    "storage_guard.measurement/retry metadata"
+  ],
+  "explicit_recovery": {
+    "action": "storage_recheck",
+    "requirement_version": [
+      17,
+      18
+    ],
+    "storage_blocked": [
+      true,
+      false
+    ],
+    "evidence": "storage-recheck.json"
+  },
+  "new_model_calls": 0,
+  "new_runs": 0,
+  "second_repository_registered": 2
+}

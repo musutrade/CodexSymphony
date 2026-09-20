@@ -1,0 +1,217 @@
+{
+  "observed_at": "2026-09-20T05:22:10.103862+00:00",
+  "kind": "new_read_only_observation_not_original_capture",
+  "checks": {
+    "requirement_identity": true,
+    "run_identity": true,
+    "candidate_identity": true,
+    "validation_identity": true,
+    "repository_identity": true,
+    "branch_identity": true,
+    "independent_validation_success": true,
+    "shared_storage_budget": true,
+    "model_calls_preserved": true,
+    "pr_still_open": true,
+    "ci_job_success": true
+  },
+  "current_readiness": {
+    "repositories": {
+      "deployment_network": [],
+      "network_status": "not_configured",
+      "repositories": [
+        {
+          "delivery_ready": true,
+          "id": 1,
+          "repository": {
+            "base_branch": "main",
+            "github_repository_id": 1360824360,
+            "model": "gpt-6-astra",
+            "policy": {
+              "allowed_checks": [
+                "cargo_test"
+              ],
+              "gate_recovery_policy": "one_code_repair",
+              "max_timeout_seconds": 120,
+              "model_work_seconds": 1800,
+              "token_limit": 300000,
+              "turn_limit": 3
+            },
+            "project": "GH-24 real A01 disposable",
+            "reason": "User explicitly authorized testing in musutrade/disposable; bounded real A01",
+            "remote": "musutrade/disposable",
+            "revoked": false
+          },
+          "version": 1
+        },
+        {
+          "delivery_ready": false,
+          "id": 2,
+          "repository": {
+            "base_branch": "main",
+            "github_repository_id": 1377749969,
+            "model": "gpt-6-astra",
+            "policy": {
+              "allowed_checks": [
+                "cargo_test"
+              ],
+              "gate_recovery_policy": "one_code_repair",
+              "max_timeout_seconds": 120,
+              "model_work_seconds": 1800,
+              "token_limit": 300000,
+              "turn_limit": 3
+            },
+            "project": "GH-25 real private A13 disposable-2",
+            "reason": "User explicitly approved creating private disposable-2 and test branch/PR writes; bounded A13 acceptance",
+            "remote": "musutrade/disposable-2",
+            "revoked": false
+          },
+          "version": 1
+        }
+      ],
+      "repository_ready": false,
+      "runtime_ready": false
+    },
+    "external": [
+      {
+        "head_sha": "3974acfce705c774d4590c72cd508a40c2f1ff58",
+        "observation": "[redacted]",
+        "pr_number": 2,
+        "repository": "musutrade/disposable-2",
+        "revision": 1,
+        "stale": true
+      }
+    ]
+  },
+  "sources": {
+    "a13jobs": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/a13jobs.json",
+      "sha256": "50d24e707bf9903b4da01b0c5ebcf7b228dfb84b4e68b07629408faee69c58df"
+    },
+    "product-pr": {
+      "error": "read failed",
+      "exit_code": 1
+    },
+    "development-pr": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/development-pr.json",
+      "sha256": "89200d5353d15342438f553e41605177a4588fed078ce30a29047f075bb0cb2f"
+    },
+    "health": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/health.json",
+      "sha256": "68fd26fd028c249fb77980d91904c5713a103acb2f179ad7dfcd5164b708ae39",
+      "bytes": 31
+    },
+    "repositories": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/repositories.json",
+      "sha256": "30e382244fc3fec267c84d5946a0b65b5ea829febe8f42ccab9203e3fa4dac41",
+      "bytes": 1126
+    },
+    "first-operations": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/first-operations.json",
+      "sha256": "5956747c3ef6031f14a1adeeec25361f8146f0800564797b0e37809f6f6640c5",
+      "bytes": 103929
+    },
+    "second-operations": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/second-operations.json",
+      "sha256": "2698d75dd34e33e5a689a80ce08615e6ed228654849ae3c71d5f17187afe4eff",
+      "bytes": 28003
+    },
+    "second-delivery": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/second-delivery.json",
+      "sha256": "2f60a7b2c3acea080bf96d644a8802c939f67c6676f0c56d8880140deb8b30af",
+      "bytes": 17240
+    },
+    "product-pr-rest": {
+      "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/product-pr-rest.json",
+      "sha256": "1d71ffb26e3974ee4fa4bd3fb82ea6c8c3ce903b9d6c517ddfe61d7b7ca9db03"
+    }
+  },
+  "limitations": [
+    "Fresh API snapshots are separate from the four unresolved historical files.",
+    "The product PR GraphQL status-check query failed; REST PR and Actions jobs reads succeeded.",
+    "Current readiness/observation freshness is not inferred from the historical A13 PASS."
+  ],
+  "readiness_recheck": {
+    "observed_at": "2026-09-20T05:24:02.695687+00:00",
+    "repositories": {
+      "deployment_network": [],
+      "network_status": "not_configured",
+      "repositories": [
+        {
+          "delivery_ready": false,
+          "id": 1,
+          "repository": {
+            "base_branch": "main",
+            "github_repository_id": 1360824360,
+            "model": "gpt-6-astra",
+            "policy": {
+              "allowed_checks": [
+                "cargo_test"
+              ],
+              "gate_recovery_policy": "one_code_repair",
+              "max_timeout_seconds": 120,
+              "model_work_seconds": 1800,
+              "token_limit": 300000,
+              "turn_limit": 3
+            },
+            "project": "GH-24 real A01 disposable",
+            "reason": "User explicitly authorized testing in musutrade/disposable; bounded real A01",
+            "remote": "musutrade/disposable",
+            "revoked": false
+          },
+          "version": 1
+        },
+        {
+          "delivery_ready": false,
+          "id": 2,
+          "repository": {
+            "base_branch": "main",
+            "github_repository_id": 1377749969,
+            "model": "gpt-6-astra",
+            "policy": {
+              "allowed_checks": [
+                "cargo_test"
+              ],
+              "gate_recovery_policy": "one_code_repair",
+              "max_timeout_seconds": 120,
+              "model_work_seconds": 1800,
+              "token_limit": 300000,
+              "turn_limit": 3
+            },
+            "project": "GH-25 real private A13 disposable-2",
+            "reason": "User explicitly approved creating private disposable-2 and test branch/PR writes; bounded A13 acceptance",
+            "remote": "musutrade/disposable-2",
+            "revoked": false
+          },
+          "version": 1
+        }
+      ],
+      "repository_ready": false,
+      "runtime_ready": false
+    },
+    "operations": {
+      "external": [
+        {
+          "head_sha": "3974acfce705c774d4590c72cd508a40c2f1ff58",
+          "observation": "[redacted]",
+          "pr_number": 2,
+          "repository": "musutrade/disposable-2",
+          "revision": 1,
+          "stale": true
+        }
+      ],
+      "requirement": {
+        "cancel_requested": false,
+        "cleanup_complete": false,
+        "id": 2,
+        "paused": false,
+        "revision": 1,
+        "state": "Submitted",
+        "version": 4
+      },
+      "storage": {
+        "blocked": false,
+        "error": null
+      }
+    }
+  }
+}

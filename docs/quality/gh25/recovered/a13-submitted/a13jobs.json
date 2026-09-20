@@ -1,0 +1,76 @@
+{
+  "body": {
+    "jobs": [
+      {
+        "check_run_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/106005902783",
+        "completed_at": "2026-09-20T02:18:59Z",
+        "conclusion": "success",
+        "created_at": "2026-09-20T02:18:51Z",
+        "head_branch": "ai/req-2-2a2ae1eb-e147-47f8-a650-8869e98a5e25",
+        "head_sha": "3974acfce705c774d4590c72cd508a40c2f1ff58",
+        "html_url": "https://github.com/musutrade/disposable-2/actions/runs/35483660763/job/106005902783",
+        "id": 106005902783,
+        "labels": [
+          "ubuntu-latest"
+        ],
+        "name": "test-job",
+        "node_id": "CR_kwDOUh7L0c8AAAAYrnG1vw",
+        "run_attempt": 1,
+        "run_id": 35483660763,
+        "run_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/35483660763",
+        "runner_group_id": 0,
+        "runner_group_name": "GitHub Actions",
+        "runner_id": 1000012113,
+        "runner_name": "GitHub Actions 1000012113",
+        "started_at": "2026-09-20T02:18:53Z",
+        "status": "completed",
+        "steps": [
+          {
+            "completed_at": "2026-09-20T02:18:54Z",
+            "conclusion": "success",
+            "name": "Set up job",
+            "number": 1,
+            "started_at": "2026-09-20T02:18:54Z",
+            "status": "completed"
+          },
+          {
+            "completed_at": "2026-09-20T02:18:55Z",
+            "conclusion": "success",
+            "name": "Run actions/checkout@v4",
+            "number": 2,
+            "started_at": "2026-09-20T02:18:54Z",
+            "status": "completed"
+          },
+          {
+            "completed_at": "2026-09-20T02:18:58Z",
+            "conclusion": "success",
+            "name": "Run cargo test --locked",
+            "number": 3,
+            "started_at": "2026-09-20T02:18:55Z",
+            "status": "completed"
+          },
+          {
+            "completed_at": "2026-09-20T02:18:58Z",
+            "conclusion": "success",
+            "name": "Post Run actions/checkout@v4",
+            "number": 6,
+            "started_at": "2026-09-20T02:18:58Z",
+            "status": "completed"
+          },
+          {
+            "completed_at": "2026-09-20T02:18:58Z",
+            "conclusion": "success",
+            "name": "Complete job",
+            "number": 7,
+            "started_at": "2026-09-20T02:18:58Z",
+            "status": "completed"
+          }
+        ],
+        "url": "https://api.github.com/repos/musutrade/disposable-2/actions/jobs/106005902783",
+        "workflow_name": "CI"
+      }
+    ],
+    "total_count": 1
+  },
+  "status": 200
+}

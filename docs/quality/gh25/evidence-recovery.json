@@ -1,0 +1,105 @@
+{
+  "schema": "codexsymphony-evidence-recovery/v1",
+  "manifest_sha256": "a738389b9ec27849dca7b3bbf919b29d8d5bc555512354969671ed72bfede93b",
+  "matched": {
+    "artifacts/gh25/operator-deployment/preservation.json": {
+      "sha256": "76c0f23eb156506ff6598aebfaa728374c85a6700e23a172568880b517b6512a",
+      "source": {
+        "kind": "retained_file",
+        "path": "/home/gem/.local/share/codexsymphony/a13-gh25/deployment-1/preservation.json"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/operator-deployment/preservation.json",
+      "bytes": 1133,
+      "repository_path": "recovered/operator-deployment/preservation.json"
+    },
+    "artifacts/gh25/operator-release/after.json": {
+      "sha256": "d46c0217054bab7024ecb9bba920bfbd21b49d42ff31396c80ec7105ea76bfc5",
+      "source": {
+        "kind": "retained_file",
+        "path": "/home/gem/.local/share/codexsymphony/a13-gh25/release-1/after.json"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/operator-release/after.json",
+      "bytes": 364,
+      "repository_path": "recovered/operator-release/after.json"
+    },
+    "artifacts/gh25/a13-occupied/summary.json": {
+      "sha256": "545cda94a5ab511c12f72fb4247d8f2a387b5074e84e6d788d796ef6c87fc68b",
+      "source": {
+        "kind": "committed_summary",
+        "path": "docs/quality/gh25/real-a13.json",
+        "commit": "f4e0487e55c42e75292b9c4e4a03452104a6e9da"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/a13-occupied/summary.json",
+      "bytes": 676,
+      "repository_path": "recovered/a13-occupied/summary.json"
+    },
+    "artifacts/gh25/a13-submitted/a13pr.json": {
+      "sha256": "d72116c889c6c5eebbb88d5af884a20352f5bffcb97f9c97e1779d756fe2ccbc",
+      "source": {
+        "kind": "historical_tool_output",
+        "path": "/home/gem/.local/share/codexsymphony/codex-home/sessions/2026/09/20/rollout-2026-09-20T02-19-13-01a0bc9c-4870-7ea0-aa6b-fa5d1450e226.jsonl",
+        "line": 71,
+        "call_id": "call_tXlJBhrrUAUwNIEs2DihaYyA",
+        "jsonl_record_sha256": "75176150fa4ba446db90cfecb1792aef4dc3b2a4d70ea8c00854eb4c731a306b"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/a13-submitted/a13pr.json",
+      "bytes": 19404,
+      "repository_path": "recovered/a13-submitted/a13pr.json"
+    },
+    "artifacts/gh25/a13-submitted/a13checks.json": {
+      "sha256": "e3dd28e672bf2c99ec5d0826d57ce0fa2b1177e9ecd57ab456620a9a23f2482c",
+      "source": {
+        "kind": "historical_tool_output",
+        "path": "/home/gem/.local/share/codexsymphony/codex-home/sessions/2026/09/20/rollout-2026-09-20T02-19-13-01a0bc9c-4870-7ea0-aa6b-fa5d1450e226.jsonl",
+        "line": 78,
+        "call_id": "call_gCBoPYmzo0O6IQTu2zb6F3wh",
+        "jsonl_record_sha256": "9c7911c2136ae0a34c5ab4f4bc756656682d6b466cdd1bd47ed672d6154f3ff6"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/a13-submitted/a13checks.json",
+      "bytes": 229,
+      "repository_path": "recovered/a13-submitted/a13checks.json"
+    },
+    "artifacts/gh25/a13-submitted/a13actions.json": {
+      "sha256": "d3570a60f4fc5afa6d8af77740f819afe17bf53c7884336227e365ea9d8fcd9b",
+      "source": {
+        "kind": "historical_tool_output",
+        "path": "/home/gem/.local/share/codexsymphony/codex-home/sessions/2026/09/20/rollout-2026-09-20T02-19-13-01a0bc9c-4870-7ea0-aa6b-fa5d1450e226.jsonl",
+        "line": 108,
+        "call_id": "call_DwxNFCzA3trtPY82My2knUXm",
+        "jsonl_record_sha256": "c718381704fde3bcace71a0a91a52394005e2a28cabaf12067523d4ba39cec6c"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/a13-submitted/a13actions.json",
+      "bytes": 32823,
+      "repository_path": "recovered/a13-submitted/a13actions.json"
+    },
+    "artifacts/gh25/a13-submitted/a13jobs.json": {
+      "sha256": "e5cd9ad0f937f0913210a62ada8252d31f029b183214ac4e99902c3d5469563c",
+      "source": {
+        "kind": "github_readback_exact_historical_digest",
+        "endpoint": "repos/musutrade/disposable-2/actions/runs/35483660763/jobs",
+        "observed_at": "2026-09-20T05:22:10.103862+00:00"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/a13-submitted/a13jobs.json",
+      "bytes": 2611,
+      "repository_path": "recovered/a13-submitted/a13jobs.json"
+    },
+    "artifacts/gh25/a13-submitted/second-delivery.json": {
+      "sha256": "971f29833b1add19d6312ee7eb6cf0e6ebfa167954ced38ad1729d8e4748b804",
+      "source": {
+        "kind": "product_readback_exact_historical_digest",
+        "path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/readback/second-delivery.json"
+      },
+      "retained_path": "/home/gem/.local/share/codexsymphony/a13-gh25/evidence-recovery-20260920/artifacts/gh25/a13-submitted/second-delivery.json",
+      "bytes": 23767,
+      "repository_path": "recovered/a13-submitted/second-delivery.json"
+    }
+  },
+  "unresolved": {
+    "artifacts/gh25/a13-submitted/repositories.json": "bd695624c61fd9f1e28a98d2459ac2fbf0c9197218494296c3363f5eca6a6a25",
+    "artifacts/gh25/a13-submitted/first-operations.json": "f0543d6ae48bb7e61f43a2790b298c597819d67114d5a96f51d93a43aeae5b8d",
+    "artifacts/gh25/a13-submitted/second-operations-latest.json": "f56326b71e6ce9e3cb327ad4d5302ea81b3a63d2e81d35aac32220149575092e",
+    "artifacts/gh25/a13-submitted/second-operations.json": "6789cbde5c2c35084afc99d665a46a78aaa7f83c89a6216e0fc3604a83db9be7"
+  },
+  "checked_at": "2026-09-20T05:23:46.691811+00:00",
+  "original_manifest": "retained-evidence.json"
+}
