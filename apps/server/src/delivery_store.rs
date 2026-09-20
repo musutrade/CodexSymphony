@@ -100,10 +100,10 @@ async fn write_attempt(
     operation: &str,
     now: i64,
 ) -> Result<Option<i64>> {
-    let ordinal: Option<i32> = sqlx::query_scalar("UPDATE delivery_action SET attempts=attempts+1,state='unknown',next_attempt_at=$3+30 WHERE action_key=$1 AND kind=$2 AND state IN ('pending','unknown') AND attempts<3 RETURNING attempts")
+    let ordinal: Option<i32> = sqlx::query_scalar("UPDATE delivery_action SET attempts=attempts+1,state='unknown',next_attempt_at=$3+30 WHERE action_key=$1 AND kind=$2 AND state IN ('pending','unknown') AND attempts<attempt_limit RETURNING attempts")
         .bind(&job.action_key).bind(&job.kind).bind(now).fetch_optional(&mut **tx).await?;
     let Some(ordinal) = ordinal else {
-        sqlx::query("UPDATE delivery_action SET state='blocked',error=jsonb_build_object('code','delivery_retry_exhausted','phase',kind,'attempts',attempts) WHERE action_key=$1 AND kind=$2 AND state='unknown' AND attempts>=3")
+        sqlx::query("UPDATE delivery_action SET state='blocked',error=jsonb_build_object('code','delivery_retry_exhausted','phase',kind,'attempts',attempts) WHERE action_key=$1 AND kind=$2 AND state='unknown' AND attempts>=attempt_limit")
             .bind(&job.action_key).bind(&job.kind).execute(&mut **tx).await?;
         return Ok(None);
     };
@@ -144,7 +144,7 @@ pub async fn failed(
             .fetch_one(pool)
             .await?;
     let evidence = crate::delivery::failure(error.code, &job.kind, attempts, now, error.status);
-    sqlx::query("UPDATE delivery_action SET state=CASE WHEN attempts>=3 OR $3='github_identity_conflict' THEN 'blocked' ELSE 'unknown' END,next_attempt_at=$4,error=$5 WHERE action_key=$1 AND kind=$2")
+    sqlx::query("UPDATE delivery_action SET state=CASE WHEN attempts>=attempt_limit OR $3='github_identity_conflict' THEN 'blocked' ELSE 'unknown' END,next_attempt_at=$4,error=$5 WHERE action_key=$1 AND kind=$2")
         .bind(&job.action_key).bind(&job.kind).bind(error.code).bind(evidence["next_attempt_at"].as_i64()).bind(evidence).execute(pool).await?;
     Ok(())
 }

@@ -143,6 +143,7 @@ async fn execution_acceptance() {
     start_record_window(&pool, &root).await;
     failed_and_paused_handshake(&pool, &root).await;
     permission_lock_timeout(&pool, &root).await;
+    transient_permission_contention(&pool).await;
     restart_live_and_lost_supervisor(&pool, &root).await;
     unknown_identity(&pool, &root).await;
     storage_watchdog(&pool, &root).await;
@@ -206,6 +207,28 @@ async fn permission_lock_timeout(pool: &PgPool, root: &Path) {
     assert!(!Path::new(&launch.workspace).join("forbidden").exists());
     recovered(pool, root, "permission-contention").await;
     assert_eq!(owner(pool).await, Some(1));
+}
+
+async fn transient_permission_contention(pool: &PgPool) {
+    let mut held = pool.begin().await.unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(13002)")
+        .execute(&mut *held)
+        .await
+        .unwrap();
+    let contender = pool.clone();
+    let task = tokio::spawn(async move { run_store::pause(&contender, Some(1)).await });
+    tokio::time::sleep(Duration::from_millis(800)).await;
+    assert!(
+        !task.is_finished(),
+        "temporary contention must not abort admission"
+    );
+    held.rollback().await.unwrap();
+    task.await.unwrap().unwrap();
+    let paused: bool = sqlx::query_scalar("SELECT paused FROM requirement WHERE id=1")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert!(paused);
 }
 
 fn helper(root: &Path, script: &str) -> PathBuf {

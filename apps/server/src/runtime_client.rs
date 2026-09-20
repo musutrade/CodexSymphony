@@ -144,8 +144,13 @@ impl Client<'_> {
             self.event(message).await?;
             return Ok(());
         }
-        if let Ok(message) = tokio::time::timeout(Duration::from_millis(100), self.next()).await {
-            self.event(message?).await?;
+        // recv is cancellation-safe; persisting an already consumed frame is
+        // not. The idle poll must never cancel evidence writes and lose an RPC.
+        if let Ok(record) =
+            tokio::time::timeout(Duration::from_millis(100), self.transport.receive()).await
+            && let Some(message) = self.record(record?).await?
+        {
+            self.event(message).await?;
         }
         Ok(())
     }
@@ -270,16 +275,23 @@ impl Client<'_> {
     }
     async fn next(&mut self) -> Result<Value> {
         loop {
-            match self.transport.receive().await? {
-                Record::Protocol(bytes) => {
-                    runtime_store::evidence(self.pool, &self.launch.key, "stdout", &bytes).await?;
-                    return Ok(serde_json::from_slice(&bytes)?);
-                }
-                Record::Diagnostic(bytes) => {
-                    runtime_store::evidence(self.pool, &self.launch.key, "stderr", &bytes).await?
-                }
-                Record::Closed => return Err("app-server protocol closed".into()),
+            let record = self.transport.receive().await?;
+            if let Some(message) = self.record(record).await? {
+                return Ok(message);
             }
+        }
+    }
+    async fn record(&self, record: Record) -> Result<Option<Value>> {
+        match record {
+            Record::Protocol(bytes) => {
+                runtime_store::evidence(self.pool, &self.launch.key, "stdout", &bytes).await?;
+                Ok(Some(serde_json::from_slice(&bytes)?))
+            }
+            Record::Diagnostic(bytes) => {
+                runtime_store::evidence(self.pool, &self.launch.key, "stderr", &bytes).await?;
+                Ok(None)
+            }
+            Record::Closed => Err("app-server protocol closed".into()),
         }
     }
     async fn guard(&mut self) -> Result<bool> {

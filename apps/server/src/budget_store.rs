@@ -256,7 +256,7 @@ pub async fn settle(
     let mut tx = run_store::lock(pool).await?;
     let id = apply_usage(&mut tx, key, turn, event, usage).await?;
     let balance = balance(&mut tx, id).await?;
-    if balance.used.reached(balance.limits) || !balance.exposure.fits(balance.limits) {
+    if balance.used.execution_exhausted(balance.limits) || !balance.exposure.fits(balance.limits) {
         stop(&mut tx, id).await?;
     }
     tx.commit().await

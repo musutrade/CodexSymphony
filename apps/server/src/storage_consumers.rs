@@ -21,7 +21,7 @@ pub async fn protection(
           EXISTS(SELECT 1 FROM delivery d WHERE d.requirement_id=s.requirement_id AND NOT d.released) OR
           EXISTS(SELECT 1 FROM runtime_resume r WHERE r.source_run=s.run_id AND r.status IN ('restoring','prepared')) OR
           EXISTS(SELECT 1 FROM runtime_question q WHERE q.run_id=s.run_id AND q.resume_state IN ('waiting','pending')) OR
-          EXISTS(SELECT 1 FROM agent_run paused WHERE paused.id=s.run_id AND paused.user_paused AND NOT EXISTS(SELECT 1 FROM runtime_resume restored WHERE restored.source_run=s.run_id AND restored.status='dispatched')),
+          EXISTS(SELECT 1 FROM agent_run paused WHERE paused.id=s.run_id AND (paused.user_paused OR paused.storage_resume_requested) AND NOT EXISTS(SELECT 1 FROM runtime_resume restored WHERE restored.source_run=s.run_id AND restored.status='dispatched')),
           EXISTS(SELECT 1 FROM workspace_operation o WHERE o.run_id=s.run_id AND o.status<>'complete') OR
           EXISTS(SELECT 1 FROM preparation_record p WHERE p.run_id=s.run_id AND NOT p.ready AND NOT (p.retry->>'todo')::boolean AND p.retry->'next_attempt_at'='null'::jsonb),
           COALESCE(s.identity->>'repository','')='' OR

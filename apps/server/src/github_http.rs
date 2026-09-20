@@ -315,7 +315,31 @@ fn push_command(
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .kill_on_drop(true);
+    configure_proxy(&mut command, std::env::vars_os());
     command
+}
+
+/// Only operator service proxy routing crosses the cleared Git environment.
+/// Git configuration, credential helpers and unrelated secrets stay excluded.
+pub fn configure_proxy(
+    command: &mut tokio::process::Command,
+    environment: impl Iterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+) {
+    command.envs(environment.filter(|(name, _)| {
+        matches!(
+            name.to_str(),
+            Some(
+                "HTTP_PROXY"
+                    | "HTTPS_PROXY"
+                    | "ALL_PROXY"
+                    | "NO_PROXY"
+                    | "http_proxy"
+                    | "https_proxy"
+                    | "all_proxy"
+                    | "no_proxy"
+            )
+        )
+    }));
 }
 /// Execute an already platform-authorized Git push. The App adapter builds the
 /// fixed origin and non-forcing refspec; local fixtures exercise real Git here.

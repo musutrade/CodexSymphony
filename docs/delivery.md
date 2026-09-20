@@ -11,7 +11,7 @@ App token 只由平台取得；普通 Git 仅 fast-forward push，不使用 forc
 PR 必须同时匹配 repo/base/branch/SHA 和动作标记；关联、观察证据和 Submitted 同事务保存。
 网络响应仅记录在具体 attempt，独立回读才确认。DB 提交失败不丢失原意图。
 
-发布和关闭分别最多三个写尝试。每次写之前落库 unknown；失败按 30/120 秒退避，
+发布和关闭默认分别最多三个写尝试。每次写之前落库 unknown；失败按 30/120 秒退避，
 耗尽或冲突进入同一动作的 blocked。阻塞/暂停期间继续有界只读对账，60 秒间隔，
 不启动模型。取消后的未知创建不能被一次空列表证伪，保留占用等待真实 PR 或人工对账；
 未知 push 必须读到精确 head 才能撤销发布意图。分支和提交始终保留。
@@ -69,8 +69,23 @@ PR URL/number/head 和 consumer；`review.png` 保存实际浏览器评审画面
 与服务器 Run/验证原始日志和 delivery_observation 一起保存，交付记录不替代精确提交双 Gate。
 
 GH-21 开发测试中的脚本化 provider、Fake Remote、数据库故障注入只是确定性测试。
-真实 Runtime 协议 smoke 也不等于真实 A01。当前未执行有外部写副作用的 A01：本工作区未
-配置产品验证仓的 App/Runtime 部署及此次具体 smoke Contract；实际 PR/SHA/证据留待已授权
-单仓验收任务记录，不借用开发宿主 PR #40 或 GH-21 的开发 PR 充当产品验收。
+真实 Runtime 协议 smoke 也不等于真实 A01。GH-24 的操作员已提供授权单仓部署和具体
+Contract，真实浏览器创建的 Requirement 1 已 Ready，但存储故障中断，真实 PR 尚未产生。
+使用 `--resume PREVIOUS_RESULT.json` 只读续观原需求；部署修复与完整证据见
+[单仓验收](single-repository-acceptance.md)，不借用开发宿主 PR #40 或开发 PR 充当产品验收。
 
 本次开发命令、真实本地 Git/HTTP 测试和源码质量测量见 [GH-21 验收记录](quality/gh21/README.md)。
+
+### 已耗尽发布尝试的人工恢复
+
+部署问题修复后，可向现有 `/api/requirements/{id}/operations` 提交当前 `version`、
+唯一 `request_id` 与 `action: "delivery_recheck"`。它只接受 Running 需求的当前 revision、
+未释放且因暂时网络失败/写入额度耗尽而 blocked 的 publish；身份冲突不能由重检清除。
+迁移 0015 的 `attempt_limit` 增加一个三次写入组，原 `attempts`、每次外部回执和候选身份
+不变。版本与幂等校验、business event/request 和 operator intervention 记录授权；重复请求
+不会重复增加额度。暂停、撤销、存储和验证授权仍在真正发送前检查。
+产品先回读远端分支/PR，再从实际阶段继续；已成功 push 时只创建 PR，不重新编码或重推。
+关闭动作仍维持原三次上限，本入口不解除取消状态。
+
+App 服务通过 Git 推送时仅继承服务环境中的 HTTP(S)/ALL/NO_PROXY（含小写形式），
+不继承其他 Git 配置、credential helper 或无关服务凭据。代理值留在部署环境，不能写入源码。

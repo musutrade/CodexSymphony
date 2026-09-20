@@ -34,6 +34,13 @@ impl Amount {
             || self.turns >= limit.turns
             || self.model_seconds >= limit.model_seconds
     }
+    /// A reserved final turn may finish; admission separately rejects another.
+    /// Streaming token/time consumption still stops exactly at its limit.
+    pub fn execution_exhausted(self, limit: Self) -> bool {
+        self.tokens >= limit.tokens
+            || self.turns > limit.turns
+            || self.model_seconds >= limit.model_seconds
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

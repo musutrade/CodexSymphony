@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "subjects": 940,
+  "min_coverage": {
+    "coverage.function": "1",
+    "coverage.line": "4/5",
+    "coverage.region": "4/5"
+  },
+  "max_crap": "10",
+  "violations": [],
+  "input_hash_mismatches": [],
+  "inputs": 104,
+  "capture": "target/gh24-rust-capture-final-5",
+  "formal_signed_gate": false
+}

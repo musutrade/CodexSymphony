@@ -30,6 +30,11 @@ exceeding it preserves files and blocks further work until reconciled.
 The worker scans every 300 seconds and receives PostgreSQL notifications at Run,
 preparation, validation and delivery phase completion. Admission also attempts
 eligible cleanup first. Cleanup takes no execution slot and makes no model calls.
+Failed scans also wake at their persisted retry deadline without waiting for a
+new phase event. Their bounded, redacted cause is retained in `scan_retry` and
+the service log. Accounting measures live sockets without opening them and may
+restart a whole pass up to three times for disappearing temporary entries;
+archive/deletion inventories remain strict. Other errors still stop admission.
 Decision records, retrospective logs, recovery snapshots and rebuildable caches
 have separate material identities and retention facts. Existing attempts are
 inventoried even without a final report. Unclassified files and directories are counted
@@ -77,3 +82,10 @@ facts. Original cumulative cleanup attempts remain visible.
 This is admission control and periodic measurement in a trusted environment.
 It does not provide hard byte isolation for arbitrary native processes. Configure
 and verify a suitable filesystem/execution adapter before making that claim.
+
+迁移 0013 将阶段通知改为实际变更行触发，空更新/未改变的状态不再触发完整扫描；
+周期扫描和存储失败停止规则仍有效。控制锁的单次等待仍为 500ms，只在业务操作开始前
+对 PostgreSQL lock-not-available 有限重试两次，每次新事务；其他错误直接失败，业务写入不重放。
+迁移 0014 保留已准备但未派发的恢复任务历史。新控制实例重新准备新身份，原任务及文件保留；
+已存在 agent_run 的任务不能走此路径。仅本地提交、没有结束声明/验证记录的中断可恢复执行；
+已接受的完成声明和独立验证继续使用原阶段恢复。

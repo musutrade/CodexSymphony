@@ -10,8 +10,14 @@ function fixture(id: number, suffix: string) {
   const sql = readFileSync('../../api/capture-fixture.sql', 'utf8')
     .replaceAll('900001', String(id))
     .replaceAll('capture-', `browser-${suffix}-`);
-  execFileSync('psql', [url, '-X', '-v', 'ON_ERROR_STOP=1', '--single-transaction'], {
-    input: sql,
+  const scenarios = JSON.parse(readFileSync('../../api/capture-scenarios.json', 'utf8')) as {
+    id: string; body?: { repository: unknown };
+  }[];
+  const repository = scenarios.find((scenario) => scenario.id === 'configured')?.body?.repository;
+  if (!repository) throw new Error('synthetic repository fixture missing');
+  execFileSync('psql', [url, '-X', '-v', 'ON_ERROR_STOP=1', '--single-transaction',
+    '--set', `repository_document=${JSON.stringify(repository)}`], {
+    input: "INSERT INTO repository(id,version,document) VALUES(1,1,:'repository_document'::jsonb) ON CONFLICT(id) DO NOTHING;\n" + sql,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 }

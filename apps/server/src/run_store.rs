@@ -34,6 +34,23 @@ impl Run {
 }
 
 pub(crate) async fn lock(pool: &PgPool) -> Result<Tx<'_>> {
+    // Contention before admission has no business side effects. Retry only
+    // lock acquisition, with a fresh transaction and a finite attempt budget;
+    // never replay a caller's mutation or extend its statement timeout.
+    let mut retries = 2;
+    loop {
+        match lock_once(pool).await {
+            Err(sqlx::Error::Database(error))
+                if error.code().as_deref() == Some("55P03") && retries > 0 =>
+            {
+                retries -= 1;
+            }
+            result => return result,
+        }
+    }
+}
+
+async fn lock_once(pool: &PgPool) -> Result<Tx<'_>> {
     let mut tx = pool.begin().await?;
     sqlx::query("SET LOCAL lock_timeout = '500ms'")
         .execute(&mut *tx)
@@ -167,8 +184,13 @@ pub async fn actions_allowed(pool: &PgPool, key: &RunKey) -> Result<bool> {
     if !crate::storage::permit(pool, std::path::Path::new(&workspace)).await {
         return Ok(false);
     }
-    let result: Option<bool> = sqlx::query_scalar("SELECT c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND NOT a.stop_requested AND NOT a.quiescent AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > p.revoked_through_version FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND p.id=1")
-        .bind(&key.run_id).bind(&key.request_id).bind(&key.incarnation).fetch_optional(pool).await?;
+    let mut tx = pool.begin().await?;
+    actions_allowed_in(&mut tx, key).await
+}
+
+pub(crate) async fn actions_allowed_in(tx: &mut Tx<'_>, key: &RunKey) -> Result<bool> {
+    let result: Option<bool> = sqlx::query_scalar("SELECT c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT a.stop_requested AND NOT a.quiescent AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > p.revoked_through_version FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND p.id=1")
+        .bind(&key.run_id).bind(&key.request_id).bind(&key.incarnation).fetch_optional(&mut **tx).await?;
     Ok(result == Some(true))
 }
 

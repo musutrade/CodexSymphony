@@ -226,8 +226,11 @@ async fn grant_start(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Keep pause/revocation/rollover serialized until the filesystem permission
     // is durable. A pause committed first cannot be followed by a new grant.
-    let tx = run_store::lock(pool).await?;
-    if run_store::actions_allowed(pool, key).await? {
+    // The storage probe acquires the execution lock itself. Probe before taking
+    // this transaction, then recheck current authority under the held lock.
+    let ready = run_store::actions_allowed(pool, key).await?;
+    let mut tx = run_store::lock(pool).await?;
+    if ready && run_store::actions_allowed_in(&mut tx, key).await? {
         crate::storage::write(pool, &directory.join("storage-heartbeat.json"), key).await?;
         crate::storage::write(pool, &directory.join("start.json"), key).await?;
     } else {

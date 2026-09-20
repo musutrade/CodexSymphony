@@ -1503,7 +1503,8 @@
                       "resume",
                       "cancel",
                       "recheck",
-                      "storage_recheck"
+                      "storage_recheck",
+                      "delivery_recheck"
                     ]
                   }
                 },
