@@ -338,6 +338,19 @@ async fn read_requirement(tx: &mut Tx<'_>, id: i64) -> Result<Value> {
     ))?)?)
 }
 async fn editable(tx: &mut Tx<'_>, id: i64, expected: i64, state: &str) -> Result<Value> {
+    let grouped: bool = sqlx::query_scalar(
+        "SELECT EXISTS(SELECT 1 FROM group_execution_item WHERE requirement_id=$1)",
+    )
+    .bind(id)
+    .fetch_one(&mut **tx)
+    .await?;
+    if grouped {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "group inputs require group review",
+        ));
+    }
+
     let row = read_requirement(tx, id).await?;
     version(
         row["version"].as_i64().ok_or("invalid stored version")?,

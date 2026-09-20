@@ -19,6 +19,18 @@ pub struct GitBroker {
 }
 
 impl GitBroker {
+    pub fn contains_commit(&self, baseline: &str, ancestor: &str) -> bool {
+        if valid_oid(baseline).is_err() || valid_oid(ancestor).is_err() {
+            return false;
+        }
+        self.git(
+            None,
+            &["merge-base", "--is-ancestor", ancestor, baseline],
+            b"",
+        )
+        .is_ok()
+    }
+
     pub fn cache_rebuildable(&self, workspace: &Workspace, name: &str) -> Result<bool> {
         require(files::CACHE_ROOTS.contains(&name), "unknown cache class")?;
         Ok(self

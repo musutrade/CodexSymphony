@@ -200,7 +200,7 @@ async fn postgres_atomic_review_replay_races_and_persistent_accounting() {
     request(&router, "PUT", &path, json!({"unknown":true}), 422).await;
     let empty = request(&router, "GET", &path, json!({}), 200).await;
     assert_eq!(empty["version"], 0);
-    assert_eq!(empty["scheduler_available"], false);
+    assert_eq!(empty["scheduler_available"], true);
     let mut confirmation = json!({"version":1,"draft_revision":1,"request_id":"confirm"});
     request(&router, "POST", &authorize, confirmation.clone(), 409).await;
     let before = counts(&pool).await;

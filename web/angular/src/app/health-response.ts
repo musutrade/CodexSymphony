@@ -1,4 +1,4 @@
-// harness-contract-sha256: dfb23be6ed6126cea4f4b230b59d801ba6094e0c667f208f14f863adf3d17ab3
+// harness-contract-sha256: 870e323faccf0c3c433372154eb25f1e21255046b8b377f7f3060b8570be14e4
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -1341,6 +1341,25 @@ export type GetGroupReviewResponse =
       };
       draft_id: string;
       draft_revision: number;
+      execution?: {
+        completed: number;
+        items: {
+          child_id: string;
+          complete: boolean;
+          depends_on: string[];
+          kind: string;
+          order: number;
+          owner: boolean;
+          repository_id: number | null;
+          requirement_id: number | null;
+          state: string;
+          waiting_reason: string;
+        }[];
+        owner: number | null;
+        parent_state: string;
+        paused: boolean;
+        total: number;
+      };
       queue: { authorization_id: number; state: string; version: number } | null;
       repositories: {
         id: number;
@@ -1512,6 +1531,25 @@ export type SaveGroupReviewResponse =
       };
       draft_id: string;
       draft_revision: number;
+      execution?: {
+        completed: number;
+        items: {
+          child_id: string;
+          complete: boolean;
+          depends_on: string[];
+          kind: string;
+          order: number;
+          owner: boolean;
+          repository_id: number | null;
+          requirement_id: number | null;
+          state: string;
+          waiting_reason: string;
+        }[];
+        owner: number | null;
+        parent_state: string;
+        paused: boolean;
+        total: number;
+      };
       queue: { authorization_id: number; state: string; version: number } | null;
       repositories: {
         id: number;

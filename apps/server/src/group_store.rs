@@ -74,9 +74,12 @@ pub async fn view(tx: &mut Tx<'_>, id: &str, revision: i64, document: &Document)
     let queue: Option<Value> = sqlx::query_scalar("SELECT jsonb_build_object('version',version,'authorization_id',authorization_id,'state',state) FROM group_queue WHERE draft_id=$1").bind(id).fetch_optional(&mut **tx).await.map_err(db)?;
     let budgets: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('item_id',item_id,'limits',limits,'used',used,'reserved',reserved) FROM group_budget WHERE draft_id=$1 ORDER BY item_id").bind(id).fetch_all(&mut **tx).await.map_err(db)?;
     let authorizations: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('id',id,'snapshot',snapshot) FROM group_authorization WHERE draft_id=$1 ORDER BY id").bind(id).fetch_all(&mut **tx).await.map_err(db)?;
+    let execution = crate::group_queue_view::view(tx, id, document)
+        .await
+        .map_err(db)?;
     let (version, review) = saved.map(review_json).unwrap_or((0, Value::Null));
     Ok(
-        json!({"draft_id":id,"draft_revision":revision,"document":document,"version":version,"review":review,"repositories":repositories(tx).await?,"budgets":budgets,"queue":queue,"authorizations":authorizations,"scheduler_available":false,"business_complete":false}),
+        json!({"draft_id":id,"draft_revision":revision,"document":document,"version":version,"review":review,"repositories":repositories(tx).await?,"budgets":budgets,"queue":queue,"authorizations":authorizations,"scheduler_available":true,"business_complete":false,"execution":execution}),
     )
 }
 pub async fn balances(tx: &mut Tx<'_>, id: &str, review: &Review, total: Amount) -> Result<()> {
@@ -108,6 +111,11 @@ async fn balance(tx: &mut Tx<'_>, id: &str, item: &str, limit: Amount) -> Result
     Ok(())
 }
 pub async fn invalidate(tx: &mut Tx<'_>, id: &str) -> Result<()> {
+    crate::group_queue_store::require_editable(tx, id)
+        .await
+        .map_err(|_| {
+            conflict("group inputs already bound; group revision controls not implemented")
+        })?;
     sqlx::query("UPDATE group_queue SET state='needs_review',version=version+1 WHERE draft_id=$1")
         .bind(id)
         .execute(&mut **tx)

@@ -98,3 +98,7 @@ an already-authorized review, and 422 means malformed input or failed review
 validation. Database failure returns 503 with no partial authorization committed.
 The idempotent confirmation response is an original receipt; GET is the current
 queue truth after later edits. Authenticated identities remain local-user until M2.
+
+## GH-63 group dependency queue
+
+Group review responses optionally include `execution`, with global owner/pause, ordered child identities, dependencies, progress and waiting reasons. `scheduler_available` reports implemented scheduling, not deployment Runtime readiness or business acceptance. `validation_only` explicitly waits for unimplemented execution and creates no coding Run. Completion facts use an internal authenticated-verifier adapter interface only; no HTTP completion-write route exists. See [group queue protocol](../docs/group-queue.md).

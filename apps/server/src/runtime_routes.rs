@@ -44,9 +44,10 @@ impl Deployment {
         Ok(Self::Multiple(routes.repositories))
     }
     pub async fn selected(&self, pool: &PgPool) -> Result<Option<((i64, i64), &Config)>> {
+        crate::group_queue_store::materialize(pool).await?;
         // An occupied requirement always wins, including pause/CI/manual blocks.
         // Never scan past the queue head to find a configured repository.
-        let row: Option<(i64, i64, i64)> = sqlx::query_as("SELECT r.id,r.revision,r.repository_id::bigint FROM requirement r WHERE r.id=COALESCE((SELECT requirement_id FROM execution_control WHERE id=1),(SELECT id FROM requirement WHERE state='Ready' ORDER BY id LIMIT 1))")
+        let row: Option<(i64, i64, i64)> = sqlx::query_as("SELECT r.id,r.revision,r.repository_id::bigint FROM requirement r WHERE r.id=COALESCE((SELECT requirement_id FROM execution_control WHERE id=1),(SELECT requirement_id FROM execution_queue ORDER BY queued_at,queue_key,item_order LIMIT 1))")
             .fetch_optional(pool).await?;
         let Some((requirement, revision, repository)) = row else {
             return Ok(None);
