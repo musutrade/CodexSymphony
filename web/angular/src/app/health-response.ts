@@ -1,4 +1,4 @@
-// harness-contract-sha256: 74bf06a5f7e7edf98f4af2ff2f07e94a160287158f66e50fa09e42cccffe4395
+// harness-contract-sha256: a4191d05310994e5c669ab3f35cc4775a232d999adbfd3eedb3ea100f39fe737
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';

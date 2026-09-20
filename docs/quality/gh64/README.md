@@ -45,3 +45,23 @@
 各失败日志与最终日志并存。普通数据库测试和浏览器测试间仅重建提供的一次性 test fixture，未操作 persistent dev 或生产数据库。
 
 工作区根 `.symphony-evidence.json` 使用 `symphony-evidence/v1`，逐文件声明实际 SHA-256，供宿主 after_run 归档。Agent 不宣称已取得宿主归档回执。本地测量没有签名；精确发布提交仍等待 Harness-Gate 与 Trusted Harness-Gate，不能据此宣布产品整体完成。
+
+## PR #69 第一次 CI 修复
+
+精确提交 `23b6cf69e78c9d1da9c44e63aee3abedb549ac6e` 的 Actions
+`35521631782/1` 未通过：前端测试桩的空 async 方法违反 lint，HTTP
+collector 报告 adapter exit 1。上表的本地 lint 记录不证明该提交通过。
+宿主诊断恢复后保存在 `artifacts/gh64/ci-repair-1/host/diagnostic.json`；
+此前缺少诊断的阻塞记录仍保留。
+
+测试桩改为返回 resolved Promise。另以锁定 HTTP collector 的来源检查复现
+`unrecognized generated-client origin`：生成文件携带的旧摘要既不等于
+当前契约，也不等于基线。修正为当前 OpenAPI 文件的实际 SHA-256；类型定义、
+业务行为、门禁策略和可信基线均未改变。宿主未提供 adapter 的详细 stderr，
+此处记录的是本地确定复现，不冒称已读取宿主内部异常。
+
+修复后重新执行 lint、33 项前端测试、生产 build、Gate config check 及
+85 个已保留真实业务响应/24 个客户端调用的契约校验，全部通过。
+原始日志与来源摘要检查位于 `artifacts/gh64/ci-repair-1/`。
+此次未修改 Rust 或运行时行为，沿用前述数据库、Runtime、桌面/手机证据；
+未重跑浏览器或声称本地完整签名质量门禁通过。新提交仍须宿主精确 SHA 双 Gate。

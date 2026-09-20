@@ -34,7 +34,7 @@ describe('Queue delta review', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        { provide: QUEUE_EDIT_CONTEXT, useValue: { view: currentView, reload: async () => {} } },
+        { provide: QUEUE_EDIT_CONTEXT, useValue: { view: currentView, reload: () => Promise.resolve() } },
       ],
     });
     const fixture = TestBed.createComponent(QueueEdit);
