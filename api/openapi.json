@@ -3856,6 +3856,92 @@
           },
           "business_complete": {
             "type": "boolean"
+          },
+          "execution": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "owner",
+              "paused",
+              "completed",
+              "total",
+              "parent_state",
+              "items"
+            ],
+            "properties": {
+              "owner": {
+                "type": "integer",
+                "nullable": true
+              },
+              "paused": {
+                "type": "boolean"
+              },
+              "completed": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "parent_state": {
+                "type": "string"
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "child_id",
+                    "kind",
+                    "order",
+                    "depends_on",
+                    "repository_id",
+                    "requirement_id",
+                    "state",
+                    "owner",
+                    "complete",
+                    "waiting_reason"
+                  ],
+                  "properties": {
+                    "child_id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "depends_on": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "repository_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "requirement_id": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "owner": {
+                      "type": "boolean"
+                    },
+                    "complete": {
+                      "type": "boolean"
+                    },
+                    "waiting_reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },

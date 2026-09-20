@@ -96,17 +96,22 @@ pub async fn reserve_prepared(pool: &PgPool, launch: &Launch) -> Result<bool> {
     if !crate::preparation_store::claim_ready(&mut tx, launch, id, revision).await? {
         return Ok(false);
     }
+    if !crate::group_queue_store::claim_input_ready(&mut tx, id, launch).await? {
+        return Ok(false);
+    }
     commit_claim(tx, id, revision, launch).await
 }
 
 pub(crate) async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
-    let next: Option<(i64,i64,bool)> = sqlx::query_as(
-        "SELECT id,revision,paused FROM requirement WHERE state='Ready' ORDER BY id LIMIT 1 FOR UPDATE")
-        .fetch_optional(&mut **tx).await?;
+    let next = crate::group_queue_store::head(tx).await?;
     let Some((id, revision, false)) = next else {
         return Ok(None);
     };
-    if !authorized(tx, id, revision).await?
+    if !crate::group_queue_store::authorized(tx, id).await?
+        || crate::group_completion::dependencies(tx, id)
+            .await?
+            .is_none()
+        || !authorized(tx, id, revision).await?
         || !crate::github_store::claim_ready(tx, id, revision).await?
     {
         return Ok(None);

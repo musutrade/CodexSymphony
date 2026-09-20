@@ -99,14 +99,21 @@ test('reviews three code items plus integration, rejects missing coverage and au
   await expect(page.getByRole('status')).toContainText('评审版本已保存');
   await page.getByRole('button', { name: '一次确认整组授权', exact: true }).focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByRole('status')).toContainText('等待调度能力');
+  await expect(page.getByRole('status')).toContainText('依赖队列');
   await page.reload();
-  await expect(page.getByText('状态：已授权 / 等待调度能力', { exact: false })).toBeVisible();
+  await expect(page.getByText('状态：已授权 / 依赖队列', { exact: false })).toBeVisible();
   const reread = await context.request.get(`/api/drafts/${draft.id}/review`);
   const result = (await reread.json()) as GroupView;
   writeFileSync(info.outputPath('group-view.json'), JSON.stringify(result, null, 2));
   expect(result.authorizations).toHaveLength(1);
   expect(result.business_complete).toBe(false);
+  await expect(page.getByRole('heading', { name: '组依赖队列' })).toBeVisible();
+  await expect(
+    page.getByText('等待 validation_only 执行能力（尚未实现）；不会创建编码 Run 或空 PR'),
+  ).toBeVisible();
+  expect(result.execution?.owner).toBeNull();
+  expect(result.execution?.completed).toBe(0);
+  expect(result.execution?.items.map((i) => i.order)).toEqual([1, 2, 3, 4]);
   expect(result.authorizations[0].snapshot.review.items).toHaveLength(4);
   expect(result.authorizations[0].snapshot.group_budget.tokens).toBe(400);
   const bypass = await context.request.post(`/api/requirements/${draft.id}/ready`, {

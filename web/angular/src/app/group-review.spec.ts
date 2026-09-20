@@ -60,6 +60,54 @@ describe('Atomic group review UI', () => {
     http.expectOne('/api/drafts/draft-group/review').flush(fixtureView);
     return { fixture, http, page: fixture.componentInstance };
   }
+  it('shows owner, dependencies, progress and explicit unsupported execution', async () => {
+    const { fixture, page, http } = setup();
+    await fixture.whenStable();
+    page.view.set({
+      ...fixtureView,
+      execution: {
+        owner: 19,
+        paused: true,
+        completed: 1,
+        total: 2,
+        parent_state: 'waiting_business_acceptance',
+        items: [
+          {
+            child_id: 'C1',
+            kind: 'code_change',
+            order: 1,
+            depends_on: [],
+            repository_id: 1,
+            requirement_id: 19,
+            state: 'Submitted',
+            owner: true,
+            complete: false,
+            waiting_reason: 'waiting_confirmed_merge_and_applicable_acceptance',
+          },
+          {
+            child_id: 'C2',
+            kind: 'validation_only',
+            order: 2,
+            depends_on: ['C1'],
+            repository_id: 2,
+            requirement_id: null,
+            state: 'Queued',
+            owner: false,
+            complete: false,
+            waiting_reason: 'waiting_validation_only_execution_not_implemented',
+          },
+        ],
+      },
+    });
+    await fixture.whenStable();
+    const text = fixture.nativeElement.textContent as string;
+    expect(text).toContain('全局占用者：19');
+    expect(text).toContain('当前执行占用者');
+    expect(text).toContain('父项等待整体验收');
+    expect(text).toContain('不会创建编码 Run 或空 PR');
+    expect(page.waitingReason('unknown')).toBe('unknown');
+    http.verify();
+  });
   it('reviews persisted revisions, maps coverage, edits budgets, saves and confirms once', async () => {
     const { fixture, http, page } = setup();
     await fixture.whenStable();
@@ -105,7 +153,7 @@ describe('Atomic group review UI', () => {
       .expectOne('/api/drafts/draft-group/review')
       .flush({ ...saved, queue: { version: 1, authorization_id: 7, state: 'waiting_scheduler' } });
     await confirming;
-    expect(page.message()).toContain('等待调度');
+    expect(page.message()).toContain('依赖队列');
     page.resetForRevision();
     expect(page.model().semantic_review).toBe('');
     http.verify();

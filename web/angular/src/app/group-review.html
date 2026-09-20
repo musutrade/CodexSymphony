@@ -15,6 +15,32 @@
   </p>
 }
 @if (view(); as current) {
+  @if (current.execution; as queue) {
+    <section class="ui-panel" aria-labelledby="queue-title">
+      <h2 id="queue-title">组依赖队列</h2>
+      <p>
+        全局占用者：{{ queue.owner ?? '无' }} · {{ queue.paused ? '队列已暂停' : '队列未暂停' }}
+      </p>
+      <p>
+        子项完成 {{ queue.completed }} / {{ queue.total }}。父项等待整体验收，发布 PR 不计为完成。
+      </p>
+      @for (item of queue.items; track item.child_id) {
+        <article class="ui-panel">
+          <h3>{{ item.order }}. {{ item.child_id }} · {{ item.kind }}</h3>
+          <p>仓库 {{ item.repository_id }} · 依赖 {{ item.depends_on.join('、') || '无' }}</p>
+          <p>
+            {{ item.owner ? '当前执行占用者' : item.state }} ·
+            {{ waitingReason(item.waiting_reason) }}
+          </p>
+          @if (item.requirement_id) {
+            <a [routerLink]="['/requirements', item.requirement_id]"
+              >查看 {{ item.child_id }} 执行与暂停/取消控制</a
+            >
+          }
+        </article>
+      }
+    </section>
+  }
   <section class="ui-panel" aria-labelledby="parent-review-title">
     <h2 id="parent-review-title">{{ current.document.parent.goal }}</h2>
     <p>
@@ -24,9 +50,7 @@
     <p>{{ current.document.parent.scope }}</p>
     <p>
       状态：{{
-        current.queue?.state === 'waiting_scheduler'
-          ? '已授权 / 等待调度能力'
-          : '待评审（不能执行）'
+        current.queue?.state === 'waiting_scheduler' ? '已授权 / 依赖队列' : '待评审（不能执行）'
       }}。父项不占执行槽；validation_only 执行与最终业务验收尚未接通。
     </p>
     <p>

@@ -129,6 +129,25 @@ export class GroupReview {
       this.message.set('评审版本已保存；尚未确认本版本授权。');
     });
   }
+  waitingReason(reason: string) {
+    const labels: Record<string, string> = {
+      confirmed_merge_and_acceptance: '已确认合并且适用验收通过',
+      waiting_validation_only_execution_not_implemented:
+        '等待 validation_only 执行能力（尚未实现）；不会创建编码 Run 或空 PR',
+      paused: '已暂停，重启不会自动恢复',
+      cancelled_not_success: '已取消；不能满足后继依赖',
+      waiting_authorization_or_scheduler: '等待有效组授权与调度',
+      needs_review: '授权版本已过期，需要重新评审',
+      waiting_confirmed_merge_and_applicable_acceptance:
+        '等待已确认合并与适用验收；PR 发布、CI 通过或单独合并均不算完成',
+      occupied_execution_or_blocker: '执行或阻塞中，保留全局占用',
+      waiting_dependency_completion: '等待依赖完成事实',
+      repository_unavailable: '仓库不可用或授权状态待刷新',
+      waiting_queue_order: '等待前序项',
+      waiting_repository_baseline_or_preparation: '等待仓库基线核验与执行准备',
+    };
+    return labels[reason] ?? reason;
+  }
   async confirm() {
     await this.perform(async () => {
       const current = this.view();
@@ -142,7 +161,7 @@ export class GroupReview {
       );
       if ('error' in result) throw new Error(result.error);
       this.message.set(
-        `授权 ${result.authorization_id} 已保存 / 等待调度能力。不是验收完成；无需逐项 Start。`,
+        `授权 ${result.authorization_id} 已保存 / 依赖队列。不是验收完成；无需逐项 Start。`,
       );
       const latest = await firstValueFrom(this.api.read(this.id));
       if ('error' in latest) throw new Error(latest.error);

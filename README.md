@@ -1,6 +1,6 @@
 # CodexSymphony
 
-[父 AC 覆盖与整组评审授权](docs/group-review.md)：一次确认持久化授权及组队列；当前等待调度能力，不代表验收完成。
+[父 AC 覆盖与整组评审授权](docs/group-review.md)与[组依赖队列](docs/group-queue.md)：一次确认后按授权、依赖和仓库基线串行领取；缺适用验收能力时明确等待，不代表业务完成。
 
 [自然语言生成草稿](docs/draft-generation.md) 与 Markdown/JSON 导入共用 Draft 模型；只有显式生成调用模型，草稿不授权编码执行。
 

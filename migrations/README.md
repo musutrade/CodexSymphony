@@ -8,3 +8,5 @@ Integration tests require a dedicated TEST_DATABASE_URL and never infer a produc
 0017 新增父子导入草稿与版本来源历史表，旧单需求和执行表不变。输入及迁移边界见 `docs/import-drafts.md`。
 
 `0018_draft_generation.sql` adds independent advisory generation intents/results and a single active-generation constraint. It does not change Requirement/AgentRun ownership or budgets; failed generation never partially inserts an imported Draft.
+
+- `0020_group_execution.sql`: stable authorized child-to-Requirement projection, immutable dependency inputs/completion receipts, shared ordered queue view, cumulative group accounting attribution. Parents and validation-only children never receive a coding Requirement/Run.

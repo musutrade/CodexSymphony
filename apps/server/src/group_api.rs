@@ -175,11 +175,11 @@ async fn prepare_snapshot(
                 .any(|c| c.repository_id == Some(r.id))
         })
         .collect();
-    let snapshot = json!({"parent_revision":revision,"document":document,"review_version":version,"review":review,"repositories":used_repositories,"group_budget":total,"reviewer":"local-user","scheduler_available":false,"business_complete":false});
+    let snapshot = json!({"parent_revision":revision,"document":document,"review_version":version,"review":review,"repositories":used_repositories,"group_budget":total,"reviewer":"local-user","scheduler_available":true,"business_complete":false});
     Ok(snapshot)
 }
 fn confirmation(id: i64) -> Value {
-    json!({"authorization_id":id,"state":"waiting_scheduler","scheduler_available":false,"business_complete":false})
+    json!({"authorization_id":id,"state":"waiting_scheduler","scheduler_available":true,"business_complete":false})
 }
 async fn replay(tx: &mut store::Tx<'_>, key: &str, input: &Value) -> Result<Option<Value>> {
     let row: Option<(i64, Value)> =

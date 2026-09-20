@@ -29,6 +29,7 @@ pub async fn tick_selected(
     config: &Config,
     selected: Option<(i64, i64)>,
 ) -> Result<()> {
+    crate::group_queue_store::materialize(pool).await?;
     let Some(baseline) = config.preparation["baseline"].as_str() else {
         return Ok(());
     };
@@ -138,6 +139,9 @@ async fn save_initial(
     selected: (i64, i64),
 ) -> Result<Option<(Launch, Workspace)>> {
     let (requirement, revision) = selected;
+    if !crate::group_queue_store::bind_baseline(&mut tx, broker, requirement, baseline).await? {
+        return Ok(None);
+    }
     let (launch, workspace) = allocate(
         broker,
         incarnation,

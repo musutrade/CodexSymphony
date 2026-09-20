@@ -164,7 +164,7 @@ fn validate_item(child: &draft::Child, item: &Item, repository: &Repository) -> 
     let contract = verification_contract(child, item)?;
     contract::authorize(&contract, repository).map_err(str::to_owned)
 }
-fn verification_contract(child: &draft::Child, item: &Item) -> Result<Contract> {
+pub(crate) fn verification_contract(child: &draft::Child, item: &Item) -> Result<Contract> {
     let mut acs = BTreeSet::new();
     let mut criteria = Vec::new();
     for check in &item.verification {
