@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { reviewRealGroup } from './m1-real-flow';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -7,6 +8,7 @@ import { createHash, randomUUID } from 'node:crypto';
 test('explicit generation replay, edit, delete, reorder, reopen and readable failure', async ({
   page,
   context,
+  browser,
 }, info) => {
   const headers = { origin: 'http://127.0.0.1:4300', 'x-codexsymphony-csrf': '1' };
   const repositories = await context.request.get('/api/multi/repository');
@@ -117,11 +119,12 @@ test('explicit generation replay, edit, delete, reorder, reopen and readable fai
   }
   const ids = document.children.map((child) => child.id);
   document.parent.goal = `Edited generated ${info.project.name}`;
-  if (document.children.length > 1) document.children.pop();
-  document.children.reverse().forEach((child, index) => {
-    child.order = index + 1;
-    child.depends_on = [];
-  });
+  if (!real && document.children.length > 1) document.children.pop();
+  if (!real)
+    document.children.reverse().forEach((child, index) => {
+      child.order = index + 1;
+      child.depends_on = [];
+    });
   await text.fill(JSON.stringify(document));
   await page.getByRole('button', { name: '保存父子 Draft', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('Draft 已保存');
@@ -136,6 +139,7 @@ test('explicit generation replay, edit, delete, reorder, reopen and readable fai
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: info.outputPath('generated-edited.png'), fullPage: true });
+  if (real && info.project.name === 'mobile') await reviewRealGroup(page, browser, draftId, info);
   await text.fill('{invalid');
   await page.getByRole('button', { name: '保存父子 Draft', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('invalid draft JSON');

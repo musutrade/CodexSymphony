@@ -157,6 +157,9 @@ fn deterministic_parser_and_incomplete_data() {
 }
 
 async fn fixture() -> (PgPool, String, PathBuf) {
+    upgraded_fixture(16).await
+}
+async fn upgraded_fixture(last_version: u32) -> (PgPool, String, PathBuf) {
     let database = std::env::var("TEST_DATABASE_URL").unwrap();
     let admin = PgPoolOptions::new().connect(&database).await.unwrap();
     let schema = format!(
@@ -185,7 +188,7 @@ async fn fixture() -> (PgPool, String, PathBuf) {
         let entry = entry.unwrap();
         let name = entry.file_name();
         let name = name.to_str().unwrap();
-        if name.ends_with(".sql") && name < "0017" {
+        if name.ends_with(".sql") && name[..4].parse::<u32>().unwrap() <= last_version {
             std::fs::copy(entry.path(), old.join(name)).unwrap();
         }
     }
@@ -200,7 +203,25 @@ async fn fixture() -> (PgPool, String, PathBuf) {
         .fetch_one(&pool)
         .await
         .unwrap();
+    let draft_before = if last_version == 17 {
+        let document = sample();
+        let input = source(document.clone());
+        sqlx::query("INSERT INTO imported_draft(id,version,document,source,source_sha256) VALUES('draft-gh59-upgrade',2,$1,$2,'synthetic-source-hash')")
+            .bind(&document).bind(&input).execute(&pool).await.unwrap();
+        sqlx::query("INSERT INTO imported_draft_revision(draft_id,version,document,source,source_sha256) SELECT id,version,document,source,source_sha256 FROM imported_draft")
+            .execute(&pool).await.unwrap();
+        Some(snapshot(&pool).await)
+    } else {
+        None
+    };
     sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
+    if let Some(before) = draft_before {
+        assert_eq!(
+            before,
+            snapshot(&pool).await,
+            "GH59 draft, history, owner and budget must survive M1 upgrade"
+        );
+    }
     assert_eq!(
         before,
         sqlx::query_scalar::<_, Value>("SELECT to_jsonb(r) FROM requirement r")
@@ -432,4 +453,29 @@ async fn atomic_import_conflicts_legacy_guards_migration_and_real_restart() {
     println!(
         "AC02/03/04/05: real PostgreSQL migration, atomic rejection, CAS, two real server lifetimes, no Run/budget/queue admission PASS"
     );
+}
+
+#[tokio::test]
+async fn gh59_database_upgrades_without_rewriting_draft_history_or_execution_facts() {
+    let (pool, url, root) = upgraded_fixture(17).await;
+    let before = snapshot(&pool).await;
+    let result = request(
+        &app(&pool),
+        "GET",
+        "/api/drafts/draft-gh59-upgrade",
+        Value::Null,
+        200,
+    )
+    .await;
+    assert_eq!(result["document"], sample());
+    assert_eq!(result["version"], 2);
+    pool.close().await;
+    let reopened = PgPoolOptions::new().connect(&url).await.unwrap();
+    sqlx::migrate!("../../migrations")
+        .run(&reopened)
+        .await
+        .unwrap();
+    assert_eq!(snapshot(&reopened).await, before);
+    reopened.close().await;
+    std::fs::remove_dir_all(root).unwrap();
 }

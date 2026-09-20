@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[M1 使用、迁移与交付索引](docs/m1-delivery.md)：需求与队列的阶段验收、测试入口及 M2/M3 边界。
+
 [未开始队列编辑与差异评审](docs/queue-editing.md)：合法重排不重评内容，变化项及依赖冻结后按精确版本重新授权，累计预算与完成事实保留。
 
 [父 AC 覆盖与整组评审授权](docs/group-review.md)与[组依赖队列](docs/group-queue.md)：一次确认后按授权、依赖和仓库基线串行领取；缺适用验收能力时明确等待，不代表业务完成。

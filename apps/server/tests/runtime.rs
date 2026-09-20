@@ -16,6 +16,10 @@ use std::{
     time::Duration,
 };
 
+// PostgreSQL advisory locks are database-wide, even across fixture schemas.
+// Keep independent Runtime scenarios apart; each scenario retains its own races.
+static DATABASE_SCENARIO: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 fn key() -> RunKey {
     RunKey {
         run_id: "runtime-test".into(),
@@ -87,6 +91,7 @@ fn broker(root: &Path) -> GitBroker {
 }
 #[tokio::test]
 async fn persistence_and_full_client_acceptance() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
     let root = temporary();
     let pool = fixture(&root).await;
     session(&pool).await;
@@ -1381,6 +1386,7 @@ async fn stream_errors_and_consumer_cancellation() {
 
 #[tokio::test]
 async fn storage_recheck_restores_paid_work_once_without_a_question_or_pause() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
     let _ = tracing_subscriber::fmt().with_test_writer().try_init();
     let root = temporary();
     automatic_answer_recovery(&root, true, false).await;
@@ -1390,6 +1396,7 @@ async fn storage_recheck_restores_paid_work_once_without_a_question_or_pause() {
 
 #[tokio::test]
 async fn storage_recheck_recovers_committed_work_without_completion_declaration() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
     let root = temporary();
     automatic_answer_recovery(&root, true, true).await;
     std::fs::remove_dir_all(root.with_extension("cold")).unwrap();
@@ -1398,6 +1405,7 @@ async fn storage_recheck_recovers_committed_work_without_completion_declaration(
 
 #[tokio::test]
 async fn pinned_codex_full_client_survives_idle_provider_response() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
     let root = temporary();
     let pool = fixture(&root).await;
     let git = broker(&root.join("broker"));
