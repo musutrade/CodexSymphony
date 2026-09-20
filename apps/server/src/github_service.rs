@@ -109,18 +109,29 @@ async fn poll(pool: PgPool, mut client: AppClient) {
     }
 }
 pub async fn tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()> {
+    let started = tokio::time::Instant::now();
     for (policy, number, failures) in github_store::due_repositories(pool, now).await? {
         let policy: Policy = serde_json::from_value(policy)?;
-        match github_observe::preflight(client, &policy, number as u64, now).await {
+        // Date evidence at this request's start, never at completion or the
+        // start of an earlier repository's slow request. The TTL remains 60s.
+        let observed_at = now + started.elapsed().as_secs() as i64;
+        match github_observe::preflight(client, &policy, number as u64, observed_at).await {
             Ok(capability) => github_store::save_capability(pool, &capability).await?,
             Err(error) => {
-                github_store::failed(pool, policy.repository_id, None, failures, now, &error)
-                    .await?
+                github_store::failed(
+                    pool,
+                    policy.repository_id,
+                    None,
+                    failures,
+                    observed_at,
+                    &error,
+                )
+                .await?
             }
         }
     }
-    sync_prs(pool, client, now).await?;
-    delivery_tick(pool, client, now).await
+    sync_prs(pool, client, now + started.elapsed().as_secs() as i64).await?;
+    delivery_tick(pool, client, now + started.elapsed().as_secs() as i64).await
 }
 async fn delivery_tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()> {
     let root = std::path::PathBuf::from(
@@ -152,9 +163,11 @@ pub async fn deliver(pool: &PgPool, client: &mut AppClient, root: &Path, now: i6
     crate::delivery_worker::tick(pool, root, &mut remote, now).await
 }
 async fn sync_prs(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()> {
+    let started = tokio::time::Instant::now();
     for (policy, number, failures) in github_store::due_prs(pool, now).await? {
         let policy: Policy = serde_json::from_value(policy)?;
-        match github_observe::observe(client, &policy, number as u64, now).await {
+        let observed_at = now + started.elapsed().as_secs() as i64;
+        match github_observe::observe(client, &policy, number as u64, observed_at).await {
             Ok(observation) => github_store::save_observation(pool, &observation).await?,
             Err(error) => {
                 github_store::failed(
@@ -162,7 +175,7 @@ async fn sync_prs(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()>
                     policy.repository_id,
                     Some(number as u64),
                     failures,
-                    now,
+                    observed_at,
                     &error,
                 )
                 .await?

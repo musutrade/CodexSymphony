@@ -32,9 +32,9 @@ async fn serve() -> Result<(), StartupError> {
         process::InstanceLock::acquire(std::path::Path::new("/tmp/codexsymphony-controller.lock"))?;
     let pool = prepare_database(&config.database_url).await?;
     let (listener, policy) = listen(config).await?;
-    let worker = start_coordinator(&pool).await?;
+    let (worker, runtime) = start_coordinator(&pool).await?;
     let github = codexsymphony_server::github_service::start(&pool).await?;
-    serve_http(listener, pool, policy).await?;
+    serve_http(listener, pool, policy, runtime).await?;
     stop_workers(worker, github);
     Ok(())
 }
@@ -45,7 +45,15 @@ async fn listen(config: Config) -> Result<(TcpListener, RequestPolicy), StartupE
     Ok((listener, policy))
 }
 
-async fn start_coordinator(pool: &PgPool) -> Result<tokio::task::JoinHandle<()>, StartupError> {
+async fn start_coordinator(
+    pool: &PgPool,
+) -> Result<
+    (
+        tokio::task::JoinHandle<()>,
+        Option<tokio::task::AbortHandle>,
+    ),
+    StartupError,
+> {
     let root = std::path::PathBuf::from(
         std::env::var("EXECUTION_DIRECTORY").unwrap_or(".local-data/execution".into()),
     );
@@ -60,11 +68,15 @@ async fn start_coordinator(pool: &PgPool) -> Result<tokio::task::JoinHandle<()>,
         root.clone(),
         incarnation.clone(),
     )?;
-    Ok(tokio::spawn(coordinate(
-        Coordinator::new(pool.clone(), root, incarnation),
-        runtime,
-        storage,
-    )))
+    let status = runtime.as_ref().map(tokio::task::JoinHandle::abort_handle);
+    Ok((
+        tokio::spawn(coordinate(
+            Coordinator::new(pool.clone(), root, incarnation),
+            runtime,
+            storage,
+        )),
+        status,
+    ))
 }
 
 async fn coordinate(
@@ -108,10 +120,15 @@ async fn serve_http(
     listener: TcpListener,
     pool: PgPool,
     policy: RequestPolicy,
+    runtime: Option<tokio::task::AbortHandle>,
 ) -> Result<(), StartupError> {
     let address = listener.local_addr()?;
     tracing::info!("CodexSymphony API listening at http://{}", address);
-    axum::serve(listener, codexsymphony_server::router(pool, policy))
+    let mut app = codexsymphony_server::router(pool, policy);
+    if let Some(runtime) = runtime {
+        app = app.layer(axum::Extension(runtime));
+    }
+    axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
     Ok(())

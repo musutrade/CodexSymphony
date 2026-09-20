@@ -50,7 +50,7 @@ API 照常启动，GitHub 能力未就绪，Ready 不领取。
 - 内部 `github_store::link` 校验 Requirement 评审快照中的仓库后关联 PR，供后续 outbox 调用。
   `github_pr_observation` 展示 PR/head/base/ref、合并事实、Checks/status 身份、最后同步时间、
   stale 和 HTTP 错误/尝试次数/next_attempt_at；故障保留上次成功快照，不能作为新事实。
-- 每个关联 PR 和仓库能力 60 秒刷新，失败等待 120、240、300 秒，此后保持 300 秒；成功恢复 60 秒。
+- 每个关联 PR 和仓库能力 30 秒刷新，失败等待 120、240、300 秒，此后保持 300 秒；成功恢复 30 秒。
   轮询任务不调用模型。数据库故障不会启动模型或写 GitHub。
 - 在同一个领取事务中检查当前仓库/评审/能力策略版本、60 秒新鲜度、stale 和缺项，缺能力时
   不创建 AgentRun。Runtime、实际远端交接仍未接通，正常后台仍不启动编码。
@@ -78,3 +78,9 @@ API 照常启动，GitHub 能力未就绪，Ready 不领取。
 [Check runs](https://docs.github.com/en/rest/checks/runs)、
 [workflow runs](https://docs.github.com/en/rest/actions/workflow-runs)、
 [commit statuses](https://docs.github.com/en/rest/commits/statuses)。
+
+仓库与 PR 的观测时间分别从该对象开始查询时计时，不沿用整轮开始时间。
+60 秒有效期保持不变；查询过慢或失败时仍拒绝领取，不延长旧证据的有效期。
+`/api/multi/repository` 的 `repository_ready` 表示至少一个仓库已登记且所有仓库的
+`delivery_ready` 均为真；`runtime_ready` 表示 Runtime worker 已配置且任务仍在运行，
+不表示全局执行槽空闲或某条需求满足所有执行前提。
