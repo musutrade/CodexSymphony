@@ -1,0 +1,1 @@
+{"owner": 2, "first_state": "Submitted", "second_runs": 1, "second_state": "Running", "first_delivery": {"head_sha": "a8e741155953ee97dc01b3aae1e7e77747b5277c", "released": true, "pr_number": 4}, "merge_observation": {"head": "a8e741155953ee97dc01b3aae1e7e77747b5277c", "merge": "Merged", "stale": false, "merged_sha": "fbcad73d9b5f1155b44c79a59b828d9f2ae3bf09"}}
