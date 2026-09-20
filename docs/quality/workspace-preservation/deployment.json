@@ -1,0 +1,74 @@
+{
+  "commit": "5ab4dc26630c05625d26c390df0db12bea457331",
+  "samples": 25,
+  "duration_seconds": 121.73151588439941,
+  "repository_false": 0,
+  "runtime_false": 0,
+  "pr_stale": 0,
+  "owner_budget_calls_preserved": true,
+  "storage_recheck": {
+    "version": 5,
+    "blocked": false,
+    "recovery_complete": true,
+    "owner": 2,
+    "model_calls_by_requirement": {
+      "1": 5,
+      "2": 1
+    }
+  },
+  "invariants_preserved_after_recheck": true,
+  "evidence": {
+    "binary.json": {
+      "sha256": "a7750953abd5e39114cfb6b7451a2435355e6944de6d6074e63278be11904f85",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/binary.json"
+    },
+    "delivery-after.json": {
+      "sha256": "2f60a7b2c3acea080bf96d644a8802c939f67c6676f0c56d8880140deb8b30af",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/delivery-after.json"
+    },
+    "delivery-before.json": {
+      "sha256": "2f60a7b2c3acea080bf96d644a8802c939f67c6676f0c56d8880140deb8b30af",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/delivery-before.json"
+    },
+    "invariants-after.json": {
+      "sha256": "69f43c02f3900b6de46bd041d9c140bcd6b851d9c3266a6633741b172f6db3e4",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/invariants-after.json"
+    },
+    "invariants-before.json": {
+      "sha256": "69f43c02f3900b6de46bd041d9c140bcd6b851d9c3266a6633741b172f6db3e4",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/invariants-before.json"
+    },
+    "invariants-final.json": {
+      "sha256": "69f43c02f3900b6de46bd041d9c140bcd6b851d9c3266a6633741b172f6db3e4",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/invariants-final.json"
+    },
+    "operations-after.json": {
+      "sha256": "c0a2ab38d3a075cd0a5be756761344996a3b0fbd266d613e3128a460330f305b",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/operations-after.json"
+    },
+    "operations-before.json": {
+      "sha256": "0adda35b2654bdd5725679d28975469bacee825777534b7ec909a83aaadb5803",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/operations-before.json"
+    },
+    "readiness-samples.jsonl": {
+      "sha256": "687e7da178fc272b1bc1c9c181db2198c6d0aa15dbcd4f5697941e891c4dd212",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/readiness-samples.jsonl"
+    },
+    "repositories-after.json": {
+      "sha256": "4ba30e760485400ab26a2209d96ae700b968c8c866e8b7658c8f675daa1a683a",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/repositories-after.json"
+    },
+    "repositories-before.json": {
+      "sha256": "30e382244fc3fec267c84d5946a0b65b5ea829febe8f42ccab9203e3fa4dac41",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/repositories-before.json"
+    },
+    "storage-recheck.json": {
+      "sha256": "7340e8bcc54419e2a1e91c5b427e224167b614525b146e4b2c2f6e4c9563c05e",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/storage-recheck.json"
+    },
+    "summary.json": {
+      "sha256": "b1c014585ece3bbfb89edee0f1c072ea495b2aeef8abb1923b39a6f3bd33e8b1",
+      "path": "/home/gem/.local/share/codexsymphony/a01-gh24/releases/5ab4dc2/verification/summary.json"
+    }
+  }
+}

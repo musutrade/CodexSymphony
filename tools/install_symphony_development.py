@@ -37,6 +37,17 @@ def check_environment_resources(state):
         raise ValueError('Approved host environment resources are missing: '+', '.join(missing)+
                          '. Provision environment-template first; existing workflow has not been replaced.')
 
+def check_preservation_controller(state):
+    marker=state/'preservation-controller.json'
+    binary=HOME/'symphony/elixir/bin/symphony'
+    patch=ROOT/'tools/symphony/controller-preservation.patch'
+    if not marker.is_file():
+        raise ValueError('Required preservation controller is not installed; existing workflow has not been replaced')
+    receipt=json.loads(marker.read_text())
+    if (receipt.get('binary_sha256')!=hashlib.sha256(binary.read_bytes()).hexdigest()
+        or receipt.get('patch_sha256')!=hashlib.sha256(patch.read_bytes()).hexdigest()):
+        raise ValueError('Preservation controller receipt mismatch; existing workflow has not been replaced')
+
 def main():
     os.umask(0o077)
     state=BASE/'symphony';state.mkdir(parents=True,exist_ok=True)
@@ -45,6 +56,7 @@ def main():
     provision=(ROOT/'tools/symphony/provision_issue_environment.py').read_bytes()
     sources=environment_sources()
     check_environment_resources(state)
+    check_preservation_controller(state)
     active=state/'WORKFLOW.lifecycle.md'
     routed=routed_workflow(workflow,active.read_bytes() if active.exists() else None)
     revision=hashlib.sha256(workflow+wrapper+provision+b''.join(sources[key] for key in sorted(sources))).hexdigest()[:16]
@@ -55,6 +67,7 @@ def main():
         path.write_bytes(data)
     # Stable journal path is retained across workflow releases.
     (state/'provision_issue_environment.py').write_bytes(provision)
+    (state/'preserve_workspace.py').write_bytes((ROOT/'tools/symphony/preserve_workspace.py').read_bytes())
     # Retire superseded executable entrypoints while retaining their artifacts.
     retired=state/'retired-execution-entries'/revision
     obsolete=['execution_readiness.py','product_preparation_acceptance.py',

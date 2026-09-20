@@ -1,0 +1,18 @@
+{
+  "status": "pending_user_review",
+  "current_host_config": "/home/gem/.local/share/codexsymphony/remote-gate/config-pr54-9352627.json",
+  "changes": [
+    {
+      "path": "WORKFLOW.lifecycle.md",
+      "approved_sha256": "b6c467a70c29d112ee3d4861203d220a6d139eee6c6106f409c9724fdcd01ba9",
+      "proposed_sha256": "297ea5dee225b00886cd188bfd9b90d0c4ba6753814d489b0d326869e308d1af"
+    },
+    {
+      "path": "tools/install_symphony_development.py",
+      "approved_sha256": "140a33d578a5577838c7eb1cba20a29cdde1a73830924b5762ef873c99a4cf40",
+      "proposed_sha256": "88a05878926d0b32ae73794158a1bae1b998a568895ae19e24c09409e6d2c535"
+    }
+  ],
+  "quality_thresholds_changed": false,
+  "checks_removed": false
+}

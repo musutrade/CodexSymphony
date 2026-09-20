@@ -1,0 +1,16 @@
+{
+  "controller_base": "588686d",
+  "controller_commit": "5bc4beed9988f25f0161f6061986d6ca905f8f33",
+  "patch_sha256": "3c1c59a7029ab3996a8a4f7ddf740b0a729a2886c429ecaabe840ea0cb319883",
+  "binary_sha256": "d752a40c234e5f76d2e5dbebc2c5929845373bb1a0684ddad523e5627378c313",
+  "validation": {
+    "command": "mise exec -- make all",
+    "tests": 358,
+    "failures": 0,
+    "skipped": 6,
+    "log_sha256": "3872321e91c61a88193c93df21b633dfc61225f02b704386615d0e7ee23a2930",
+    "python_tests": 36,
+    "integration": "PASS"
+  },
+  "active_workflow_installed": false
+}

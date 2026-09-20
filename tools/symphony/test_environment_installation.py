@@ -3,6 +3,9 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+import hashlib
+import json
 
 ROOT=Path(__file__).resolve().parents[2]
 
@@ -15,6 +18,21 @@ install=module('install',ROOT/'tools/install_symphony_development.py')
 provision=module('provision',Path(__file__).with_name('provision_issue_environment.py'))
 
 class EnvironmentInstallationTests(unittest.TestCase):
+    def test_required_preservation_cannot_install_against_unverified_controller(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home=Path(directory); state=home/'state'; state.mkdir()
+            binary=home/'symphony/elixir/bin/symphony'; binary.parent.mkdir(parents=True); binary.write_bytes(b'controller')
+            marker=state/'preservation-controller.json'
+            with patch.object(install,'HOME',home):
+                with self.assertRaisesRegex(ValueError,'not installed'):
+                    install.check_preservation_controller(state)
+                marker.write_text(json.dumps({'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),
+                    'patch_sha256':hashlib.sha256((ROOT/'tools/symphony/controller-preservation.patch').read_bytes()).hexdigest()}))
+                install.check_preservation_controller(state)
+                binary.write_bytes(b'old-controller')
+                with self.assertRaisesRegex(ValueError,'mismatch'):
+                    install.check_preservation_controller(state)
+
     def test_reinstall_keeps_operator_labels_and_installs_new_hook(self):
         source=(ROOT/'WORKFLOW.lifecycle.md').read_bytes()
         old=source.replace(b'    - symphony-ready\n',b'    - symphony-ready\n    - operator-selected\n')
@@ -22,6 +40,8 @@ class EnvironmentInstallationTests(unittest.TestCase):
         self.assertIn(b'    - operator-selected\n',result)
         self.assertNotIn(b'    - symphony-environment-acceptance\n',result)
         self.assertIn(b'provision_issue_environment.py "$PWD"',result)
+        self.assertIn(b'before_remove_required: true',result)
+        self.assertIn(b'preserve_workspace.py "$PWD"',result)
 
     def test_first_install_still_requires_environment_acceptance(self):
         self.assertIn(b'    - symphony-environment-acceptance\n',install.routed_workflow((ROOT/'WORKFLOW.lifecycle.md').read_bytes()))

@@ -25,6 +25,9 @@ workspace:
   root: $CODEXSYMPHONY_WORKSPACE_ROOT
 hooks:
   timeout_ms: 300000
+  before_remove_required: true
+  before_remove: |
+    python3 /home/gem/.local/share/codexsymphony/symphony/preserve_workspace.py "$PWD" --archive /home/gem/.local/share/codexsymphony/symphony/retained-evidence
   after_create: |
     set -eu
     timeout --kill-after=5s 280s git clone --depth 1 https://github.com/musutrade/CodexSymphony.git .
@@ -167,6 +170,14 @@ measurement evidence. Hook is partial assurance and cannot replace full CI.
 Read .harness-gate/QUALITY.md and docs/remote-gate.md for provisioning and evidence.
 
 Prefer focused reads and bounded output; preserve full evidence in artifacts.
+Before handoff, create `.symphony-evidence.json` using schema `symphony-evidence/v1`
+and `files: [{"path":"artifacts/...","sha256":"<exact SHA-256>"}]`. Include all
+required evidence declared by this task, using canonical workspace-relative paths.
+An empty list requires an explicit `empty_reason`; missing evidence is not empty.
+Run the installed `preserve_workspace.py` with the same workspace/archive arguments
+as `before_remove`, and include its receipt path in the validation summary. Do not
+declare evidence retained until this command succeeds. Cleanup independently repeats
+the check; missing files, checksum errors or timeouts retain the workspace.
 Stop testing when the required checks pass unless new changes or failures justify
 more testing. Do not use goal tools, spawn additional agents, or expand budgets.
 The controller owns attempts, cumulative budgets and CI waiting.
