@@ -1,0 +1,237 @@
+diff --git a/README.md b/README.md
+index 0452fef..53c5e32 100644
+--- a/README.md
++++ b/README.md
+@@ -82,3 +82,12 @@ operation and acknowledge it through the recovery API; an agent request is not
+ itself authorization to run a host command. Journal write errors suspend dispatch
+ and stop workers; the controller stays queryable and retries persisting its pending
+ state. Operator recovery follows once storage is healthy.
++
++### Required cleanup preservation
++
++`hooks.before_remove_required: true` makes a missing, failed or timed-out
++`before_remove` hook block workspace deletion, including recorded-path and SSH
++cleanup. Default `false` retains the existing best-effort behavior. Use a trusted
++hook that durably copies declared evidence outside the workspace and verifies its
++checksums before success. Failure retains the workspace; repair the cause and
++retry cleanup. Startup/reload uses the same policy.
+diff --git a/SPEC.md b/SPEC.md
+index 6c06581..35f4d44 100644
+--- a/SPEC.md
++++ b/SPEC.md
+@@ -947,7 +947,9 @@ Failure semantics:
+ - `after_create` failure or timeout is fatal to workspace creation.
+ - `before_run` failure or timeout is fatal to the current run attempt.
+ - `after_run` failure or timeout is logged and ignored.
+-- `before_remove` failure or timeout is logged and ignored.
++- `before_remove` failure or timeout is logged and ignored by default. With the optional
++  `hooks.before_remove_required: true` extension, missing/failed/timed-out hooks prevent
++  local, recorded-path and remote workspace deletion.
+
+ ### 9.5 Safety Invariants
+
+@@ -2133,7 +2135,8 @@ Unless otherwise noted, Sections 17.1 through 17.7 are `Core Conformance`. Bulle
+ - `after_create` hook runs only on new workspace creation
+ - `before_run` hook runs before each attempt and failure/timeouts abort the current attempt
+ - `after_run` hook runs after each attempt and failure/timeouts are logged and ignored
+-- `before_remove` hook runs on cleanup and failures/timeouts are ignored
++- `before_remove` hook runs on cleanup; failures/timeouts are ignored unless
++  `hooks.before_remove_required` is enabled, in which case the workspace is retained
+ - Workspace path sanitization, stable original-identifier-hash collision resistance, and root
+   containment invariants are enforced before agent launch
+ - Identifiers unchanged by sanitization keep their deterministic workspace key; conformance tests
+diff --git a/elixir/README.md b/elixir/README.md
+index d6add4c..a2e79d4 100644
+--- a/elixir/README.md
++++ b/elixir/README.md
+@@ -456,3 +456,12 @@ operation and acknowledge it through the recovery API; an agent request is not
+ itself authorization to run a host command. Journal write errors suspend dispatch
+ and stop workers; the controller stays queryable and retries persisting its pending
+ state. Operator recovery follows once storage is healthy.
++
++### Required cleanup preservation
++
++`hooks.before_remove_required: true` makes a missing, failed or timed-out
++`before_remove` hook block workspace deletion, including recorded-path and SSH
++cleanup. Default `false` retains the existing best-effort behavior. Use a trusted
++hook that durably copies declared evidence outside the workspace and verifies its
++checksums before success. Failure retains the workspace; repair the cause and
++retry cleanup. Startup/reload uses the same policy.
+diff --git a/elixir/WORKFLOW.md b/elixir/WORKFLOW.md
+index 844dd6a..f837f24 100644
+--- a/elixir/WORKFLOW.md
++++ b/elixir/WORKFLOW.md
+@@ -371,3 +371,12 @@ operation and acknowledge it through the recovery API; an agent request is not
+ itself authorization to run a host command. Journal write errors suspend dispatch
+ and stop workers; the controller stays queryable and retries persisting its pending
+ state. Operator recovery follows once storage is healthy.
++
++### Required cleanup preservation
++
++`hooks.before_remove_required: true` makes a missing, failed or timed-out
++`before_remove` hook block workspace deletion, including recorded-path and SSH
++cleanup. Default `false` retains the existing best-effort behavior. Use a trusted
++hook that durably copies declared evidence outside the workspace and verifies its
++checksums before success. Failure retains the workspace; repair the cause and
++retry cleanup. Startup/reload uses the same policy.
+diff --git a/elixir/lib/symphony_elixir/config/schema.ex b/elixir/lib/symphony_elixir/config/schema.ex
+index a180638..8451e8b 100644
+--- a/elixir/lib/symphony_elixir/config/schema.ex
++++ b/elixir/lib/symphony_elixir/config/schema.ex
+@@ -259,13 +259,18 @@ defmodule SymphonyElixir.Config.Schema do
+       field(:before_run, :string)
+       field(:after_run, :string)
+       field(:before_remove, :string)
++      field(:before_remove_required, :boolean, default: false)
+       field(:timeout_ms, :integer, default: 60_000)
+     end
+
+     @spec changeset(%__MODULE__{}, map()) :: Ecto.Changeset.t()
+     def changeset(schema, attrs) do
+       schema
+-      |> cast(attrs, [:after_create, :before_run, :after_run, :before_remove, :timeout_ms], empty_values: [])
++      |> cast(
++        attrs,
++        [:after_create, :before_run, :after_run, :before_remove, :before_remove_required, :timeout_ms],
++        empty_values: []
++      )
+       |> validate_number(:timeout_ms, greater_than: 0)
+     end
+   end
+diff --git a/elixir/lib/symphony_elixir/workspace.ex b/elixir/lib/symphony_elixir/workspace.ex
+index de06bdf..994bce2 100644
+--- a/elixir/lib/symphony_elixir/workspace.ex
++++ b/elixir/lib/symphony_elixir/workspace.ex
+@@ -111,8 +111,13 @@ defmodule SymphonyElixir.Workspace do
+   end
+
+   def remove(workspace, worker_host) when is_binary(worker_host) do
+-    maybe_run_before_remove_hook(workspace, worker_host)
++    case maybe_run_before_remove_hook(workspace, worker_host) do
++      :ok -> remove_remote_workspace(workspace, worker_host)
++      {:error, reason} -> {:error, reason, workspace}
++    end
++  end
+
++  defp remove_remote_workspace(workspace, worker_host) do
+     script =
+       [
+         remote_shell_assign("workspace", workspace),
+@@ -157,8 +162,10 @@ defmodule SymphonyElixir.Workspace do
+   end
+
+   defp remove_local_workspace(workspace) do
+-    maybe_run_before_remove_hook(workspace, nil)
+-    File.rm_rf(workspace)
++    case maybe_run_before_remove_hook(workspace, nil) do
++      :ok -> File.rm_rf(workspace)
++      {:error, reason} -> {:error, reason, workspace}
++    end
+   end
+
+   @spec remove_issue_workspaces(term()) :: :ok
+@@ -447,7 +454,7 @@ defmodule SymphonyElixir.Workspace do
+       true ->
+         case hooks.before_remove do
+           nil ->
+-            :ok
++            missing_remove_hook(hooks, workspace)
+
+           command ->
+             run_hook(
+@@ -457,7 +464,7 @@ defmodule SymphonyElixir.Workspace do
+               "before_remove",
+               nil
+             )
+-            |> ignore_hook_failure()
++            |> remove_hook_result(hooks, workspace)
+         end
+
+       false ->
+@@ -470,7 +477,7 @@ defmodule SymphonyElixir.Workspace do
+
+     case hooks.before_remove do
+       nil ->
+-        :ok
++        missing_remove_hook(hooks, workspace)
+
+       command ->
+         script =
+@@ -499,10 +506,24 @@ defmodule SymphonyElixir.Workspace do
+           {:error, reason} ->
+             {:error, reason}
+         end
+-        |> ignore_hook_failure()
++        |> remove_hook_result(hooks, workspace)
+     end
+   end
+
++  defp missing_remove_hook(%{before_remove_required: true}, workspace) do
++    Logger.warning("Workspace retained: required before_remove hook missing workspace=#{workspace}")
++    {:error, :required_before_remove_hook_missing}
++  end
++
++  defp missing_remove_hook(_hooks, _workspace), do: :ok
++
++  defp remove_hook_result({:error, reason} = result, %{before_remove_required: true}, workspace) do
++    Logger.warning("Workspace retained: required before_remove failed workspace=#{workspace} reason=#{inspect(reason)}")
++    result
++  end
++
++  defp remove_hook_result(result, _hooks, _workspace), do: ignore_hook_failure(result)
++
+   defp ignore_hook_failure(:ok), do: :ok
+   defp ignore_hook_failure({:error, _reason}), do: :ok
+
+diff --git a/elixir/test/symphony_elixir/workspace_and_config_test.exs b/elixir/test/symphony_elixir/workspace_and_config_test.exs
+index 15f7c36..d8e6aa8 100644
+--- a/elixir/test/symphony_elixir/workspace_and_config_test.exs
++++ b/elixir/test/symphony_elixir/workspace_and_config_test.exs
+@@ -987,6 +987,34 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
+     end
+   end
+
++  test "required preservation hook blocks failed, interrupted, missing and recorded cleanup" do
++    root = Path.join(System.tmp_dir!(), "preservation-#{System.unique_integer([:positive])}")
++    on_exit(fn -> File.rm_rf(root) end)
++
++    for command <- ["exit 17", "sleep 1", nil] do
++      write_workflow_file!(Workflow.workflow_file_path(),
++        workspace_root: root,
++        hook_before_remove: command,
++        hook_timeout_ms: 10
++      )
++
++      path = Workflow.workflow_file_path()
++      File.write!(path, String.replace(File.read!(path), "hooks:\n", "hooks:\n  before_remove_required: true\n"))
++      assert {:ok, workspace} = Workspace.create_for_issue("KEEP")
++      File.write!(Path.join(workspace, "evidence"), "original")
++      assert {:error, _, _} = Workspace.remove(workspace)
++      assert {:error, _, _} = Workspace.remove_recorded(workspace, nil)
++      assert :ok = Workspace.remove_issue_workspaces("KEEP")
++      assert File.read!(Path.join(workspace, "evidence")) == "original"
++    end
++
++    write_workflow_file!(Workflow.workflow_file_path(), workspace_root: root, hook_before_remove: "test -f evidence")
++    path = Workflow.workflow_file_path()
++    File.write!(path, String.replace(File.read!(path), "hooks:\n", "hooks:\n  before_remove_required: true\n"))
++    assert {:ok, _} = Workspace.remove(Path.join(root, "KEEP"))
++    refute File.exists?(Path.join(root, "KEEP"))
++  end
++
+   test "config reads defaults for optional settings" do
+     previous_linear_api_key = System.get_env("LINEAR_API_KEY")
+     on_exit(fn -> restore_env("LINEAR_API_KEY", previous_linear_api_key) end)
+@@ -1664,6 +1692,12 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
+       assert trace =~ "echo before-remove"
+       assert trace =~ "rm -rf"
+       assert trace =~ workspace_path
++      path = Workflow.workflow_file_path()
++      File.write!(path, String.replace(File.read!(path), "hooks:\n", "hooks:\n  before_remove_required: true\n"))
++      File.write!(trace_file, "")
++      File.write!(fake_ssh, "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$SYMP_TEST_SSH_TRACE\"\nexit 17\n")
++      assert {:error, _, _} = Workspace.remove(workspace_path, "worker-01:2200")
++      refute File.read!(trace_file) =~ "rm -rf"
+     after
+       File.rm_rf(test_root)
+     end

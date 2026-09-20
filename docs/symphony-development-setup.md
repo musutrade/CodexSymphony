@@ -1,5 +1,7 @@
 # Symphony 开发控制器
 
+工作区删除前的必需证据归档与控制器版本要求见 [证据保全](workspace-preservation.md)。
+
 采用 [可信开发环境](trusted-development.md) 的执行方式。调度、预算、Issue/PR 交接继续由独立 Elixir Symphony 服务负责；Rust 产品不复制开发控制器的交接文件协议。
 
 1. 准备锁定 Codex、Rust、Node、数据库与浏览器资源。
