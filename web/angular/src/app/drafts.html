@@ -1,0 +1,108 @@
+<header class="page-header">
+  <h1>导入父子草稿</h1>
+  <p>仅保存 Draft。来源文本是需求资料；导入、读取和编辑不会授权模型、Run、PR 或预算。</p>
+  <a routerLink="/requirements">返回需求工作台与仓库登记</a>
+</header>
+<p role="status">{{ busy() ? '正在处理…' : message() }}</p>
+@if (error()) {
+  <p role="alert">{{ error() }}</p>
+}
+<div class="ui-actions">
+  <button matButton="outlined" (click)="newDraft()" [disabled]="busy()">新建导入草稿</button>
+  <button matButton="outlined" (click)="reload()" [disabled]="busy()">刷新草稿列表</button>
+</div>
+<section class="ui-panel" aria-labelledby="draft-input-title">
+  <h2 id="draft-input-title">{{ selected() ? '编辑整组草稿' : '粘贴导入' }}</h2>
+  <p>
+    结构化 JSON 使用 codexsymphony-draft/v1；Markdown 使用固定标题和单个 JSON
+    代码块。字段可留空，保存后显示待补齐提示。
+  </p>
+  <form (submit)="$event.preventDefault(); save()">
+    <fieldset [disabled]="busy()">
+      <legend>输入来源与内容</legend>
+      <label for="draft-format">输入格式</label>
+      <select id="draft-format" [formField]="fields.format">
+        <option value="json">结构化 JSON</option>
+        <option value="markdown">Markdown 模板</option>
+      </select>
+      <mat-form-field
+        ><mat-label>来源说明</mat-label><input matInput [formField]="fields.label"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>草稿原文</mat-label
+        ><textarea matInput [formField]="fields.text" rows="16"></textarea>
+      </mat-form-field>
+      <div class="ui-actions">
+        <button matButton="outlined" type="button" (click)="example()">填入 JSON 样例</button>
+        <button matButton="filled" type="submit">保存父子 Draft</button>
+      </div>
+    </fieldset>
+  </form>
+</section>
+@if (selected(); as draft) {
+  <section class="ui-panel" aria-labelledby="draft-detail-title">
+    <h2 id="draft-detail-title">父目标 · {{ draft.document.parent.id }}</h2>
+    <p>Draft · 版本 {{ draft.version }} · {{ draft.id }}</p>
+    <p>尚不支持整组 Ready 评审、依赖领取或 validation_only 执行。</p>
+    <h3>目标</h3>
+    <p class="preserve">{{ draft.document.parent.goal || '待补齐' }}</p>
+    <h3>范围</h3>
+    <p class="preserve">{{ draft.document.parent.scope || '待补齐' }}</p>
+    <h3>父级验收条件</h3>
+    <ul>
+      @for (ac of draft.document.parent.acceptance_criteria; track ac.id) {
+        <li>{{ ac.id }} · {{ ac.description || '待补齐' }}</li>
+      } @empty {
+        <li>待补齐</li>
+      }
+    </ul>
+    @if (draft.warnings.length) {
+      <h3>草稿待补齐</h3>
+      <ul>
+        @for (warning of draft.warnings; track warning) {
+          <li>{{ warning }}</li>
+        }
+      </ul>
+    }
+    <h3>来源</h3>
+    <p>{{ draft.source.label || '来源说明待补齐' }} · {{ draft.source.format }}</p>
+    <p>原文 SHA-256：{{ draft.source_sha256 }}</p>
+    <details>
+      <summary>查看已保存原文</summary>
+      <pre>{{ draft.source.text }}</pre>
+    </details>
+    <h3>子项（按顺序）</h3>
+    @for (child of children(); track child.id) {
+      <article class="ui-panel" [attr.aria-label]="'子项 ' + child.id">
+        <h4>{{ child.order }} · {{ child.id }} · {{ child.kind }}</h4>
+        <p>parent_id：{{ child.parent_id }} · 仓库 ID：{{ child.repository_id ?? '待选择' }}</p>
+        <p>依赖：{{ child.depends_on.join(', ') || '无已填写依赖' }}</p>
+        <p class="preserve">目标：{{ child.goal || '待补齐' }}</p>
+        <ul>
+          @for (ac of child.acceptance_criteria; track ac.id) {
+            <li>{{ ac.id }} · {{ ac.description || '待补齐' }}</li>
+          } @empty {
+            <li>独立 AC 待补齐</li>
+          }
+        </ul>
+        <p class="preserve">验证计划：{{ child.validation_plan || '待补齐' }}</p>
+      </article>
+    } @empty {
+      <p>子项待补齐</p>
+    }
+  </section>
+}
+<section class="ui-panel" aria-labelledby="draft-list-title">
+  <h2 id="draft-list-title">已保存父子草稿</h2>
+  <ul class="ui-list">
+    @for (item of items(); track item.id) {
+      <li>
+        <button matButton="text" (click)="open(item.id)" [disabled]="busy()">
+          {{ item.goal || '目标待补齐' }} · Draft · 版本 {{ item.version }}
+        </button>
+      </li>
+    } @empty {
+      <li>暂无已保存父子草稿。</li>
+    }
+  </ul>
+</section>

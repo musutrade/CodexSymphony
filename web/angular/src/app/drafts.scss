@@ -1,0 +1,30 @@
+:host {
+  display: block;
+  overflow-wrap: anywhere;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+  display: grid;
+  gap: 1rem;
+}
+mat-form-field {
+  width: 100%;
+}
+select {
+  width: 100%;
+  padding: 0.75rem;
+  font: inherit;
+  color: inherit;
+  background: var(--mat-sys-surface);
+}
+pre,
+.preserve {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+button {
+  height: auto;
+  min-height: 44px;
+}

@@ -20,6 +20,8 @@
 真实 A01 已在授权仓完成到 Submitted/PR，证据见 `docs/quality/gh24/real-a01.json`。
 [多仓登记与串行路由](docs/multiple-repositories.md) 已在第二私仓完成真实执行与 PR 路由，见 [A13 证据](docs/quality/gh25/README.md)；精确提交双 Gate 仍由独立服务验收，不能提前记作完整 0a 发布。
 
+[M1-01 导入父子 Draft](docs/import-drafts.md) 提供确定性 Markdown/JSON 导入、来源与版本持久化；仅保存草稿，不授权执行。
+
 ## 从这里开始
 
 | 文档 | 效力 |

@@ -18,6 +18,7 @@
   <p role="alert">{{ error() }}</p>
 }
 <div class="ui-actions">
+  <a routerLink="/drafts">导入与查看父子草稿</a>
   <button matButton="outlined" (click)="reload()" [disabled]="busy()">刷新列表</button>
   <button matButton="outlined" (click)="newDraft()" [disabled]="busy()">新建需求</button>
 </div>

@@ -10,6 +10,8 @@ pub mod delivery_control;
 pub mod delivery_remote;
 pub mod delivery_store;
 pub mod delivery_worker;
+pub mod draft;
+pub mod draft_api;
 pub mod execution;
 pub mod execution_api;
 pub mod git_broker;
@@ -72,10 +74,12 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
         Router::new()
             .route("/api/health", get(health))
             .merge(business::routes())
+            .merge(draft_api::routes())
             .merge(operator_api::routes())
             .merge(execution_api::routes())
             .merge(validation_api::routes())
             .merge(runtime_api::routes())
+            .layer(axum::middleware::from_fn(draft_api::guard_legacy))
             .with_state(pool),
     )
 }

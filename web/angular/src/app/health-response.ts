@@ -1,4 +1,4 @@
-// harness-contract-sha256: 3575ef4eafca7f366f083340a2eff0097f2cbe900d8c0e161bd3cc373cb2e501
+// harness-contract-sha256: 03fb4558975f8691e73d48629a90caeffad41a4f35b84d49049e499c2b3d390a
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -73,7 +73,13 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
+  requirements: {
+    id: number;
+    revision: number;
+    state: string;
+    title: string;
+    version: number;
+  }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -1006,5 +1012,106 @@ export type MultiWithdrawRequirementResponse =
 export interface MultiWithdrawRequirementRequest {
   repository_version: number;
   request_id: string;
+  version: number;
+}
+export interface ListDraftsResponse {
+  drafts: { goal: string; id: string; state: string; version: number }[];
+}
+export type ImportDraftResponse =
+  | {
+      document: {
+        children: {
+          acceptance_criteria: { description: string; id: string }[];
+          depends_on: string[];
+          goal: string;
+          id: string;
+          kind: 'code_change' | 'validation_only';
+          order: number;
+          parent_id: string;
+          repository_id: number | null;
+          validation_plan: string;
+        }[];
+        parent: {
+          acceptance_criteria: { description: string; id: string }[];
+          goal: string;
+          id: string;
+          scope: string;
+        };
+        schema: string;
+      };
+      id: string;
+      source: { format: 'json' | 'markdown'; label: string; text: string };
+      source_sha256: string;
+      state: 'Draft';
+      version: number;
+      warnings: string[];
+    }
+  | { error: string };
+export interface ImportDraftRequest {
+  source: { format: 'json' | 'markdown'; label: string; text: string };
+  version: number;
+}
+export type GetDraftResponse =
+  | {
+      document: {
+        children: {
+          acceptance_criteria: { description: string; id: string }[];
+          depends_on: string[];
+          goal: string;
+          id: string;
+          kind: 'code_change' | 'validation_only';
+          order: number;
+          parent_id: string;
+          repository_id: number | null;
+          validation_plan: string;
+        }[];
+        parent: {
+          acceptance_criteria: { description: string; id: string }[];
+          goal: string;
+          id: string;
+          scope: string;
+        };
+        schema: string;
+      };
+      id: string;
+      source: { format: 'json' | 'markdown'; label: string; text: string };
+      source_sha256: string;
+      state: 'Draft';
+      version: number;
+      warnings: string[];
+    }
+  | { error: string };
+export type UpdateDraftResponse =
+  | {
+      document: {
+        children: {
+          acceptance_criteria: { description: string; id: string }[];
+          depends_on: string[];
+          goal: string;
+          id: string;
+          kind: 'code_change' | 'validation_only';
+          order: number;
+          parent_id: string;
+          repository_id: number | null;
+          validation_plan: string;
+        }[];
+        parent: {
+          acceptance_criteria: { description: string; id: string }[];
+          goal: string;
+          id: string;
+          scope: string;
+        };
+        schema: string;
+      };
+      id: string;
+      source: { format: 'json' | 'markdown'; label: string; text: string };
+      source_sha256: string;
+      state: 'Draft';
+      version: number;
+      warnings: string[];
+    }
+  | { error: string };
+export interface UpdateDraftRequest {
+  source: { format: 'json' | 'markdown'; label: string; text: string };
   version: number;
 }
