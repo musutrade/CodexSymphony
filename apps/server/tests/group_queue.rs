@@ -550,6 +550,33 @@ async fn group_ceiling_inflight_reservations_and_late_usage_survive_restart() {
             model_seconds: 10,
         },
     };
+    // Synthetic persisted-accounting fault: reject without reserving a call
+    // or releasing ownership, then restore the fixture for normal settlement.
+    for dimension in ["tokens", "turns", "model_seconds"] {
+        let mut used = json!(Amount::default());
+        let mut reserved = json!(Amount::default());
+        used[dimension] = json!(i64::MAX);
+        reserved[dimension] = json!(1);
+        sqlx::query("UPDATE group_budget SET used=$2,reserved=$3 WHERE draft_id=$1 AND item_id=''")
+            .bind(&draft)
+            .bind(used)
+            .bind(reserved)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let error = budget_store::reserve(&pool, &intent).await.unwrap_err();
+        assert!(
+            matches!(error, sqlx::Error::Protocol(ref message) if message == "group accounting overflow")
+        );
+        assert_eq!(count(&pool, "model_call").await, 0);
+        assert_eq!(owner(&pool).await, Some(1));
+    }
+    sqlx::query("UPDATE group_budget SET used=$2,reserved=$2 WHERE draft_id=$1 AND item_id=''")
+        .bind(&draft)
+        .bind(json!(Amount::default()))
+        .execute(&pool)
+        .await
+        .unwrap();
     assert_eq!(
         budget_store::reserve(&pool, &intent).await.unwrap(),
         budget_store::Admission::Reserved
@@ -639,4 +666,66 @@ async fn legacy_same_transaction_queue_keeps_numeric_order() {
     assert_eq!(plan(&pool, &broker, &base).await.unwrap().1.requirement, 2);
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn queue_wait_reasons_and_bound_review_conflict_preserve_authorization() {
+    let (pool, _, _) = fixture().await;
+    bootstrap(&pool).await;
+    let draft = authorized(&pool, "view-reasons").await;
+    queue::materialize(&pool).await.unwrap();
+    let router = app(&pool);
+    let path = format!("/api/drafts/{draft}/review");
+    let before = request(&router, "GET", &path, json!({}), 200).await;
+    assert_eq!(
+        before["execution"]["items"][0]["waiting_reason"],
+        "waiting_repository_baseline_or_preparation"
+    );
+    request(
+        &router,
+        "PUT",
+        &path,
+        json!({"version":1,"draft_revision":1,"review":review()}),
+        409,
+    )
+    .await;
+    let after = request(&router, "GET", &path, json!({}), 200).await;
+    assert_eq!(before, after);
+    assert_eq!(count(&pool, "group_review_revision").await, 1);
+    assert_eq!(count(&pool, "group_authorization").await, 1);
+    for (mutation, expected) in [
+        (
+            "UPDATE group_queue SET state='needs_review'",
+            "needs_review",
+        ),
+        (
+            "UPDATE requirement SET state='Submitted' WHERE id=1",
+            "waiting_confirmed_merge_and_applicable_acceptance",
+        ),
+        (
+            "UPDATE requirement SET state='Failed' WHERE id=1",
+            "occupied_execution_or_blocker",
+        ),
+        (
+            "UPDATE github_repository SET stale=true",
+            "repository_unavailable",
+        ),
+        (
+            "INSERT INTO requirement(version,state,contract,revision,created_at) VALUES(1,'Ready','{}',1,now()-interval '1 day')",
+            "waiting_queue_order",
+        ),
+    ] {
+        sqlx::query(mutation).execute(&pool).await.unwrap();
+        let view = request(&router, "GET", &path, json!({}), 200).await;
+        assert_eq!(
+            view["execution"]["items"][0]["waiting_reason"], expected,
+            "{mutation}"
+        );
+        assert_eq!(view["execution"]["completed"], 0);
+        assert_eq!(view["business_complete"], false);
+        sqlx::raw_sql("UPDATE group_queue SET state='waiting_scheduler'; UPDATE requirement SET state='Ready'; UPDATE github_repository SET stale=false;").execute(&pool).await.unwrap();
+    }
+    assert_eq!(count(&pool, "agent_run").await, 0);
+    assert_eq!(owner(&pool).await, None);
+    pool.close().await;
 }

@@ -63,3 +63,28 @@ CRAP ≤10 且无缺失。原始导出、测量结果和汇总分别为 `ci-repa
 测试与覆盖率套件串行使用重建后的一次性 test fixture。首次复用 fixture 的预算
 拒绝失败及重跑日志保留；未取得当时完整数据库状态，因此不把具体残留原因写成定论。
 前端和 API 本次未修改，保留首次交付的实际检查记录。
+
+## PR #68 覆盖率修复（32e09346 后续）
+
+宿主保留的 `artifacts/gh63/host-packaging-recovery/coverage-failures.json` 将
+Actions `35513384977/3` 的原始采集与随后 Core 重放明确分开；后者报告四处源码的七项覆盖率失败。
+本次只补测试：`queue_wait_reasons_and_bound_review_conflict_preserve_authorization`
+通过真实 PostgreSQL/API 验证已绑定组的评审修改返回 409 且版本、授权和队列视图不变，
+以及过期授权、Submitted、失败、仓库不可用和旧需求优先时的等待原因（AC02/AC04/AC05）。
+`group_ceiling_inflight_reservations_and_late_usage_survive_restart` 增加三个累计预算维度的
+数据库溢出故障，确认拒绝调用、不写预留、不释放 owner，恢复夹具后继续验证结算（AC04）。产品行为、门禁策略及 API 契约无变更。
+
+本次证据在 `artifacts/gh63/coverage-repair/` 及 `artifacts/gh63/repair-*.log`。
+首次完整测试遇到旧测试库的 `storage_unavailable`，旧 storage policy 仍绑定上次临时目录；
+原始状态与失败日志保留，随后仅重建一次性 test fixture。未操作合成持久库或生产数据。
+本地覆盖率为未签名诊断；精确新提交仍须由独立双 Gate 验证。固定完成事实夹具不代表 M3 全链路验收。
+
+最终命令均通过：`cargo fmt --all -- --check`、供给环境中的
+`cargo test --workspace --locked`（124 项，含真实 Runtime）、
+`cargo clippy --workspace --all-targets --locked -- -D warnings`、
+`python3 tools/gate.py config check`、完整 `cargo llvm-cov --workspace --locked --json`
+及锁定源码采集器本地诊断。1,151 个函数全部映射，行 11,477/11,700、region
+20,154/21,986；逐函数无覆盖率低于 80%、CRAP 超过 10 或缺失测量。
+最终日志使用 `coverage-repair/final-*`，汇总为 `measurement-summary.json`。
+曾尝试将溢出测试放在生产文件的 `cfg(test)` 中，采集器明确拒绝该语法；
+已改为真实数据库集成故障测试，原失败诊断保留，不修改采集器或生产源码。
