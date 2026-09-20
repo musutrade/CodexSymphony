@@ -1,0 +1,86 @@
+{
+  "status": "local_checks_passed",
+  "baseline": "2c51661210807bc4d1cc60d7c3c57a00839035d8",
+  "checks": [
+    {
+      "command": "npm run lint -- --fix (web/angular)",
+      "result": "passed; generated types normalized without changing rules",
+      "evidence": "artifacts/gh25/frontend-lint-final.log"
+    },
+    {
+      "command": "npm test -- --watch=false (web/angular)",
+      "result": "20 passed; installed collector repeated all 20 on instrumented current TypeScript",
+      "evidence": "artifacts/gh25/frontend-unit-final.log"
+    },
+    {
+      "command": "npm run build (web/angular)",
+      "result": "passed after contrast correction",
+      "evidence": "artifacts/gh25/frontend-build-styles.log"
+    },
+    {
+      "command": "npm run test:e2e -- --workers=1 --output <evidence> (web/angular)",
+      "result": "16 passed, desktop/mobile/keyboard/axe",
+      "evidence": "artifacts/gh25/browser-validation-3/browser.log"
+    },
+    {
+      "command": "node --check tools/a01-smoke.mjs",
+      "result": "passed; real smoke not invoked",
+      "evidence": "artifacts/gh25/smoke-script-syntax.log"
+    },
+    {
+      "command": "node --test tools/tests/a01-observe.test.mjs",
+      "result": "passed",
+      "evidence": "artifacts/gh25/observer-final.log"
+    },
+    {
+      "command": "HARNESS_GATE_TYPESCRIPT_PLUGIN=<installed rc.4> node web/angular/tools/probe-typescript-risk.cjs",
+      "result": "max CRAP 7.294515401953419; executable line coverage >=80%; type-only generated file has no executable denominator",
+      "evidence": "artifacts/gh25/frontend-risk-summary.json"
+    },
+    {
+      "command": "Pinned HTTP collector schema/client validation of live capture",
+      "result": "17 existing operations unchanged; 55 business variants validated; 14 production HTTP calls have no client drift",
+      "evidence": "artifacts/gh25/http-schema-check-final.log"
+    },
+    {
+      "command": "python3 /opt/symphony-env/run.py cargo test --workspace --locked",
+      "result": "101 tests passed, including runtime_real",
+      "evidence": "artifacts/gh25/workspace-current.log"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "result": "passed",
+      "evidence": "artifacts/gh25/fmt-current.log"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "result": "passed",
+      "evidence": "artifacts/gh25/clippy-current.log"
+    },
+    {
+      "command": "npm run lint (web/angular)",
+      "result": "passed",
+      "evidence": "artifacts/gh25/frontend-lint-current.log"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "result": "passed",
+      "evidence": "artifacts/gh25/gate-config-current.log"
+    },
+    {
+      "command": "python3 tools/gate.py audit --json",
+      "result": "zero violations",
+      "evidence": "artifacts/gh25/gate-audit-current.log"
+    },
+    {
+      "command": "python3 .agent-tmp/gh25-publication-source/tools/gate.py secrets --json",
+      "result": "passed; findings=[] on publication source snapshot",
+      "evidence": "artifacts/gh25/gate-secrets-publication.log"
+    }
+  ],
+  "rust_quality": "rust-quality.json",
+  "frontend_quality": "frontend-quality.json",
+  "real_a13": "real-a13.json",
+  "formal_exact_commit_gates": "pending independent service on published head",
+  "secret_scan_note": "Raw workspace scan hit the file-size limit on a retained native coverage binary. Exact publication-source scan passed with unchanged policy; raw binaries remain local, excluded from publication."
+}

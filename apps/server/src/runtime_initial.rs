@@ -19,11 +19,28 @@ pub async fn tick(
     incarnation: &str,
     config: &Config,
 ) -> Result<()> {
+    tick_selected(pool, root, broker, incarnation, config, None).await
+}
+pub async fn tick_selected(
+    pool: &PgPool,
+    root: &Path,
+    broker: &GitBroker,
+    incarnation: &str,
+    config: &Config,
+    selected: Option<(i64, i64)>,
+) -> Result<()> {
     let Some(baseline) = config.preparation["baseline"].as_str() else {
         return Ok(());
     };
-    let Some((launch, workspace)) =
-        plan(pool, broker, incarnation, &config.launcher()?, baseline).await?
+    let Some((launch, workspace)) = plan_selected(
+        pool,
+        broker,
+        incarnation,
+        &config.launcher()?,
+        baseline,
+        selected,
+    )
+    .await?
     else {
         return Ok(());
     };
@@ -82,13 +99,45 @@ pub async fn plan(
     launcher: &[String],
     baseline: &str,
 ) -> Result<Option<(Launch, Workspace)>> {
+    plan_selected(pool, broker, incarnation, launcher, baseline, None).await
+}
+pub async fn plan_selected(
+    pool: &PgPool,
+    broker: &GitBroker,
+    incarnation: &str,
+    launcher: &[String],
+    baseline: &str,
+    selected: Option<(i64, i64)>,
+) -> Result<Option<(Launch, Workspace)>> {
     let mut tx = run_store::lock(pool).await?;
     let Some((requirement, revision)) = eligible(&mut tx, incarnation).await? else {
         return Ok(None);
     };
+    if selected.is_some_and(|selected| selected != (requirement, revision)) {
+        return Ok(None);
+    }
     if let Some(job) = saved(&mut tx, requirement, revision, incarnation).await? {
         return Ok(Some(job));
     }
+    save_initial(
+        tx,
+        broker,
+        incarnation,
+        launcher,
+        baseline,
+        (requirement, revision),
+    )
+    .await
+}
+async fn save_initial(
+    mut tx: sqlx::Transaction<'_, sqlx::Postgres>,
+    broker: &GitBroker,
+    incarnation: &str,
+    launcher: &[String],
+    baseline: &str,
+    selected: (i64, i64),
+) -> Result<Option<(Launch, Workspace)>> {
+    let (requirement, revision) = selected;
     let (launch, workspace) = allocate(
         broker,
         incarnation,

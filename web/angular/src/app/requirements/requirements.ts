@@ -5,17 +5,18 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
 import {
-  CreateRequirementRequest,
-  GetRequirementResponse,
-  GetRepositoryResponse,
-  ListRequirementsResponse,
+  MultiCreateRequirementRequest,
+  MultiGetRequirementResponse,
+  MultiGetRepositoryResponse,
+  MultiListRequirementsResponse,
 } from '../health-response';
 import { RequirementsApi } from './requirements-api';
 
-type Requirement = Extract<GetRequirementResponse, { id: number }>;
+type Requirement = Extract<MultiGetRequirementResponse, { id: number }>;
 @Component({
   selector: 'app-requirements',
   imports: [
@@ -25,6 +26,7 @@ type Requirement = Extract<GetRequirementResponse, { id: number }>;
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
   ],
   templateUrl: './requirements.html',
   styleUrl: './requirements.scss',
@@ -36,10 +38,12 @@ export class Requirements {
   readonly busy = signal(false);
   readonly error = signal('');
   readonly message = signal('');
-  readonly repository = signal<GetRepositoryResponse | undefined>(undefined);
-  readonly items = signal<ListRequirementsResponse['requirements']>([]);
+  readonly repository = signal<MultiGetRepositoryResponse | undefined>(undefined);
+  readonly items = signal<MultiListRequirementsResponse['requirements']>([]);
   readonly selected = signal<Requirement | undefined>(undefined);
   readonly reviewing = signal(false);
+  readonly selectedRepository = signal(1);
+  readonly registering = signal(false);
   // Retain a key for an identical retry, including a lost HTTP response.
   private pending = { fingerprint: '', key: '' };
   readonly form = this.fb.group({
@@ -81,6 +85,11 @@ export class Requirements {
   }
   addStep() {
     this.form.controls.validation_plan.push(this.step());
+  }
+  selectRepository(id: number) {
+    this.selectedRepository.set(id);
+    this.form.markAsDirty();
+    this.reviewing.set(false);
   }
   async reload() {
     this.loading.set(true);
@@ -132,6 +141,9 @@ export class Requirements {
         const value = this.setup.getRawValue();
         const payload = {
           version: 0,
+          repository_id:
+            Math.max(0, ...(this.repository()?.repositories.map((entry) => entry.id ?? 1) ?? [])) +
+            1,
           repository: {
             project: value.project,
             remote: value.remote,
@@ -151,6 +163,8 @@ export class Requirements {
         };
         await firstValueFrom(this.api.configure({ ...payload, request_id: this.key(payload) }));
         this.repository.set(await firstValueFrom(this.api.repository()));
+        this.selectedRepository.set(payload.repository_id);
+        this.registering.set(false);
         this.message.set('仓库策略已保存，交付能力尚未检查。');
       });
     }
@@ -160,11 +174,12 @@ export class Requirements {
       this.accept(await firstValueFrom(this.api.detail(id)));
     });
   }
-  accept(response: GetRequirementResponse) {
+  accept(response: MultiGetRequirementResponse) {
     if (!('id' in response)) {
       throw new Error(response.error);
     } else {
       this.selected.set(response);
+      this.selectedRepository.set(response.repository_id ?? 1);
       this.reviewing.set(false);
       this.form.controls.acceptance_criteria.clear();
       this.form.controls.validation_plan.clear();
@@ -201,7 +216,7 @@ export class Requirements {
     } else {
       await this.run(async () => {
         const raw = this.form.getRawValue();
-        const contract: CreateRequirementRequest['contract'] = {
+        const contract: MultiCreateRequirementRequest['contract'] = {
           ...raw,
           network_access: raw.network_access
             .split(',')
@@ -209,7 +224,11 @@ export class Requirements {
             .filter(Boolean),
         };
         const selected = this.selected();
-        const payload = { version: selected?.version ?? 0, contract };
+        const payload = {
+          version: selected?.version ?? 0,
+          repository_id: this.selectedRepository(),
+          contract,
+        };
         const body = { ...payload, request_id: this.key({ id: selected?.id, ...payload }) };
         const response = selected
           ? await firstValueFrom(this.api.update(selected.id, body))
@@ -228,7 +247,10 @@ export class Requirements {
       await this.run(async () => {
         const payload = {
           version: selected.version,
-          repository_version: this.repository()?.repositories[0]?.version ?? 0,
+          repository_version:
+            this.repository()?.repositories.find(
+              (entry) => (entry.id ?? 1) === this.selectedRepository(),
+            )?.version ?? 0,
           request_id: this.key({ id: selected.id, version: selected.version, action }),
         };
         const response =

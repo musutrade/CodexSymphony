@@ -117,7 +117,7 @@ async fn allowed(tx: &mut Transaction<'_, Postgres>, job: &Pending) -> Result<bo
     if !safe || job.kind == "close" {
         return Ok(safe);
     }
-    let authorized: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repository r JOIN requirement_revision v ON v.requirement_id=$1 AND v.revision=$2 WHERE r.id=1 AND NOT (r.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>r.revoked_through_version)").bind(job.requirement_id).bind(job.revision).fetch_one(&mut **tx).await?;
+    let authorized: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repository r JOIN requirement_revision v ON v.requirement_id=$1 AND v.revision=$2 WHERE r.id=COALESCE((v.document->>'repository_id')::bigint,1) AND NOT (r.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>r.revoked_through_version)").bind(job.requirement_id).bind(job.revision).fetch_one(&mut **tx).await?;
     Ok(
         authorized
             && crate::github_store::claim_ready(tx, job.requirement_id, job.revision).await?,

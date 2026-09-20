@@ -2,7 +2,7 @@
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。
 
-当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持首个仓库登记及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。已接入锁定 Codex Runtime、累计额度和固定候选验证；已加入 [可靠 PR 交接与取消收尾](docs/delivery.md)。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，随后加入多仓登记，始终严格全局串行。
+当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持仓库登记/选择及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。已接入锁定 Codex Runtime、累计额度和固定候选验证；已加入 [可靠 PR 交接与取消收尾](docs/delivery.md)。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，再验证多仓登记，始终严格全局串行。
 
 [工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 与远端交付已接线；真实 A01 的部署条件和未执行边界见交接文档。
 
@@ -17,7 +17,8 @@
 [Localhost 操作闭环](docs/operations.md) 提供需求表单、列表、详情/Run 时间线与待办箱，支持版本化回答和控制、独立事实展示、脱敏证据预览及持久化消耗/介入指标。分类存储、跨重试归并与容量保护见 [证据生命周期](docs/storage-lifecycle.md)。
 
 [单仓集成验收](docs/single-repository-acceptance.md) 汇总 A01–A12 的复用测试、真实边界和部署恢复步骤。
-真实 A01 已在授权仓创建 Requirement 1，但尚因存储故障停在恢复阶段，不能记作产品贯通或完整 0a 发布。
+真实 A01 已在授权仓完成到 Submitted/PR，证据见 `docs/quality/gh24/real-a01.json`。
+[多仓登记与串行路由](docs/multiple-repositories.md) 已在第二私仓完成真实执行与 PR 路由，见 [A13 证据](docs/quality/gh25/README.md)；精确提交双 Gate 仍由独立服务验收，不能提前记作完整 0a 发布。
 
 ## 从这里开始
 

@@ -1,0 +1,14 @@
+{
+  "artifacts/gh25/a13-submitted/second-delivery.json": "971f29833b1add19d6312ee7eb6cf0e6ebfa167954ced38ad1729d8e4748b804",
+  "artifacts/gh25/a13-submitted/repositories.json": "bd695624c61fd9f1e28a98d2459ac2fbf0c9197218494296c3363f5eca6a6a25",
+  "artifacts/gh25/a13-submitted/first-operations.json": "f0543d6ae48bb7e61f43a2790b298c597819d67114d5a96f51d93a43aeae5b8d",
+  "artifacts/gh25/a13-submitted/a13pr.json": "d72116c889c6c5eebbb88d5af884a20352f5bffcb97f9c97e1779d756fe2ccbc",
+  "artifacts/gh25/a13-submitted/a13jobs.json": "e5cd9ad0f937f0913210a62ada8252d31f029b183214ac4e99902c3d5469563c",
+  "artifacts/gh25/a13-submitted/second-operations-latest.json": "f56326b71e6ce9e3cb327ad4d5302ea81b3a63d2e81d35aac32220149575092e",
+  "artifacts/gh25/a13-submitted/second-operations.json": "6789cbde5c2c35084afc99d665a46a78aaa7f83c89a6216e0fc3604a83db9be7",
+  "artifacts/gh25/a13-submitted/a13checks.json": "e3dd28e672bf2c99ec5d0826d57ce0fa2b1177e9ecd57ab456620a9a23f2482c",
+  "artifacts/gh25/a13-submitted/a13actions.json": "d3570a60f4fc5afa6d8af77740f819afe17bf53c7884336227e365ea9d8fcd9b",
+  "artifacts/gh25/a13-occupied/summary.json": "545cda94a5ab511c12f72fb4247d8f2a387b5074e84e6d788d796ef6c87fc68b",
+  "artifacts/gh25/operator-deployment/preservation.json": "76c0f23eb156506ff6598aebfaa728374c85a6700e23a172568880b517b6512a",
+  "artifacts/gh25/operator-release/after.json": "d46c0217054bab7024ecb9bba920bfbd21b49d42ff31396c80ec7105ea76bfc5"
+}

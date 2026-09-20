@@ -19,6 +19,8 @@
   // Darker action labels retain AA contrast over Material focus/hover layers.
   @include mat.button-overrides(
     (
+      // Keep white filled labels above AA contrast under the light state layer.
+      filled-container-color: var(--ui-color-primary-hover),
       outlined-label-text-color: #1248b3,
       text-label-text-color: #1248b3,
     )

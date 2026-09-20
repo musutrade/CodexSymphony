@@ -40,14 +40,13 @@ pub fn start(
     let Some(path) = std::env::var_os("RUNTIME_CONFIG") else {
         return Ok(None);
     };
-    let config: Config = serde_json::from_slice(&std::fs::read(path)?)?;
-    config.launcher()?;
+    let routes = crate::runtime_routes::Deployment::load(Path::new(&path))?;
     let supervisor = std::env::current_exe()?;
     let broker = GitBroker::open(&root.join("workspaces"))?;
     Ok(Some(tokio::spawn(async move {
         loop {
             if let Err(error) =
-                tick(&pool, &root, &supervisor, &broker, &incarnation, &config).await
+                tick_routes(&pool, &root, &supervisor, &broker, &incarnation, &routes).await
             {
                 // Detailed failures remain in their bounded, Run-owned records.
                 tracing::error!(
@@ -59,6 +58,28 @@ pub fn start(
         }
     })))
 }
+pub async fn tick_routes(
+    pool: &PgPool,
+    root: &Path,
+    supervisor: &Path,
+    broker: &GitBroker,
+    incarnation: &str,
+    routes: &crate::runtime_routes::Deployment,
+) -> Result<()> {
+    let Some((requirement, config)) = routes.selected(pool).await? else {
+        return Ok(());
+    };
+    tick_selected(
+        pool,
+        root,
+        supervisor,
+        broker,
+        incarnation,
+        config,
+        Some(requirement),
+    )
+    .await
+}
 pub async fn tick(
     pool: &PgPool,
     root: &Path,
@@ -66,6 +87,17 @@ pub async fn tick(
     broker: &GitBroker,
     incarnation: &str,
     config: &Config,
+) -> Result<()> {
+    tick_selected(pool, root, supervisor, broker, incarnation, config, None).await
+}
+async fn tick_selected(
+    pool: &PgPool,
+    root: &Path,
+    supervisor: &Path,
+    broker: &GitBroker,
+    incarnation: &str,
+    config: &Config,
+    selected: Option<(i64, i64)>,
 ) -> Result<()> {
     if let Some(launch) = reserved(pool, incarnation).await? {
         return runtime_client::execute(pool, root, supervisor, broker, &launch, &config.settings)
@@ -80,7 +112,7 @@ pub async fn tick(
         crate::validation_repair_worker::tick(pool, root, broker, incarnation, config).await?;
     }
     resume(pool, root, supervisor, broker, incarnation, config).await?;
-    crate::runtime_initial::tick(pool, root, broker, incarnation, config).await
+    crate::runtime_initial::tick_selected(pool, root, broker, incarnation, config, selected).await
 }
 async fn resume(
     pool: &PgPool,

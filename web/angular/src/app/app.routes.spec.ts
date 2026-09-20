@@ -42,7 +42,7 @@ describe('Lazy requirement route', () => {
     });
     const harness = await RouterTestingHarness.create('/requirements/list');
     const http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/requirements').flush({ requirements: [] });
+    http.expectOne('/api/multi/requirements').flush({ requirements: [] });
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toContain('需求列表');
     await harness.navigateByUrl('/inbox');
@@ -71,14 +71,14 @@ describe('Lazy requirement route', () => {
     });
     const harness = await RouterTestingHarness.create('/requirements');
     const http = TestBed.inject(HttpTestingController);
-    http.expectOne('/api/repository').flush({
+    http.expectOne('/api/multi/repository').flush({
       repositories: [],
       deployment_network: [],
       network_status: 'not_configured',
       runtime_ready: false,
       repository_ready: false,
     });
-    http.expectOne('/api/requirements').flush({ requirements: [] });
+    http.expectOne('/api/multi/requirements').flush({ requirements: [] });
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).toContain('需求工作台');
     http.verify();

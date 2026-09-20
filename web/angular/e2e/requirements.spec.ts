@@ -7,14 +7,17 @@ test('create, edit, review Ready, reload and withdraw a durable requirement', as
   await page.goto('/requirements');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('需求工作台');
   await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled();
-  if (await page.getByRole('heading', { name: '登记首个可信仓库' }).isVisible()) {
+  if (await page.getByRole('heading', { name: '登记可信仓库' }).isVisible()) {
     await page.getByLabel('项目名称', { exact: true }).fill('Disposable');
     await page
       .getByLabel('GitHub 仓库（owner/repository）', { exact: true })
       .fill('musutrade/disposable');
     await page.getByLabel('GitHub 仓库数字 ID', { exact: true }).fill('123');
     const [configured] = await Promise.all([
-      page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith('/api/repository')),
+      page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PUT' && response.url().endsWith('/api/multi/repository'),
+      ),
       page.getByRole('button', { name: '确认仓库与初始策略' }).click(),
     ]);
     // Desktop and mobile share the synthetic fixture; the losing CAS refreshes.
@@ -22,7 +25,7 @@ test('create, edit, review Ready, reload and withdraw a durable requirement', as
       await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled();
       await page.getByRole('button', { name: '刷新列表', exact: true }).click();
     }
-    await expect(page.getByRole('heading', { name: '当前仓库策略' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '仓库列表与选择' })).toBeVisible();
   }
   await page.getByRole('button', { name: '保存 Draft', exact: true }).click();
   const title = page.getByLabel('标题', { exact: true });
@@ -78,19 +81,21 @@ test('create, edit, review Ready, reload and withdraw a durable requirement', as
 test('shows loading, failure and empty states, and blocks duplicate submission', async ({
   page,
 }) => {
-  await page.route('**/api/requirements', (route) => route.abort());
+  await page.route('**/api/multi/requirements', (route) => route.abort());
   await page.goto('/requirements');
   await expect(page.getByRole('alert')).toBeVisible();
-  await page.unroute('**/api/requirements');
-  await page.route('**/api/requirements', (route) => route.fulfill({ json: { requirements: [] } }));
+  await page.unroute('**/api/multi/requirements');
+  await page.route('**/api/multi/requirements', (route) =>
+    route.fulfill({ json: { requirements: [] } }),
+  );
   await page.getByRole('button', { name: '刷新列表', exact: true }).click();
   await expect(page.getByText('暂无需求。填写下方表单创建第一条需求。')).toBeVisible();
   let release: () => void = () => {};
   const pending = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.unroute('**/api/requirements');
-  await page.route('**/api/requirements', async (route) => {
+  await page.unroute('**/api/multi/requirements');
+  await page.route('**/api/multi/requirements', async (route) => {
     await pending;
     await route.fulfill({ json: { requirements: [] } });
   });
@@ -99,4 +104,51 @@ test('shows loading, failure and empty states, and blocks duplicate submission',
   await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeDisabled();
   release();
   await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled();
+});
+
+test('registers and selects another repository with accessible shared layout', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/requirements');
+  await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: '登记另一个仓库', exact: true }).click();
+  const remote = `musutrade/browser-${testInfo.project.name}`;
+  await page.getByLabel('项目名称', { exact: true }).fill(`Second ${testInfo.project.name}`);
+  await page.getByLabel('GitHub 仓库（owner/repository）', { exact: true }).fill(remote);
+  await page
+    .getByLabel('GitHub 仓库数字 ID', { exact: true })
+    .fill(testInfo.project.name === 'desktop' ? '401' : '402');
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
+      .violations,
+  ).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const [response] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.request().method() === 'PUT' && r.url().endsWith('/api/multi/repository'),
+      ),
+      page.getByRole('button', { name: '确认仓库与初始策略', exact: true }).click(),
+    ]);
+    if (response.ok()) break;
+    expect(response.status()).toBe(409);
+    await page.getByRole('button', { name: '刷新列表', exact: true }).click();
+    await expect(page.getByRole('button', { name: '刷新列表', exact: true })).toBeEnabled();
+  }
+  await expect(page.getByRole('status')).toContainText('仓库策略已保存');
+  const selector = page.getByRole('combobox', { name: '需求目标仓库' });
+  await expect(selector).toContainText(remote);
+  await selector.focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('option', { name: remote, exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(selector).toBeFocused();
+  await expect(
+    page.getByText('未就绪：等待检查仓库权限、受信检查来源及触发配置。').first(),
+  ).toBeVisible();
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
+      .violations,
+  ).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath('multiple-repositories.png'), fullPage: true });
 });

@@ -100,14 +100,20 @@ async fn collect_checks(
     if checks.iter().any(|check| check["head_sha"] != head) {
         return Err(invalid());
     }
-    let statuses = client
-        .pages(
-            policy,
-            &format!("{repo}/commits/{head}/statuses"),
-            None,
-            now,
-        )
-        .await?;
+    // Private repositories may grant Checks/Actions without legacy Statuses.
+    // Only consult this independent source when the policy actually selects it.
+    let statuses = if policy.required.iter().any(is_status) {
+        client
+            .pages(
+                policy,
+                &format!("{repo}/commits/{head}/statuses"),
+                None,
+                now,
+            )
+            .await?
+    } else {
+        Vec::new()
+    };
     let (runs, jobs) = actions(client, policy, head, now).await?;
     policy
         .required
@@ -158,6 +164,9 @@ async fn actions(
         );
     }
     Ok((runs, jobs))
+}
+fn is_status(selector: &github::Selector) -> bool {
+    matches!(selector.source, Source::Status { .. })
 }
 fn is_actions(selector: &github::Selector) -> bool {
     matches!(selector.source, Source::Actions { .. })

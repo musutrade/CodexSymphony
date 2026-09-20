@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use sqlx::{PgPool, Postgres, Transaction};
 
 pub async fn configure(pool: &PgPool, policy: &Policy, probe_pr: u64) -> Result<bool, sqlx::Error> {
-    let changed = sqlx::query("INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr) SELECT $1,$2,$3,$4 FROM repository WHERE id=1 AND version=$2 AND (document->>'github_repository_id')::bigint=$1 AND document->>'remote'=$5 AND document->>'base_branch'=$6 AND NOT (document->>'revoked')::boolean ON CONFLICT(repository_id) DO UPDATE SET repository_version=$2,policy=$3,probe_pr=$4,stale=true,next_attempt_at=0 WHERE github_repository.policy IS DISTINCT FROM $3 OR github_repository.probe_pr<>$4")
+    let changed = sqlx::query("INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr) SELECT $1,$2,$3,$4 FROM repository WHERE version=$2 AND (document->>'github_repository_id')::bigint=$1 AND document->>'remote'=$5 AND document->>'base_branch'=$6 AND NOT (document->>'revoked')::boolean ON CONFLICT(repository_id) DO UPDATE SET repository_version=$2,policy=$3,probe_pr=$4,stale=true,next_attempt_at=0 WHERE github_repository.policy IS DISTINCT FROM $3 OR github_repository.probe_pr<>$4")
         .bind(policy.repository_id as i64).bind(policy.version).bind(sqlx::types::Json(policy)).bind(probe_pr as i64)
         .bind(&policy.repository).bind(&policy.default_branch).execute(pool).await?;
     Ok(changed.rows_affected() == 1)
@@ -27,7 +27,7 @@ pub async fn claim_ready(
     requirement: i64,
     revision: i64,
 ) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement_revision v JOIN repository r ON r.id=1 JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint WHERE v.requirement_id=$1 AND v.revision=$2 AND g.repository_version=r.version AND (v.document->>'repository_version')::bigint=r.version AND NOT g.stale AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy)")
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement_revision v JOIN repository r ON r.id=COALESCE((v.document->>'repository_id')::bigint,1) JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint WHERE v.requirement_id=$1 AND v.revision=$2 AND g.repository_version=r.version AND (v.document->>'repository_version')::bigint=r.version AND NOT g.stale AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy)")
         .bind(requirement).bind(revision).fetch_one(&mut **tx).await
 }
 pub async fn save_capability(pool: &PgPool, capability: &Capability) -> Result<(), sqlx::Error> {

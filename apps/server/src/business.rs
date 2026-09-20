@@ -37,6 +37,7 @@ impl From<&'static str> for ApiError {
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct DraftRequest {
+    repository_id: Option<i64>,
     request_id: String,
     version: i64,
     contract: Contract,
@@ -44,6 +45,7 @@ struct DraftRequest {
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct RepositoryRequest {
+    repository_id: Option<i64>,
     request_id: String,
     version: i64,
     repository: Repository,
@@ -74,12 +76,26 @@ impl Command {
     }
 }
 pub fn routes() -> Router<PgPool> {
+    let legacy =
+        operations("/api").layer(axum::middleware::from_fn(crate::business_legacy::response));
+    legacy.merge(operations("/api/multi"))
+}
+fn operations(prefix: &str) -> Router<PgPool> {
     Router::new()
-        .route("/api/repository", get(repository).put(configure))
-        .route("/api/requirements", get(list).post(create))
-        .route("/api/requirements/{id}", get(detail).patch(edit))
-        .route("/api/requirements/{id}/ready", post(ready))
-        .route("/api/requirements/{id}/withdraw", post(withdraw))
+        .route(
+            &format!("{prefix}/repository"),
+            get(repository).put(configure),
+        )
+        .route(&format!("{prefix}/requirements"), get(list).post(create))
+        .route(
+            &format!("{prefix}/requirements/{{id}}"),
+            get(detail).patch(edit),
+        )
+        .route(&format!("{prefix}/requirements/{{id}}/ready"), post(ready))
+        .route(
+            &format!("{prefix}/requirements/{{id}}/withdraw"),
+            post(withdraw),
+        )
 }
 fn decode<T>(
     input: std::result::Result<Json<T>, axum::extract::rejection::JsonRejection>,
@@ -94,7 +110,7 @@ fn decode<T>(
 }
 async fn repository(State(pool): State<PgPool>) -> Result<Json<Value>> {
     let rows: Vec<String> = sqlx::query_scalar(
-        "SELECT jsonb_build_object('version',version,'repository',document)::text FROM repository",
+        "SELECT jsonb_build_object('id',r.id,'version',r.version,'repository',r.document,'delivery_ready',COALESCE(NOT (r.document->>'revoked')::boolean AND g.repository_version=r.version AND NOT g.stale AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy,false))::text FROM repository r LEFT JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint ORDER BY r.id",
     )
     .fetch_all(&pool)
     .await?;
@@ -167,7 +183,7 @@ async fn withdraw(
     .await
 }
 async fn list(State(pool): State<PgPool>) -> Result<Json<Value>> {
-    let rows: Vec<String> = sqlx::query_scalar("SELECT jsonb_build_object('id',id,'version',version,'state',state,'title',contract->>'title','revision',revision)::text FROM requirement ORDER BY id DESC").fetch_all(&pool).await?;
+    let rows: Vec<String> = sqlx::query_scalar("SELECT jsonb_build_object('id',id,'repository_id',repository_id,'version',version,'state',state,'title',contract->>'title','revision',revision)::text FROM requirement ORDER BY id DESC").fetch_all(&pool).await?;
     Ok(Json(json!({"requirements":decode_all(rows)?})))
 }
 async fn detail(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<Json<Value>> {
@@ -238,24 +254,46 @@ fn version(actual: i64, expected: i64) -> Result<()> {
 }
 async fn save_repository(tx: &mut Tx<'_>, input: &RepositoryRequest) -> Result<Value> {
     contract::validate_repository(&input.repository)?;
-    let current: Option<i64> = sqlx::query_scalar("SELECT version FROM repository WHERE id=1")
+    contract::require(
+        input.repository_id.unwrap_or(1) > 0,
+        "positive repository ID required",
+    )?;
+    let current: Option<i64> = sqlx::query_scalar("SELECT version FROM repository WHERE id=$1")
+        .bind(input.repository_id.unwrap_or(1))
         .fetch_optional(&mut **tx)
         .await?;
     version(current.unwrap_or(0), input.version)?;
-    check_identity(tx, current, &input.repository).await?;
+    check_identity(
+        tx,
+        input.repository_id.unwrap_or(1),
+        current,
+        &input.repository,
+    )
+    .await?;
     let next = input.version + 1;
-    sqlx::query("INSERT INTO repository(id,version,document) VALUES (1,$1,$2::jsonb) ON CONFLICT(id) DO UPDATE SET version=$1,document=$2::jsonb,revoked_through_version=CASE WHEN ($2::jsonb->>'revoked')::boolean THEN $1 ELSE repository.revoked_through_version END")
-        .bind(next).bind(serde_json::to_string(&input.repository)?).execute(&mut **tx).await?;
-    event(tx, "repository:1", "policy_updated", next).await?;
-    Ok(json!({"version":next,"repository":input.repository}))
+    sqlx::query("INSERT INTO repository(id,version,document) VALUES ($3,$1,$2::jsonb) ON CONFLICT(id) DO UPDATE SET version=$1,document=$2::jsonb,revoked_through_version=CASE WHEN ($2::jsonb->>'revoked')::boolean THEN $1 ELSE repository.revoked_through_version END")
+        .bind(next).bind(serde_json::to_string(&input.repository)?).bind(input.repository_id.unwrap_or(1)).execute(&mut **tx).await?;
+    event(
+        tx,
+        &format!("repository:{}", input.repository_id.unwrap_or(1)),
+        "policy_updated",
+        next,
+    )
+    .await?;
+    Ok(json!({"id":input.repository_id.unwrap_or(1),"version":next,"repository":input.repository}))
 }
-async fn check_identity(tx: &mut Tx<'_>, current: Option<i64>, next: &Repository) -> Result<()> {
+async fn check_identity(
+    tx: &mut Tx<'_>,
+    repository_id: i64,
+    current: Option<i64>,
+    next: &Repository,
+) -> Result<()> {
     if current.is_some() {
-        let (_, previous) = current_repository(tx).await?;
+        let (_, previous) = current_repository(tx, repository_id).await?;
         contract::require(
             previous.remote == next.remote
                 && previous.github_repository_id == next.github_repository_id,
-            "only one repository identity is enabled",
+            "registered repository identity cannot change",
         )?;
     }
     Ok(())
@@ -273,16 +311,17 @@ async fn new_requirement(tx: &mut Tx<'_>, input: &DraftRequest) -> Result<Value>
     version(0, input.version)?;
     contract::validate_contract(&input.contract)?;
     let id: i64 = sqlx::query_scalar(
-        "INSERT INTO requirement(version,state,contract) VALUES (1,'Draft',$1::jsonb) RETURNING id",
+        "INSERT INTO requirement(version,state,contract,repository_id) VALUES (1,'Draft',$1::jsonb,$2) RETURNING id",
     )
     .bind(serde_json::to_string(&input.contract)?)
+    .bind(input.repository_id.unwrap_or(1))
     .fetch_one(&mut **tx)
     .await?;
     event(tx, &format!("requirement:{id}"), "created", 1).await?;
     read_requirement(tx, id).await
 }
 async fn read_requirement(tx: &mut Tx<'_>, id: i64) -> Result<Value> {
-    let row: Option<String> = sqlx::query_scalar("SELECT jsonb_build_object('id',id,'version',version,'state',state,'contract',contract,'revision',revision,'created_at',created_at::text,'creator','local-user','authorization_valid',COALESCE(state='Ready' AND (SELECT NOT (document->>'revoked')::boolean AND COALESCE((SELECT (document->>'repository_version')::bigint FROM requirement_revision WHERE requirement_id=r.id AND revision=r.revision),0)>revoked_through_version FROM repository WHERE id=1),false),'snapshots', COALESCE((SELECT jsonb_agg(document ORDER BY revision) FROM requirement_revision WHERE requirement_id=r.id),'[]'::jsonb))::text FROM requirement r WHERE id=$1")
+    let row: Option<String> = sqlx::query_scalar("SELECT jsonb_build_object('id',id,'repository_id',repository_id,'version',version,'state',state,'contract',contract,'revision',revision,'created_at',created_at::text,'creator','local-user','authorization_valid',COALESCE(state='Ready' AND (SELECT NOT (document->>'revoked')::boolean AND COALESCE((SELECT (document->>'repository_version')::bigint FROM requirement_revision WHERE requirement_id=r.id AND revision=r.revision),0)>revoked_through_version FROM repository WHERE id=r.repository_id),false),'snapshots', COALESCE((SELECT jsonb_agg(document ORDER BY revision) FROM requirement_revision WHERE requirement_id=r.id),'[]'::jsonb))::text FROM requirement r WHERE id=$1")
         .bind(id).fetch_optional(&mut **tx).await?;
     Ok(serde_json::from_str(&row.ok_or(ApiError(
         StatusCode::NOT_FOUND,
@@ -306,11 +345,14 @@ async fn editable(tx: &mut Tx<'_>, id: i64, expected: i64, state: &str) -> Resul
 async fn edit_requirement(tx: &mut Tx<'_>, id: i64, input: &DraftRequest) -> Result<Value> {
     editable(tx, id, input.version, "Draft").await?;
     contract::validate_contract(&input.contract)?;
-    sqlx::query("UPDATE requirement SET contract=$1::jsonb,version=version+1 WHERE id=$2")
-        .bind(serde_json::to_string(&input.contract)?)
-        .bind(id)
-        .execute(&mut **tx)
-        .await?;
+    sqlx::query(
+        "UPDATE requirement SET contract=$1::jsonb,version=version+1,repository_id=$3 WHERE id=$2",
+    )
+    .bind(serde_json::to_string(&input.contract)?)
+    .bind(id)
+    .bind(input.repository_id.unwrap_or(1))
+    .execute(&mut **tx)
+    .await?;
     event(
         tx,
         &format!("requirement:{id}"),
@@ -322,15 +364,15 @@ async fn edit_requirement(tx: &mut Tx<'_>, id: i64, input: &DraftRequest) -> Res
 }
 async fn review(tx: &mut Tx<'_>, id: i64, input: &ControlRequest) -> Result<Value> {
     let row = editable(tx, id, input.version, "Draft").await?;
-    let (policy_version, repository) = current_repository(tx).await?;
-    version(policy_version, input.repository_version)?;
+    let (repository_id, policy_version, repository) =
+        review_repository(tx, &row, input.repository_version).await?;
     let contract: Contract = serde_json::from_value(row["contract"].clone())?;
     authorize_review(tx, id, &contract, &repository).await?;
     let revision = row["revision"].as_i64().ok_or("invalid stored revision")? + 1;
     let ac_ids: Vec<String> = (1..=contract.acceptance_criteria.len())
         .map(|n| format!("AC-{id}-{revision}-{n}"))
         .collect();
-    let snapshot = json!({"revision":revision,"contract":contract,"ac_ids":ac_ids,"repository_version":policy_version,"repository":repository,"reviewer":"local-user"});
+    let snapshot = json!({"repository_id":repository_id,"revision":revision,"contract":contract,"ac_ids":ac_ids,"repository_version":policy_version,"repository":repository,"reviewer":"local-user"});
     sqlx::query("INSERT INTO requirement_revision(requirement_id,revision,document) VALUES ($1,$2,$3::jsonb)").bind(id).bind(revision).bind(snapshot.to_string()).execute(&mut **tx).await?;
     sqlx::query("UPDATE requirement SET state='Ready',version=version+1,revision=$2 WHERE id=$1")
         .bind(id)
@@ -346,6 +388,18 @@ async fn review(tx: &mut Tx<'_>, id: i64, input: &ControlRequest) -> Result<Valu
     .await?;
     read_requirement(tx, id).await
 }
+async fn review_repository(
+    tx: &mut Tx<'_>,
+    row: &Value,
+    expected: i64,
+) -> Result<(i64, i64, Repository)> {
+    let repository_id = row["repository_id"]
+        .as_i64()
+        .ok_or("missing repository selection")?;
+    let (policy_version, repository) = current_repository(tx, repository_id).await?;
+    version(policy_version, expected)?;
+    Ok((repository_id, policy_version, repository))
+}
 async fn authorize_review(
     tx: &mut Tx<'_>,
     id: i64,
@@ -356,9 +410,10 @@ async fn authorize_review(
     crate::budget_store::freeze(tx, id, &repository.policy).await?;
     Ok(())
 }
-async fn current_repository(tx: &mut Tx<'_>) -> Result<(i64, Repository)> {
+async fn current_repository(tx: &mut Tx<'_>, repository_id: i64) -> Result<(i64, Repository)> {
     let (version, document): (i64, String) =
-        sqlx::query_as("SELECT version,document::text FROM repository WHERE id=1")
+        sqlx::query_as("SELECT version,document::text FROM repository WHERE id=$1")
+            .bind(repository_id)
             .fetch_optional(&mut **tx)
             .await?
             .ok_or(ApiError(

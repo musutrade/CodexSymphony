@@ -1,4 +1,4 @@
-// harness-contract-sha256: e3404f8c82b990afdcf39836c733b6d526c867e00cf2fe97726c61d9bf681031
+// harness-contract-sha256: 3575ef4eafca7f366f083340a2eff0097f2cbe900d8c0e161bd3cc373cb2e501
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -567,5 +567,444 @@ export interface GetInboxResponse {
 export type AnswerOperatorQuestionResponse = { saved: boolean } | { error: string };
 export interface AnswerOperatorQuestionRequest {
   answers: { id: string; text: string }[];
+  version: number;
+}
+export interface MultiGetRepositoryResponse {
+  deployment_network: string[];
+  network_status: string;
+  repositories: {
+    delivery_ready?: boolean;
+    id?: number;
+    repository: {
+      base_branch: string;
+      github_repository_id: number;
+      model?: string | null;
+      policy: {
+        allowed_checks: string[];
+        gate_recovery_policy: string;
+        max_timeout_seconds: number;
+        model_work_seconds: number;
+        token_limit: number;
+        turn_limit: number;
+      };
+      project: string;
+      reason: string;
+      remote: string;
+      revoked: boolean;
+    };
+    version: number;
+  }[];
+  repository_ready: boolean;
+  runtime_ready: boolean;
+}
+export type MultiConfigureRepositoryResponse =
+  | {
+      id?: number;
+      repository: {
+        base_branch: string;
+        github_repository_id: number;
+        model?: string | null;
+        policy: {
+          allowed_checks: string[];
+          gate_recovery_policy: string;
+          max_timeout_seconds: number;
+          model_work_seconds: number;
+          token_limit: number;
+          turn_limit: number;
+        };
+        project: string;
+        reason: string;
+        remote: string;
+        revoked: boolean;
+      };
+      version: number;
+    }
+  | { error: string };
+export interface MultiConfigureRepositoryRequest {
+  repository: {
+    base_branch: string;
+    github_repository_id: number;
+    model?: string | null;
+    policy: {
+      allowed_checks: string[];
+      gate_recovery_policy: string;
+      max_timeout_seconds: number;
+      model_work_seconds: number;
+      token_limit: number;
+      turn_limit: number;
+    };
+    project: string;
+    reason: string;
+    remote: string;
+    revoked: boolean;
+  };
+  repository_id?: number;
+  request_id: string;
+  version: number;
+}
+export interface MultiListRequirementsResponse {
+  requirements: {
+    id: number;
+    repository_id?: number;
+    revision: number;
+    state: string;
+    title: string;
+    version: number;
+  }[];
+}
+export type MultiCreateRequirementResponse =
+  | {
+      authorization_valid: boolean;
+      contract: {
+        acceptance_criteria: { description: string; verification_ref: string }[];
+        description: string;
+        network_access: string[];
+        title: string;
+        validation_plan: {
+          check: string;
+          expected_result: string;
+          id: string;
+          selector: string;
+          timeout_seconds: number;
+        }[];
+      };
+      created_at: string;
+      creator: string;
+      id: number;
+      repository_id?: number;
+      revision: number;
+      snapshots: {
+        ac_ids: string[];
+        contract: {
+          acceptance_criteria: { description: string; verification_ref: string }[];
+          description: string;
+          network_access: string[];
+          title: string;
+          validation_plan: {
+            check: string;
+            expected_result: string;
+            id: string;
+            selector: string;
+            timeout_seconds: number;
+          }[];
+        };
+        repository: {
+          base_branch: string;
+          github_repository_id: number;
+          model?: string | null;
+          policy: {
+            allowed_checks: string[];
+            gate_recovery_policy: string;
+            max_timeout_seconds: number;
+            model_work_seconds: number;
+            token_limit: number;
+            turn_limit: number;
+          };
+          project: string;
+          reason: string;
+          remote: string;
+          revoked: boolean;
+        };
+        repository_id?: number;
+        repository_version: number;
+        reviewer: string;
+        revision: number;
+      }[];
+      state: string;
+      version: number;
+    }
+  | { error: string };
+export interface MultiCreateRequirementRequest {
+  contract: {
+    acceptance_criteria: { description: string; verification_ref: string }[];
+    description: string;
+    network_access: string[];
+    title: string;
+    validation_plan: {
+      check: string;
+      expected_result: string;
+      id: string;
+      selector: string;
+      timeout_seconds: number;
+    }[];
+  };
+  repository_id?: number;
+  request_id: string;
+  version: number;
+}
+export type MultiGetRequirementResponse =
+  | {
+      authorization_valid: boolean;
+      contract: {
+        acceptance_criteria: { description: string; verification_ref: string }[];
+        description: string;
+        network_access: string[];
+        title: string;
+        validation_plan: {
+          check: string;
+          expected_result: string;
+          id: string;
+          selector: string;
+          timeout_seconds: number;
+        }[];
+      };
+      created_at: string;
+      creator: string;
+      id: number;
+      repository_id?: number;
+      revision: number;
+      snapshots: {
+        ac_ids: string[];
+        contract: {
+          acceptance_criteria: { description: string; verification_ref: string }[];
+          description: string;
+          network_access: string[];
+          title: string;
+          validation_plan: {
+            check: string;
+            expected_result: string;
+            id: string;
+            selector: string;
+            timeout_seconds: number;
+          }[];
+        };
+        repository: {
+          base_branch: string;
+          github_repository_id: number;
+          model?: string | null;
+          policy: {
+            allowed_checks: string[];
+            gate_recovery_policy: string;
+            max_timeout_seconds: number;
+            model_work_seconds: number;
+            token_limit: number;
+            turn_limit: number;
+          };
+          project: string;
+          reason: string;
+          remote: string;
+          revoked: boolean;
+        };
+        repository_id?: number;
+        repository_version: number;
+        reviewer: string;
+        revision: number;
+      }[];
+      state: string;
+      version: number;
+    }
+  | { error: string };
+export type MultiUpdateRequirementResponse =
+  | {
+      authorization_valid: boolean;
+      contract: {
+        acceptance_criteria: { description: string; verification_ref: string }[];
+        description: string;
+        network_access: string[];
+        title: string;
+        validation_plan: {
+          check: string;
+          expected_result: string;
+          id: string;
+          selector: string;
+          timeout_seconds: number;
+        }[];
+      };
+      created_at: string;
+      creator: string;
+      id: number;
+      repository_id?: number;
+      revision: number;
+      snapshots: {
+        ac_ids: string[];
+        contract: {
+          acceptance_criteria: { description: string; verification_ref: string }[];
+          description: string;
+          network_access: string[];
+          title: string;
+          validation_plan: {
+            check: string;
+            expected_result: string;
+            id: string;
+            selector: string;
+            timeout_seconds: number;
+          }[];
+        };
+        repository: {
+          base_branch: string;
+          github_repository_id: number;
+          model?: string | null;
+          policy: {
+            allowed_checks: string[];
+            gate_recovery_policy: string;
+            max_timeout_seconds: number;
+            model_work_seconds: number;
+            token_limit: number;
+            turn_limit: number;
+          };
+          project: string;
+          reason: string;
+          remote: string;
+          revoked: boolean;
+        };
+        repository_id?: number;
+        repository_version: number;
+        reviewer: string;
+        revision: number;
+      }[];
+      state: string;
+      version: number;
+    }
+  | { error: string };
+export interface MultiUpdateRequirementRequest {
+  contract: {
+    acceptance_criteria: { description: string; verification_ref: string }[];
+    description: string;
+    network_access: string[];
+    title: string;
+    validation_plan: {
+      check: string;
+      expected_result: string;
+      id: string;
+      selector: string;
+      timeout_seconds: number;
+    }[];
+  };
+  repository_id?: number;
+  request_id: string;
+  version: number;
+}
+export type MultiReadyRequirementResponse =
+  | {
+      authorization_valid: boolean;
+      contract: {
+        acceptance_criteria: { description: string; verification_ref: string }[];
+        description: string;
+        network_access: string[];
+        title: string;
+        validation_plan: {
+          check: string;
+          expected_result: string;
+          id: string;
+          selector: string;
+          timeout_seconds: number;
+        }[];
+      };
+      created_at: string;
+      creator: string;
+      id: number;
+      repository_id?: number;
+      revision: number;
+      snapshots: {
+        ac_ids: string[];
+        contract: {
+          acceptance_criteria: { description: string; verification_ref: string }[];
+          description: string;
+          network_access: string[];
+          title: string;
+          validation_plan: {
+            check: string;
+            expected_result: string;
+            id: string;
+            selector: string;
+            timeout_seconds: number;
+          }[];
+        };
+        repository: {
+          base_branch: string;
+          github_repository_id: number;
+          model?: string | null;
+          policy: {
+            allowed_checks: string[];
+            gate_recovery_policy: string;
+            max_timeout_seconds: number;
+            model_work_seconds: number;
+            token_limit: number;
+            turn_limit: number;
+          };
+          project: string;
+          reason: string;
+          remote: string;
+          revoked: boolean;
+        };
+        repository_id?: number;
+        repository_version: number;
+        reviewer: string;
+        revision: number;
+      }[];
+      state: string;
+      version: number;
+    }
+  | { error: string };
+export interface MultiReadyRequirementRequest {
+  repository_version: number;
+  request_id: string;
+  version: number;
+}
+export type MultiWithdrawRequirementResponse =
+  | {
+      authorization_valid: boolean;
+      contract: {
+        acceptance_criteria: { description: string; verification_ref: string }[];
+        description: string;
+        network_access: string[];
+        title: string;
+        validation_plan: {
+          check: string;
+          expected_result: string;
+          id: string;
+          selector: string;
+          timeout_seconds: number;
+        }[];
+      };
+      created_at: string;
+      creator: string;
+      id: number;
+      repository_id?: number;
+      revision: number;
+      snapshots: {
+        ac_ids: string[];
+        contract: {
+          acceptance_criteria: { description: string; verification_ref: string }[];
+          description: string;
+          network_access: string[];
+          title: string;
+          validation_plan: {
+            check: string;
+            expected_result: string;
+            id: string;
+            selector: string;
+            timeout_seconds: number;
+          }[];
+        };
+        repository: {
+          base_branch: string;
+          github_repository_id: number;
+          model?: string | null;
+          policy: {
+            allowed_checks: string[];
+            gate_recovery_policy: string;
+            max_timeout_seconds: number;
+            model_work_seconds: number;
+            token_limit: number;
+            turn_limit: number;
+          };
+          project: string;
+          reason: string;
+          remote: string;
+          revoked: boolean;
+        };
+        repository_id?: number;
+        repository_version: number;
+        reviewer: string;
+        revision: number;
+      }[];
+      state: string;
+      version: number;
+    }
+  | { error: string };
+export interface MultiWithdrawRequirementRequest {
+  repository_version: number;
+  request_id: string;
   version: number;
 }
