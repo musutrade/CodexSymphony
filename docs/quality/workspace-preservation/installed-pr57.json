@@ -1,0 +1,17 @@
+{
+  "pr": 57,
+  "merged_sha": "2e21adddc40a70445b36c58578855e2f142b83fe",
+  "gate_attempt": "35495484920/2",
+  "checks": "both SUCCESS",
+  "installed_release": "368841b69627f735",
+  "controller_restarted": true,
+  "required_before_remove_enabled": true,
+  "installed_archiver_smoke": "PASS",
+  "preserved": {
+    "WORKFLOW.lifecycle.md.handoffs.json": true,
+    "operator/token": true,
+    "operator/grants.json": true,
+    "operator/operator_bridge.py": true
+  },
+  "known_followup": "Agent cannot access host archiver; move handoff invocation to host after_run hook. Cleanup guard is active."
+}

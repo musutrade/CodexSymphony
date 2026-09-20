@@ -31,7 +31,9 @@ python3 /home/gem/.local/share/codexsymphony/symphony/preserve_workspace.py "$PW
   --archive /home/gem/.local/share/codexsymphony/symphony/retained-evidence
 ```
 
-成功输出 receipt 路径，写入交接的 validation_summary。清理入口独立重跑同一命令，
+Agent 仅生成清单并在 validation_summary 中引用清单路径；它不能访问宿主脚本或归档。
+宿主 `after_run` 执行上述命令，成功时在日志输出 receipt 路径；失败记录原因，不能
+宣称已保全。`after_run` 本身仍沿用控制器的尽力执行语义。清理入口独立重跑同一命令，
 并启用 `hooks.before_remove_required: true`：缺失钩子、非零退出、超时均阻止删除。
 普通删除、记录路径删除及 SSH 删除采用同一约束；失败原因写入控制器日志。
 配置重新加载和进程重启后仍有效。默认 false 保留其他部署既有行为。

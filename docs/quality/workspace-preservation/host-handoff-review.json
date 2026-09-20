@@ -1,0 +1,14 @@
+{
+  "status": "pending_user_review",
+  "current_host_config": "/home/gem/.local/share/codexsymphony/remote-gate/config-pr57-02e12f7.json",
+  "changes": [
+    {
+      "path": "WORKFLOW.lifecycle.md",
+      "approved_sha256": "297ea5dee225b00886cd188bfd9b90d0c4ba6753814d489b0d326869e308d1af",
+      "proposed_sha256": "2a424f00cf583ddaad5759d684c8905624019eddcd040b24300771ff3447f004"
+    }
+  ],
+  "reason": "Execute preservation on the host after_run hook; Agent only writes the manifest. No host credentials or archive access is added to the Agent.",
+  "quality_thresholds_changed": false,
+  "checks_removed": false
+}
