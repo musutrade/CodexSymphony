@@ -102,6 +102,11 @@ pub(crate) async fn expected(
     expected: i64,
     create: bool,
 ) -> Result<i64> {
+    // Draft imports and generation publication also serialize with group claims.
+    sqlx::query("SELECT pg_advisory_xact_lock(13002)")
+        .execute(&mut **tx)
+        .await
+        .map_err(db)?;
     let current: Option<i64> =
         sqlx::query_scalar("SELECT version FROM imported_draft WHERE id=$1 FOR UPDATE")
             .bind(id)

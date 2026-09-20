@@ -28,6 +28,11 @@ pub mod group_api;
 pub mod group_budget;
 pub mod group_completion;
 pub mod group_dependency;
+pub mod group_edit;
+pub mod group_edit_api;
+pub mod group_edit_apply;
+pub mod group_edit_requirement;
+pub mod group_edit_store;
 pub mod group_queue_store;
 pub mod group_queue_view;
 pub mod group_review;
@@ -88,6 +93,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .merge(business::routes())
             .merge(draft_api::routes())
             .merge(group_api::routes())
+            .merge(group_edit_api::routes())
             .merge(generation_api::routes())
             .merge(operator_api::routes())
             .merge(execution_api::routes())

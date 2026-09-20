@@ -90,7 +90,7 @@ fn validate_parent(document: &Document, review: &Review) -> Result<()> {
     )?;
     Ok(())
 }
-fn validate_order(document: &Document) -> Result<()> {
+pub fn validate_order(document: &Document) -> Result<()> {
     for child in &document.children {
         require(child.order > 0, "order must be positive")?;
         for dependency in &child.depends_on {

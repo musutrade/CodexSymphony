@@ -102,3 +102,7 @@ queue truth after later edits. Authenticated identities remain local-user until 
 ## GH-63 group dependency queue
 
 Group review responses optionally include `execution`, with global owner/pause, ordered child identities, dependencies, progress and waiting reasons. `scheduler_available` reports implemented scheduling, not deployment Runtime readiness or business acceptance. `validation_only` explicitly waits for unimplemented execution and creates no coding Run. Completion facts use an internal authenticated-verifier adapter interface only; no HTTP completion-write route exists. See [group queue protocol](../docs/group-queue.md).
+
+## GH-64 queue changes
+
+`POST /api/drafts/{id}/queue-edit` accepts a CAS queue version, idempotent request ID and a `change` tagged as `reorder`, `propose` or `approve`. Only fields for the selected kind are accepted. `approve` binds the saved edit version and repository snapshots; it does not accept replacement content. The group view exposes `pending_edit`. See [queue editing](../docs/queue-editing.md) for delta closure, immutable claim inputs and cumulative budget semantics. Capture scenarios exercise real reorder, propose, authorization, stale CAS and invalid order responses.

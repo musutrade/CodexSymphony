@@ -43,17 +43,17 @@ async fn bind(tx: &mut Tx<'_>, fact: &Fact) -> Result<()> {
 }
 
 pub(crate) async fn dependencies(tx: &mut Tx<'_>, id: i64) -> Result<Option<Vec<Fact>>> {
-    let input: Option<(String, Value)> =
-        sqlx::query_as("SELECT draft_id,input FROM group_execution_item WHERE requirement_id=$1")
+    let input: Option<(String, Value, i64)> =
+        sqlx::query_as("SELECT draft_id,input,COALESCE(queue_order,(input#>>'{child,order}')::bigint) FROM group_execution_item WHERE requirement_id=$1")
             .bind(id)
             .fetch_optional(&mut **tx)
             .await?;
-    let Some((draft, input)) = input else {
+    let Some((draft, input, order)) = input else {
         return Ok(Some(Vec::new()));
     };
     let mut names: Vec<String> = decode(input["child"]["depends_on"].clone())?;
-    let previous: Vec<String>=sqlx::query_scalar("SELECT child_id FROM group_execution_item WHERE draft_id=$1 AND input#>'{child,repository_id}'=$2 AND (input#>>'{child,order}')::bigint<$3")
-        .bind(&draft).bind(&input["child"]["repository_id"]).bind(input["child"]["order"].as_i64().unwrap_or(0)).fetch_all(&mut **tx).await?;
+    let previous: Vec<String>=sqlx::query_scalar("SELECT child_id FROM group_execution_item WHERE draft_id=$1 AND input#>'{child,repository_id}'=$2 AND NOT removed AND COALESCE(queue_order,(input#>>'{child,order}')::bigint)<$3")
+        .bind(&draft).bind(&input["child"]["repository_id"]).bind(order).fetch_all(&mut **tx).await?;
     names.extend(previous);
     names.sort();
     names.dedup();

@@ -2731,6 +2731,63 @@
           }
         }
       }
+    },
+    "/api/drafts/{id}/queue-edit": {
+      "post": {
+        "operationId": "editGroupQueue",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueueEditRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queue result or deterministic rejection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueEditResult"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Queue result or deterministic rejection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Queue result or deterministic rejection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3686,6 +3743,12 @@
           },
           "business_complete": {
             "type": "boolean"
+          },
+          "affected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -3942,6 +4005,41 @@
                 }
               }
             }
+          },
+          "pending_edit": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "document",
+              "review",
+              "affected",
+              "repositories"
+            ],
+            "properties": {
+              "version": {
+                "type": "integer"
+              },
+              "document": {
+                "$ref": "#/components/schemas/DraftDocument"
+              },
+              "review": {
+                "$ref": "#/components/schemas/GroupReview"
+              },
+              "affected": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "repositories": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GroupRepository"
+                }
+              }
+            },
+            "nullable": true
           }
         }
       },
@@ -4006,6 +4104,108 @@
           },
           "business_complete": {
             "type": "boolean"
+          }
+        }
+      },
+      "GroupPendingEdit": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "document",
+          "review",
+          "affected",
+          "repositories"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "document": {
+            "$ref": "#/components/schemas/DraftDocument"
+          },
+          "review": {
+            "$ref": "#/components/schemas/GroupReview"
+          },
+          "affected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "repositories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupRepository"
+            }
+          }
+        }
+      },
+      "QueueEditRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "version",
+          "change"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "change": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "reorder",
+                  "propose",
+                  "approve"
+                ]
+              },
+              "order": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "document": {
+                "$ref": "#/components/schemas/DraftDocument"
+              },
+              "review": {
+                "$ref": "#/components/schemas/GroupReview"
+              },
+              "edit_version": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "QueueEditResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "affected"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "affected": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       }

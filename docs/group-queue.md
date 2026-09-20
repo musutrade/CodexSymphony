@@ -33,3 +33,5 @@ GET/PUT `/api/drafts/{id}/review` 在原响应增加可选 `execution`：全局 
 | AC05 | `group-review.spec.ts` 单测和真实 API Playwright desktop/mobile：排序、依赖、owner、父子进度、明确未实现能力、键盘、axe、减少动效、强制颜色及无页面横向溢出；后端断言 validation_only 无编码 Requirement/Run |
 
 本次命令、实际结果和限制保存在 `docs/quality/gh63/README.md` 与工作区 `.symphony-evidence.json`。精确发布提交双 Gate 由独立宿主执行。历史 A13 缺失原件继续保留在原证据恢复索引，不以本次夹具补造。
+
+M1-05 的未开始编辑、合法重排与变化授权已接入，使用与事务边界见[队列编辑](queue-editing.md)。旧 Draft/整组评审写入口继续拒绝已投影输入，使用独立差异入口。
