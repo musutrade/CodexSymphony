@@ -1476,3 +1476,46 @@ async fn notification_from(
         }
     }
 }
+
+#[tokio::test]
+async fn preparation_identity_mismatch_is_protected_and_deleted_material_stays_deleted() {
+    let pool = fixture().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    store::install(&pool, &config).await.unwrap();
+    run(&pool, "preparation-owner").await;
+    let name = ".preparation-preparation-owner-retained";
+    let directory = config.execution.path.join(name);
+    fs::create_dir(&directory).unwrap();
+    fs::write(
+        directory.join("storage-owner.json"),
+        br#"{"run":"different-owner"}"#,
+    )
+    .unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    codexsymphony_server::storage_inventory::discover(&mut tx, &config, 100)
+        .await
+        .unwrap();
+    let protection: String =
+        sqlx::query_scalar("SELECT protection FROM storage_material WHERE id=$1")
+            .bind(name)
+            .fetch_one(&mut *tx)
+            .await
+            .unwrap();
+    assert_eq!(protection, "unknown preparation identity");
+    sqlx::query("UPDATE storage_material SET status='deleted' WHERE id=$1")
+        .bind(name)
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    codexsymphony_server::storage_inventory::discover(&mut tx, &config, 101)
+        .await
+        .unwrap();
+    let status: String = sqlx::query_scalar("SELECT status FROM storage_material WHERE id=$1")
+        .bind(name)
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(status, "deleted");
+    tx.commit().await.unwrap();
+}

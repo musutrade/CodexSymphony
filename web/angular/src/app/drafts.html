@@ -1,5 +1,5 @@
 <header class="page-header">
-  <h1>导入父子草稿</h1>
+  <h1>需求草稿：生成与导入</h1>
   <p>仅保存 Draft。来源文本是需求资料；导入、读取和编辑不会授权模型、Run、PR 或预算。</p>
   <a routerLink="/requirements">返回需求工作台与仓库登记</a>
 </header>
@@ -11,6 +11,79 @@
   <button matButton="outlined" (click)="newDraft()" [disabled]="busy()">新建导入草稿</button>
   <button matButton="outlined" (click)="reload()" [disabled]="busy()">刷新草稿列表</button>
 </div>
+<section class="ui-panel" aria-labelledby="generate-title">
+  <h2 id="generate-title">自然语言生成草稿</h2>
+  <p>
+    只有“生成草稿”会调用模型：每次最多 1 个 turn、120 秒、30000
+    token。用量按实际返回记录；不完整用量显示未知。token
+    用量通知可能延迟，此限制不是精确计费上限。生成不是执行授权，不创建编码 Run 或 PR。
+  </p>
+  <p>
+    生成结果仍需评审；缺失信息不会自动确认。对当前草稿生成前，请先保存编辑。草稿评审与执行授权尚未开放。
+  </p>
+  <form (submit)="$event.preventDefault(); generation.generate(selected())">
+    <fieldset [disabled]="generation.busy()">
+      <legend>生成输入</legend>
+      <mat-form-field
+        ><mat-label>生成来源说明</mat-label><input matInput [formField]="generation.fields.label"
+      /></mat-form-field>
+      <mat-form-field
+        ><mat-label>用自然语言描述需求</mat-label
+        ><textarea matInput rows="5" [formField]="generation.fields.text"></textarea>
+      </mat-form-field>
+      <button matButton="filled" type="submit">生成草稿</button>
+    </fieldset>
+  </form>
+  <button matButton="outlined" (click)="generation.reload()" [disabled]="generation.busy()">
+    刷新生成记录
+  </button>
+  @if (generation.error()) {
+    <p role="alert">{{ generation.error() }}</p>
+  }
+  <p aria-live="polite">
+    {{ generation.busy() ? '正在提交或读取生成记录…' : generation.message() }}
+  </p>
+  <ul class="ui-list">
+    @for (record of generation.records(); track record.id) {
+      <li>
+        <p>来源：{{ record.request.label }}</p>
+        <details>
+          <summary>查看生成输入</summary>
+          <p class="preserve">{{ record.request.text }}</p>
+        </details>
+        <p>
+          生成 {{ record.id }} · {{ generation.stateLabel(record.status) }} · 输入版本
+          {{ record.input_version }} · 输出版本 {{ record.output_version ?? '尚无' }}
+        </p>
+        <p>
+          输入 token：{{ record.usage.input ?? '未知' }} · 输出 token：{{
+            record.usage.output ?? '未知'
+          }}
+          · 模型秒数：{{ record.usage.model_seconds ?? '未知' }}
+        </p>
+        @if (!record.usage.complete) {
+          <p>用量尚不完整；以上仅为已观测值，未知部分不按零计算。</p>
+        }
+        @if (record.error) {
+          <p>{{ record.error }}</p>
+        }
+        @if (record.output && record.status !== 'succeeded') {
+          <details>
+            <summary>查看未应用的模型输出</summary>
+            <p class="preserve">{{ record.output }}</p>
+          </details>
+        }
+        @if (record.status === 'succeeded') {
+          <button matButton="text" (click)="open(record.draft_id)">
+            打开生成结果（替换编辑区）
+          </button>
+        }
+      </li>
+    } @empty {
+      <li>暂无已读取的生成记录。刷新可查看重启前记录；读取不会调用模型。</li>
+    }
+  </ul>
+</section>
 <section class="ui-panel" aria-labelledby="draft-input-title">
   <h2 id="draft-input-title">{{ selected() ? '编辑整组草稿' : '粘贴导入' }}</h2>
   <p>

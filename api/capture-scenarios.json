@@ -1273,5 +1273,82 @@
         "text": "bad"
       }
     }
+  },
+  {
+    "id": "generation-list",
+    "method": "GET",
+    "path": "/api/draft-generations",
+    "status": 200
+  },
+  {
+    "id": "generation-read",
+    "method": "GET",
+    "path": "/api/draft-generations/{id}",
+    "path_parameters": {
+      "id": "capture-generation"
+    },
+    "status": 200
+  },
+  {
+    "id": "generation-missing",
+    "method": "GET",
+    "path": "/api/draft-generations/{id}",
+    "path_parameters": {
+      "id": "missing-generation"
+    },
+    "status": 404
+  },
+  {
+    "id": "generation-replay",
+    "method": "POST",
+    "path": "/api/draft-generations",
+    "status": 200,
+    "body": {
+      "request_id": "capture-generation",
+      "draft_id": null,
+      "version": 0,
+      "label": "contract fixture",
+      "text": "synthetic generation input"
+    }
+  },
+  {
+    "id": "generation-conflict",
+    "method": "POST",
+    "path": "/api/draft-generations",
+    "status": 409,
+    "body": {
+      "request_id": "capture-generation",
+      "draft_id": null,
+      "version": 0,
+      "label": "contract fixture",
+      "text": "different"
+    }
+  },
+  {
+    "id": "generation-invalid",
+    "method": "POST",
+    "path": "/api/draft-generations",
+    "status": 422,
+    "body": {
+      "request_id": "capture-generation",
+      "draft_id": null,
+      "version": 0,
+      "label": "contract fixture",
+      "text": "synthetic generation input",
+      "unknown": true
+    }
+  },
+  {
+    "id": "generation-unconfigured",
+    "method": "POST",
+    "path": "/api/draft-generations",
+    "status": 503,
+    "body": {
+      "request_id": "unconfigured",
+      "draft_id": null,
+      "version": 0,
+      "label": "contract fixture",
+      "text": "synthetic generation input"
+    }
   }
 ]

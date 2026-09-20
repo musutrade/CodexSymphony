@@ -67,3 +67,7 @@ structural equivalence, including interface/type and array notation conversions.
 Common middleware rejections (403) have no JSON body; JSON/schema rejection (422)
 and business rejection responses use an `error` string. See
 [local validation and trusted-host boundary](../docs/quality/gh13/README.md).
+
+## GH-61 advisory generation
+
+`POST /api/draft-generations` accepts an explicit idempotent request and returns a persisted generation record. GET collection/item only read state. Generation has its own usage and bounded Runtime turn; it never grants Ready, creates an AgentRun or writes a PR. Input version CAS protects concurrent Draft edits. See [generation semantics](../docs/draft-generation.md). Contract capture replays a clearly marked terminal SQL fixture and does not call a real model. AC01 real calls are preserved separately.

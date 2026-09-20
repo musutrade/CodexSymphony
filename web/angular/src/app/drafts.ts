@@ -6,17 +6,20 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom } from 'rxjs';
+import { DraftGeneration } from './draft-generation';
 import { DraftsApi } from './drafts-api';
 import { GetDraftResponse, ListDraftsResponse } from './health-response';
 import { draftExample } from './drafts-example';
 type Draft = Extract<GetDraftResponse, { id: string }>;
 @Component({
   imports: [FormField, RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule],
+  providers: [DraftGeneration],
   selector: 'app-drafts',
   styleUrl: './drafts.scss',
   templateUrl: './drafts.html',
 })
 export class Drafts {
+  readonly generation = inject(DraftGeneration);
   private readonly api = inject(DraftsApi);
   readonly model = signal({ format: 'json' as 'json' | 'markdown', label: '', text: '' });
   readonly fields = form(this.model);

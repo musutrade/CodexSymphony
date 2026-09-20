@@ -2441,6 +2441,127 @@
           }
         ]
       }
+    },
+    "/api/draft-generations": {
+      "get": {
+        "operationId": "listGenerations",
+        "responses": {
+          "200": {
+            "description": "Generation state; never execution authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "generations"
+                  ],
+                  "properties": {
+                    "generations": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GenerationRecord"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "generateDraft",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generation state; never execution authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationRecord"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Generation state; never execution authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Generation state; never execution authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Generation state; never execution authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/draft-generations/{id}": {
+      "get": {
+        "operationId": "getGeneration",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Generation state; never execution authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationRecord"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Generation state; never execution authorization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2970,6 +3091,178 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "GenerationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "draft_id",
+          "version",
+          "label",
+          "text"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "draft_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      },
+      "GenerationRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "request",
+          "fingerprint",
+          "draft_id",
+          "input_version",
+          "output_version",
+          "status",
+          "error",
+          "output",
+          "evidence",
+          "usage",
+          "limits",
+          "created_at",
+          "completed_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "request": {
+            "$ref": "#/components/schemas/GenerationRequest"
+          },
+          "fingerprint": {
+            "type": "string"
+          },
+          "draft_id": {
+            "type": "string"
+          },
+          "input_version": {
+            "type": "integer"
+          },
+          "output_version": {
+            "type": "integer",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "interrupted",
+              "conflict"
+            ]
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "output": {
+            "type": "string",
+            "nullable": true
+          },
+          "evidence": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [],
+            "properties": {
+              "runtime_user_agent": {
+                "type": "string"
+              },
+              "settings_sha256": {
+                "type": "string"
+              },
+              "reserved_turns": {
+                "type": "integer"
+              },
+              "thread_id": {
+                "type": "string"
+              },
+              "turn_id": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string"
+              }
+            }
+          },
+          "usage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "input",
+              "cached",
+              "output",
+              "model_seconds",
+              "complete"
+            ],
+            "properties": {
+              "input": {
+                "type": "integer",
+                "nullable": true
+              },
+              "cached": {
+                "type": "integer",
+                "nullable": true
+              },
+              "output": {
+                "type": "integer",
+                "nullable": true
+              },
+              "model_seconds": {
+                "type": "integer",
+                "nullable": true
+              },
+              "complete": {
+                "type": "boolean"
+              }
+            }
+          },
+          "limits": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tokens",
+              "turns",
+              "model_seconds"
+            ],
+            "properties": {
+              "tokens": {
+                "type": "integer"
+              },
+              "turns": {
+                "type": "integer"
+              },
+              "model_seconds": {
+                "type": "integer"
+              }
+            }
+          },
+          "created_at": {
+            "type": "string"
+          },
+          "completed_at": {
+            "type": "string",
+            "nullable": true
           }
         }
       }

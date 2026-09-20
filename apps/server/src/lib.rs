@@ -14,6 +14,10 @@ pub mod draft;
 pub mod draft_api;
 pub mod execution;
 pub mod execution_api;
+pub mod generation;
+pub mod generation_api;
+pub mod generation_runtime;
+pub mod generation_store;
 pub mod git_broker;
 pub mod github;
 pub mod github_http;
@@ -75,6 +79,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .route("/api/health", get(health))
             .merge(business::routes())
             .merge(draft_api::routes())
+            .merge(generation_api::routes())
             .merge(operator_api::routes())
             .merge(execution_api::routes())
             .merge(validation_api::routes())
