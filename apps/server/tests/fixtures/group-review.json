@@ -1,0 +1,115 @@
+{
+  "parent_revision": 1,
+  "full_chain_acs": [
+    "P-AC1"
+  ],
+  "coverage": [
+    {
+      "parent_ac": "P-AC1",
+      "child_id": "C4",
+      "child_revision": 1,
+      "child_ac": "AC1",
+      "step_id": "verify-1"
+    }
+  ],
+  "items": [
+    {
+      "child_id": "C1",
+      "revision": 1,
+      "repository_version": 1,
+      "budget": {
+        "tokens": 100,
+        "turns": 2,
+        "model_seconds": 60
+      },
+      "repair_scope": "only item AC in this repository",
+      "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+      "verification": [
+        {
+          "ac_id": "AC1",
+          "step": {
+            "id": "verify-1",
+            "check": "cargo_test",
+            "selector": "group_review",
+            "expected_result": "exit 0",
+            "timeout_seconds": 30
+          }
+        }
+      ]
+    },
+    {
+      "child_id": "C2",
+      "revision": 1,
+      "repository_version": 1,
+      "budget": {
+        "tokens": 100,
+        "turns": 2,
+        "model_seconds": 60
+      },
+      "repair_scope": "only item AC in this repository",
+      "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+      "verification": [
+        {
+          "ac_id": "AC1",
+          "step": {
+            "id": "verify-1",
+            "check": "cargo_test",
+            "selector": "group_review",
+            "expected_result": "exit 0",
+            "timeout_seconds": 30
+          }
+        }
+      ]
+    },
+    {
+      "child_id": "C3",
+      "revision": 1,
+      "repository_version": 1,
+      "budget": {
+        "tokens": 100,
+        "turns": 2,
+        "model_seconds": 60
+      },
+      "repair_scope": "only item AC in this repository",
+      "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+      "verification": [
+        {
+          "ac_id": "AC1",
+          "step": {
+            "id": "verify-1",
+            "check": "cargo_test",
+            "selector": "group_review",
+            "expected_result": "exit 0",
+            "timeout_seconds": 30
+          }
+        }
+      ]
+    },
+    {
+      "child_id": "C4",
+      "revision": 1,
+      "repository_version": 1,
+      "budget": {
+        "tokens": 100,
+        "turns": 2,
+        "model_seconds": 60
+      },
+      "repair_scope": "only item AC in this repository",
+      "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+      "verification": [
+        {
+          "ac_id": "AC1",
+          "step": {
+            "id": "verify-1",
+            "check": "cargo_test",
+            "selector": "group_review",
+            "expected_result": "exit 0",
+            "timeout_seconds": 30
+          }
+        }
+      ]
+    }
+  ],
+  "group_budget": null,
+  "semantic_review": "Integration steps reviewed against complete parent flow"
+}

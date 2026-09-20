@@ -1,0 +1,241 @@
+<h1>整组评审与授权</h1>
+<p><a routerLink="/drafts">返回父子草稿</a> · 映射只表达评审结论，不能证明实现或业务验收完成。</p>
+<div class="ui-actions">
+  <button matButton="outlined" (click)="reload()" [disabled]="busy()">
+    重新读取评审（替换表单）
+  </button>
+  <button matButton="text" (click)="resetForRevision()" [disabled]="busy() || !view()">
+    按当前版本重建表单
+  </button>
+</div>
+<p role="status">{{ busy() ? '正在保存或读取整组资料…' : message() }}</p>
+@if (error()) {
+  <p role="alert" id="group-error">
+    {{ error() }}。本地输入已保留；版本冲突时请先复制输入，再重新读取。
+  </p>
+}
+@if (view(); as current) {
+  <section class="ui-panel" aria-labelledby="parent-review-title">
+    <h2 id="parent-review-title">{{ current.document.parent.goal }}</h2>
+    <p>
+      父 {{ current.document.parent.id }} · revision {{ current.draft_revision }} · 评审版本
+      {{ current.version }}
+    </p>
+    <p>{{ current.document.parent.scope }}</p>
+    <p>
+      状态：{{
+        current.queue?.state === 'waiting_scheduler'
+          ? '已授权 / 等待调度能力'
+          : '待评审（不能执行）'
+      }}。父项不占执行槽；validation_only 执行与最终业务验收尚未接通。
+    </p>
+    <p>
+      历史授权数 {{ current.authorizations.length }} · 组已用 {{ budget('').used.tokens }} tokens /
+      {{ budget('').used.turns }} turns / {{ budget('').used.model_seconds }} 秒；在途预留
+      {{ budget('').reserved.tokens }} tokens / {{ budget('').reserved.turns }} turns /
+      {{ budget('').reserved.model_seconds }} 秒。
+    </p>
+  </section>
+  <form
+    (submit)="$event.preventDefault(); save()"
+    [attr.aria-describedby]="error() ? 'group-error' : null"
+  >
+    <fieldset [disabled]="busy()">
+      <legend>精确版本评审表单</legend>
+      <section class="ui-panel" aria-labelledby="coverage-title">
+        <h2 id="coverage-title">必需父 AC 与覆盖映射</h2>
+        <p>
+          每条父 AC 都必须覆盖。涉及完整功能链时勾选集成要求，并映射到最后的 validation_only
+          项。请评审验证步骤是否真正覆盖父目标。
+        </p>
+        @for (ac of current.document.parent.acceptance_criteria; track ac.id) {
+          <h3>{{ ac.id }} · {{ ac.description }}</h3>
+          <label class="checkbox"
+            ><input
+              type="checkbox"
+              [checked]="model().full_chain_acs.includes(ac.id)"
+              (change)="fullChain(ac.id, $event)"
+            />{{ ac.id }} 涉及完整功能链，必须由最后集成项承担</label
+          >
+          <button matButton="outlined" type="button" (click)="addMapping(ac.id)">
+            添加 {{ ac.id }} 覆盖映射
+          </button>
+        }
+        @for (mapping of model().coverage; track $index; let i = $index) {
+          <div class="ui-panel">
+            <h3>
+              映射 {{ i + 1 }} · 父 {{ mapping.parent_ac }} revision {{ model().parent_revision }}
+            </h3>
+            <label
+              >映射 {{ i + 1 }} 子项 ID<select [formField]="fields.coverage[i].child_id">
+                <option value="">请选择</option>
+                @for (child of current.document.children; track child.id) {
+                  <option [value]="child.id">{{ child.id }} · {{ child.kind }}</option>
+                }
+              </select></label
+            >
+            <label
+              >映射 {{ i + 1 }} 子项 revision<input
+                type="number"
+                [formField]="fields.coverage[i].child_revision"
+            /></label>
+            <label
+              >映射 {{ i + 1 }} 子项 AC ID<input [formField]="fields.coverage[i].child_ac"
+            /></label>
+            <label
+              >映射 {{ i + 1 }} 验证步骤 ID<input [formField]="fields.coverage[i].step_id"
+            /></label>
+            <button matButton="text" type="button" (click)="removeMapping(i)">
+              移除映射 {{ i + 1 }}
+            </button>
+          </div>
+        } @empty {
+          <p>尚无映射，确认会拒绝整组授权。</p>
+        }
+        <label
+          >覆盖语义评审结论<textarea rows="3" [formField]="fields.semantic_review"></textarea>
+        </label>
+      </section>
+      @for (item of model().items; track item.child_id; let i = $index) {
+        <section class="ui-panel" [attr.aria-label]="'评审子项 ' + item.child_id">
+          <h2>{{ item.child_id }} · revision {{ item.revision }}</h2>
+          @for (child of current.document.children; track child.id) {
+            @if (child.id === item.child_id) {
+              <p>
+                {{ child.kind }} · 顺序 {{ child.order }} · 依赖
+                {{ child.depends_on.join(', ') || '无' }} · 仓库 ID {{ child.repository_id }}
+              </p>
+              <p>{{ child.goal }} · {{ child.validation_plan }}</p>
+              @for (ac of child.acceptance_criteria; track ac.id) {
+                <p>{{ ac.id }} · {{ ac.description }}</p>
+              }
+              @for (repo of current.repositories; track repo.id) {
+                @if (repo.id === child.repository_id) {
+                  <p>
+                    仓库 {{ repo.repository.remote }} / GitHub ID
+                    {{ repo.repository.github_repository_id }} / 基线
+                    {{ repo.repository.base_branch }} / 模型
+                    {{ repo.repository.model || '部署默认模型' }}
+                  </p>
+                  <p>
+                    评审策略版本 {{ item.repository_version }} / 当前版本 {{ repo.version }} ·
+                    {{ repo.repository.revoked ? '权限已撤销' : '已登记' }}
+                  </p>
+                  <p>
+                    策略：{{ repo.repository.policy.allowed_checks.join(', ') }}；最长
+                    {{ repo.repository.policy.max_timeout_seconds }} 秒；修复
+                    {{ repo.repository.policy.gate_recovery_policy }}；上限
+                    {{ repo.repository.policy.token_limit }} tokens /
+                    {{ repo.repository.policy.turn_limit }} turns /
+                    {{ repo.repository.policy.model_work_seconds }}
+                    秒。修复范围不能扩大仓库或策略权限。
+                  </p>
+                }
+              }
+            }
+          }
+          <label
+            >{{ item.child_id }} 允许修复范围<textarea
+              [formField]="fields.items[i].repair_scope"
+            ></textarea>
+          </label>
+          <label
+            >{{ item.child_id }} 前置合并基线上的独立验证与安全合并评审<textarea
+              [formField]="fields.items[i].merged_baseline_review"
+            ></textarea>
+          </label>
+          <div class="budget-grid">
+            <label
+              >{{ item.child_id }} token 额度<input
+                type="number"
+                [formField]="fields.items[i].budget.tokens"
+            /></label>
+            <label
+              >{{ item.child_id }} turn 额度<input
+                type="number"
+                [formField]="fields.items[i].budget.turns"
+            /></label>
+            <label
+              >{{ item.child_id }} 模型秒数额度<input
+                type="number"
+                [formField]="fields.items[i].budget.model_seconds"
+            /></label>
+          </div>
+          <p>
+            累计已用 {{ budget(item.child_id).used.tokens }} tokens /
+            {{ budget(item.child_id).used.turns }} turns /
+            {{ budget(item.child_id).used.model_seconds }} 秒；预留
+            {{ budget(item.child_id).reserved.tokens }} tokens /
+            {{ budget(item.child_id).reserved.turns }} turns /
+            {{ budget(item.child_id).reserved.model_seconds }} 秒。
+          </p>
+          @for (check of item.verification; track check.ac_id; let j = $index) {
+            <fieldset>
+              <legend>{{ item.child_id }} / {{ check.ac_id }} 机器验证</legend>
+              <p>步骤 ID：{{ check.step.id }}</p>
+              <label
+                >{{ item.child_id }} {{ check.ac_id }} 检查<select
+                  [formField]="fields.items[i].verification[j].step.check"
+                >
+                  <option value="cargo_test">cargo_test</option>
+                  <option value="npm_test">npm_test</option>
+                </select></label
+              >
+              <label
+                >{{ item.child_id }} {{ check.ac_id }} 测试选择器<input
+                  [formField]="fields.items[i].verification[j].step.selector"
+              /></label>
+              <label
+                >{{ item.child_id }} {{ check.ac_id }} 期望结果<input
+                  [formField]="fields.items[i].verification[j].step.expected_result"
+              /></label>
+              <label
+                >{{ item.child_id }} {{ check.ac_id }} 超时秒数<input
+                  type="number"
+                  [formField]="fields.items[i].verification[j].step.timeout_seconds"
+              /></label>
+            </fieldset>
+          }
+        </section>
+      }
+      <section class="ui-panel" aria-labelledby="group-budget-title">
+        <h2 id="group-budget-title">父组总预算</h2>
+        <label class="checkbox"
+          ><input
+            type="checkbox"
+            [formField]="fields.automatic_budget"
+          />默认等于批准子项额度之和</label
+        >
+        @if (!model().automatic_budget) {
+          <label
+            >组 token 上限<input type="number" [formField]="fields.group_budget.tokens"
+          /></label>
+          <label>组 turn 上限<input type="number" [formField]="fields.group_budget.turns" /></label>
+          <label
+            >组模型秒数上限<input type="number" [formField]="fields.group_budget.model_seconds"
+          /></label>
+        }
+        <p>
+          本次总上限：{{ total().tokens }} tokens / {{ total().turns }} turns /
+          {{ total().model_seconds }} 秒。重新授权不清零已用和预留，也不代表扣款或开始执行。
+        </p>
+        <button matButton="outlined" type="submit">保存评审版本</button>
+        <button
+          matButton="filled"
+          type="button"
+          (click)="confirm()"
+          [disabled]="!clean() || current.version === 0"
+        >
+          一次确认整组授权
+        </button>
+        <p>
+          先保存映射与预算，再确认已保存版本。确认会原子写入授权及唯一组队列；任一校验失败均不部分入队。
+        </p>
+      </section>
+    </fieldset>
+  </form>
+  <details>
+    <summary>复制当前评审内容（冲突时保留）</summary>
+    <pre>{{ payload() | json }}</pre>
+  </details>
+}

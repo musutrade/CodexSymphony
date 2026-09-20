@@ -2562,6 +2562,175 @@
           }
         }
       }
+    },
+    "/api/drafts/{id}/review": {
+      "get": {
+        "operationId": "getGroupReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without partial writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "saveGroupReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupView"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without partial writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without partial writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without partial writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupWrite"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/drafts/{id}/authorize": {
+      "post": {
+        "operationId": "authorizeGroup",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupConfirmed"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rejected without partial writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Rejected without partial writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Rejected without partial writes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupConfirm"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3263,6 +3432,494 @@
           "completed_at": {
             "type": "string",
             "nullable": true
+          }
+        }
+      },
+      "GroupAmount": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tokens",
+          "turns",
+          "model_seconds"
+        ],
+        "properties": {
+          "tokens": {
+            "type": "integer"
+          },
+          "turns": {
+            "type": "integer"
+          },
+          "model_seconds": {
+            "type": "integer"
+          }
+        }
+      },
+      "GroupCoverage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "parent_ac",
+          "child_id",
+          "child_revision",
+          "child_ac",
+          "step_id"
+        ],
+        "properties": {
+          "parent_ac": {
+            "type": "string"
+          },
+          "child_id": {
+            "type": "string"
+          },
+          "child_revision": {
+            "type": "integer"
+          },
+          "child_ac": {
+            "type": "string"
+          },
+          "step_id": {
+            "type": "string"
+          }
+        }
+      },
+      "GroupVerification": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ac_id",
+          "step"
+        ],
+        "properties": {
+          "ac_id": {
+            "type": "string"
+          },
+          "step": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "check",
+              "selector",
+              "expected_result",
+              "timeout_seconds"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "check": {
+                "type": "string"
+              },
+              "selector": {
+                "type": "string"
+              },
+              "expected_result": {
+                "type": "string"
+              },
+              "timeout_seconds": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "GroupItem": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "child_id",
+          "revision",
+          "repository_version",
+          "budget",
+          "repair_scope",
+          "merged_baseline_review",
+          "verification"
+        ],
+        "properties": {
+          "child_id": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "repository_version": {
+            "type": "integer"
+          },
+          "budget": {
+            "$ref": "#/components/schemas/GroupAmount"
+          },
+          "repair_scope": {
+            "type": "string"
+          },
+          "merged_baseline_review": {
+            "type": "string"
+          },
+          "verification": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupVerification"
+            }
+          }
+        }
+      },
+      "GroupReview": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "parent_revision",
+          "full_chain_acs",
+          "coverage",
+          "items",
+          "group_budget",
+          "semantic_review"
+        ],
+        "properties": {
+          "parent_revision": {
+            "type": "integer"
+          },
+          "full_chain_acs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupCoverage"
+            }
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupItem"
+            }
+          },
+          "group_budget": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "tokens",
+              "turns",
+              "model_seconds"
+            ],
+            "properties": {
+              "tokens": {
+                "type": "integer"
+              },
+              "turns": {
+                "type": "integer"
+              },
+              "model_seconds": {
+                "type": "integer"
+              }
+            },
+            "nullable": true
+          },
+          "semantic_review": {
+            "type": "string"
+          }
+        }
+      },
+      "GroupRepository": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "repository"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "repository": {
+            "$ref": "#/components/schemas/Repository"
+          }
+        }
+      },
+      "GroupSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "parent_revision",
+          "document",
+          "review_version",
+          "review",
+          "repositories",
+          "group_budget",
+          "reviewer",
+          "scheduler_available",
+          "business_complete"
+        ],
+        "properties": {
+          "parent_revision": {
+            "type": "integer"
+          },
+          "document": {
+            "$ref": "#/components/schemas/DraftDocument"
+          },
+          "review_version": {
+            "type": "integer"
+          },
+          "review": {
+            "$ref": "#/components/schemas/GroupReview"
+          },
+          "repositories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupRepository"
+            }
+          },
+          "group_budget": {
+            "$ref": "#/components/schemas/GroupAmount"
+          },
+          "reviewer": {
+            "type": "string"
+          },
+          "scheduler_available": {
+            "type": "boolean"
+          },
+          "business_complete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GroupView": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "draft_id",
+          "draft_revision",
+          "document",
+          "version",
+          "review",
+          "repositories",
+          "budgets",
+          "queue",
+          "authorizations",
+          "scheduler_available",
+          "business_complete"
+        ],
+        "properties": {
+          "draft_id": {
+            "type": "string"
+          },
+          "draft_revision": {
+            "type": "integer"
+          },
+          "document": {
+            "$ref": "#/components/schemas/DraftDocument"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "review": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "parent_revision",
+              "full_chain_acs",
+              "coverage",
+              "items",
+              "group_budget",
+              "semantic_review"
+            ],
+            "properties": {
+              "parent_revision": {
+                "type": "integer"
+              },
+              "full_chain_acs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "coverage": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GroupCoverage"
+                }
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/GroupItem"
+                }
+              },
+              "group_budget": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "tokens",
+                  "turns",
+                  "model_seconds"
+                ],
+                "properties": {
+                  "tokens": {
+                    "type": "integer"
+                  },
+                  "turns": {
+                    "type": "integer"
+                  },
+                  "model_seconds": {
+                    "type": "integer"
+                  }
+                },
+                "nullable": true
+              },
+              "semantic_review": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          },
+          "repositories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupRepository"
+            }
+          },
+          "budgets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "item_id",
+                "limits",
+                "used",
+                "reserved"
+              ],
+              "properties": {
+                "item_id": {
+                  "type": "string"
+                },
+                "limits": {
+                  "$ref": "#/components/schemas/GroupAmount"
+                },
+                "used": {
+                  "$ref": "#/components/schemas/GroupAmount"
+                },
+                "reserved": {
+                  "$ref": "#/components/schemas/GroupAmount"
+                }
+              }
+            }
+          },
+          "queue": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "version",
+              "authorization_id",
+              "state"
+            ],
+            "properties": {
+              "version": {
+                "type": "integer"
+              },
+              "authorization_id": {
+                "type": "integer"
+              },
+              "state": {
+                "type": "string"
+              }
+            },
+            "nullable": true
+          },
+          "authorizations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "snapshot"
+              ],
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "snapshot": {
+                  "$ref": "#/components/schemas/GroupSnapshot"
+                }
+              }
+            }
+          },
+          "scheduler_available": {
+            "type": "boolean"
+          },
+          "business_complete": {
+            "type": "boolean"
+          }
+        }
+      },
+      "GroupWrite": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version",
+          "draft_revision",
+          "review"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "draft_revision": {
+            "type": "integer"
+          },
+          "review": {
+            "$ref": "#/components/schemas/GroupReview"
+          }
+        }
+      },
+      "GroupConfirm": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "version",
+          "draft_revision"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "draft_revision": {
+            "type": "integer"
+          }
+        }
+      },
+      "GroupConfirmed": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "authorization_id",
+          "state",
+          "scheduler_available",
+          "business_complete"
+        ],
+        "properties": {
+          "authorization_id": {
+            "type": "integer"
+          },
+          "state": {
+            "type": "string"
+          },
+          "scheduler_available": {
+            "type": "boolean"
+          },
+          "business_complete": {
+            "type": "boolean"
           }
         }
       }

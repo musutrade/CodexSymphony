@@ -93,6 +93,7 @@ pub(crate) async fn persist(
         .bind(&id).bind(version).bind(&document_json).bind(&source_json).bind(&hash).execute(&mut **tx).await.map_err(db)?;
     sqlx::query("INSERT INTO imported_draft_revision(draft_id,version,document,source,source_sha256) VALUES($1,$2,$3,$4,$5)")
         .bind(&id).bind(version).bind(document_json).bind(source_json).bind(&hash).execute(&mut **tx).await.map_err(db)?;
+    crate::group_store::invalidate(tx, &id).await?;
     Ok(view(id, version, document, source, hash))
 }
 pub(crate) async fn expected(
@@ -200,7 +201,11 @@ pub async fn guard_legacy(
         .strip_prefix("/api/requirements/")
         .or_else(|| path.strip_prefix("/api/multi/requirements/"));
     if legacy.is_some_and(|suffix| suffix.starts_with("draft-")) {
-        return error(StatusCode::CONFLICT, "parent/child drafts require future group review; legacy execution and Ready are unavailable").into_response();
+        return error(
+            StatusCode::CONFLICT,
+            "parent/child drafts require group review; legacy execution and Ready are unavailable",
+        )
+        .into_response();
     }
     next.run(request).await
 }
