@@ -1,5 +1,8 @@
 # GH-25：第二私仓与严格串行验收
 
+2026-09-20 后续复核：[证据恢复与发布索引](evidence-recovery.md)。12 项原清单已恢复
+8 项且摘要完全匹配，4 项仍缺失；当前服务就绪异常与以下历史验收结果分开记录。
+
 2026-09-20，在 GH-24 真实 A01 已交付、关联开发 PR #52 合并后，原 localhost 产品接入
 `musutrade/disposable-2`（1377749969）。[真实 A13 记录](real-a13.json)绑定
 Requirement 2/revision 1、Run `2a2ae1eb-e147-47f8-a650-8869e98a5e25`、独立验证、

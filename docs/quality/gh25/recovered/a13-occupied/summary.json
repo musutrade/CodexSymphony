@@ -1,0 +1,31 @@
+{
+  "observed_at": "2026-09-20T02:05:22.030314+00:00",
+  "first_requirement": {
+    "cancel_requested": false,
+    "cleanup_complete": false,
+    "id": 1,
+    "paused": false,
+    "revision": 1,
+    "state": "Submitted",
+    "version": 18
+  },
+  "second_requirement": {
+    "cancel_requested": false,
+    "cleanup_complete": false,
+    "id": 2,
+    "paused": false,
+    "revision": 1,
+    "state": "Ready",
+    "version": 2
+  },
+  "first_model_calls_before": 5,
+  "first_model_calls_after": 5,
+  "second_model_calls": 0,
+  "first_runs_unchanged": true,
+  "second_runs": [],
+  "second_storage": {
+    "blocked": false,
+    "error": null
+  },
+  "first_storage_blocked": false
+}
