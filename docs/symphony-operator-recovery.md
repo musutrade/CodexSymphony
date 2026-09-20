@@ -93,3 +93,9 @@ API 响应丢失只重试确认，不重跑操作；进程在操作期间崩溃�
 备份及验证记录：`/home/gem/.local/share/codexsymphony/symphony/operator-deployment/20260920T034909Z`。
 其中包含原 workflow、journal、service unit、测试日志和 `verification.json`，不含令牌。
 新宿主部署的固定授权需登记到 grants；现有只读身份 profile 自动处理匹配请求。
+
+### 本次仓库收尾
+
+恢复 API 客户端已增加拒绝 HTTP 重定向，避免令牌转发或恢复请求重放；28 项宿主测试通过。
+该补充尚未部署，不能沿用上述旧部署结果声称运行服务已包含修复。
+本批次交付边界、0a 证据复核与下一项工作见 [收尾记录](quality/development-closeout/README.md)。

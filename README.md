@@ -68,3 +68,4 @@
 Product Runtime deployments require a finite [storage lifecycle policy](docs/storage-lifecycle.md) via `STORAGE_CONFIG`.
 
 开发控制器的有界重试、外部操作和受审计恢复见 [恢复运行说明](docs/symphony-operator-recovery.md)。
+最新证据核对及下一项工作见 [2026-09-20 收尾记录](docs/quality/development-closeout/README.md)。
