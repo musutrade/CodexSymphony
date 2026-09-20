@@ -33,6 +33,7 @@ hooks:
     printf '\n.symphony-handoff.json\n.agent-cargo/\n.agent-tmp/\n' >> .git/info/exclude
   before_run: |
     set -eu
+    export PATH=/home/gem/.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin:$PATH
     test "$(codex --version)" = "$(cat codex-version.lock)"
     command -v cargo >/dev/null
     command -v node >/dev/null
@@ -44,18 +45,21 @@ hooks:
 agent:
   serial_delivery: true
   max_concurrent_agents: 1
-  max_turns: 12
+  max_turns: 40
   max_retry_backoff_ms: 300000
   max_total_tokens: 100000000
   max_runtime_ms: 14400000
   max_consecutive_errors: 6
   max_run_attempts: 3
+  max_infrastructure_attempts: 3
+server:
+  operator_token_env: SYMPHONY_OPERATOR_TOKEN
 codex:
   command: >-
     /home/gem/.local/share/codexsymphony/symphony/codex-trusted
     --config 'model_provider="openai"'
     --config 'model="gpt-6-astra"'
-    --config 'model_reasoning_effort="medium"'
+    --config 'model_reasoning_effort="low"'
     --config 'features.goals=false'
     --config 'tool_output_token_limit=2000'
     app-server
@@ -227,5 +231,42 @@ reproduction, stop immediately by writing `.symphony-handoff.json` with exactly:
 This requests a durable pause, not PR completion. Do not include PR fields, repeat
 unchanged probes, or keep consuming continuation turns. The controller reads it
 after the turn, records the cause, and will not retry until operator recovery.
-The operator archives/removes this declaration only after the cause is resolved.
+The authenticated host recovery API archives this declaration only after recovery is durably recorded; never edit the host journal.
 Ordinary code/test failures within your ability to fix are not external blockers.
+
+
+### External host operations and bounded recovery
+
+Use `waiting_external` when the next step belongs to an already authorized host
+operation. Do not report it as a code failure or ask again for authorization that
+this workflow or the Issue already supplies. Save progress first, write exactly:
+
+```json
+{"status":"waiting_external","issue_id":"<assigned numeric id>","repo":"musutrade/CodexSymphony","operation":"<registered host operation>","request_id":"<unique stage request>","reason":"<confirmed prerequisite>","evidence":"<retained non-secret evidence>","resume_condition":"<precise checks required before continuation>"}
+```
+
+Then stop the turn. The controller retains the queue and usage; the host bridge
+runs a matching pinned authorization and records a receipt before resuming this
+same Issue. Never include shell commands or secrets in the declaration. The
+read-only `product.identity_preflight` operation is preauthorized for the current
+A01/A13 deployment: health/database OK and both designated repository identities
+with delivery_ready=true. It does not prove Runtime execution or A13 acceptance. For this operation use
+the exact resume_condition:
+`health=ok; database=ok; repositories=1360824360,1377749969; delivery_ready=true`.
+Deployment/release operations require a host grant for their exact request,
+revision and executable, registered by the operator when the concrete operation
+is prepared. A grant does not permit bypassing required CI, changing budgets or
+clearing product ownership. Missing grants remain visible as external waits.
+
+Environment-hook failures and exhausted upstream transport retries have a
+separate finite infrastructure budget. They preserve actual startup counts,
+tokens and runtime. Unknown process exits remain charged code attempts. After
+that budget is exhausted, explicit recovery can grant a single continuation
+without resetting history or increasing global limits.
+
+Preflight each stage's current prerequisites; do not require routes that this
+Issue has yet to implement. Local checks use `tools/gate.py` and the same pinned
+binaries/configuration as the formal gate. A local partial profile is diagnostic,
+not evidence that the exact-head required Harness-Gate check passed. Keep the
+implementation and its promised acceptance together; do not split out unmet
+acceptance merely to obtain a merge.

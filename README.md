@@ -30,6 +30,7 @@
 | [演进目录](docs/roadmap-specs/README.md) | 后期候选及启用条件，不构成当前开发/验收要求 |
 | [本次范围收缩记录](docs/scope-reduction-2026-09-14.md) | 变更理由与迁移映射，不另定义行为 |
 | [运行复盘](docs/symphony-harness-gate-retrospective-2026-09-13.md) | 历史事故依据，不覆盖当前规格 |
+| [开发断裂复盘 2026-09-20](docs/symphony-development-retrospective-2026-09-20.md) | GH-12～GH-25 断裂分类与优化建议，不覆盖当前规格 |
 
 ## 已确认的日常使用场景
 
@@ -65,3 +66,6 @@
 - 首个未来平台接管仓库为 `musutrade/disposable`，沿用 S2/S2b 的测试授权；与当前开发本仓库的 Symphony 验收分开。
 
 Product Runtime deployments require a finite [storage lifecycle policy](docs/storage-lifecycle.md) via `STORAGE_CONFIG`.
+
+开发控制器的有界重试、外部操作和受审计恢复见 [恢复运行说明](docs/symphony-operator-recovery.md)。
+最新证据核对及下一项工作见 [2026-09-20 收尾记录](docs/quality/development-closeout/README.md)。

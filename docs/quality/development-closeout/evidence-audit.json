@@ -1,0 +1,576 @@
+{
+  "checked_at": "2026-09-20T04:12:51.052345+00:00",
+  "product_baseline": "f4e0487e55c42e75292b9c4e4a03452104a6e9da",
+  "host_tests": 28,
+  "scope": "Read-only evidence audit; no product mutation or release approval",
+  "evidence": {
+    "GH-24": [
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/notifications-before-2.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/notifications-before-2.log",
+        "expected_sha256": "0bd40ff5428721dffe1cedfabb7ae31c38a25777abc36af76fd7df9d9c3ae023",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/operations-before.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/operations-before.json",
+        "expected_sha256": "699b56f58002f717370bb7e489221d8aae0ca7d3669f7c74e3ffdbfb08cc0b93",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/deployment-delta.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/deployment-delta.json",
+        "expected_sha256": "6adfb1d04ac62c8214d43f7c0535f8385ee91ee708fe5a21ecb2517d10ff3357",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/deployment-recovery.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/deployment-recovery.json",
+        "expected_sha256": "e467d9220fc69768dada178d534b44baac3840b27cd449ba363f659ee480208f",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/validation-summary.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/validation-summary.json",
+        "expected_sha256": "e58990fd57cac735b12e1c8adca64cce8b4064d6f996c79b2abf292fbdd58a94",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/gate-audit.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/gate-audit.json",
+        "expected_sha256": "2e3811604cbb0bb4c854a1199af0ee8983d8f3083a2442e21817db56260cb1c2",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/restart-prepared.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/restart-prepared.log",
+        "expected_sha256": "bc29f16c0faf62d580fc3a152486206f533d54fd871d96aa14ec7757ac19c9c5",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/smoke-before.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/smoke-before.log",
+        "expected_sha256": "947081bc0be53c994be3009f9925ed5630e440bf16e2acb6f80499281eac4008",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/last-turn-before.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/last-turn-before.log",
+        "expected_sha256": "61d68e8a6e7c5bc2b6deff1f7296c4dce3e54aecf5c858acbc82884b3b335602",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/clippy-takeover.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/clippy-takeover.log",
+        "expected_sha256": "012cdac841988ac7fd14da33cc91a906fe449590673d71484cfa03e58907c101",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/config-final.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/config-final.log",
+        "expected_sha256": "bfc26fe806009adfbb4c804b698240009c1ae2e208983236d1e479b2714e048b",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/regression-before.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/regression-before.log",
+        "expected_sha256": "1057f7ba34a6a8358c14bcea6537691d80283f35af6bbdfc56038ea9623915bb",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/native-final-4.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/native-final-4.log",
+        "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/notifications-before.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/notifications-before.log",
+        "expected_sha256": "1f13079c0e3dd681a56ce8b82900e650f3fecb28ca1866f34ed016caf5bdf631",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/native-final-2.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/native-final-2.log",
+        "expected_sha256": "cde9b507bdfd5cb832dcdf29e19feccf7311731c08d6b3785c76f3cf15b5f82d",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/deployment-inputs.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/deployment-inputs.json",
+        "expected_sha256": "29c09228d201a6d44ab396527eced4e325cca8d768d27eb36399e66edf1c70a4",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/notifications-after-3.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/notifications-after-3.log",
+        "expected_sha256": "118873de2bd0cbea342ab114f5650dc5cc76392c061ac37f3758fad60b3348bf",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/health-before.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/health-before.json",
+        "expected_sha256": "68fd26fd028c249fb77980d91904c5713a103acb2f179ad7dfcd5164b708ae39",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/clippy-final.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/clippy-final.log",
+        "expected_sha256": "693eb1a3466e4c0b9c659ed23bc63286895c84fac2b0efa73f519e263c091187",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/last-turn-after.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/last-turn-after.log",
+        "expected_sha256": "98729a4f5c4a51f17f6c772cccabd152b102f2e2a55527a5da540fb26fd021f6",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/lock-contention.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/lock-contention.log",
+        "expected_sha256": "d8f3968578eb0e268884ae748da37d8592a3d8ea3015d601244b8f99fd62bfda",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/delivery-retry.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/delivery-retry.log",
+        "expected_sha256": "b50bb047335aeeb1b9c3968211c09739b5b01adf12095e9b3b92b042d1d56c8c",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/clippy-takeover-2.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/clippy-takeover-2.log",
+        "expected_sha256": "84ab90dbb15046e79751c558add3777d83073f621aecb27b51981d0ed53e8fc4",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/fmt.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/fmt.log",
+        "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/proxy-routing.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/proxy-routing.log",
+        "expected_sha256": "0d7499943065050a22a84e8d968237190a2bdf74b8f1fa91a7d8e5d62fa3849c",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/native-final.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/native-final.log",
+        "expected_sha256": "13fdd47b625fd7c9dbf85884b02627ed2cda18e7d1965e6b1fbba3a2ae6aa5e8",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/clippy.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/clippy.log",
+        "expected_sha256": "4a21677ebe924a797d7288a1e48ef68004bea636c69e883baa41cdfe8b4b68f2",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/gate-secrets.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/gate-secrets.json",
+        "expected_sha256": "49fb8eb3f7a3eeae5cf509025b5759003751abf57b629f033cc9ebbb65639151",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/rust-quality-final-2.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/rust-quality-final-2.json",
+        "expected_sha256": "de864431afa05d1eb0aa62656cdae6721103a034f93417d289be7e253ab88580",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/final-local.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/final-local.log",
+        "expected_sha256": "4393b6b702891430b4f6f6ba24754cbdf70e774e92135d36d6f2beafc72fb478",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/final-local-2.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/final-local-2.log",
+        "expected_sha256": "506891fc702df6e02c6a20cb4b1bf571f6d6dc01ff2c5e877898611415f37169",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/notifications-after.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/notifications-after.log",
+        "expected_sha256": "2b05a59b7a860ef4f1dc5bb9ee5c36724a64b7240cd15a62f15e7f2c7537c0f2",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/notifications-after-2.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/notifications-after-2.log",
+        "expected_sha256": "36ec50cbcaa1e042eacbbaeccbee75b0a2878e67cd1b787d7b219109a6444b39",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/committed-recovery.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/committed-recovery.log",
+        "expected_sha256": "6f54656559fc47b44b4d41ee1218d8069d911b8a937907ea5e9950039b545b5e",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/native-final-3.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/native-final-3.log",
+        "expected_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/workspace-tests.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/workspace-tests.log",
+        "expected_sha256": "edc3f4107a58d86abcc1e3ee92bc0f9920b0146e6202a366c9e81fc9f0af2613",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/lock-contention-2.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/lock-contention-2.log",
+        "expected_sha256": "3e15a351b958e97a3d2159b18ebc9ca0e2757b328d8bcc025f35f105113cab7f",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/regression-after.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/regression-after.log",
+        "expected_sha256": "a8163e460fd470f1b9f5a6ad1b94f42d3c45e45723a62466ce1a91e58cd97c6a",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/CHECKPOINT.md",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/CHECKPOINT.md",
+        "expected_sha256": "295bf2b5cea668c6f4ea0ccca386424b2b6ff91d6e49bdd61e9443f330124ab8",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/clippy-final-2.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/clippy-final-2.log",
+        "expected_sha256": "6db438a37d19e3bc0464023e1dcd26cdb9d936cfb9fd7df9b9027f64373a7f4f",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/idle-client-regression.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/idle-client-regression.log",
+        "expected_sha256": "7a5b365c2c5f9cfea1f1156e7a945eb773757fc939131d6bf7865b3ecc769122",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/gate-config.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/gate-config.log",
+        "expected_sha256": "bfc26fe806009adfbb4c804b698240009c1ae2e208983236d1e479b2714e048b",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/recovery/ordering-fix/rust-quality-final.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/recovery/ordering-fix/rust-quality-final.json",
+        "expected_sha256": "b889dc64cf8f522cd5b03bc3ee7d6aedffb040c2222fb29da496c7699315b57e",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/deployment-recovery.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/deployment-recovery.json",
+        "expected_sha256": "312e428ff8901319782d55cccfb7b409ca0e092e26161e1bdf3ce8d5cc81c0ab",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/recovery-storage-recheck.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/recovery-storage-recheck.json",
+        "expected_sha256": "5e5617f647c4f06db90d98fe13434ec339a7cdcf7bc09880eb1f7b53c289d691",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/recovery-storage-command.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/recovery-storage-command.json",
+        "expected_sha256": "4a3d9bba2b2dac150bbe106c89c3d9600d53b520e77aa15f03504a7103bb6f12",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/smoke-input.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/smoke-input.json",
+        "expected_sha256": "dd5dd813bec73947ce228ab2b728885ce72c632223ecdb1417d4ecf3ba8f9374",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/OPERATOR-RECOVERY-NOTES.md",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/OPERATOR-RECOVERY-NOTES.md",
+        "expected_sha256": "09b0926cd43616002cd4eb7a4ac9a0d0842fe51a24d6585a8e85b99c760b6ba3",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/repository.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/repository.json",
+        "expected_sha256": "2b23449e5b02d6df3eee545f781e2bfef5c6b4fa403aafdc7046160e96e6f6c7",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/recovery-github-preflight.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/recovery-github-preflight.json",
+        "expected_sha256": "689fa137814178638097b4481d4aea30d8f9e3b5bab7257b3d7f78de868318d7",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/repository-registration.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/repository-registration.json",
+        "expected_sha256": "6e0ed4a37fd639a30ebeac8af0fe5a3b43e5cf242f640d50a009f0b890b25f7f",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/health.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/health.json",
+        "expected_sha256": "68fd26fd028c249fb77980d91904c5713a103acb2f179ad7dfcd5164b708ae39",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/runtime-preflight.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/runtime-preflight.json",
+        "expected_sha256": "673995a52f3af0617b80b5cdab3d09a30a9d57727977504a899d50d60a91f05b",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/operations.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/operations.json",
+        "expected_sha256": "3ccb811cc2ab75d99676d0414247e9c1e934a2e54f07fa9fc4c5368d52690ed6",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/github-preflight.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/github-preflight.json",
+        "expected_sha256": "b575362d4e4f316a709d4255360d42a59edf0fd778ee283f7a82d59f60590df2",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/recovery-runtime-preflight.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/recovery-runtime-preflight.json",
+        "expected_sha256": "673995a52f3af0617b80b5cdab3d09a30a9d57727977504a899d50d60a91f05b",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-24/artifacts/gh24/operator-setup/recovery-operations-after.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/retained-artifacts/operator-setup/recovery-operations-after.json",
+        "expected_sha256": "281e46ec750115a9e1d38937f9c7cc364255b3b9c240cb7423c79895a294997f",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-lock-recovery-result.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-lock-recovery-result.json",
+        "expected_sha256": "8cd341be8e622bb9418354ca429a343386daaab0ec244932d4492018bdeca1fc",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-authorizations.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-authorizations.json",
+        "expected_sha256": "354cc7878f3da6158802d23b5d8a49b715689a4b4472bf159cde13ba26f9ed82",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/storage-command.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/storage-command.json",
+        "expected_sha256": "838d82e7a2ef1cf26f354a80398d805258bc13683a6da90f88ad80808f2c1c45",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/delivery-recheck.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/delivery-recheck.json",
+        "expected_sha256": "4b0b8643d29badd0c34b919078440636f327a66b4db20bf03de338a485353a3c",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-proxy-routing.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-proxy-routing.log",
+        "expected_sha256": "7a41e9f5134a5fa2db89e76b98957a6512fa2f43df61ae272980d1474268679e",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/lock-sample.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/lock-sample.json",
+        "expected_sha256": "dc1b99df4bef899858e7e36bec3702bcc1afc946f7656773e8e916f7b33db085",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-committed-recovery.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-committed-recovery.log",
+        "expected_sha256": "9976a039b7587d97d79f023263e3dadecda28e64bab8033c74558028f3d36395",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/recheck-committed.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/recheck-committed.json",
+        "expected_sha256": "d8b339ce345a3fa2218c40776a89dd67ac5d4da7d5a074c7f597737756240ed7",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-resume_history.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-resume_history.json",
+        "expected_sha256": "f83aae1b3d344b5d74edf74c7bb22bbb57b6bdb90d3b7ecaba0d7c977721ae28",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-model_calls.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-model_calls.json",
+        "expected_sha256": "f0b5c2c2211c8d67ed15e75e656c7862d086e9245420892a7de62cd9ec582a06",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/deployment-inputs.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/deployment-inputs.json",
+        "expected_sha256": "c6578a30fdd45640ef36638a1cf07310f339336c1bee18921adefdff85e3d3f2",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-budget.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/final-budget.json",
+        "expected_sha256": "35c593a9a0a632c2c6e9967753f78447656993b1e1fe2b5a777893d850f2ae1d",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-integration-recovery.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-integration-recovery.json",
+        "expected_sha256": "17d07a155211d83d2840c8fdad1c26ba4600b84d7f903c2dfd37eb4ab5df1d4b",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-delivery-retry.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-delivery-retry.log",
+        "expected_sha256": "c8d39abdb8528b048ce0c7f921f63d10edbc17895cb057f554b1df9c8eadfbf3",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/recheck-history.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/recheck-history.json",
+        "expected_sha256": "e24034a7a7252f5a453ead8ce5893c010b9680368635a21b9fa9bc6bb5b9f3d4",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-lock-recovery.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-lock-recovery.json",
+        "expected_sha256": "22a3c27fdb81ebbf5392be692e4425f6507a67937c0e9cf442931e4577d20c99",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-resume-history.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-resume-history.log",
+        "expected_sha256": "e72ad850f08dbe2de1537740cd6dd4bfd8120b54687eb851e866f5a404498bf8",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/measure.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/measure.log",
+        "expected_sha256": "760eac0720b9ddcc5aa92eba58f88523890b4ba84a0754734f9183006f44bd01",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/runtime-preflight.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/runtime-preflight.json",
+        "expected_sha256": "fc80380f385a09a3b152136397dc6d508d09cb3dabf4473bc9be4ecda8b7556d",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-lock-contention.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-lock-contention.log",
+        "expected_sha256": "1890ff964ef052e08b07c4876a18b76b1d68b6747e66e0588e77ed7d680be8db",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-notifications.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build-notifications.log",
+        "expected_sha256": "f18c4bb4a24186ea4fc570aeb55b0fbda40ef33d60e6fe84b14d69e3f37a634d",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-integration-result.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/budget-integration-result.json",
+        "expected_sha256": "b916391703dcedd0f897358e2b369419944a100933e8c5ed3589be3b5acf54f8",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/real-validation.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/real-validation.json",
+        "expected_sha256": "c7c6b720d737a9daef3dbf32e2aeab6d369f0ea9c1588ec0b174ed5978fb192c",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build.log",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/build.log",
+        "expected_sha256": "83dec2e84adf6c798fec2380b169b5d8e830c73383326030bd50140a974d5eab",
+        "status": "matched"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/storage-recheck.json",
+        "located": "/home/gem/.local/share/codexsymphony/a01-gh24/recovery-deploy-3/storage-recheck.json",
+        "expected_sha256": "3a3982d237bc19b2f87096f8e136116a72487bc1fbd85f360c627043963b3594",
+        "status": "matched"
+      }
+    ],
+    "GH-25": [
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/second-delivery.json",
+        "located": null,
+        "expected_sha256": "971f29833b1add19d6312ee7eb6cf0e6ebfa167954ced38ad1729d8e4748b804",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/repositories.json",
+        "located": null,
+        "expected_sha256": "bd695624c61fd9f1e28a98d2459ac2fbf0c9197218494296c3363f5eca6a6a25",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/first-operations.json",
+        "located": null,
+        "expected_sha256": "f0543d6ae48bb7e61f43a2790b298c597819d67114d5a96f51d93a43aeae5b8d",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/a13pr.json",
+        "located": null,
+        "expected_sha256": "d72116c889c6c5eebbb88d5af884a20352f5bffcb97f9c97e1779d756fe2ccbc",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/a13jobs.json",
+        "located": null,
+        "expected_sha256": "e5cd9ad0f937f0913210a62ada8252d31f029b183214ac4e99902c3d5469563c",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/second-operations-latest.json",
+        "located": null,
+        "expected_sha256": "f56326b71e6ce9e3cb327ad4d5302ea81b3a63d2e81d35aac32220149575092e",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/second-operations.json",
+        "located": null,
+        "expected_sha256": "6789cbde5c2c35084afc99d665a46a78aaa7f83c89a6216e0fc3604a83db9be7",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/a13checks.json",
+        "located": null,
+        "expected_sha256": "e3dd28e672bf2c99ec5d0826d57ce0fa2b1177e9ecd57ab456620a9a23f2482c",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-submitted/a13actions.json",
+        "located": null,
+        "expected_sha256": "d3570a60f4fc5afa6d8af77740f819afe17bf53c7884336227e365ea9d8fcd9b",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/a13-occupied/summary.json",
+        "located": null,
+        "expected_sha256": "545cda94a5ab511c12f72fb4247d8f2a387b5074e84e6d788d796ef6c87fc68b",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/operator-deployment/preservation.json",
+        "located": null,
+        "expected_sha256": "76c0f23eb156506ff6598aebfaa728374c85a6700e23a172568880b517b6512a",
+        "status": "missing_at_checked_locations"
+      },
+      {
+        "original": "/home/gem/.local/share/codexsymphony/workspaces/GH-25/artifacts/gh25/operator-release/after.json",
+        "located": null,
+        "expected_sha256": "d46c0217054bab7024ecb9bba920bfbd21b49d42ff31396c80ec7105ea76bfc5",
+        "status": "missing_at_checked_locations"
+      }
+    ]
+  }
+}

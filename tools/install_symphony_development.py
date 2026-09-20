@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 
 ROOT=Path(__file__).resolve().parents[1]
 HOME=Path.home()
@@ -77,6 +78,11 @@ def main():
         path=state/'environment-template'/name;path.parent.mkdir(parents=True,exist_ok=True)
         path.write_bytes(data)
         if name==Path('client/bin/psql'):path.chmod(0o755)
+    if active.exists():
+        previous = active.read_bytes()
+        match = re.search(rb'\n## (?:GH-[0-9]+ operator recovery:|Operator recovery:|Operator deployment completed|Supported release completed)', previous)
+        if match and previous[match.start():] not in routed:
+            routed += previous[match.start():]
     active.write_bytes(routed)
     command=state/'codex-trusted';command.write_text('#!/bin/sh\nexec /usr/bin/python3 '+str(release/'trusted_environment.py')+' "$@"\n');command.chmod(0o700)
     environment=HOME/'.config/symphony/codexsymphony.env'
@@ -96,9 +102,9 @@ Wants=network-online.target
 Type=simple
 WorkingDirectory=/home/gem/symphony/elixir
 EnvironmentFile={environment}
-Environment=HTTP_PROXY=http://127.0.0.1:7890
-Environment=HTTPS_PROXY=http://127.0.0.1:7890
-Environment=ALL_PROXY=http://127.0.0.1:7890
+Environment=HTTP_PROXY=http://192.168.0.26:10809
+Environment=HTTPS_PROXY=http://192.168.0.26:10809
+Environment=ALL_PROXY=http://192.168.0.26:10809
 Environment=NO_PROXY=127.0.0.1,localhost,::1
 Environment=NO_COLOR=1
 ExecStart=/home/gem/.local/bin/mise exec -- /home/gem/symphony/elixir/bin/symphony --i-understand-that-this-will-be-running-without-the-usual-guardrails {active} --port 4011 --logs-root {state}/logs
@@ -112,6 +118,8 @@ UMask=0077
 WantedBy=default.target
 ''')
     subprocess.run(['systemctl','--user','daemon-reload'],check=True)
+    subprocess.run([sys.executable, str(ROOT/'tools/install_symphony_cleanup.py')], check=True)
+    subprocess.run([sys.executable, str(ROOT/'tools/install_symphony_operator.py')], check=True)
     print('Prepared Symphony release '+revision+'; scheduling has not been started.')
 
 if __name__=='__main__':main()
