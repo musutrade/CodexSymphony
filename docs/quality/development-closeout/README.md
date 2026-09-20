@@ -10,8 +10,17 @@
 - `python3 -m unittest discover -s tools/symphony -p 'test_*.py' -v`：28 项通过。
 - `python3 tools/gate.py config check`、秘密扫描、架构检查、`git diff --check`：通过。
 - 原部署记录中的 26 项 Python 测试及 357 项 Elixir 测试属于此前部署，本次没有重跑 Elixir。
-- 新增重定向修复尚未安装到运行中的 operator；本次没有重启服务或修改产品占用/预算。
+- 新增重定向修复已于 04:25 UTC 安装到运行中的 operator；未重启开发控制器或修改产品占用/预算。
 - 本分支尚未取得自身精确提交的正式双 Gate；历史产品检查不能替代本次交付检查。
+
+部署源码提交为 `0231d6bbff9158c28971d6fbf8bd09bc9653ec2a`。对已安装模块执行的 9 项
+恢复/传输测试通过，恢复 API 未鉴权返回 403、带鉴权的不存在 Issue 返回 404。
+产品 health/database 正常，开发控制器和两个 timer active，operator 最近一次执行成功。
+部署前后 token、grants、workflow、handoff journal 摘要一致；备份、测试日志和
+`verification.json` 位于宿主
+`~/.local/share/codexsymphony/symphony/operator-deployment/20260920T042432Z-closeout/`。
+已部署 `operator_bridge.py` SHA-256：
+`cf9d4a66de0d2eae3a917eb9f74984cf3ca8a945a80be2ecf81ecb47c5c623f1`。
 
 ## Phase 0a 证据核对
 

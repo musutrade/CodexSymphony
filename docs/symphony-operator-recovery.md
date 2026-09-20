@@ -97,5 +97,7 @@ API 响应丢失只重试确认，不重跑操作；进程在操作期间崩溃�
 ### 本次仓库收尾
 
 恢复 API 客户端已增加拒绝 HTTP 重定向，避免令牌转发或恢复请求重放；28 项宿主测试通过。
-该补充尚未部署，不能沿用上述旧部署结果声称运行服务已包含修复。
+该补充已于 2026-09-20 04:25 UTC 部署；针对已安装模块的 9 项测试通过，鉴权及服务健康检查通过，
+原令牌、授权、工作流和 handoff 台账保持不变。部署备份与验证记录位于
+`~/.local/share/codexsymphony/symphony/operator-deployment/20260920T042432Z-closeout/`。
 本批次交付边界、0a 证据复核与下一项工作见 [收尾记录](quality/development-closeout/README.md)。
