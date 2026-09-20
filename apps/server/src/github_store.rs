@@ -31,13 +31,13 @@ pub async fn claim_ready(
         .bind(requirement).bind(revision).fetch_one(&mut **tx).await
 }
 pub async fn save_capability(pool: &PgPool, capability: &Capability) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE github_repository SET capability=$2,checked_at=$3,stale=false,failures=0,error=NULL,next_attempt_at=$3+60 WHERE repository_id=$1 AND policy=$4")
+    sqlx::query("UPDATE github_repository SET capability=$2,checked_at=$3,stale=false,failures=0,error=NULL,next_attempt_at=$3+30 WHERE repository_id=$1 AND policy=$4")
         .bind(capability.policy.repository_id as i64).bind(sqlx::types::Json(capability)).bind(capability.checked_at)
         .bind(sqlx::types::Json(&capability.policy)).execute(pool).await?;
     Ok(())
 }
 pub async fn save_observation(pool: &PgPool, observation: &Observation) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE github_pr SET observation=$3,last_synced_at=$4,stale=false,failures=0,error=NULL,next_attempt_at=$4+60 WHERE repository_id=$1 AND number=$2 AND EXISTS(SELECT 1 FROM github_repository g WHERE g.repository_id=$1 AND g.policy=$5)")
+    sqlx::query("UPDATE github_pr SET observation=$3,last_synced_at=$4,stale=false,failures=0,error=NULL,next_attempt_at=$4+30 WHERE repository_id=$1 AND number=$2 AND EXISTS(SELECT 1 FROM github_repository g WHERE g.repository_id=$1 AND g.policy=$5)")
         .bind(observation.repository_id as i64).bind(observation.number as i64).bind(sqlx::types::Json(observation)).bind(observation.last_synced_at).bind(sqlx::types::Json(&observation.policy)).execute(pool).await?;
     Ok(())
 }

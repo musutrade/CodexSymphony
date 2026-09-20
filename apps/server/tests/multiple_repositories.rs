@@ -66,6 +66,9 @@ async fn ok(app: &Router, method: &str, path: &str, body: Value) -> Value {
 async fn registration_review_routing_and_global_ownership() {
     use codexsymphony_server::{github_store, runtime_routes::Deployment};
     let (pool, app) = fixture().await;
+    let empty = ok(&app, "GET", "/api/repository", Value::Null).await;
+    assert_eq!(empty["repository_ready"], false);
+    assert_eq!(empty["runtime_ready"], false);
     let first = repo(0, "first");
     ok(&app, "PUT", "/api/repository", first.clone()).await;
     let mut second = repo(0, "second");
@@ -164,5 +167,60 @@ async fn registration_review_routing_and_global_ownership() {
         .await
         .unwrap();
     assert!(routes.selected(&pool).await.unwrap().is_none());
+    readiness(&pool, &app).await;
     std::fs::remove_dir_all(root).unwrap();
+}
+
+async fn readiness(pool: &PgPool, app: &Router) {
+    // Synthetic capability facts exercise the public summary independently of routing.
+    sqlx::query("UPDATE repository SET document=jsonb_set(document,'{revoked}','false')")
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr,capability,checked_at,stale) SELECT (document->>'github_repository_id')::bigint,version,'{}',1,'{\"blockers\":[],\"policy\":{}}',extract(epoch FROM now())::bigint,false FROM repository")
+        .execute(pool).await.unwrap();
+    assert_eq!(
+        ok(app, "GET", "/api/repository", Value::Null).await["repository_ready"],
+        true
+    );
+    for change in [
+        "checked_at=extract(epoch FROM now())::bigint-60",
+        "stale=true",
+        "repository_version=999",
+        "capability='{\"blockers\":[\"missing\"],\"policy\":{}}'",
+        "capability='{\"blockers\":[],\"policy\":{\"changed\":true}}'",
+    ] {
+        sqlx::query(&format!(
+            "UPDATE github_repository SET {change} WHERE repository_id=124"
+        ))
+        .execute(pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            ok(app, "GET", "/api/repository", Value::Null).await["repository_ready"],
+            false
+        );
+        sqlx::query("UPDATE github_repository SET checked_at=extract(epoch FROM now())::bigint,stale=false,repository_version=(SELECT version FROM repository WHERE id=2),capability='{\"blockers\":[],\"policy\":{}}' WHERE repository_id=124")
+            .execute(pool).await.unwrap();
+    }
+    sqlx::query("UPDATE repository SET document=jsonb_set(document,'{revoked}','true') WHERE id=2")
+        .execute(pool)
+        .await
+        .unwrap();
+    assert_eq!(
+        ok(app, "GET", "/api/repository", Value::Null).await["repository_ready"],
+        false
+    );
+    let worker = tokio::spawn(std::future::pending::<()>());
+    let running = app.clone().layer(axum::Extension(worker.abort_handle()));
+    assert_eq!(
+        ok(&running, "GET", "/api/repository", Value::Null).await["runtime_ready"],
+        true
+    );
+    worker.abort();
+    assert!(worker.await.unwrap_err().is_cancelled());
+    assert_eq!(
+        ok(&running, "GET", "/api/repository", Value::Null).await["runtime_ready"],
+        false
+    );
 }

@@ -108,14 +108,23 @@ fn decode<T>(
         )),
     }
 }
-async fn repository(State(pool): State<PgPool>) -> Result<Json<Value>> {
+async fn repository(
+    State(pool): State<PgPool>,
+    runtime: Option<axum::Extension<tokio::task::AbortHandle>>,
+) -> Result<Json<Value>> {
     let rows: Vec<String> = sqlx::query_scalar(
         "SELECT jsonb_build_object('id',r.id,'version',r.version,'repository',r.document,'delivery_ready',COALESCE(NOT (r.document->>'revoked')::boolean AND g.repository_version=r.version AND NOT g.stale AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy,false))::text FROM repository r LEFT JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint ORDER BY r.id",
     )
     .fetch_all(&pool)
     .await?;
+    let repositories = decode_all(rows)?;
+    let repository_ready = !repositories.is_empty()
+        && repositories
+            .iter()
+            .all(|entry| entry["delivery_ready"] == true);
+    let runtime_ready = matches!(runtime, Some(task) if !task.is_finished());
     Ok(Json(
-        json!({"repositories": decode_all(rows)?, "deployment_network": [], "network_status": "not_configured", "runtime_ready": false, "repository_ready": false}),
+        json!({"repositories": repositories, "deployment_network": [], "network_status": "not_configured", "runtime_ready": runtime_ready, "repository_ready": repository_ready}),
     ))
 }
 fn decode_all(rows: Vec<String>) -> Result<Vec<Value>> {

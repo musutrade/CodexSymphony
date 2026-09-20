@@ -29,6 +29,7 @@ struct Data {
     redirects: HashMap<String, (u16, String)>,
     seen: Vec<String>,
     grants: usize,
+    delays: HashMap<String, std::time::Duration>,
 }
 struct Fixture {
     data: Arc<Mutex<Data>>,
@@ -49,6 +50,10 @@ async fn handler(
     let path = request.uri().path().to_owned();
     let query = request.uri().query().unwrap_or("").to_owned();
     let method = request.method().to_string();
+    let delay = data.lock().unwrap().delays.get(&path).copied();
+    if let Some(delay) = delay {
+        tokio::time::sleep(delay).await;
+    }
     let body = axum::body::to_bytes(request.into_body(), 65536)
         .await
         .unwrap();
@@ -71,9 +76,11 @@ async fn handler(
     if method == "POST" && path == "/app/installations/7/access_tokens" {
         assert_eq!(path, "/app/installations/7/access_tokens");
         let body: Value = serde_json::from_slice(&body).unwrap();
-        assert_eq!(
-            body["repository_ids"],
-            json!([data.routes["/repos/owner/repo"]["id"]])
+        assert!(
+            data.routes
+                .values()
+                .any(|repo| repo.get("id").is_some()
+                    && body["repository_ids"] == json!([repo["id"]]))
         );
         assert_eq!(
             body["permissions"],
@@ -556,8 +563,10 @@ async fn persistent_polling_blocks_claims_without_starting_a_model() {
     github_service::tick(&pool, &mut c, now).await.unwrap();
     assert_eq!(count(&pool,"SELECT count(*) FROM github_repository WHERE NOT stale AND capability->'blockers'='[]'::jsonb").await,1);
     let requests = f.data.lock().unwrap().seen.len();
-    github_service::tick(&pool, &mut c, now + 59).await.unwrap();
+    github_service::tick(&pool, &mut c, now + 29).await.unwrap();
     assert_eq!(requests, f.data.lock().unwrap().seen.len());
+    github_service::tick(&pool, &mut c, now + 30).await.unwrap();
+    assert!(f.data.lock().unwrap().seen.len() > requests);
     for code in [403, 404] {
         f.fail("/repos/owner/repo/pulls/1", vec![code, code]);
         github_service::tick(&pool, &mut c, now + 60).await.unwrap();
@@ -643,6 +652,83 @@ async fn persistent_polling_blocks_claims_without_starting_a_model() {
         count(&pool, "SELECT count(*) FROM github_repository WHERE stale").await,
         1
     );
+}
+
+#[tokio::test]
+async fn slow_repository_does_not_backdate_later_repository_or_pr_evidence() {
+    let pool = database().await;
+    let f = Fixture::new().await;
+    f.actions();
+    let p = action_policy();
+    let mut second = p.clone();
+    second.repository = "owner/second".into();
+    second.repository_id = 100;
+    let routes = f.data.lock().unwrap().routes.clone();
+    for (path, value) in routes {
+        f.put(&path.replace("owner/repo", "owner/second"), value);
+    }
+    f.put("/repos/owner/second", json!({"id":100,"full_name":"owner/second","default_branch":"main","archived":false,"private":true}));
+    let mut second_pr = pr();
+    second_pr["base"]["repo"]["id"] = json!(100);
+    f.put("/repos/owner/second/pulls/1", second_pr);
+    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(2,1,'{\"revoked\":false,\"github_repository_id\":100,\"remote\":\"owner/second\",\"base_branch\":\"main\"}'); INSERT INTO requirement(version,state,contract,revision) VALUES(1,'Ready','{}',1); INSERT INTO requirement_revision(requirement_id,revision,document) VALUES(2,1,'{\"repository_version\":1,\"repository_id\":2,\"repository\":{\"github_repository_id\":100}}');")
+        .execute(&pool).await.unwrap();
+    for (policy, requirement) in [(&p, 1), (&second, 2)] {
+        assert!(github_store::configure(&pool, policy, 1).await.unwrap());
+        assert!(
+            github_store::link(&pool, policy.repository_id, 1, requirement)
+                .await
+                .unwrap()
+        );
+    }
+    f.data.lock().unwrap().delays.insert(
+        "/repos/owner/repo".into(),
+        std::time::Duration::from_millis(1100),
+    );
+    let now = github_service::now();
+    github_service::tick(&pool, &mut f.client(), now)
+        .await
+        .unwrap();
+    let timestamps: Vec<(i64,i64,i64)> = sqlx::query_as("SELECT repository_id,checked_at,next_attempt_at FROM github_repository ORDER BY repository_id").fetch_all(&pool).await.unwrap();
+    assert_eq!(timestamps.len(), 2);
+    assert!(timestamps[0].1 >= now);
+    assert!(timestamps[1].1 > timestamps[0].1);
+    for (_, checked, next) in timestamps {
+        assert_eq!(next - checked, 30);
+    }
+    let synced: Vec<(i64, i64)> = sqlx::query_as(
+        "SELECT last_synced_at,next_attempt_at FROM github_pr ORDER BY repository_id",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(synced.len(), 2);
+    for (checked, next) in synced {
+        assert!(checked > now);
+        assert_eq!(next - checked, 30);
+    }
+    // Early refresh never extends the 60-second acceptance boundary.
+    sqlx::raw_sql("UPDATE github_repository SET checked_at=extract(epoch FROM now())::bigint-60; UPDATE github_pr SET last_synced_at=extract(epoch FROM now())::bigint-60;")
+        .execute(&pool).await.unwrap();
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM github_repository_capability WHERE stale"
+        )
+        .await,
+        2
+    );
+    assert_eq!(
+        count(
+            &pool,
+            "SELECT count(*) FROM github_pr_observation WHERE stale"
+        )
+        .await,
+        2
+    );
+    let mut tx = pool.begin().await.unwrap();
+    assert!(!github_store::claim_ready(&mut tx, 2, 1).await.unwrap());
+    assert_eq!(count(&pool, "SELECT count(*) FROM agent_run").await, 0);
 }
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn control_plane_configuration_and_readonly_cli() {

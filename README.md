@@ -7,7 +7,7 @@
 [工作区与 Git Broker](docs/workspaces.md) 已实现本地独立 worktree、候选提交、完整工作保全和按阶段恢复；部分失败保留原件并阻断恢复。Runtime 与远端交付已接线；真实 A01 的部署条件和未执行边界见交接文档。
 
 [GitHub App 预检与只读观察](docs/github-observation.md) 保存仓库能力及独立 PR/CI 事实，
-缺能力或过期时拒绝领取；60 秒轮询及失败退避不启动模型。已接通条件 push、PR outbox 与精确合并事实释放；自动合并不属于 0a。
+缺能力或过期时拒绝领取；30 秒刷新、60 秒有效期及失败退避不启动模型。已接通条件 push、PR outbox 与精确合并事实释放；自动合并不属于 0a。
 
 [执行环境预检与磁盘保护](docs/preparation.md) 已加入真实开发环境探针、持久化有限重试、
 精确领取证据和存储停止保护；编码与远端写交接仍受后续任务门禁约束。
@@ -40,7 +40,7 @@
 
 ## 当前选择
 
-- 一个 Rust 控制面 + PostgreSQL + 最小 Angular Web，60 秒只读 GitHub 轮询。
+- 一个 Rust 控制面 + PostgreSQL + 最小 Angular Web，30 秒只读 GitHub 刷新（60 秒有效期）。
 - GitHub App；Agent 只通过受控工具提交/声明，平台经持久化 outbox 发布。
 - 严格全局顺序覆盖编码、验证、交接、CI 等待和阻塞；具体释放条件见综合方案第 6 章。
 - 采用 Symphony 的可信开发环境；普通命令和测试直接执行，网络声明仅用于依赖准备与连通性检查。
