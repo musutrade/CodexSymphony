@@ -1,0 +1,43 @@
+:host {
+  display: block;
+}
+fieldset {
+  border: 0;
+  min-width: 0;
+  padding: 0;
+}
+label {
+  display: grid;
+  gap: 8px;
+  margin-block: 12px;
+}
+input,
+select,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+}
+.checkbox {
+  display: flex;
+  align-items: center;
+}
+.checkbox input {
+  width: 24px;
+  flex-shrink: 0;
+}
+.budget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+p,
+h2,
+h3 {
+  overflow-wrap: anywhere;
+}
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

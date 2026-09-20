@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 import { HealthPage } from './health-page';
 export const routes: Routes = [
+  {
+    path: 'drafts/:id/review',
+    loadComponent: () => import('./group-review').then((m) => m.GroupReview),
+  },
   { path: '', component: HealthPage },
   { path: 'drafts', loadComponent: () => import('./drafts').then((m) => m.Drafts) },
   { path: 'inbox', loadComponent: () => import('./operations').then((m) => m.Operations) },

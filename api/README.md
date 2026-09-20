@@ -71,3 +71,30 @@ and business rejection responses use an `error` string. See
 ## GH-61 advisory generation
 
 `POST /api/draft-generations` accepts an explicit idempotent request and returns a persisted generation record. GET collection/item only read state. Generation has its own usage and bounded Runtime turn; it never grants Ready, creates an AgentRun or writes a PR. Input version CAS protects concurrent Draft edits. See [generation semantics](../docs/draft-generation.md). Contract capture replays a clearly marked terminal SQL fixture and does not call a real model. AC01 real calls are preserved separately.
+
+## GH-62 group review
+
+- GET `/api/drafts/{id}/review` returns the current Draft revision, saved review
+  version, parent/children, repository policies, cumulative ledgers, immutable
+  authorization history and the unique group queue. Empty review version is 0.
+- PUT the same route with `version`, `draft_revision`, `review` saves a CAS review
+  revision. Incomplete mappings may be saved for editing but confer no authority.
+- POST `/api/drafts/{id}/authorize` with `request_id`, `version`, `draft_revision`
+  atomically validates and freezes the exact review/content/policy/budget snapshot
+  and upserts one group queue entry. No child Start calls or executable legacy
+  requirements are created. `waiting_scheduler` is explicit and
+  `business_complete=false` is never inferred from coverage.
+
+All parent ACs are required. Review references bind child IDs, AC IDs, machine
+step IDs and the immutable shared Draft revision. `full_chain_acs` records the
+user's semantic classification; final integration dependencies are checked.
+Repository policy versions are rechecked under the existing review/revocation
+lock. `group_budget=null` uses the sum of approved item amounts. A lower explicit
+cap is allowed; every amount preserves cumulative used/reserved values across
+revision and reauthorization. The empty ledger item_id denotes the group.
+
+404 means the Draft is absent, 409 means conflicting versions/request identity or
+an already-authorized review, and 422 means malformed input or failed review
+validation. Database failure returns 503 with no partial authorization committed.
+The idempotent confirmation response is an original receipt; GET is the current
+queue truth after later edits. Authenticated identities remain local-user until M2.

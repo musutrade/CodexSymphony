@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[父 AC 覆盖与整组评审授权](docs/group-review.md)：一次确认持久化授权及组队列；当前等待调度能力，不代表验收完成。
+
 [自然语言生成草稿](docs/draft-generation.md) 与 Markdown/JSON 导入共用 Draft 模型；只有显式生成调用模型，草稿不授权编码执行。
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。

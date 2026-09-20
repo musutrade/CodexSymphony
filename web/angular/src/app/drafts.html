@@ -116,7 +116,10 @@
   <section class="ui-panel" aria-labelledby="draft-detail-title">
     <h2 id="draft-detail-title">父目标 · {{ draft.document.parent.id }}</h2>
     <p>Draft · 版本 {{ draft.version }} · {{ draft.id }}</p>
-    <p>尚不支持整组 Ready 评审、依赖领取或 validation_only 执行。</p>
+    <p>可保存整组评审并一次确认授权；依赖调度与 validation_only 执行尚未接通。</p>
+    <a matButton="outlined" [routerLink]="['/drafts', draft.id, 'review']"
+      >评审覆盖、策略与整组预算</a
+    >
     <h3>目标</h3>
     <p class="preserve">{{ draft.document.parent.goal || '待补齐' }}</p>
     <h3>范围</h3>

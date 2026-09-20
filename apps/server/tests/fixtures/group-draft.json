@@ -1,0 +1,86 @@
+{
+  "schema": "codexsymphony-draft/v1",
+  "parent": {
+    "id": "P1",
+    "goal": "Complete chain",
+    "scope": "synthetic feature only",
+    "acceptance_criteria": [
+      {
+        "id": "P-AC1",
+        "description": "integrated flow works"
+      }
+    ]
+  },
+  "children": [
+    {
+      "id": "C1",
+      "parent_id": "P1",
+      "kind": "code_change",
+      "order": 1,
+      "depends_on": [],
+      "repository_id": 1,
+      "goal": "Step 1",
+      "acceptance_criteria": [
+        {
+          "id": "AC1",
+          "description": "observable result"
+        }
+      ],
+      "validation_plan": "run the selected automated test"
+    },
+    {
+      "id": "C2",
+      "parent_id": "P1",
+      "kind": "code_change",
+      "order": 2,
+      "depends_on": [
+        "C1"
+      ],
+      "repository_id": 1,
+      "goal": "Step 2",
+      "acceptance_criteria": [
+        {
+          "id": "AC1",
+          "description": "observable result"
+        }
+      ],
+      "validation_plan": "run the selected automated test"
+    },
+    {
+      "id": "C3",
+      "parent_id": "P1",
+      "kind": "code_change",
+      "order": 3,
+      "depends_on": [
+        "C2"
+      ],
+      "repository_id": 1,
+      "goal": "Step 3",
+      "acceptance_criteria": [
+        {
+          "id": "AC1",
+          "description": "observable result"
+        }
+      ],
+      "validation_plan": "run the selected automated test"
+    },
+    {
+      "id": "C4",
+      "parent_id": "P1",
+      "kind": "validation_only",
+      "order": 4,
+      "depends_on": [
+        "C3"
+      ],
+      "repository_id": 1,
+      "goal": "Step 4",
+      "acceptance_criteria": [
+        {
+          "id": "AC1",
+          "description": "observable result"
+        }
+      ],
+      "validation_plan": "run the selected automated test"
+    }
+  ]
+}
