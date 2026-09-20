@@ -12,3 +12,6 @@ VALUES('capture-question',900001,1,'capture-run','1','{"params":{"questions":[{"
 INSERT INTO runtime_evidence(run_id,channel,kept_bytes,truncated) VALUES('capture-run','stdout',21,false);
 INSERT INTO runtime_evidence_chunk(run_id,channel,sequence,payload)
 VALUES('capture-run','stdout',1,convert_to(E'Fixture-owned output\n','UTF8'));
+
+-- Synthetic terminal generation is a replay fixture, never AC01 model evidence.
+INSERT INTO draft_generation(id,request,fingerprint,draft_id,input_version,status,usage,limits,error,completed_at) VALUES('capture-generation','{"request_id": "capture-generation", "draft_id": null, "version": 0, "label": "contract fixture", "text": "synthetic generation input"}','fixture-generation-900001','draft-capture-generation',0,'failed','{"input":null,"cached":null,"output":null,"model_seconds":null,"complete":false}','{"tokens":30000,"turns":1,"model_seconds":120}','synthetic terminal failure',now());

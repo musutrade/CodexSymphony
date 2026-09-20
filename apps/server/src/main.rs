@@ -31,6 +31,9 @@ async fn serve() -> Result<(), StartupError> {
     let _instance =
         process::InstanceLock::acquire(std::path::Path::new("/tmp/codexsymphony-controller.lock"))?;
     let pool = prepare_database(&config.database_url).await?;
+    codexsymphony_server::generation_store::recover(&pool)
+        .await
+        .map_err(|_| std::io::Error::other("generation recovery failed"))?;
     let (listener, policy) = listen(config).await?;
     let (worker, runtime) = start_coordinator(&pool).await?;
     let github = codexsymphony_server::github_service::start(&pool).await?;

@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[自然语言生成草稿](docs/draft-generation.md) 与 Markdown/JSON 导入共用 Draft 模型；只有显式生成调用模型，草稿不授权编码执行。
+
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。首个日常版本的目标是正常路径自动到合并与业务验收完成，工作时用电脑，离开电脑后用手机接续。
 
 当前已建立 Rust / Axum / SQLx / PostgreSQL 与 Angular / Material 应用，支持仓库登记/选择及需求创建、编辑、评审 Ready 和撤回，持久化不可变 Contract 与策略/预算快照。已加入 [执行控制与冷启动屏障](docs/execution-control.md)：持久化 Run、全局占用、后代进程监督及暂停意图。已接入锁定 Codex Runtime、累计额度和固定候选验证；已加入 [可靠 PR 交接与取消收尾](docs/delivery.md)。当前实施范围是 Phase 0a：localhost 上第一条需求到 PR，再验证多仓登记，始终严格全局串行。

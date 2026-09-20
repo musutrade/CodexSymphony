@@ -1,4 +1,4 @@
-// harness-contract-sha256: 03fb4558975f8691e73d48629a90caeffad41a4f35b84d49049e499c2b3d390a
+// harness-contract-sha256: 73bc0e39393c4e73da0d11a9ad3650489d3d8895600dc58b2021fc746d9cc2aa
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -73,13 +73,7 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: {
-    id: number;
-    revision: number;
-    state: string;
-    title: string;
-    version: number;
-  }[];
+  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -1115,3 +1109,121 @@ export interface UpdateDraftRequest {
   source: { format: 'json' | 'markdown'; label: string; text: string };
   version: number;
 }
+export interface ListGenerationsResponse {
+  generations: {
+    completed_at: string | null;
+    created_at: string;
+    draft_id: string;
+    error: string | null;
+    evidence: {
+      model?: string;
+      reserved_turns?: number;
+      runtime_user_agent?: string;
+      settings_sha256?: string;
+      thread_id?: string;
+      turn_id?: string;
+    };
+    fingerprint: string;
+    id: string;
+    input_version: number;
+    limits: { model_seconds: number; tokens: number; turns: number };
+    output: string | null;
+    output_version: number | null;
+    request: {
+      draft_id: string | null;
+      label: string;
+      request_id: string;
+      text: string;
+      version: number;
+    };
+    status: 'conflict' | 'failed' | 'interrupted' | 'running' | 'succeeded';
+    usage: {
+      cached: number | null;
+      complete: boolean;
+      input: number | null;
+      model_seconds: number | null;
+      output: number | null;
+    };
+  }[];
+}
+export type GenerateDraftResponse =
+  | {
+      completed_at: string | null;
+      created_at: string;
+      draft_id: string;
+      error: string | null;
+      evidence: {
+        model?: string;
+        reserved_turns?: number;
+        runtime_user_agent?: string;
+        settings_sha256?: string;
+        thread_id?: string;
+        turn_id?: string;
+      };
+      fingerprint: string;
+      id: string;
+      input_version: number;
+      limits: { model_seconds: number; tokens: number; turns: number };
+      output: string | null;
+      output_version: number | null;
+      request: {
+        draft_id: string | null;
+        label: string;
+        request_id: string;
+        text: string;
+        version: number;
+      };
+      status: 'conflict' | 'failed' | 'interrupted' | 'running' | 'succeeded';
+      usage: {
+        cached: number | null;
+        complete: boolean;
+        input: number | null;
+        model_seconds: number | null;
+        output: number | null;
+      };
+    }
+  | { error: string };
+export interface GenerateDraftRequest {
+  draft_id: string | null;
+  label: string;
+  request_id: string;
+  text: string;
+  version: number;
+}
+export type GetGenerationResponse =
+  | {
+      completed_at: string | null;
+      created_at: string;
+      draft_id: string;
+      error: string | null;
+      evidence: {
+        model?: string;
+        reserved_turns?: number;
+        runtime_user_agent?: string;
+        settings_sha256?: string;
+        thread_id?: string;
+        turn_id?: string;
+      };
+      fingerprint: string;
+      id: string;
+      input_version: number;
+      limits: { model_seconds: number; tokens: number; turns: number };
+      output: string | null;
+      output_version: number | null;
+      request: {
+        draft_id: string | null;
+        label: string;
+        request_id: string;
+        text: string;
+        version: number;
+      };
+      status: 'conflict' | 'failed' | 'interrupted' | 'running' | 'succeeded';
+      usage: {
+        cached: number | null;
+        complete: boolean;
+        input: number | null;
+        model_seconds: number | null;
+        output: number | null;
+      };
+    }
+  | { error: string };

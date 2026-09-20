@@ -75,17 +75,27 @@ async fn save(pool: &PgPool, id: String, input: Write, create: bool) -> Result<V
     let mut tx = pool.begin().await.map_err(db)?;
     let version = expected(&mut tx, &id, input.version, create).await?;
     repositories(&mut tx, &document).await?;
-    let document_json = serde_json::to_value(&document).map_err(invalid)?;
-    let source_json = serde_json::to_value(&input.source).map_err(invalid)?;
-    let hash = format!("{:x}", Sha256::digest(input.source.text.as_bytes()));
-    sqlx::query("INSERT INTO imported_draft(id,version,document,source,source_sha256) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET version=excluded.version,document=excluded.document,source=excluded.source,source_sha256=excluded.source_sha256,updated_at=now()")
-        .bind(&id).bind(version).bind(&document_json).bind(&source_json).bind(&hash).execute(&mut *tx).await.map_err(db)?;
-    sqlx::query("INSERT INTO imported_draft_revision(draft_id,version,document,source,source_sha256) VALUES($1,$2,$3,$4,$5)")
-        .bind(&id).bind(version).bind(document_json).bind(source_json).bind(&hash).execute(&mut *tx).await.map_err(db)?;
+    let result = persist(&mut tx, id, version, document, input.source).await?;
     tx.commit().await.map_err(db)?;
-    Ok(view(id, version, document, input.source, hash))
+    Ok(result)
 }
-async fn expected(
+pub(crate) async fn persist(
+    tx: &mut Transaction<'_, Postgres>,
+    id: String,
+    version: i64,
+    document: Document,
+    source: Source,
+) -> Result<View> {
+    let document_json = serde_json::to_value(&document).map_err(invalid)?;
+    let source_json = serde_json::to_value(&source).map_err(invalid)?;
+    let hash = format!("{:x}", Sha256::digest(source.text.as_bytes()));
+    sqlx::query("INSERT INTO imported_draft(id,version,document,source,source_sha256) VALUES($1,$2,$3,$4,$5) ON CONFLICT(id) DO UPDATE SET version=excluded.version,document=excluded.document,source=excluded.source,source_sha256=excluded.source_sha256,updated_at=now()")
+        .bind(&id).bind(version).bind(&document_json).bind(&source_json).bind(&hash).execute(&mut **tx).await.map_err(db)?;
+    sqlx::query("INSERT INTO imported_draft_revision(draft_id,version,document,source,source_sha256) VALUES($1,$2,$3,$4,$5)")
+        .bind(&id).bind(version).bind(document_json).bind(source_json).bind(&hash).execute(&mut **tx).await.map_err(db)?;
+    Ok(view(id, version, document, source, hash))
+}
+pub(crate) async fn expected(
     tx: &mut Transaction<'_, Postgres>,
     id: &str,
     expected: i64,
@@ -113,7 +123,10 @@ async fn expected(
         None => Err(invalid("draft version exhausted")),
     }
 }
-async fn repositories(tx: &mut Transaction<'_, Postgres>, document: &Document) -> Result<()> {
+pub(crate) async fn repositories(
+    tx: &mut Transaction<'_, Postgres>,
+    document: &Document,
+) -> Result<()> {
     for child in &document.children {
         if let Some(id) = child.repository_id {
             let exists: bool =
