@@ -49,17 +49,7 @@ pub(crate) async fn sync(tx: &mut Tx<'_>, id: i64) -> Result<()> {
     };
     let balance = crate::budget_store::balance(tx, id).await?;
     let reserved = subtract(balance.exposure, balance.used)?;
-    sqlx::query("INSERT INTO group_accounted(requirement_id) VALUES($1) ON CONFLICT DO NOTHING")
-        .bind(id)
-        .execute(&mut **tx)
-        .await?;
-    let (old_used, old_reserved): (Value, Value) =
-        sqlx::query_as("SELECT used,reserved FROM group_accounted WHERE requirement_id=$1")
-            .bind(id)
-            .fetch_one(&mut **tx)
-            .await?;
-    let delta_used = subtract(balance.used, decode(old_used)?)?;
-    let delta_reserved = subtract(reserved, decode(old_reserved)?)?;
+    let (delta_used, delta_reserved) = accounted_delta(tx, id, balance.used, reserved).await?;
     for key in ["", child.as_str()] {
         update(tx, &draft, key, delta_used, delta_reserved).await?;
     }
@@ -70,6 +60,25 @@ pub(crate) async fn sync(tx: &mut Tx<'_>, id: i64) -> Result<()> {
         .execute(&mut **tx)
         .await?;
     Ok(())
+}
+async fn accounted_delta(
+    tx: &mut Tx<'_>,
+    id: i64,
+    used: Amount,
+    reserved: Amount,
+) -> Result<(Amount, Amount)> {
+    sqlx::query("INSERT INTO group_accounted(requirement_id) VALUES($1) ON CONFLICT DO NOTHING")
+        .bind(id)
+        .execute(&mut **tx)
+        .await?;
+    let (old_used, old_reserved): (Value, Value) =
+        sqlx::query_as("SELECT used,reserved FROM group_accounted WHERE requirement_id=$1")
+            .bind(id)
+            .fetch_one(&mut **tx)
+            .await?;
+    let delta_used = subtract(used, decode(old_used)?)?;
+    let delta_reserved = subtract(reserved, decode(old_reserved)?)?;
+    Ok((delta_used, delta_reserved))
 }
 async fn update(
     tx: &mut Tx<'_>,

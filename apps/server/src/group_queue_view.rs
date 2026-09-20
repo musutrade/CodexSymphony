@@ -13,7 +13,7 @@ pub async fn view(tx: &mut Tx<'_>, draft: &str, document: &Document) -> Result<V
         .fetch_one(&mut **tx)
         .await?;
     let mut children = document.children.iter().collect::<Vec<_>>();
-    children.sort_by_key(|child| child.order);
+    children.sort_by_key(|child| crate::group_queue_store::child_order(child));
     let mut items = Vec::new();
     let mut completed = 0;
     for child in children {
@@ -62,6 +62,9 @@ async fn eligible_reason(tx: &mut Tx<'_>, id: i64, state: &str) -> Result<&'stat
     if state != "Ready" {
         return Ok("occupied_execution_or_blocker");
     }
+    ready_reason(tx, id).await
+}
+async fn ready_reason(tx: &mut Tx<'_>, id: i64) -> Result<&'static str> {
     if crate::group_completion::dependencies(tx, id)
         .await?
         .is_none()
@@ -71,7 +74,10 @@ async fn eligible_reason(tx: &mut Tx<'_>, id: i64, state: &str) -> Result<&'stat
     if !crate::github_store::claim_ready(tx, id, 1).await? {
         return Ok("repository_unavailable");
     }
-    if crate::group_queue_store::head(tx).await?.map(|r| r.0) != Some(id) {
+    if !crate::group_queue_store::head(tx)
+        .await?
+        .is_some_and(|r| r.0 == id)
+    {
         return Ok("waiting_queue_order");
     }
     Ok("waiting_repository_baseline_or_preparation")

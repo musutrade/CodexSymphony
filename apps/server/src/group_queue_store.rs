@@ -10,6 +10,10 @@ use sqlx::{PgPool, Postgres, Transaction};
 pub(crate) type Tx<'a> = Transaction<'a, Postgres>;
 pub(crate) type Result<T> = std::result::Result<T, sqlx::Error>;
 
+pub(crate) fn child_order(child: &crate::draft::Child) -> u32 {
+    child.order
+}
+
 pub async fn materialize(pool: &PgPool) -> Result<()> {
     let mut tx = run_store::lock(pool).await?;
     let rows: Vec<(String, i64, Value)> = sqlx::query_as("SELECT q.draft_id,q.authorization_id,a.snapshot FROM group_queue q JOIN group_authorization a ON a.id=q.authorization_id WHERE q.state='waiting_scheduler' AND NOT EXISTS(SELECT 1 FROM group_execution_item i WHERE i.draft_id=q.draft_id) ORDER BY q.created_at,q.draft_id")
@@ -23,17 +27,19 @@ async fn project(tx: &mut Tx<'_>, draft: &str, authorization: i64, snapshot: Val
     let mut document: Document = decode(snapshot["document"].clone())?;
     let review: Review = decode(snapshot["review"].clone())?;
     let repositories: Vec<RepositorySnapshot> = decode(snapshot["repositories"].clone())?;
-    document.children.sort_by_key(|child| child.order);
+    document.children.sort_by_key(child_order);
     for child in &document.children {
         let item = review
             .items
             .iter()
             .find(|i| i.child_id == child.id)
-            .ok_or_else(|| sqlx::Error::Protocol("missing authorized child".into()))?;
+            .ok_or(sqlx::Error::Protocol("missing authorized child".into()))?;
         let repository = repositories
             .iter()
             .find(|r| Some(r.id) == child.repository_id)
-            .ok_or_else(|| sqlx::Error::Protocol("missing authorized repository".into()))?;
+            .ok_or(sqlx::Error::Protocol(
+                "missing authorized repository".into(),
+            ))?;
         let input = json!({"child":child,"review":item,"parent_revision":review.parent_revision,"repository":repository});
         let requirement = if child.kind == "code_change" {
             Some(project_requirement(tx, child, item, repository, authorization).await?)
@@ -56,7 +62,11 @@ async fn project_requirement(
         crate::group_review::verification_contract(child, item).map_err(sqlx::Error::Protocol)?;
     let id: i64 = sqlx::query_scalar("INSERT INTO requirement(version,state,contract,repository_id,revision) VALUES(1,'Ready',$1,$2,1) RETURNING id")
         .bind(json!(contract)).bind(repository.id).fetch_one(&mut **tx).await?;
-    let ac_ids: Vec<_> = child.acceptance_criteria.iter().map(|ac| &ac.id).collect();
+    let ac_ids: Vec<_> = child
+        .acceptance_criteria
+        .iter()
+        .map(|ac| ac.id.as_str())
+        .collect();
     let snapshot = json!({"repository_id":repository.id,"revision":1,"contract":contract,"ac_ids":ac_ids,"repository_version":repository.version,"repository":repository.repository,"reviewer":"local-user","group_authorization_id":authorization,"child_revision":item.revision});
     sqlx::query("INSERT INTO requirement_revision VALUES($1,1,$2)")
         .bind(id)
@@ -108,18 +118,28 @@ pub(crate) async fn bind_baseline(
     let Some(facts) = crate::group_completion::dependencies(tx, id).await? else {
         return Ok(false);
     };
-    for fact in &facts {
-        // Cross-repository facts bind confirmed versions/artifacts and the
-        // approved verification plan; Git ancestry has no cross-repo meaning.
-        if fact.repository_id == repository && !broker.contains_commit(baseline, &fact.merged_sha) {
-            return Ok(false);
-        }
+    if !repository_baseline_matches(broker, repository, baseline, &facts) {
+        return Ok(false);
     }
     sqlx::query("INSERT INTO group_claim_input(requirement_id,authorization_id,baseline,dependencies) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING")
         .bind(id).bind(authorization).bind(baseline).bind(json!(facts)).execute(&mut **tx).await?;
     let matches: bool=sqlx::query_scalar("SELECT authorization_id=$2 AND baseline=$3 AND dependencies=$4 FROM group_claim_input WHERE requirement_id=$1")
         .bind(id).bind(authorization).bind(baseline).bind(json!(facts)).fetch_one(&mut **tx).await?;
     Ok(matches)
+}
+fn repository_baseline_matches(
+    broker: &crate::git_broker::GitBroker,
+    repository: i64,
+    baseline: &str,
+    facts: &[crate::group_dependency::Fact],
+) -> bool {
+    for fact in facts {
+        // Cross-repository versions/artifacts are bound separately, never by ancestry.
+        if fact.repository_id == repository && !broker.contains_commit(baseline, &fact.merged_sha) {
+            return false;
+        }
+    }
+    true
 }
 pub(crate) async fn claim_input_ready(
     tx: &mut Tx<'_>,

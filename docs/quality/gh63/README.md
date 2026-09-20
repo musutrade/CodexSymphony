@@ -29,3 +29,37 @@
 `FixtureVerifier` 和协议合并数据都是固定合成夹具，仅验证接口，不代表 M3 的线上全链路验收。产品未配置线上完成事实生产者；缺适用验收、validation_only 与父项最终业务验收明确等待。M1-05 的受控组变更仍不在本 PR。历史 A13 缺失原件按[原恢复索引](../gh25/evidence-recovery.md)如实保留。
 
 工作区根 `.symphony-evidence.json` 使用 `symphony-evidence/v1`，逐文件保存实际 SHA-256；宿主在 after_run 后归档。Agent 不宣称已取得归档回执。产物不作为产品线上完成事实，也不作为受信签名。
+
+## PR #68 CI 修复：源码覆盖率锚点
+
+提交 `bf34f328a8bdf721e0b74a4a98e1f1b24f2386ec` 的 Actions attempt
+`35511531126/1` 在 Rust 源码发现阶段失败：`group_dependency.rs:47:31`
+未匹配唯一 AST 锚点，并非已产出的覆盖率阈值失败。宿主补交的原始诊断保留在
+`artifacts/gh63/ci-failure/`；此前无法取得日志的阻塞记录仍保留。
+
+将非空验收计划检查改为普通函数，常量错误直接构造，排序使用命名 key 函数；
+AC ID 使用等价字符串切片，队首使用直接身份谓词。这些调整消除表达式闭包的
+锚点偏移和无独立 LLVM 计数器问题，不改变队列顺序、输入 JSON 或完成条件。
+既有完成事实协议测试增加空数组及 `null` 验收计划拒绝路径。
+未修改采集器、策略、阈值、受信摘要或前端。
+
+源码映射恢复后，本地完整测量继续发现 7 个 CRAP 超限函数，原结果保留在
+`ci-repair/measurement-before-complexity-fix.json`。将预算准入、结算后停止检查、
+组账本差额、准备输入检查、组依赖条件、同仓祖先检查及 Ready 等待原因拆为小函数，
+保留原事务和短路检查顺序，不降低覆盖率或复杂度门槛。
+
+本次本地命令、源码摘要、失败与成功日志保留在 `artifacts/gh63/ci-repair/`。
+源码映射诊断直接调用已安装的 `rust-source/0.1.0-rc.3` 原实现，使用真实
+`cargo llvm-cov` 导出；它不签发正式 Gate 结果。最终精确提交仍须独立宿主验证。
+
+修复后的 `cargo llvm-cov --workspace --locked --json` 全套通过；源码测量成功映射
+1,151 个函数，行覆盖 11,465/11,700、region 覆盖 20,136/21,986，所有函数
+CRAP ≤10 且无缺失。原始导出、测量结果和汇总分别为 `ci-repair/coverage.json`、
+`source-measurement.json`、`measurement-summary.json`，不代替宿主签名证据。
+
+最终源码的 `cargo test --workspace --locked`（供给 PostgreSQL，含真实 Runtime）、
+`cargo fmt --all -- --check`、`cargo clippy --workspace --all-targets --locked -- -D warnings`
+及 `python3 tools/gate.py config check` 均通过，对应 `ci-repair/` 下同名日志。
+测试与覆盖率套件串行使用重建后的一次性 test fixture。首次复用 fixture 的预算
+拒绝失败及重跑日志保留；未取得当时完整数据库状态，因此不把具体残留原因写成定论。
+前端和 API 本次未修改，保留首次交付的实际检查记录。

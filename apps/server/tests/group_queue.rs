@@ -258,6 +258,8 @@ async fn global_claim_restart_budget_and_completion_protocol() {
         ("/repository_id", json!(2)),
         ("/github_repository_id", json!(999)),
         ("/acceptance_plan", json!([{"wrong":"plan"}])),
+        ("/acceptance_plan", json!([])),
+        ("/acceptance_plan", json!(null)),
         ("/head_sha", json!("f".repeat(40))),
     ] {
         let mut value_fact = json!(fact);

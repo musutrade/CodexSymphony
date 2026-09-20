@@ -160,12 +160,7 @@ async fn reserve_in_transaction(tx: &mut Tx<'_>, intent: &CallIntent) -> Result<
     let Some(id) = admitted_run(tx, &intent.key).await? else {
         return Ok(Admission::Blocked);
     };
-    let balance = balance(tx, id).await?;
-    let fits = balance
-        .exposure
-        .checked_add(intent.reserve)
-        .is_some_and(|total| total.fits(balance.limits));
-    if balance.exhausted || !fits || !crate::group_budget::allowed(tx, id, intent.reserve).await? {
+    if !reservation_allowed(tx, id, intent.reserve).await? {
         stop(tx, id).await?;
         return Ok(Admission::Blocked);
     }
@@ -173,6 +168,14 @@ async fn reserve_in_transaction(tx: &mut Tx<'_>, intent: &CallIntent) -> Result<
         .bind(&intent.key.run_id).bind(&intent.turn_id).bind(id).bind(json!(intent)).bind(json!(intent.reserve)).bind(json!(Usage::default())).execute(&mut **tx).await?;
     crate::group_budget::sync(tx, id).await?;
     Ok(Admission::Reserved)
+}
+async fn reservation_allowed(tx: &mut Tx<'_>, id: i64, reserve: Amount) -> Result<bool> {
+    let balance = balance(tx, id).await?;
+    let fits = balance
+        .exposure
+        .checked_add(reserve)
+        .is_some_and(|total| total.fits(balance.limits));
+    Ok(!balance.exhausted && fits && crate::group_budget::allowed(tx, id, reserve).await?)
 }
 async fn existing(tx: &mut Tx<'_>, intent: &CallIntent) -> Result<bool> {
     let saved: Option<Value> =
@@ -264,15 +267,19 @@ pub async fn settle(
     let mut tx = run_store::lock(pool).await?;
     let id = apply_usage(&mut tx, key, turn, event, usage).await?;
     crate::group_budget::sync(&mut tx, id).await?;
-    let balance = balance(&mut tx, id).await?;
+    stop_if_exhausted(&mut tx, id).await?;
+    tx.commit().await
+}
+async fn stop_if_exhausted(tx: &mut Tx<'_>, id: i64) -> Result<()> {
+    let balance = balance(tx, id).await?;
     if balance.used.execution_exhausted(balance.limits)
         || !balance.exposure.fits(balance.limits)
-        || crate::group_budget::exhausted(&mut tx, id).await?
+        || crate::group_budget::exhausted(tx, id).await?
     {
-        stop(&mut tx, id).await?;
-        crate::group_budget::stop_group(&mut tx, id).await?;
+        stop(tx, id).await?;
+        crate::group_budget::stop_group(tx, id).await?;
     }
-    tx.commit().await
+    Ok(())
 }
 async fn apply_usage(
     tx: &mut Tx<'_>,

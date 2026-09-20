@@ -93,13 +93,21 @@ pub async fn reserve_prepared(pool: &PgPool, launch: &Launch) -> Result<bool> {
     let Some((id, revision)) = queued(&mut tx).await? else {
         return Ok(false);
     };
-    if !crate::preparation_store::claim_ready(&mut tx, launch, id, revision).await? {
-        return Ok(false);
-    }
-    if !crate::group_queue_store::claim_input_ready(&mut tx, id, launch).await? {
+    if !prepared_input_ready(&mut tx, launch, id, revision).await? {
         return Ok(false);
     }
     commit_claim(tx, id, revision, launch).await
+}
+async fn prepared_input_ready(
+    tx: &mut Tx<'_>,
+    launch: &Launch,
+    id: i64,
+    revision: i64,
+) -> Result<bool> {
+    Ok(
+        crate::preparation_store::claim_ready(tx, launch, id, revision).await?
+            && crate::group_queue_store::claim_input_ready(tx, id, launch).await?,
+    )
 }
 
 pub(crate) async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
@@ -107,16 +115,19 @@ pub(crate) async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
     let Some((id, revision, false)) = next else {
         return Ok(None);
     };
-    if !crate::group_queue_store::authorized(tx, id).await?
-        || crate::group_completion::dependencies(tx, id)
-            .await?
-            .is_none()
+    if !group_ready(tx, id).await?
         || !authorized(tx, id, revision).await?
         || !crate::github_store::claim_ready(tx, id, revision).await?
     {
         return Ok(None);
     }
     Ok(Some((id, revision)))
+}
+async fn group_ready(tx: &mut Tx<'_>, id: i64) -> Result<bool> {
+    Ok(crate::group_queue_store::authorized(tx, id).await?
+        && crate::group_completion::dependencies(tx, id)
+            .await?
+            .is_some())
 }
 
 async fn commit_claim(mut tx: Tx<'_>, id: i64, revision: i64, launch: &Launch) -> Result<bool> {

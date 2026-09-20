@@ -41,10 +41,13 @@ fn provenance(fact: &Fact) -> bool {
     hex(&fact.evidence_sha256, 64)
         && !fact.source.trim().is_empty()
         && !fact.artifact.trim().is_empty()
-        && fact
-            .acceptance_plan
-            .as_array()
-            .is_some_and(|p| !p.is_empty())
+        && has_acceptance_plan(&fact.acceptance_plan)
+}
+fn has_acceptance_plan(plan: &Value) -> bool {
+    match plan.as_array() {
+        Some(items) => !items.is_empty(),
+        None => false,
+    }
 }
 fn hex(value: &str, len: usize) -> bool {
     value.len() == len && value.bytes().all(|b| b.is_ascii_hexdigit())
