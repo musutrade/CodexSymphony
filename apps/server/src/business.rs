@@ -122,7 +122,7 @@ async fn repository(
         && repositories
             .iter()
             .all(|entry| entry["delivery_ready"] == true);
-    let runtime_ready = runtime.is_some_and(|task| !task.is_finished());
+    let runtime_ready = matches!(runtime, Some(task) if !task.is_finished());
     Ok(Json(
         json!({"repositories": repositories, "deployment_network": [], "network_status": "not_configured", "runtime_ready": runtime_ready, "repository_ready": repository_ready}),
     ))
