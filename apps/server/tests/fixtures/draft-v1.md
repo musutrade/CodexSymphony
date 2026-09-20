@@ -1,0 +1,54 @@
+# CodexSymphony Draft v1
+
+```json
+{
+  "schema": "codexsymphony-draft/v1",
+  "parent": {
+    "id": "P1",
+    "goal": "导入与读回需求草稿",
+    "scope": "仅草稿持久化；不授权执行",
+    "acceptance_criteria": [
+      {
+        "id": "AC01",
+        "description": "导入后可读回全部父子资料"
+      }
+    ]
+  },
+  "children": [
+    {
+      "id": "C1",
+      "parent_id": "P1",
+      "kind": "code_change",
+      "order": 1,
+      "depends_on": [],
+      "repository_id": 1,
+      "goal": "实现草稿存储",
+      "acceptance_criteria": [
+        {
+          "id": "AC01",
+          "description": "保存后读回一致"
+        }
+      ],
+      "validation_plan": "运行独立数据库的存储集成测试"
+    },
+    {
+      "id": "C2",
+      "parent_id": "P1",
+      "kind": "validation_only",
+      "order": 2,
+      "depends_on": [
+        "C1"
+      ],
+      "repository_id": 1,
+      "goal": "验证重启后父子草稿",
+      "acceptance_criteria": [
+        {
+          "id": "AC01",
+          "description": "重启后原文、顺序与依赖保持一致"
+        }
+      ],
+      "validation_plan": "关闭并启动测试应用，比较版本及完整响应"
+    }
+  ]
+}
+```
