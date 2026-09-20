@@ -1,3 +1,5 @@
+import { QUEUE_EDIT_CONTEXT } from './queue-edit-context';
+import { QueueEdit } from './queue-edit';
 import { JsonPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -16,7 +18,8 @@ import {
 } from './group-review-model';
 @Component({
   selector: 'app-group-review',
-  imports: [JsonPipe, FormField, RouterLink, MatButtonModule],
+  providers: [{ provide: QUEUE_EDIT_CONTEXT, useFactory: queueContext }],
+  imports: [QueueEdit, JsonPipe, FormField, RouterLink, MatButtonModule],
   templateUrl: './group-review.html',
   styleUrl: './group-review.scss',
 })
@@ -185,4 +188,8 @@ export class GroupReview {
       this.busy.set(false);
     }
   }
+}
+
+function queueContext() {
+  return inject(GroupReview);
 }

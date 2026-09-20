@@ -1,0 +1,69 @@
+<section class="ui-panel" aria-labelledby="queue-edit-title">
+  <h2 id="queue-edit-title">编辑未开始队列</h2>
+  <p>
+    队列版本
+    {{
+      view().queue?.version
+    }}。合法重排无需重评内容；内容变化先冻结受影响项及后继，再评审变化部分。
+  </p>
+  <p aria-live="polite">{{ message() }}</p>
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  @for (child of ordered(); track child.id; let i = $index) {
+    <div class="ui-actions">
+      <span>{{ child.order }}. {{ child.id }} · {{ child.goal }}</span>
+      <button
+        matButton="outlined"
+        [attr.aria-label]="'上移 ' + child.id"
+        [disabled]="busy() || i === 0 || !!view().pending_edit"
+        (click)="move(i, -1)"
+      >
+        上移
+      </button>
+      <button
+        matButton="outlined"
+        [attr.aria-label]="'下移 ' + child.id"
+        [disabled]="busy() || i === ordered().length - 1 || !!view().pending_edit"
+        (click)="move(i, 1)"
+      >
+        下移
+      </button>
+    </div>
+  }
+  <button matButton="outlined" [disabled]="busy()" (click)="begin()">编辑变化内容与评审</button>
+  @if (editing()) {
+    <p>
+      内容已预填。保留已有子项
+      ID；可新增或删除未开始项，修改目标、AC、依赖及验证计划。评审版本已更新，核对覆盖映射、策略版本、修复范围和预算。
+    </p>
+    <label for="queue-document">父子需求内容（JSON）</label>
+    <textarea id="queue-document" [formField]="fields.document"></textarea>
+    <label for="queue-review">变化版本评审（JSON）</label>
+    <textarea id="queue-review" [formField]="fields.review"></textarea>
+    <button matButton="filled" [disabled]="busy()" (click)="propose()">
+      保存差异并冻结受影响项
+    </button>
+  }
+  @if (view().pending_edit; as pending) {
+    <h3>待评审变化 · 版本 {{ pending.version }}</h3>
+    <p>
+      冻结项及依赖：{{ pending.affected.join('、') }}。未受影响授权及完成事实保留；父 AC
+      缺覆盖时不能重新入队。
+    </p>
+    <details>
+      <summary>变更前：需求与授权评审</summary>
+      <pre>{{ view().document | json }}</pre>
+      <pre>{{ view().review | json }}</pre>
+    </details>
+    <details open>
+      <summary>变更后：精确需求、策略与预算</summary>
+      <pre>{{ pending.document | json }}</pre>
+      <pre>{{ pending.review | json }}</pre>
+      <pre>{{ pending.repositories | json }}</pre>
+    </details>
+    <button matButton="filled" [disabled]="busy() || editing()" (click)="approve()">
+      确认以上变化版本与策略并重新授权
+    </button>
+  }
+</section>

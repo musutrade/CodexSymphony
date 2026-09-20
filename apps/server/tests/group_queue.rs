@@ -729,3 +729,144 @@ async fn queue_wait_reasons_and_bound_review_conflict_preserve_authorization() {
     assert_eq!(owner(&pool).await, None);
     pool.close().await;
 }
+
+#[tokio::test]
+async fn queue_edit_and_real_claim_serialize_in_both_orders() {
+    for edit_wins in [true, false] {
+        let (pool, _, _) = fixture().await;
+        bootstrap(&pool).await;
+        let draft = authorized(&pool, "edit-race").await;
+        queue::materialize(&pool).await.unwrap();
+        let (root, broker, base) = broker();
+        let mut document = sample();
+        document["children"][0]["goal"] = json!("Reviewed changed first scope");
+        let mut review = review();
+        review["parent_revision"] = json!(2);
+        for item in review["items"].as_array_mut().unwrap() {
+            item["revision"] = json!(2);
+        }
+        review["coverage"][0]["child_revision"] = json!(2);
+        let router = app(&pool);
+        let path = format!("/api/drafts/{draft}/queue-edit");
+        let input = json!({"request_id":"race-change","version":1,"change":{"kind":"propose","document":document,"review":review}});
+        if edit_wins {
+            // Queue both real operations behind the same lock; PostgreSQL's waiter
+            // queue establishes edit first, then the Runtime planner.
+            let mut blocker = pool.begin().await.unwrap();
+            sqlx::query("SELECT pg_advisory_xact_lock(13002)")
+                .execute(&mut *blocker)
+                .await
+                .unwrap();
+            let edit =
+                tokio::spawn(async move { request(&router, "POST", &path, input, 200).await });
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            let planning_pool = pool.clone();
+            let planning = tokio::spawn(async move {
+                runtime_initial::plan(
+                    &planning_pool,
+                    &broker,
+                    "boot",
+                    &["/usr/bin/codex".into()],
+                    &base,
+                )
+                .await
+                .unwrap()
+            });
+            blocker.commit().await.unwrap();
+            edit.await.unwrap();
+            assert!(planning.await.unwrap().is_none());
+            assert_eq!(count(&pool, "agent_run").await, 0);
+        } else {
+            let (launch, workspace) = plan(&pool, &broker, &base).await.unwrap();
+            broker.prepare(&workspace, true).unwrap();
+            prepared(&pool, &launch, workspace.requirement).await;
+            let before: Value = sqlx::query_scalar(
+                "SELECT input FROM group_execution_item WHERE requirement_id=$1",
+            )
+            .bind(workspace.requirement)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            let mut blocker = pool.begin().await.unwrap();
+            sqlx::query("SELECT pg_advisory_xact_lock(13002)")
+                .execute(&mut *blocker)
+                .await
+                .unwrap();
+            let claim_pool = pool.clone();
+            let claim_launch = launch.clone();
+            let claim = tokio::spawn(async move {
+                run_store::reserve_prepared(&claim_pool, &claim_launch)
+                    .await
+                    .unwrap()
+            });
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            let edit =
+                tokio::spawn(async move { request(&router, "POST", &path, input, 409).await });
+            blocker.commit().await.unwrap();
+            assert!(claim.await.unwrap());
+            edit.await.unwrap();
+            let after: Value = sqlx::query_scalar(
+                "SELECT input FROM group_execution_item WHERE requirement_id=$1",
+            )
+            .bind(workspace.requirement)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            assert_eq!(before, after);
+            assert_eq!(owner(&pool).await, Some(workspace.requirement));
+            assert_eq!(count(&pool, "agent_run").await, 1);
+            assert_eq!(count(&pool, "group_edit").await, 0);
+        }
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[tokio::test]
+async fn legacy_draft_edit_serializes_with_first_queue_projection() {
+    for editing_first in [true, false] {
+        let (pool, _, _) = fixture().await;
+        let draft = authorized(&pool, "legacy-race").await;
+        let router = app(&pool);
+        let mut document = sample();
+        document["children"][1]["goal"] = json!("legacy draft mutation");
+        let mut blocker = pool.begin().await.unwrap();
+        sqlx::query("SELECT pg_advisory_xact_lock(13002)")
+            .execute(&mut *blocker)
+            .await
+            .unwrap();
+        let task_pool = pool.clone();
+        let path = format!("/api/drafts/{draft}");
+        let edit_job = async move {
+            request(
+                &router,
+                "PUT",
+                &path,
+                body(document, 1),
+                if editing_first { 200 } else { 409 },
+            )
+            .await
+        };
+        let projection_job = async move { queue::materialize(&task_pool).await.unwrap() };
+        let (editing, projection) = if editing_first {
+            let editing = tokio::spawn(edit_job);
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            (editing, tokio::spawn(projection_job))
+        } else {
+            let projection = tokio::spawn(projection_job);
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            (tokio::spawn(edit_job), projection)
+        };
+        blocker.commit().await.unwrap();
+        editing.await.unwrap();
+        projection.await.unwrap();
+        let members = count(&pool, "group_execution_item").await;
+        assert_eq!(members, if editing_first { 0 } else { 4 });
+        let revision: i64 = sqlx::query_scalar("SELECT version FROM imported_draft WHERE id=$1")
+            .bind(&draft)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(revision, if editing_first { 2 } else { 1 });
+        assert_eq!(count(&pool, "agent_run").await, 0);
+    }
+}

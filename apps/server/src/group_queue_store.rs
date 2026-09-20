@@ -16,12 +16,16 @@ pub(crate) fn child_order(child: &crate::draft::Child) -> u32 {
 
 pub async fn materialize(pool: &PgPool) -> Result<()> {
     let mut tx = run_store::lock(pool).await?;
-    let rows: Vec<(String, i64, Value)> = sqlx::query_as("SELECT q.draft_id,q.authorization_id,a.snapshot FROM group_queue q JOIN group_authorization a ON a.id=q.authorization_id WHERE q.state='waiting_scheduler' AND NOT EXISTS(SELECT 1 FROM group_execution_item i WHERE i.draft_id=q.draft_id) ORDER BY q.created_at,q.draft_id")
-        .fetch_all(&mut *tx).await?;
-    for (draft, authorization, snapshot) in rows {
-        project(&mut tx, &draft, authorization, snapshot).await?;
-    }
+    materialize_tx(&mut tx).await?;
     tx.commit().await
+}
+pub(crate) async fn materialize_tx(tx: &mut Tx<'_>) -> Result<()> {
+    let rows: Vec<(String, i64, Value)> = sqlx::query_as("SELECT q.draft_id,q.authorization_id,a.snapshot FROM group_queue q JOIN group_authorization a ON a.id=q.authorization_id WHERE q.state='waiting_scheduler' AND NOT EXISTS(SELECT 1 FROM group_execution_item i WHERE i.draft_id=q.draft_id) ORDER BY q.created_at,q.draft_id")
+        .fetch_all(&mut **tx).await?;
+    for (draft, authorization, snapshot) in rows {
+        project(tx, &draft, authorization, snapshot).await?;
+    }
+    Ok(())
 }
 async fn project(tx: &mut Tx<'_>, draft: &str, authorization: i64, snapshot: Value) -> Result<()> {
     let mut document: Document = decode(snapshot["document"].clone())?;
@@ -51,7 +55,7 @@ async fn project(tx: &mut Tx<'_>, draft: &str, authorization: i64, snapshot: Val
     }
     Ok(())
 }
-async fn project_requirement(
+pub(crate) async fn project_requirement(
     tx: &mut Tx<'_>,
     child: &crate::draft::Child,
     item: &crate::group_review::Item,
@@ -91,7 +95,7 @@ pub(crate) async fn head(tx: &mut Tx<'_>) -> Result<Option<(i64, i64, bool)>> {
     })
 }
 pub(crate) async fn authorized(tx: &mut Tx<'_>, id: i64) -> Result<bool> {
-    let row: Option<bool> = sqlx::query_scalar("SELECT q.state='waiting_scheduler' AND q.authorization_id=i.authorization_id AND d.version=(i.input->>'parent_revision')::bigint AND g.version=a.review_version FROM group_execution_item i JOIN group_queue q USING(draft_id) JOIN imported_draft d ON d.id=i.draft_id JOIN group_review g ON g.draft_id=i.draft_id JOIN group_authorization a ON a.id=i.authorization_id WHERE i.requirement_id=$1")
+    let row: Option<bool> = sqlx::query_scalar("SELECT q.state='waiting_scheduler' AND NOT i.frozen AND NOT i.removed AND d.version=COALESCE(i.authorized_draft_revision,(i.input->>'parent_revision')::bigint) AND g.version=COALESCE(i.authorized_review_version,a.review_version) FROM group_execution_item i JOIN group_queue q USING(draft_id) JOIN imported_draft d ON d.id=i.draft_id JOIN group_review g ON g.draft_id=i.draft_id JOIN group_authorization a ON a.id=i.authorization_id WHERE i.requirement_id=$1")
         .bind(id).fetch_optional(&mut **tx).await?;
     Ok(row.unwrap_or(true))
 }
@@ -100,7 +104,7 @@ pub(crate) async fn require_editable(tx: &mut Tx<'_>, draft: &str) -> Result<()>
         .bind(draft).fetch_one(&mut **tx).await?;
     require(
         !active,
-        "group execution inputs already bound; editing requires future group revision controls",
+        "group execution inputs already bound; use the versioned queue edit controls",
     )
 }
 

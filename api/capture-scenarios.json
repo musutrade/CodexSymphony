@@ -1375,7 +1375,8 @@
         "$response": "group-draft#/id"
       }
     },
-    "status": 200
+    "status": 200,
+    "record": false
   },
   {
     "id": "group-missing",
@@ -1847,5 +1848,328 @@
     "body": {
       "unknown": true
     }
+  },
+  {
+    "id": "queue-reorder",
+    "method": "POST",
+    "path": "/api/drafts/{id}/queue-edit",
+    "path_parameters": {
+      "id": {
+        "$response": "group-draft#/id"
+      }
+    },
+    "status": 200,
+    "body": {
+      "request_id": "queue-reorder",
+      "version": 1,
+      "change": {
+        "kind": "reorder",
+        "order": [
+          "C1",
+          "C2",
+          "C3",
+          "C4"
+        ]
+      }
+    }
+  },
+  {
+    "id": "queue-stale",
+    "method": "POST",
+    "path": "/api/drafts/{id}/queue-edit",
+    "path_parameters": {
+      "id": {
+        "$response": "group-draft#/id"
+      }
+    },
+    "status": 409,
+    "body": {
+      "request_id": "queue-stale",
+      "version": 1,
+      "change": {
+        "kind": "reorder",
+        "order": [
+          "C1",
+          "C2",
+          "C3",
+          "C4"
+        ]
+      }
+    }
+  },
+  {
+    "id": "queue-invalid",
+    "method": "POST",
+    "path": "/api/drafts/{id}/queue-edit",
+    "path_parameters": {
+      "id": {
+        "$response": "group-draft#/id"
+      }
+    },
+    "status": 422,
+    "body": {
+      "request_id": "queue-invalid",
+      "version": 2,
+      "change": {
+        "kind": "reorder",
+        "order": [
+          "C1",
+          "C1",
+          "C3",
+          "C4"
+        ]
+      }
+    }
+  },
+  {
+    "id": "queue-propose",
+    "record": false,
+    "method": "POST",
+    "path": "/api/drafts/{id}/queue-edit",
+    "path_parameters": {
+      "id": {
+        "$response": "group-draft#/id"
+      }
+    },
+    "status": 200,
+    "body": {
+      "request_id": "queue-propose",
+      "version": 2,
+      "change": {
+        "kind": "propose",
+        "document": {
+          "schema": "codexsymphony-draft/v1",
+          "parent": {
+            "id": "P1",
+            "goal": "Complete chain",
+            "scope": "synthetic feature only",
+            "acceptance_criteria": [
+              {
+                "id": "P-AC1",
+                "description": "integrated flow works"
+              }
+            ]
+          },
+          "children": [
+            {
+              "id": "C1",
+              "parent_id": "P1",
+              "kind": "code_change",
+              "order": 1,
+              "depends_on": [],
+              "repository_id": 1,
+              "goal": "Step 1",
+              "acceptance_criteria": [
+                {
+                  "id": "AC1",
+                  "description": "observable result"
+                }
+              ],
+              "validation_plan": "run the selected automated test"
+            },
+            {
+              "id": "C2",
+              "parent_id": "P1",
+              "kind": "code_change",
+              "order": 2,
+              "depends_on": [
+                "C1"
+              ],
+              "repository_id": 1,
+              "goal": "Reviewed queue change",
+              "acceptance_criteria": [
+                {
+                  "id": "AC1",
+                  "description": "observable result"
+                }
+              ],
+              "validation_plan": "run the selected automated test"
+            },
+            {
+              "id": "C3",
+              "parent_id": "P1",
+              "kind": "code_change",
+              "order": 3,
+              "depends_on": [
+                "C2"
+              ],
+              "repository_id": 1,
+              "goal": "Step 3",
+              "acceptance_criteria": [
+                {
+                  "id": "AC1",
+                  "description": "observable result"
+                }
+              ],
+              "validation_plan": "run the selected automated test"
+            },
+            {
+              "id": "C4",
+              "parent_id": "P1",
+              "kind": "validation_only",
+              "order": 4,
+              "depends_on": [
+                "C3"
+              ],
+              "repository_id": 1,
+              "goal": "Step 4",
+              "acceptance_criteria": [
+                {
+                  "id": "AC1",
+                  "description": "observable result"
+                }
+              ],
+              "validation_plan": "run the selected automated test"
+            }
+          ]
+        },
+        "review": {
+          "parent_revision": 2,
+          "full_chain_acs": [
+            "P-AC1"
+          ],
+          "coverage": [
+            {
+              "parent_ac": "P-AC1",
+              "child_id": "C4",
+              "child_revision": 2,
+              "child_ac": "AC1",
+              "step_id": "verify-1"
+            }
+          ],
+          "items": [
+            {
+              "child_id": "C1",
+              "revision": 2,
+              "repository_version": 1,
+              "budget": {
+                "tokens": 100,
+                "turns": 2,
+                "model_seconds": 60
+              },
+              "repair_scope": "only item AC in this repository",
+              "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+              "verification": [
+                {
+                  "ac_id": "AC1",
+                  "step": {
+                    "id": "verify-1",
+                    "check": "cargo_test",
+                    "selector": "group_review",
+                    "expected_result": "exit 0",
+                    "timeout_seconds": 30
+                  }
+                }
+              ]
+            },
+            {
+              "child_id": "C2",
+              "revision": 2,
+              "repository_version": 1,
+              "budget": {
+                "tokens": 100,
+                "turns": 2,
+                "model_seconds": 60
+              },
+              "repair_scope": "only item AC in this repository",
+              "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+              "verification": [
+                {
+                  "ac_id": "AC1",
+                  "step": {
+                    "id": "verify-1",
+                    "check": "cargo_test",
+                    "selector": "group_review",
+                    "expected_result": "exit 0",
+                    "timeout_seconds": 30
+                  }
+                }
+              ]
+            },
+            {
+              "child_id": "C3",
+              "revision": 2,
+              "repository_version": 1,
+              "budget": {
+                "tokens": 100,
+                "turns": 2,
+                "model_seconds": 60
+              },
+              "repair_scope": "only item AC in this repository",
+              "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+              "verification": [
+                {
+                  "ac_id": "AC1",
+                  "step": {
+                    "id": "verify-1",
+                    "check": "cargo_test",
+                    "selector": "group_review",
+                    "expected_result": "exit 0",
+                    "timeout_seconds": 30
+                  }
+                }
+              ]
+            },
+            {
+              "child_id": "C4",
+              "revision": 2,
+              "repository_version": 1,
+              "budget": {
+                "tokens": 100,
+                "turns": 2,
+                "model_seconds": 60
+              },
+              "repair_scope": "only item AC in this repository",
+              "merged_baseline_review": "independent regression test on merged predecessors, safe without later changes",
+              "verification": [
+                {
+                  "ac_id": "AC1",
+                  "step": {
+                    "id": "verify-1",
+                    "check": "cargo_test",
+                    "selector": "group_review",
+                    "expected_result": "exit 0",
+                    "timeout_seconds": 30
+                  }
+                }
+              ]
+            }
+          ],
+          "group_budget": null,
+          "semantic_review": "Integration steps reviewed against complete parent flow"
+        }
+      }
+    }
+  },
+  {
+    "id": "queue-approve",
+    "record": false,
+    "method": "POST",
+    "path": "/api/drafts/{id}/queue-edit",
+    "path_parameters": {
+      "id": {
+        "$response": "group-draft#/id"
+      }
+    },
+    "status": 200,
+    "body": {
+      "request_id": "queue-approve",
+      "version": 3,
+      "change": {
+        "kind": "approve",
+        "edit_version": 3
+      }
+    }
+  },
+  {
+    "id": "queue-read-approved",
+    "method": "GET",
+    "path": "/api/drafts/{id}/review",
+    "path_parameters": {
+      "id": {
+        "$response": "group-draft#/id"
+      }
+    },
+    "status": 200
   }
 ]

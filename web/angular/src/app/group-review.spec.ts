@@ -153,6 +153,8 @@ describe('Atomic group review UI', () => {
       .expectOne('/api/drafts/draft-group/review')
       .flush({ ...saved, queue: { version: 1, authorization_id: 7, state: 'waiting_scheduler' } });
     await confirming;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('编辑未开始队列');
     expect(page.message()).toContain('依赖队列');
     page.resetForRevision();
     expect(page.model().semantic_review).toBe('');

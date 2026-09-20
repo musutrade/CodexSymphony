@@ -17,7 +17,7 @@ pub async fn view(tx: &mut Tx<'_>, draft: &str, document: &Document) -> Result<V
     let mut items = Vec::new();
     let mut completed = 0;
     for child in children {
-        let saved:Option<Value>=sqlx::query_scalar("SELECT jsonb_build_object('requirement_id',i.requirement_id,'state',r.state,'paused',COALESCE(r.paused,false),'cancelled',COALESCE(r.cancel_requested,false),'complete',NOT COALESCE(r.cancel_requested,false) AND EXISTS(SELECT 1 FROM group_completion c WHERE c.requirement_id=i.requirement_id AND c.authorization_id=i.authorization_id)) FROM group_execution_item i LEFT JOIN requirement r ON r.id=i.requirement_id WHERE i.draft_id=$1 AND i.child_id=$2")
+        let saved:Option<Value>=sqlx::query_scalar("SELECT jsonb_build_object('frozen',i.frozen,'requirement_id',i.requirement_id,'state',r.state,'paused',COALESCE(r.paused,false),'cancelled',COALESCE(r.cancel_requested,false),'complete',NOT COALESCE(r.cancel_requested,false) AND EXISTS(SELECT 1 FROM group_completion c WHERE c.requirement_id=i.requirement_id AND c.authorization_id=i.authorization_id)) FROM group_execution_item i LEFT JOIN requirement r ON r.id=i.requirement_id WHERE i.draft_id=$1 AND i.child_id=$2")
             .bind(draft).bind(&child.id).fetch_optional(&mut **tx).await?;
         let saved = saved.unwrap_or(Value::Null);
         let requirement = saved["requirement_id"].as_i64();
@@ -35,6 +35,9 @@ async fn reason(
     saved: &Value,
     paused: bool,
 ) -> Result<&'static str> {
+    if saved["frozen"] == true {
+        return Ok("needs_review");
+    }
     if saved["complete"] == true {
         return Ok("confirmed_merge_and_acceptance");
     }

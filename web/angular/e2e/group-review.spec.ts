@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { initialReview } from '../src/app/group-review-model';
 import type { GroupView } from '../src/app/group-review-model';
 
 test('reviews three code items plus integration, rejects missing coverage and authorizes atomically', async ({
@@ -124,4 +125,121 @@ test('reviews three code items plus integration, rejects missing coverage and au
   await page.emulateMedia({ reducedMotion: 'reduce', forcedColors: 'active' });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({ path: info.outputPath('group-authorized.png'), fullPage: true });
+});
+
+test('edits and reorders the persisted unstarted queue with difference review', async ({
+  page,
+  context,
+}, info) => {
+  const headers = { origin: 'http://127.0.0.1:4300', 'x-codexsymphony-csrf': '1' };
+  const scenarios = JSON.parse(readFileSync('../../api/capture-scenarios.json', 'utf8')) as {
+    id: string;
+    body: Record<string, unknown>;
+  }[];
+  const initial = scenarios.find((s) => s.id === 'configured')!.body;
+  const configured = await context.request.put('/api/repository', {
+    headers,
+    data: { ...initial, request_id: randomUUID() },
+  });
+  expect([200, 409]).toContain(configured.status());
+  const repository = {
+    project: 'GH62 synthetic',
+    remote: `test/group-${randomUUID()}`,
+    github_repository_id: Date.now() * 100 + (info.project.name === 'desktop' ? 1 : 2),
+    base_branch: 'main',
+    revoked: false,
+    reason: 'Disposable group browser fixture',
+    policy: {
+      allowed_checks: ['cargo_test'],
+      max_timeout_seconds: 120,
+      token_limit: 1000,
+      turn_limit: 10,
+      model_work_seconds: 600,
+      gate_recovery_policy: 'one_code_repair',
+    },
+  };
+  const registered = await context.request.put('/api/multi/repository', {
+    headers,
+    data: {
+      request_id: randomUUID(),
+      version: 0,
+      repository_id: 10000 + Math.floor(Math.random() * 100000000),
+      repository,
+    },
+  });
+  expect(registered.ok(), await registered.text()).toBeTruthy();
+  const savedRepository = (await registered.json()) as { id: number };
+  const document = JSON.parse(
+    readFileSync('../../apps/server/tests/fixtures/group-draft.json', 'utf8'),
+  ) as { parent: { goal: string }; children: { repository_id: number }[] };
+  document.parent.goal = `GH62 ${info.project.name} ${randomUUID()}`;
+  document.children.forEach((child) => (child.repository_id = savedRepository.id));
+  const imported = await context.request.post('/api/drafts', {
+    headers,
+    data: {
+      version: 0,
+      source: { format: 'json', label: 'synthetic group UI', text: JSON.stringify(document) },
+    },
+  });
+  expect(imported.ok(), await imported.text()).toBeTruthy();
+  const draft = (await imported.json()) as { id: string };
+  const initialView = (await (
+    await context.request.get(`/api/drafts/${draft.id}/review`)
+  ).json()) as GroupView;
+  const review = initialReview(initialView);
+  review.semantic_review = 'Synthetic reviewed integration coverage';
+  review.coverage = [
+    { parent_ac: 'P-AC1', child_id: 'C4', child_revision: 1, child_ac: 'AC1', step_id: 'verify-1' },
+  ];
+  review.items.forEach((item) => {
+    item.repair_scope = 'Only reviewed AC';
+    item.merged_baseline_review = 'Independently safe on merged baseline';
+    item.verification[0].step.selector = 'group_review';
+  });
+  expect(
+    (
+      await context.request.put(`/api/drafts/${draft.id}/review`, {
+        headers,
+        data: { version: 0, draft_revision: 1, review },
+      })
+    ).status(),
+  ).toBe(200);
+  expect(
+    (
+      await context.request.post(`/api/drafts/${draft.id}/authorize`, {
+        headers,
+        data: { request_id: randomUUID(), version: 1, draft_revision: 1 },
+      })
+    ).status(),
+  ).toBe(200);
+  await page.goto(`/drafts/${draft.id}/review`);
+  const editor = page.getByRole('region', { name: '编辑未开始队列' });
+  await editor.getByRole('button', { name: '上移 C2', exact: true }).click();
+  await expect(editor.getByRole('alert')).toContainText('dependencies');
+  await editor.getByRole('button', { name: '编辑变化内容与评审', exact: true }).click();
+  const updated = JSON.parse(
+    await editor.getByLabel('父子需求内容（JSON）').inputValue(),
+  ) as GroupView['document'];
+  updated.children[1].goal = 'Reviewed changed second item';
+  updated.children[2].depends_on = ['C1'];
+  updated.children[3].depends_on = ['C2', 'C3'];
+  await editor.getByLabel('父子需求内容（JSON）').fill(JSON.stringify(updated));
+  await editor.getByRole('button', { name: '保存差异并冻结受影响项' }).click();
+  await expect(editor.getByRole('heading', { name: /待评审变化/ })).toBeVisible();
+  await page.reload();
+  await expect(editor.getByText('冻结项及依赖：C2、C3、C4', { exact: false })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: info.outputPath('queue-difference.png'), fullPage: true });
+  await editor.getByRole('button', { name: '确认以上变化版本与策略并重新授权' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(editor.getByRole('heading', { name: /待评审变化/ })).toHaveCount(0);
+  await editor.getByRole('button', { name: '上移 C3', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(editor.getByText('2. C3', { exact: false })).toBeVisible();
+  await page.reload();
+  await expect(editor.getByText('2. C3', { exact: false })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath('queue-reordered.png'), fullPage: true });
+  await page.emulateMedia({ reducedMotion: 'reduce', forcedColors: 'active' });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

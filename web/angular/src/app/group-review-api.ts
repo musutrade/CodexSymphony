@@ -1,6 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Service, inject } from '@angular/core';
 import {
+  EditGroupQueueRequest,
+  EditGroupQueueResponse,
   GetGroupReviewResponse,
   SaveGroupReviewRequest,
   SaveGroupReviewResponse,
@@ -11,6 +13,13 @@ import {
 export class GroupReviewApi {
   private readonly http = inject(HttpClient);
   private readonly options = { headers: { 'x-codexsymphony-csrf': '1' } };
+  edit(id: string, body: EditGroupQueueRequest) {
+    return this.http.post<EditGroupQueueResponse>(
+      `/api/drafts/${id}/queue-edit`,
+      body,
+      this.options,
+    );
+  }
   read(id: string) {
     return this.http.get<GetGroupReviewResponse>(`/api/drafts/${id}/review`);
   }

@@ -1,4 +1,4 @@
-// harness-contract-sha256: 870e323faccf0c3c433372154eb25f1e21255046b8b377f7f3060b8570be14e4
+// harness-contract-sha256: 74bf06a5f7e7edf98f4af2ff2f07e94a160287158f66e50fa09e42cccffe4395
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -433,9 +433,13 @@ export interface ExecutionStatusResponse {
   requirement_id: number | null;
 }
 export type PauseExecutionResponse = { paused: true } | { error: string };
-export interface PauseExecutionRequest { pause: true }
+export interface PauseExecutionRequest {
+  pause: true;
+}
 export type PauseRequirementResponse = { paused: true } | { error: string };
-export interface PauseRequirementRequest { pause: true }
+export interface PauseRequirementRequest {
+  pause: true;
+}
 export type GetOperationsResponse =
   | {
       events: { created_at: string; kind: string; version: number }[];
@@ -563,7 +567,9 @@ export interface ControlOperationsRequest {
   version: number;
 }
 export type GetEvidenceResponse = { preview_only: boolean; text: string } | { error: string };
-export interface GetInboxResponse { requirement_ids: number[] }
+export interface GetInboxResponse {
+  requirement_ids: number[];
+}
 export type AnswerOperatorQuestionResponse = { saved: boolean } | { error: string };
 export interface AnswerOperatorQuestionRequest {
   answers: { id: string; text: string }[];
@@ -1232,6 +1238,7 @@ export type GetGroupReviewResponse =
       authorizations: {
         id: number;
         snapshot: {
+          affected?: string[];
           business_complete: boolean;
           document: {
             children: {
@@ -1360,6 +1367,82 @@ export type GetGroupReviewResponse =
         paused: boolean;
         total: number;
       };
+      pending_edit?: {
+        affected: string[];
+        document: {
+          children: {
+            acceptance_criteria: { description: string; id: string }[];
+            depends_on: string[];
+            goal: string;
+            id: string;
+            kind: 'code_change' | 'validation_only';
+            order: number;
+            parent_id: string;
+            repository_id: number | null;
+            validation_plan: string;
+          }[];
+          parent: {
+            acceptance_criteria: { description: string; id: string }[];
+            goal: string;
+            id: string;
+            scope: string;
+          };
+          schema: string;
+        };
+        repositories: {
+          id: number;
+          repository: {
+            base_branch: string;
+            github_repository_id: number;
+            model?: string | null;
+            policy: {
+              allowed_checks: string[];
+              gate_recovery_policy: string;
+              max_timeout_seconds: number;
+              model_work_seconds: number;
+              token_limit: number;
+              turn_limit: number;
+            };
+            project: string;
+            reason: string;
+            remote: string;
+            revoked: boolean;
+          };
+          version: number;
+        }[];
+        review: {
+          coverage: {
+            child_ac: string;
+            child_id: string;
+            child_revision: number;
+            parent_ac: string;
+            step_id: string;
+          }[];
+          full_chain_acs: string[];
+          group_budget: { model_seconds: number; tokens: number; turns: number } | null;
+          items: {
+            budget: { model_seconds: number; tokens: number; turns: number };
+            child_id: string;
+            merged_baseline_review: string;
+            repair_scope: string;
+            repository_version: number;
+            revision: number;
+            verification: {
+              ac_id: string;
+              step: {
+                check: string;
+                expected_result: string;
+                id: string;
+                selector: string;
+                timeout_seconds: number;
+              };
+            }[];
+          }[];
+          parent_revision: number;
+          semantic_review: string;
+        };
+        version: number;
+      } | null;
       queue: { authorization_id: number; state: string; version: number } | null;
       repositories: {
         id: number;
@@ -1422,6 +1505,7 @@ export type SaveGroupReviewResponse =
       authorizations: {
         id: number;
         snapshot: {
+          affected?: string[];
           business_complete: boolean;
           document: {
             children: {
@@ -1550,6 +1634,82 @@ export type SaveGroupReviewResponse =
         paused: boolean;
         total: number;
       };
+      pending_edit?: {
+        affected: string[];
+        document: {
+          children: {
+            acceptance_criteria: { description: string; id: string }[];
+            depends_on: string[];
+            goal: string;
+            id: string;
+            kind: 'code_change' | 'validation_only';
+            order: number;
+            parent_id: string;
+            repository_id: number | null;
+            validation_plan: string;
+          }[];
+          parent: {
+            acceptance_criteria: { description: string; id: string }[];
+            goal: string;
+            id: string;
+            scope: string;
+          };
+          schema: string;
+        };
+        repositories: {
+          id: number;
+          repository: {
+            base_branch: string;
+            github_repository_id: number;
+            model?: string | null;
+            policy: {
+              allowed_checks: string[];
+              gate_recovery_policy: string;
+              max_timeout_seconds: number;
+              model_work_seconds: number;
+              token_limit: number;
+              turn_limit: number;
+            };
+            project: string;
+            reason: string;
+            remote: string;
+            revoked: boolean;
+          };
+          version: number;
+        }[];
+        review: {
+          coverage: {
+            child_ac: string;
+            child_id: string;
+            child_revision: number;
+            parent_ac: string;
+            step_id: string;
+          }[];
+          full_chain_acs: string[];
+          group_budget: { model_seconds: number; tokens: number; turns: number } | null;
+          items: {
+            budget: { model_seconds: number; tokens: number; turns: number };
+            child_id: string;
+            merged_baseline_review: string;
+            repair_scope: string;
+            repository_version: number;
+            revision: number;
+            verification: {
+              ac_id: string;
+              step: {
+                check: string;
+                expected_result: string;
+                id: string;
+                selector: string;
+                timeout_seconds: number;
+              };
+            }[];
+          }[];
+          parent_revision: number;
+          semantic_review: string;
+        };
+        version: number;
+      } | null;
       queue: { authorization_id: number; state: string; version: number } | null;
       repositories: {
         id: number;
@@ -1650,4 +1810,69 @@ export type AuthorizeGroupResponse =
       state: string;
     }
   | { error: string };
-export interface AuthorizeGroupRequest { draft_revision: number; request_id: string; version: number }
+export interface AuthorizeGroupRequest {
+  draft_revision: number;
+  request_id: string;
+  version: number;
+}
+export type EditGroupQueueResponse = { affected: string[]; version: number } | { error: string };
+export interface EditGroupQueueRequest {
+  change: {
+    document?: {
+      children: {
+        acceptance_criteria: { description: string; id: string }[];
+        depends_on: string[];
+        goal: string;
+        id: string;
+        kind: 'code_change' | 'validation_only';
+        order: number;
+        parent_id: string;
+        repository_id: number | null;
+        validation_plan: string;
+      }[];
+      parent: {
+        acceptance_criteria: { description: string; id: string }[];
+        goal: string;
+        id: string;
+        scope: string;
+      };
+      schema: string;
+    };
+    edit_version?: number;
+    kind: 'approve' | 'propose' | 'reorder';
+    order?: string[];
+    review?: {
+      coverage: {
+        child_ac: string;
+        child_id: string;
+        child_revision: number;
+        parent_ac: string;
+        step_id: string;
+      }[];
+      full_chain_acs: string[];
+      group_budget: { model_seconds: number; tokens: number; turns: number } | null;
+      items: {
+        budget: { model_seconds: number; tokens: number; turns: number };
+        child_id: string;
+        merged_baseline_review: string;
+        repair_scope: string;
+        repository_version: number;
+        revision: number;
+        verification: {
+          ac_id: string;
+          step: {
+            check: string;
+            expected_result: string;
+            id: string;
+            selector: string;
+            timeout_seconds: number;
+          };
+        }[];
+      }[];
+      parent_revision: number;
+      semantic_review: string;
+    };
+  };
+  request_id: string;
+  version: number;
+}
