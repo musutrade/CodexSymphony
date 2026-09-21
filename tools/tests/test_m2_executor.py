@@ -8,7 +8,7 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-EXECUTOR = ROOT / 'tools/deployment/executor.py'
+EXECUTOR = ROOT / 'apps/server/deployment/executor.py'
 
 
 class BoundaryTests(unittest.TestCase):

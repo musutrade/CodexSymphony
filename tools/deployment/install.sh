@@ -8,7 +8,7 @@ source_dir=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 release=/opt/codexsymphony-m2/releases/$1
 test ! -e "$release" || { echo 'Release already exists; refusing overwrite' >&2; exit 1; }
 install -d -m 0755 "$release"
-install -m 0755 "$source_dir/tools/deployment/executor.py" "$release/executor.py"
+install -m 0755 "$source_dir/apps/server/deployment/executor.py" "$release/executor.py"
 install -m 0755 "$source_dir/tools/deployment/check_ingress.py" "$release/check_ingress.py"
 install -d -m 0700 "$release/examples"
 install -m 0600 "$source_dir"/deploy/m2/* "$release/examples/"

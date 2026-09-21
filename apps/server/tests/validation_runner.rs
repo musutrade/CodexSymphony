@@ -154,10 +154,10 @@ fn deployment_mount_boundary_runs_real_candidate_validation() {
     )
     .unwrap();
     fs::set_permissions(&config, fs::Permissions::from_mode(0o600)).unwrap();
-    let executor = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tools/deployment/executor.py")
-        .canonicalize()
-        .unwrap();
+    // Keep the deployed executor in the server source snapshot used by coverage.
+    // Materialize the exact compiled source outside the candidate mount.
+    let executor = root.join("executor.py");
+    fs::write(&executor, include_str!("../deployment/executor.py")).unwrap();
     fs::write(
         &plan.entry,
         format!(
