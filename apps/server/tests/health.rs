@@ -75,3 +75,6 @@ fn policy() -> codexsymphony_server::security::RequestPolicy {
     )
     .unwrap()
 }
+
+#[path = "support/recovery.rs"]
+mod recovery_acceptance;
