@@ -132,3 +132,52 @@ fn validation_does_not_inherit_control_plane_credentials() {
         String::from_utf8_lossy(&output.stdout)
     );
 }
+
+#[test]
+fn deployment_mount_boundary_runs_real_candidate_validation() {
+    let (root, repo, mut plan) = fixture();
+    let private = root.join("private");
+    fs::create_dir(&private).unwrap();
+    fs::set_permissions(&private, fs::Permissions::from_mode(0o700)).unwrap();
+    let sentinel = private.join("sentinel");
+    fs::write(&sentinel, "non-sensitive-control-sentinel").unwrap();
+    fs::set_permissions(&sentinel, fs::Permissions::from_mode(0o600)).unwrap();
+    let config = root.join("boundary.json");
+    fs::write(
+        &config,
+        serde_json::to_vec(&serde_json::json!({
+            "version":1,"role":"validation","workspace_root":root,
+            "runtime_home_root":null,"mounts":[{"path":"/usr","writable":false}],
+            "private_paths":[private],"environment":{},"program":"/usr/bin/dash"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    fs::set_permissions(&config, fs::Permissions::from_mode(0o600)).unwrap();
+    let executor = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../tools/deployment/executor.py")
+        .canonicalize()
+        .unwrap();
+    fs::write(
+        &plan.entry,
+        format!(
+            "#!/bin/sh\nexec /usr/bin/python3 -I '{}' '{}' -c 'test ! -r {} && test ! -e {} && cat source'\n",
+            executor.display(), config.display(), sentinel.display(), config.display()
+        ),
+    )
+    .unwrap();
+    plan.entry_sha256 = sha256(fs::read(&plan.entry).unwrap());
+    plan.steps[0].timeout_seconds = 10;
+    let candidate = runner::candidate(&repo).unwrap();
+    let directory = root.join("isolated-validation");
+    let result = runner::execute(&repo, &directory, &candidate, &plan).unwrap();
+    assert_eq!(result[0].exit_code, Some(0), "{}", result[0].output);
+    assert_eq!(result[0].output, "candidate");
+    assert_eq!(
+        runner::execute(&repo, &directory, &candidate, &plan).unwrap(),
+        result
+    );
+    fs::remove_file(directory.join("result.json")).unwrap();
+    assert!(runner::execute(&repo, &directory, &candidate, &plan).is_err());
+    assert!(directory.join("binding.json").exists());
+}

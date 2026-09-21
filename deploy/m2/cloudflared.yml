@@ -1,0 +1,12 @@
+# Provision a named Tunnel outside the workspace. No Access identity integration.
+tunnel: REPLACE_WITH_AUTHORIZED_TUNNEL_UUID
+credentials-file: /etc/codexsymphony-ingress/tunnel.json
+ingress:
+  - hostname: platform.example.invalid
+    service: https://127.0.0.1:8443
+    originRequest:
+      originServerName: platform.example.invalid
+      httpHostHeader: platform.example.invalid
+      noTLSVerify: false
+      connectTimeout: 10s
+  - service: http_status:404
