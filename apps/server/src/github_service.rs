@@ -131,6 +131,7 @@ pub async fn tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()>
         }
     }
     sync_prs(pool, client, now + started.elapsed().as_secs() as i64).await?;
+    crate::recovery_remote::tick(pool, client, now + started.elapsed().as_secs() as i64).await?;
     delivery_tick(pool, client, now + started.elapsed().as_secs() as i64).await
 }
 async fn delivery_tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()> {
@@ -168,7 +169,10 @@ async fn sync_prs(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()>
         let policy: Policy = serde_json::from_value(policy)?;
         let observed_at = now + started.elapsed().as_secs() as i64;
         match github_observe::observe(client, &policy, number as u64, observed_at).await {
-            Ok(observation) => github_store::save_observation(pool, &observation).await?,
+            Ok(observation) => {
+                github_store::save_observation(pool, &observation).await?;
+                crate::recovery_observe::observe(pool, client, &observation).await?;
+            }
             Err(error) => {
                 github_store::failed(
                     pool,

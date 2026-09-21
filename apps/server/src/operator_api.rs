@@ -84,6 +84,7 @@ async fn inbox(State(pool): State<PgPool>) -> Result<Json<Value>> {
            WHERE a.requirement_id=r.id AND (e.cleanup_retry->>'todo')::boolean) OR
          (NOT r.cancel_requested AND (
            r.paused OR r.state='Failed' OR
+           EXISTS(SELECT 1 FROM recovery_failure f WHERE f.requirement_id=r.id AND f.decision='blocked') OR
            EXISTS(SELECT 1 FROM runtime_question q WHERE q.requirement_id=r.id
              AND q.revision=r.revision AND q.resume_state IN ('waiting','pending')) OR
            (SELECT a.blocker IS NOT NULL FROM agent_run a WHERE a.requirement_id=r.id

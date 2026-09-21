@@ -31,6 +31,8 @@ fn accounting_overflow() -> sqlx::Error {
 }
 
 pub(crate) async fn freeze(tx: &mut Tx<'_>, id: i64, policy: &Policy) -> Result<()> {
+    sqlx::query("INSERT INTO repair_authorization(requirement_id,repair_limit,policy) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
+        .bind(id).bind(crate::bounded_recovery::repair_limit(&policy.gate_recovery_policy)).bind(&policy.gate_recovery_policy).execute(&mut **tx).await?;
     let limits = Amount {
         tokens: policy.token_limit,
         turns: policy.turn_limit,
@@ -160,7 +162,7 @@ async fn reserve_in_transaction(tx: &mut Tx<'_>, intent: &CallIntent) -> Result<
     let Some(id) = admitted_run(tx, &intent.key).await? else {
         return Ok(Admission::Blocked);
     };
-    if !reservation_allowed(tx, id, intent.reserve).await? {
+    if !reserve_or_transfer(tx, id, intent).await? {
         stop(tx, id).await?;
         return Ok(Admission::Blocked);
     }
@@ -169,7 +171,18 @@ async fn reserve_in_transaction(tx: &mut Tx<'_>, intent: &CallIntent) -> Result<
     crate::group_budget::sync(tx, id).await?;
     Ok(Admission::Reserved)
 }
-async fn reservation_allowed(tx: &mut Tx<'_>, id: i64, reserve: Amount) -> Result<bool> {
+async fn reserve_or_transfer(tx: &mut Tx<'_>, id: i64, intent: &CallIntent) -> Result<bool> {
+    let current = balance(tx, id).await?;
+    if current.exhausted
+        || !current.exposure.fits(current.limits)
+        || !crate::group_budget::prepaid_fits(tx, id).await?
+    {
+        return Ok(false);
+    }
+    Ok(crate::recovery_store::transfer(tx, intent).await?
+        || reservation_allowed(tx, id, intent.reserve).await?)
+}
+pub(crate) async fn reservation_allowed(tx: &mut Tx<'_>, id: i64, reserve: Amount) -> Result<bool> {
     let balance = balance(tx, id).await?;
     let fits = balance
         .exposure
@@ -226,6 +239,10 @@ pub(crate) async fn balance(tx: &mut Tx<'_>, id: i64) -> Result<Balance> {
     for (reserved, usage) in rows {
         accumulate(&mut result, decode(reserved)?, decode(usage)?)?;
     }
+    result.exposure = result
+        .exposure
+        .checked_add(crate::recovery_store::resources(tx, id).await?)
+        .ok_or_else(accounting_overflow)?;
     Ok(result)
 }
 fn accumulate(result: &mut Balance, reserved: Amount, usage: Usage) -> Result<()> {

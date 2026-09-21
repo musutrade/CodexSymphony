@@ -1,4 +1,4 @@
-//! One immutable repair launch intent per root Requirement. A reservation is
+//! One active immutable repair launch intent per Requirement. A reservation is
 //! not a running Agent: preparation and the existing cumulative budget still apply.
 use crate::{execution::Launch, run_store};
 use serde_json::{Value, json};
@@ -28,7 +28,10 @@ pub async fn plan(
     Ok(result.rows_affected() == 1)
 }
 async fn eligible(tx: &mut Transaction<'_, Postgres>, id: i64, incarnation: &str) -> Result<bool> {
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id JOIN agent_run a ON a.id=v.source_run_id JOIN requirement r ON r.id=p.requirement_id JOIN requirement_revision rev ON rev.requirement_id=r.id AND rev.revision=v.revision JOIN execution_control c ON c.requirement_id=r.id CROSS JOIN repository repo WHERE p.requirement_id=$1 AND p.status='reserved' AND v.result='gate_failed' AND r.revision=v.revision AND r.state='Running' AND NOT r.paused AND NOT c.paused AND c.incarnation=$2 AND c.recovery_complete AND repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND a.quiescent AND a.state='Succeeded' AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run WHERE requirement_id=r.id AND NOT quiescent) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run old ON old.id=b.run_id WHERE old.requirement_id=r.id AND NOT b.resolved))")
+    if !crate::group_queue_store::authorized(tx, id).await? {
+        return Ok(false);
+    }
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id JOIN agent_run a ON a.id=v.source_run_id JOIN requirement r ON r.id=p.requirement_id JOIN requirement_revision rev ON rev.requirement_id=r.id AND rev.revision=v.revision JOIN execution_control c ON c.requirement_id=r.id CROSS JOIN repository repo WHERE p.requirement_id=$1 AND p.status='reserved' AND (v.result='gate_failed' OR p.event_key IS NOT NULL) AND r.revision=v.revision AND r.state='Running' AND NOT r.cancel_requested AND NOT r.paused AND NOT c.paused AND c.incarnation=$2 AND c.recovery_complete AND repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND a.quiescent AND a.state='Succeeded' AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run WHERE requirement_id=r.id AND NOT quiescent) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run old ON old.id=b.run_id WHERE old.requirement_id=r.id AND NOT b.resolved))")
         .bind(id).bind(incarnation).fetch_one(&mut **tx).await
 }
 pub(crate) async fn preparation_allowed(
@@ -44,8 +47,24 @@ pub(crate) async fn preparation_allowed(
     let Some(id) = id else {
         return Ok(false);
     };
-    Ok(eligible(tx, id, &launch.key.incarnation).await?
-        && crate::runtime_questions::budget_available(tx, id).await?)
+    if !eligible(tx, id, &launch.key.incarnation).await? {
+        return Ok(false);
+    }
+    if !crate::recovery_store::launch_allowed(tx, id, launch).await? {
+        return Ok(false);
+    }
+    let prepaid: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repair_reservation WHERE launch=$1 AND resources IS NOT NULL AND NOT resources_transferred)")
+        .bind(json!(launch)).fetch_one(&mut **tx).await?;
+    let balance = crate::budget_store::balance(tx, id).await?;
+    Ok(within_balance(&balance, prepaid))
+}
+fn within_balance(balance: &crate::budget_store::Balance, prepaid: bool) -> bool {
+    !balance.exhausted
+        && if prepaid {
+            balance.exposure.fits(balance.limits)
+        } else {
+            !balance.exposure.reached(balance.limits)
+        }
 }
 pub async fn bind(pool: &PgPool, launch: &Launch) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
@@ -73,12 +92,13 @@ async fn commit(
     launch: &Launch,
 ) -> Result<bool> {
     run_store::insert_run(&mut tx, id, revision, launch).await?;
-    sqlx::query("INSERT INTO run_workspace(run_id,identity,restored_from) SELECT $1,workspace,v.source_run_id FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id WHERE p.requirement_id=$2").bind(&launch.key.run_id).bind(id).execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO run_workspace(run_id,identity,restored_from) SELECT $1,workspace,v.source_run_id FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id WHERE p.requirement_id=$2 AND p.launch=$3").bind(&launch.key.run_id).bind(id).bind(json!(launch)).execute(&mut *tx).await?;
     sqlx::query(
-        "UPDATE repair_reservation SET repair_run_id=$2,status='started' WHERE requirement_id=$1",
+        "UPDATE repair_reservation SET repair_run_id=$2,status='started' WHERE requirement_id=$1 AND launch=$3",
     )
     .bind(id)
     .bind(&launch.key.run_id)
+    .bind(json!(launch))
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;

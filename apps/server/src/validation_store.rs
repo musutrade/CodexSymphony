@@ -61,7 +61,7 @@ fn decode(error: serde_json::Error) -> sqlx::Error {
 
 pub async fn begin(pool: &PgPool, id: &str) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
-    let result = sqlx::query("UPDATE candidate_validation SET stage='validation' WHERE id=$1 AND stage='declaration' AND result='pending'")
+    let result = sqlx::query("UPDATE candidate_validation v SET stage='validation' WHERE v.id=$1 AND v.stage='declaration' AND v.result='pending' AND (NOT EXISTS(SELECT 1 FROM repair_authorization auth WHERE auth.requirement_id=v.requirement_id AND auth.policy='bounded_v1') OR EXISTS(SELECT 1 FROM requirement r JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision rev ON rev.requirement_id=r.id AND rev.revision=r.revision JOIN repository repo ON repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) WHERE r.id=v.requirement_id AND r.revision=v.revision AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1)))")
         .bind(id).execute(&mut *tx).await?;
     tx.commit().await?;
     Ok(result.rows_affected() == 1)
@@ -246,12 +246,12 @@ pub async fn reserve_repair(
         return Ok(false);
     }
     let mut tx = run_store::lock(pool).await?;
-    let allowed: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM candidate_validation v WHERE v.id=$1 AND v.requirement_id=$2 AND v.result='gate_failed' AND EXISTS(SELECT 1 FROM validation_step s WHERE s.validation_id=v.id AND s.status='failed' AND s.code_failure AND s.exit_code IS NOT NULL AND s.exit_code<>0))")
+    let allowed: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM candidate_validation v WHERE v.id=$1 AND v.requirement_id=$2 AND v.result='gate_failed' AND NOT EXISTS(SELECT 1 FROM repair_authorization a WHERE a.requirement_id=$2 AND a.policy='bounded_v1') AND EXISTS(SELECT 1 FROM validation_step s WHERE s.validation_id=v.id AND s.status='failed' AND s.code_failure AND s.exit_code IS NOT NULL AND s.exit_code<>0))")
         .bind(source).bind(requirement).fetch_one(&mut *tx).await?;
     if !allowed {
         return Ok(false);
     }
-    let result = sqlx::query("INSERT INTO repair_reservation(requirement_id,ordinal,source_validation_id,failure,status) VALUES($1,$2,$3,$4,'reserved') ON CONFLICT (requirement_id) DO NOTHING")
+    let result = sqlx::query("INSERT INTO repair_reservation(requirement_id,ordinal,source_validation_id,failure,status) VALUES($1,$2,$3,$4,'reserved') ON CONFLICT DO NOTHING")
         .bind(requirement).bind(ordinal).bind(source).bind(failure).execute(&mut *tx).await?;
     if result.rows_affected() == 1 {
         sqlx::query(
@@ -274,7 +274,9 @@ async fn save_outcome(
 ) -> Result<()> {
     sqlx::query("UPDATE candidate_validation SET stage=CASE WHEN $2='succeeded' THEN 'handoff' ELSE 'validation' END,result=$2,source_after=$3,entry_after=$4 WHERE id=$1")
         .bind(id).bind(result).bind(source).bind(entry).execute(&mut **tx).await?;
-    sqlx::query("UPDATE repair_reservation p SET status=CASE WHEN $2='succeeded' THEN 'succeeded' ELSE 'failed' END FROM candidate_validation v WHERE v.id=$1 AND p.repair_run_id=v.source_run_id AND p.status='started'").bind(id).bind(result).execute(&mut **tx).await?;
+    sqlx::query("UPDATE repair_reservation p SET status=CASE WHEN $2='succeeded' THEN 'succeeded' ELSE 'failed' END FROM candidate_validation v WHERE v.id=$1 AND p.repair_run_id=v.source_run_id AND (p.status='started' OR ($2='succeeded' AND p.status='failed'))").bind(id).bind(result).execute(&mut **tx).await?;
+    sqlx::query("UPDATE recovery_failure f SET decision='repaired' FROM repair_reservation p JOIN candidate_validation v ON v.source_run_id=p.repair_run_id WHERE v.id=$1 AND f.event_key=p.event_key AND $2='succeeded'")
+        .bind(id).bind(result).execute(&mut **tx).await?;
     if result == "succeeded" {
         crate::delivery_store::enqueue(tx, id).await?;
     }

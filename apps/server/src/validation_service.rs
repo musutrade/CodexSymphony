@@ -145,6 +145,11 @@ fn step_status(step: &StepEvidence) -> &'static str {
     }
 }
 async fn reserve(pool: &PgPool, r: &Request<'_>, steps: &[StepEvidence]) -> Result<()> {
+    let v1: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repair_authorization WHERE requirement_id=$1 AND policy='bounded_v1')")
+        .bind(r.requirement).fetch_one(pool).await?;
+    if v1 {
+        return record_failures(pool, r, steps).await;
+    }
     for step in steps {
         if step_status(step) == "failed" && step.code_failure {
             let failure = serde_json::json!({"candidate":r.candidate,"step":step,"remaining_acceptance":r.plan.steps});
@@ -152,6 +157,35 @@ async fn reserve(pool: &PgPool, r: &Request<'_>, steps: &[StepEvidence]) -> Resu
                 .await?;
             break;
         }
+    }
+    Ok(())
+}
+
+async fn record_failures(pool: &PgPool, r: &Request<'_>, steps: &[StepEvidence]) -> Result<()> {
+    for step in steps.iter().filter(|step| step.exit_code != Some(0)) {
+        let failure = crate::bounded_recovery::Failure {
+            phase: "local".into(),
+            step: step.id.clone(),
+            candidate_sha: r.candidate.sha.clone(),
+            pr_head: None,
+            input_identity: format!("{}:{}", r.requirement, r.revision),
+            environment_identity: serde_json::to_string(r.plan)?,
+            command: step.command.clone(),
+            log_ref: step.log_ref.clone(),
+            raw: step.output.clone(),
+            exit_code: step.exit_code,
+            native_code: crate::bounded_recovery::native_failure(&step.output).into(),
+            authorized_code_check: step.code_failure,
+            retry_after_seconds: None,
+        };
+        crate::recovery_store::record(
+            pool,
+            r.requirement,
+            r.id,
+            &format!("local:{}:{}", r.id, step.id),
+            &failure,
+        )
+        .await?;
     }
     Ok(())
 }

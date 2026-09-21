@@ -1,7 +1,7 @@
 //! One sequential sender; HTTP never waits for GitHub. Replayed jobs observe
 //! remote facts before taking another bounded write attempt.
 use crate::{
-    delivery::{PrFact, pr_fact},
+    delivery::PrFact,
     delivery_store::{self as store, Pending},
     github_http::{Error, invalid},
 };
@@ -114,7 +114,10 @@ async fn reconcile_pr(
     now: i64,
     pr: Value,
 ) -> Result<()> {
-    let fact = pr_fact(&job.identity(), &pr);
+    let fact = job.fact(&pr);
+    if previous_head_open(job, &pr) {
+        return publish(pool, root, remote, job, now, "push").await;
+    }
     if matches!(fact, PrFact::Conflict | PrFact::Unknown) {
         store::failed(pool, job, now, &invalid()).await?;
         return Ok(());
@@ -125,6 +128,21 @@ async fn reconcile_pr(
     }
     close(pool, root, remote, job, now, pr).await
 }
+fn previous_head_open(job: &Pending, pr: &Value) -> bool {
+    if job.kind != "publish" {
+        return false;
+    }
+    let Some(expected) = &job.expected_head else {
+        return false;
+    };
+    if pr["head"]["sha"] != *expected {
+        return false;
+    }
+    let mut previous = job.clone();
+    previous.head_sha = expected.clone();
+    previous.fact(pr) == PrFact::Open
+}
+
 async fn close(
     pool: &PgPool,
     root: &Path,

@@ -1378,6 +1378,50 @@
                         "categories",
                         "classification_todo"
                       ]
+                    },
+                    "recoveries": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "event_key": {
+                            "type": "string"
+                          },
+                          "phase": {
+                            "type": "string"
+                          },
+                          "decision": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "log_ref": {
+                            "type": "string"
+                          },
+                          "candidate_sha": {
+                            "type": "string"
+                          },
+                          "attempts": {
+                            "type": "integer"
+                          },
+                          "next_attempt_at": {
+                            "type": "integer",
+                            "nullable": true
+                          }
+                        },
+                        "required": [
+                          "event_key",
+                          "phase",
+                          "decision",
+                          "reason",
+                          "log_ref",
+                          "candidate_sha",
+                          "attempts",
+                          "next_attempt_at"
+                        ]
+                      }
                     }
                   },
                   "required": [

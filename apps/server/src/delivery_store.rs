@@ -7,20 +7,23 @@ type Result<T> = std::result::Result<T, sqlx::Error>;
 pub async fn enqueue(tx: &mut Transaction<'_, Postgres>, validation: &str) -> Result<()> {
     let (requirement, revision, head, document, manifest): (i64,i64,String,Value,Value) = sqlx::query_as("SELECT v.requirement_id,v.revision,v.candidate_sha,r.document,s.manifest FROM candidate_validation v JOIN requirement_revision r ON r.requirement_id=v.requirement_id AND r.revision=v.revision JOIN workspace_snapshot s ON s.run_id=v.source_run_id WHERE v.id=$1 AND v.result='succeeded' AND s.candidate AND s.manifest->>'head'=v.candidate_sha")
         .bind(validation).fetch_one(&mut **tx).await?;
-    let identity = Identity {
+    let previous: Option<(String,String,String,i64)> = sqlx::query_as("WITH RECURSIVE lineage(id,depth) AS (SELECT $1::text,0 UNION ALL SELECT p.source_validation_id,l.depth+1 FROM lineage l JOIN candidate_validation v ON v.id=l.id JOIN repair_reservation p ON p.repair_run_id=v.source_run_id WHERE p.event_key IS NOT NULL AND l.depth<3) SELECT COALESCE(d.original_action_key,d.action_key),d.branch,d.head_sha,d.pr_number FROM lineage l JOIN delivery d ON d.validation_id=l.id WHERE l.depth>0 AND d.pr_number IS NOT NULL AND d.superseded_by IS NULL ORDER BY l.depth LIMIT 1")
+        .bind(validation).fetch_optional(&mut **tx).await?;
+    let identity = delivery_identity(
         requirement,
         revision,
         head,
-        repository_id: document["repository"]["github_repository_id"]
-            .as_u64()
-            .ok_or_else(invalid)?,
-        repository: field(&document["repository"], "remote")?,
-        base_branch: field(&document["repository"], "base_branch")?,
-        branch: field(&manifest["workspace"], "branch")?,
-    };
+        &document,
+        &manifest,
+        previous.as_ref().map(|p| p.1.clone()),
+    )?;
     let key = identity.action_key();
     sqlx::query("INSERT INTO delivery(action_key,validation_id,requirement_id,revision,repository_id,repository,branch,base_branch,head_sha,manifest,policy) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(action_key) DO NOTHING")
         .bind(&key).bind(validation).bind(requirement).bind(revision).bind(identity.repository_id as i64).bind(&identity.repository).bind(&identity.branch).bind(&identity.base_branch).bind(&identity.head).bind(manifest).bind(document).execute(&mut **tx).await?;
+    if let Some((original, _, expected, number)) = previous {
+        sqlx::query("UPDATE delivery SET original_action_key=$2,expected_head=$3,pr_number=$4 WHERE action_key=$1")
+            .bind(&key).bind(original).bind(expected).bind(number).execute(&mut **tx).await?;
+    }
     sqlx::query(
         "INSERT INTO delivery_action(action_key,kind) VALUES($1,'publish') ON CONFLICT DO NOTHING",
     )
@@ -33,6 +36,26 @@ pub async fn enqueue(tx: &mut Transaction<'_, Postgres>, validation: &str) -> Re
         .execute(&mut **tx)
         .await?;
     Ok(())
+}
+fn delivery_identity(
+    requirement: i64,
+    revision: i64,
+    head: String,
+    document: &Value,
+    manifest: &Value,
+    branch: Option<String>,
+) -> Result<Identity> {
+    Ok(Identity {
+        requirement,
+        revision,
+        head,
+        repository_id: document["repository"]["github_repository_id"]
+            .as_u64()
+            .ok_or_else(invalid)?,
+        repository: field(&document["repository"], "remote")?,
+        base_branch: field(&document["repository"], "base_branch")?,
+        branch: branch.unwrap_or(field(&manifest["workspace"], "branch")?),
+    })
 }
 fn field(value: &Value, name: &str) -> Result<String> {
     value[name]
@@ -60,8 +83,24 @@ pub struct Pending {
     pub head_sha: String,
     pub manifest: Value,
     pub pr_number: Option<i64>,
+    pub original_action_key: Option<String>,
+    pub expected_head: Option<String>,
 }
 impl Pending {
+    pub fn fact(&self, pr: &Value) -> crate::delivery::PrFact {
+        let mut proof = pr.clone();
+        if let Some(original) = &self.original_action_key {
+            let marker = format!("<!-- codexsymphony-delivery:{original} -->");
+            if !pr["body"]
+                .as_str()
+                .is_some_and(|body| body.contains(&marker))
+            {
+                return crate::delivery::PrFact::Conflict;
+            }
+            proof["body"] = json!(self.identity().marker());
+        }
+        crate::delivery::pr_fact(&self.identity(), &proof)
+    }
     pub fn identity(&self) -> Identity {
         Identity {
             requirement: self.requirement_id,
@@ -143,13 +182,18 @@ pub async fn failed(
             .bind(&job.kind)
             .fetch_one(pool)
             .await?;
-    let evidence = crate::delivery::failure(error.code, &job.kind, attempts, now, error.status);
+    let mut evidence = crate::delivery::failure(error.code, &job.kind, attempts, now, error.status);
+    if let Some(seconds) = error.retry_after_seconds {
+        let requested = now.saturating_add(i64::try_from(seconds).unwrap_or(i64::MAX));
+        evidence["next_attempt_at"] =
+            json!(requested.max(evidence["next_attempt_at"].as_i64().unwrap_or(now)));
+    }
     sqlx::query("UPDATE delivery_action SET state=CASE WHEN attempts>=attempt_limit OR $3='github_identity_conflict' THEN 'blocked' ELSE 'unknown' END,next_attempt_at=$4,error=$5 WHERE action_key=$1 AND kind=$2")
         .bind(&job.action_key).bind(&job.kind).bind(error.code).bind(evidence["next_attempt_at"].as_i64()).bind(evidence).execute(pool).await?;
     Ok(())
 }
 pub async fn confirmed(pool: &PgPool, job: &Pending, pr: &Value) -> Result<()> {
-    let fact = crate::delivery::pr_fact(&job.identity(), pr);
+    let fact = job.fact(pr);
     if matches!(
         fact,
         crate::delivery::PrFact::Conflict | crate::delivery::PrFact::Unknown
@@ -226,6 +270,12 @@ async fn link(tx: &mut Transaction<'_, Postgres>, job: &Pending, number: i64) ->
     Ok(())
 }
 async fn handoff(tx: &mut Transaction<'_, Postgres>, job: &Pending) -> Result<()> {
+    if let Some(expected) = &job.expected_head {
+        sqlx::query("UPDATE delivery SET superseded_by=$1 WHERE requirement_id=$2 AND repository_id=$3 AND branch=$4 AND head_sha=$5 AND action_key<>$1 AND superseded_by IS NULL")
+            .bind(&job.action_key).bind(job.requirement_id).bind(job.repository_id).bind(&job.branch).bind(expected).execute(&mut **tx).await?;
+        sqlx::query("UPDATE delivery_action SET state='withdrawn' WHERE kind='close' AND action_key IN(SELECT action_key FROM delivery WHERE superseded_by=$1)")
+            .bind(&job.action_key).execute(&mut **tx).await?;
+    }
     sqlx::query("UPDATE validation_step s SET consumer=d.consumer FROM delivery d WHERE d.action_key=$1 AND s.validation_id=d.validation_id").bind(&job.action_key).execute(&mut **tx).await?;
     sqlx::query("UPDATE delivery_action SET state='confirmed',error=NULL WHERE action_key=$1 AND kind='publish'").bind(&job.action_key).execute(&mut **tx).await?;
     sqlx::query("UPDATE requirement SET state='Submitted',version=version+1 WHERE id=$1 AND state='Running' AND NOT cancel_requested").bind(job.requirement_id).execute(&mut **tx).await?;

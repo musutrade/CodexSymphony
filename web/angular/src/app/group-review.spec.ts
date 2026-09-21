@@ -6,7 +6,13 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from './app.routes';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { GroupReview } from './group-review';
-import { GroupView, initialReview, editableReview, totalBudget } from './group-review-model';
+import {
+  GroupView,
+  initialReview,
+  editableReview,
+  totalBudget,
+  repairLimits,
+} from './group-review-model';
 import { draftExample } from './drafts-example';
 const fixtureView: GroupView = {
   draft_id: 'draft-group',
@@ -43,6 +49,20 @@ const fixtureView: GroupView = {
   business_complete: false,
 };
 describe('Atomic group review UI', () => {
+  it('shows three repairs for new bounded authorization and preserves frozen legacy limits', () => {
+    const current = structuredClone(fixtureView);
+    current.repositories[0].repository.policy.gate_recovery_policy = 'bounded_v1';
+    expect(repairLimits(current).every((item) => item.limit === 3)).toBe(true);
+    const snapshot = {
+      review_version: 0,
+      repositories: fixtureView.repositories,
+      document: fixtureView.document,
+    };
+    current.authorizations = [{ snapshot }] as GroupView['authorizations'];
+    expect(repairLimits(current).every((item) => item.limit === 1)).toBe(true);
+    current.version = 2;
+    expect(repairLimits(current).every((item) => item.limit === 1)).toBe(true);
+  });
   function setup() {
     TestBed.configureTestingModule({
       imports: [GroupReview],

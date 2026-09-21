@@ -61,6 +61,7 @@ export class Requirements {
     token_limit: [100000, Validators.min(1)],
     turn_limit: [20, Validators.min(1)],
     model_work_seconds: [3600, Validators.min(1)],
+    gate_recovery_policy: ['bounded_v1', Validators.required],
   });
   constructor() {
     void this.reload();
@@ -157,7 +158,7 @@ export class Requirements {
               token_limit: value.token_limit,
               turn_limit: value.turn_limit,
               model_work_seconds: value.model_work_seconds,
-              gate_recovery_policy: 'one_code_repair',
+              gate_recovery_policy: value.gate_recovery_policy,
             },
           },
         };

@@ -47,6 +47,8 @@ fn lost() -> Error {
     Error {
         code: "github_transient_or_unknown",
         status: None,
+
+        retry_after_seconds: None,
     }
 }
 impl Remote for Fake {
@@ -753,3 +755,123 @@ async fn operator_retry_preserves_attempts_and_resumes_after_push() {
 
 #[path = "support/auth.rs"]
 mod auth_client;
+
+async fn repair_delivery(pool: &PgPool) {
+    sqlx::raw_sql("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,quiescent) VALUES('repair',1,1,'boot','repair','/tmp','repair','{}','Succeeded',true); INSERT INTO workspace_snapshot(run_id,manifest,candidate) VALUES('repair','{\"head\":\"repaired\",\"workspace\":{\"branch\":\"repair-worktree\",\"baseline\":\"candidate\"}}',true); INSERT INTO repair_reservation(requirement_id,ordinal,source_validation_id,failure,status,repair_run_id,event_key) VALUES(1,1,'validation','{}','succeeded','repair','ci-failure'); INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result) VALUES('repaired-validation',1,1,'repair','repaired','tree','{}','[]','tree','tree','entry','entry','handoff','succeeded'); UPDATE requirement SET state='Running';")
+        .execute(pool).await.unwrap();
+    let mut tx = pool.begin().await.unwrap();
+    store::enqueue(&mut tx, "repaired-validation")
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+}
+
+#[tokio::test]
+async fn repair_updates_original_pr_and_reconciles_lost_push_without_overwriting_external_head() {
+    let _guard = DATABASE_TEST.lock().await;
+    for external in [false, true] {
+        let pool = database().await;
+        let original = job(&pool).await;
+        let mut remote = Fake {
+            pr: Some(pr(&original.identity())),
+            ..Default::default()
+        };
+        tick(&pool, &mut remote, 10).await;
+        repair_delivery(&pool).await;
+        let repair = job(&pool).await;
+        assert_eq!(repair.branch, original.branch);
+        assert_eq!(
+            repair.original_action_key,
+            Some(original.action_key.clone())
+        );
+        assert_eq!(repair.expected_head.as_deref(), Some("candidate"));
+        if external {
+            remote.pr.as_mut().unwrap()["head"]["sha"] = json!("external");
+        }
+        remote.lost = true;
+        tick(&pool, &mut remote, 20).await;
+        assert_eq!(
+            remote.calls.iter().filter(|call| **call == "push").count(),
+            usize::from(!external)
+        );
+        if !external {
+            // Remote applied the update but the response was lost; the next
+            // read proves the candidate without issuing another write.
+            remote.pr.as_mut().unwrap()["head"]["sha"] = json!("repaired");
+            tick(&pool, &mut remote, 60).await;
+            assert_eq!(
+                remote.calls.iter().filter(|call| **call == "push").count(),
+                1
+            );
+            let superseded: Option<String> =
+                sqlx::query_scalar("SELECT superseded_by FROM delivery WHERE action_key=$1")
+                    .bind(&original.action_key)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(superseded, Some(repair.action_key));
+            assert_eq!(state(&pool).await.0, "Submitted");
+        }
+        assert_eq!(
+            remote
+                .calls
+                .iter()
+                .filter(|call| **call == "create")
+                .count(),
+            0
+        );
+        pool.close().await;
+    }
+}
+
+#[tokio::test]
+async fn cancellation_with_unsent_repair_closes_only_the_published_candidate() {
+    let _guard = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    let original = job(&pool).await;
+    let mut remote = Fake {
+        pr: Some(pr(&original.identity())),
+        ..Default::default()
+    };
+    tick(&pool, &mut remote, 10).await;
+    repair_delivery(&pool).await;
+    control::cancel(&pool, 1).await.unwrap();
+    control::settle(&pool).await.unwrap();
+    tick(&pool, &mut remote, 20).await;
+    tick(&pool, &mut remote, 60).await;
+    assert!(state(&pool).await.2);
+    assert_eq!(state(&pool).await.1, None);
+    assert_eq!(
+        remote.calls.iter().filter(|call| **call == "push").count(),
+        0
+    );
+    assert_eq!(
+        remote.calls.iter().filter(|call| **call == "close").count(),
+        1
+    );
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn delivery_backoff_preserves_server_retry_after() {
+    let _guard = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    let job = job(&pool).await;
+    let mut error = lost();
+    error.status = Some(429);
+    error.retry_after_seconds = Some(900);
+    store::failed(&pool, &job, 100, &error).await.unwrap();
+    assert!(store::due(&pool, 999).await.unwrap().is_empty());
+    assert_eq!(store::due(&pool, 1000).await.unwrap().len(), 1);
+    error.retry_after_seconds = Some(u64::MAX);
+    store::failed(&pool, &job, 100, &error).await.unwrap();
+    let next: i64 = sqlx::query_scalar(
+        "SELECT next_attempt_at FROM delivery_action WHERE action_key=$1 AND kind='publish'",
+    )
+    .bind(&job.action_key)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(next, i64::MAX);
+    pool.close().await;
+}

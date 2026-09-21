@@ -15,6 +15,7 @@ import {
   initialReview,
   totalBudget,
   zeroBudget,
+  repairLimits,
 } from './group-review-model';
 @Component({
   selector: 'app-group-review',
@@ -41,6 +42,11 @@ export class GroupReview {
     }),
   );
   readonly fields = form(this.model);
+  readonly repairs = computed(() => {
+    const view = this.view();
+    return view ? repairLimits(view) : [];
+  });
+  readonly totalRepairs = computed(() => this.repairs().reduce((sum, item) => sum + item.limit, 0));
   readonly total = computed(() =>
     this.model().automatic_budget ? totalBudget(this.model().items) : this.model().group_budget,
   );

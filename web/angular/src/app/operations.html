@@ -191,6 +191,14 @@
       <p>暂无 Run。</p>
     }
     <h3>独立验证事实</h3>
+    @for (recovery of item.recoveries ?? []; track recovery.event_key) {
+      <section class="panel" aria-label="恢复与修复记录">
+        <h3>{{ recovery.phase }} · {{ recovery.decision }}</h3>
+        <p>{{ recovery.reason }}</p>
+        <p>候选：{{ recovery.candidate_sha }}；基础设施重试：{{ recovery.attempts }} 次。</p>
+        <p>原始日志：{{ recovery.log_ref }}</p>
+      </section>
+    }
     @for (validation of item.validations; track validation.id) {
       <p>
         {{ validation.candidate_sha }} · {{ validation.result }} · {{ validation.stage }} ·
