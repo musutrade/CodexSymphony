@@ -1,5 +1,8 @@
 # GitHub App 预检与外部观察（GH-16）
 
+显式 V1 扩展见 [GH-84 交付契约](github-delivery-contract.md)。以下保留旧策略行为；
+没有 `policy.delivery` 的配置不会自动升级授权。
+
 GH-24 集成支持 Actions 源显式配置 `branch_from_pr: true`，将检查绑定到当前同仓 PR
 的 head ref；未配置或 false 仍使用原精确 `branch`。该选项须经受信配置版本审核，
 不自动迁移旧策略。仓库 ID、workflow ID/blob SHA、App、event、精确 head SHA 及

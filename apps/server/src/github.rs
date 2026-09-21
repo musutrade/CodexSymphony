@@ -36,6 +36,8 @@ pub struct Policy {
     /// Current 0a: head checks only. Test-merge cannot imply checkout identity.
     pub required: Vec<Selector>,
     pub wait_seconds: u64,
+    /// Explicit opt-in; absent contracts retain the reviewed M1/M2 scope.
+    pub delivery: Option<crate::github_contract::DeliveryContract>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Capability {
@@ -64,6 +66,7 @@ pub struct Check {
     pub selector: Selector,
     pub state: CheckState,
     pub evidence: Vec<Value>,
+    pub history: Option<Vec<Value>>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Observation {
@@ -81,6 +84,7 @@ pub struct Observation {
     pub closed: bool,
     pub checks: Vec<Check>,
     pub last_synced_at: i64,
+    pub phases: Option<Vec<crate::github_contract::PhaseEvidence>>,
 }
 
 pub fn merge_fact(pr: &Value) -> MergeFact {
@@ -154,6 +158,16 @@ pub fn resolve(
         selector: selector.clone(),
         state,
         evidence: candidates,
+        history: Some(match &selector.source {
+            Source::Status { creator_id } => statuses
+                .iter()
+                .filter(|v| v["context"] == selector.name && v["creator"]["id"] == *creator_id)
+                .cloned()
+                .collect(),
+            Source::CheckRun { app_id } | Source::Actions { app_id, .. } => {
+                check_candidates(selector, *app_id, checks)
+            }
+        }),
     }
 }
 fn status_candidates(selector: &Selector, creator: u64, values: &[Value]) -> Vec<Value> {
@@ -163,7 +177,11 @@ fn status_candidates(selector: &Selector, creator: u64, values: &[Value]) -> Vec
         .cloned()
         .collect();
     found.sort_by_key(status_id);
-    found.into_iter().rev().take(1).collect()
+    let latest = found.last().map(status_id);
+    found
+        .into_iter()
+        .filter(|value| Some(status_id(value)) == latest)
+        .collect()
 }
 fn status_id(value: &Value) -> u64 {
     value["id"].as_u64().unwrap_or(0)
@@ -197,10 +215,17 @@ fn action_candidates(
             v["workflow_id"] == *workflow_id && v["event"] == *event && v["head_branch"] == *branch
         })
         .collect();
+    let matching = current_attempts(matching);
     let current = matching.iter().copied().max_by_key(run_number);
     let Some(run) = current else {
         return Vec::new();
     };
+    if ["id", "run_attempt", "run_number", "check_suite_id"]
+        .iter()
+        .any(|key| run[key].as_u64().unwrap_or(0) == 0)
+    {
+        return Vec::from([Value::Null, Value::Null]);
+    }
     if matching
         .iter()
         .filter(|other| other["run_number"] == run["run_number"])
@@ -216,10 +241,29 @@ fn action_candidates(
         {
             let mut proof = check;
             proof["workflow_run"] = run.clone();
+            let mapped: Vec<_> = jobs
+                .iter()
+                .filter(|job| job_matches(job, &proof, run))
+                .collect();
+            if mapped.len() != 1 {
+                return Vec::from([Value::Null, Value::Null]);
+            }
+            proof["workflow_job"] = mapped[0].clone();
             found.push(proof);
         }
     }
     found
+}
+fn current_attempts(runs: Vec<&Value>) -> Vec<&Value> {
+    runs.iter()
+        .copied()
+        .filter(|run| {
+            !runs.iter().any(|other| {
+                other["id"] == run["id"]
+                    && other["run_attempt"].as_u64() > run["run_attempt"].as_u64()
+            })
+        })
+        .collect()
 }
 fn run_number(value: &&Value) -> u64 {
     value["run_number"].as_u64().unwrap_or(0)
@@ -256,5 +300,16 @@ fn conclusion(value: Option<&str>) -> CheckState {
         Some("success") => CheckState::Success,
         Some("pending" | "queued" | "in_progress") | None => CheckState::Pending,
         _ => CheckState::Failure,
+    }
+}
+
+impl Observation {
+    /// Consumers must supply current identities, not merely a successful check.
+    pub fn evidence_current(&self, policy: &Policy, head: &str, base: &str, now: i64) -> bool {
+        self.policy == *policy
+            && self.head == head
+            && self.base == base
+            && self.last_synced_at <= now
+            && self.last_synced_at > now.saturating_sub(60)
     }
 }

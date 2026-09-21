@@ -25,6 +25,8 @@ pub mod generation_runtime;
 pub mod generation_store;
 pub mod git_broker;
 pub mod github;
+pub mod github_contract;
+pub mod github_delivery;
 pub mod github_http;
 pub mod github_observe;
 pub mod github_service;

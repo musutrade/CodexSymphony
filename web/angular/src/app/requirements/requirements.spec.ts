@@ -74,6 +74,32 @@ describe('Requirement browser workflow', () => {
     fixture.detectChanges();
     return fixture;
   }
+  it('shows stale capability and precise configuration gaps without granting readiness', async () => {
+    const fixture = TestBed.createComponent(Requirements);
+    TestBed.tick();
+    http
+      .expectOne('/api/multi/repository')
+      .flush({
+        ...context,
+        repositories: [
+          {
+            version: 1,
+            repository,
+            delivery_ready: false,
+            capability_stale: true,
+            capability_blockers: ['delivery.post_merge: missing trigger'],
+          },
+        ],
+      });
+    http.expectOne('/api/multi/requirements').flush({ requirements: [] });
+    await vi.waitFor(() => expect(fixture.componentInstance.loading()).toBe(false));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('交付能力证据已过期');
+    expect(
+      fixture.nativeElement.querySelector('[aria-label="交付能力缺口"]').textContent,
+    ).toContain('delivery.post_merge: missing trigger');
+    expect(fixture.nativeElement.textContent).not.toContain('GitHub 交付能力已检查');
+  });
   it('loads, validates, registers and reports a failed request without losing input', async () => {
     const fixture = await start();
     const c = fixture.componentInstance;

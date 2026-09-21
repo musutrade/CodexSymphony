@@ -33,6 +33,7 @@ struct Token {
     value: String,
     expires: i64,
     permissions: Value,
+    policy: Option<Policy>,
 }
 pub struct AppClient {
     client: Client,
@@ -131,7 +132,42 @@ impl AppClient {
         }
         response.json().await.map_err(transport)
     }
+    /// Verify a bounded real log read. Signed URLs and log contents are never
+    /// persisted, and App credentials are never forwarded to download storage.
+    pub async fn logs_readable(&mut self, policy: &Policy, job: u64, now: i64) -> Result<Value> {
+        self.ensure_token(policy, now).await?;
+        let path = format!("/repos/{}/actions/jobs/{job}/logs", policy.repository);
+        let url = self.api.join(&path).or(Err(invalid()))?;
+        let response = self
+            .client
+            .get(url)
+            .bearer_auth(&self.tokens[&policy.repository_id].value)
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "CodexSymphony-control-plane")
+            .send()
+            .await
+            .map_err(transport)?;
+        if response.status().as_u16() != 302 || !response.headers().contains_key("location") {
+            return Err(Error {
+                code: "github_logs_unavailable",
+                status: Some(response.status().as_u16()),
+            });
+        }
+        let location = response.headers()["location"].to_str().or(Err(invalid()))?;
+        self.download_log(location, job).await
+    }
+    async fn download_log(&self, location: &str, job: u64) -> Result<Value> {
+        let url = Url::parse(location).or(Err(invalid()))?;
+        if !log_origin(&self.api, &url) {
+            return Err(invalid());
+        }
+        let response = self.client.get(url).send().await.map_err(transport)?;
+        log_digest(response, job).await
+    }
     pub async fn permissions(&mut self, policy: &Policy, now: i64) -> Result<Value> {
+        if policy.delivery.is_some() {
+            self.tokens.remove(&policy.repository_id);
+        }
         self.ensure_token(policy, now).await?;
         Ok(self.tokens[&policy.repository_id].permissions.clone())
     }
@@ -139,7 +175,7 @@ impl AppClient {
         if self
             .tokens
             .get(&policy.repository_id)
-            .is_some_and(|token| token.expires > now + 60)
+            .is_some_and(|token| token.expires > now + 60 && token.policy.as_ref() == Some(policy))
         {
             return Ok(());
         }
@@ -162,9 +198,10 @@ impl AppClient {
         }
         let id = installation["id"].as_u64().ok_or_else(invalid)?;
         let grant = self.request(Method::POST, &format!("/app/installations/{id}/access_tokens"), &jwt,
-            Some(json!({"repository_ids":[policy.repository_id],"permissions":{"contents":"write","pull_requests":"write","checks":"read","actions":"read"}}))).await?;
-        self.tokens
-            .insert(policy.repository_id, decode_token(&grant, now)?);
+            Some(json!({"repository_ids":[policy.repository_id],"permissions":crate::github_contract::permissions(policy)}))).await?;
+        let mut token = decode_token(&grant, now)?;
+        token.policy = Some(policy.clone());
+        self.tokens.insert(policy.repository_id, token);
         Ok(())
     }
     pub async fn get(&mut self, policy: &Policy, path: &str, now: i64) -> Result<Value> {
@@ -264,6 +301,7 @@ fn decode_token(grant: &Value, now: i64) -> Result<Token> {
         value,
         expires: expires.min(now + 300),
         permissions: grant["permissions"].clone(),
+        policy: None,
     })
 }
 
@@ -358,4 +396,42 @@ pub async fn push_git(mut command: tokio::process::Command, head: &str) -> Resul
         });
     }
     Ok(json!({"push":"accepted","head":head}))
+}
+
+fn log_origin(api: &Url, url: &Url) -> bool {
+    if !url.username().is_empty() || url.password().is_some() {
+        return false;
+    }
+    if api.host_str() == Some("127.0.0.1") && api.origin() == url.origin() {
+        return true;
+    }
+    url.scheme() == "https"
+        && url.host_str().is_some_and(|host| {
+            [
+                ".blob.core.windows.net",
+                ".githubusercontent.com",
+                ".amazonaws.com",
+            ]
+            .iter()
+            .any(|suffix| host.ends_with(suffix))
+        })
+}
+async fn log_digest(mut response: reqwest::Response, job: u64) -> Result<Value> {
+    use sha2::{Digest, Sha256};
+    if !response.status().is_success() {
+        return Err(invalid());
+    }
+    let mut digest = Sha256::new();
+    let mut bytes = 0usize;
+    while let Some(chunk) = response.chunk().await.map_err(transport)? {
+        bytes = bytes.saturating_add(chunk.len());
+        if bytes > 8 * 1024 * 1024 {
+            return Err(invalid());
+        }
+        digest.update(&chunk);
+    }
+    if bytes == 0 {
+        return Err(invalid());
+    }
+    Ok(json!({"job_id":job,"bytes":bytes,"sha256":format!("{:x}",digest.finalize())}))
 }

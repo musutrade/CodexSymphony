@@ -26,6 +26,11 @@ fn strip(value: &mut Value) {
         Value::Object(object) => {
             object.remove("repository_id");
             object.remove("delivery_ready");
+            object.remove("capability_blockers");
+            object.remove("capability_checked_at");
+            object.remove("capability_stale");
+            object.remove("capability_error");
+            object.remove("capability_http_status");
             if object.contains_key("repository") && object.contains_key("version") {
                 object.remove("id");
             }

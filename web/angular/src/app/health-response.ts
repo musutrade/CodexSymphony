@@ -1,4 +1,4 @@
-// harness-contract-sha256: fa1405efdbf5e44240a3135fdf1720beffeb0b4dd2a33626a414ba388bdfe448
+// harness-contract-sha256: 17adc84e156de5756ffa2e68e314e2ed573a9ce5df67efcfbca58bd8088bcc79
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -73,13 +73,7 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: {
-    id: number;
-    revision: number;
-    state: string;
-    title: string;
-    version: number;
-  }[];
+  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -433,9 +427,13 @@ export interface ExecutionStatusResponse {
   requirement_id: number | null;
 }
 export type PauseExecutionResponse = { paused: true } | { error: string };
-export interface PauseExecutionRequest { pause: true }
+export interface PauseExecutionRequest {
+  pause: true;
+}
 export type PauseRequirementResponse = { paused: true } | { error: string };
-export interface PauseRequirementRequest { pause: true }
+export interface PauseRequirementRequest {
+  pause: true;
+}
 export type GetOperationsResponse =
   | {
       events: { created_at: string; kind: string; version: number }[];
@@ -563,7 +561,9 @@ export interface ControlOperationsRequest {
   version: number;
 }
 export type GetEvidenceResponse = { preview_only: boolean; text: string } | { error: string };
-export interface GetInboxResponse { requirement_ids: number[] }
+export interface GetInboxResponse {
+  requirement_ids: number[];
+}
 export type AnswerOperatorQuestionResponse = { saved: boolean } | { error: string };
 export interface AnswerOperatorQuestionRequest {
   answers: { id: string; text: string }[];
@@ -573,6 +573,11 @@ export interface MultiGetRepositoryResponse {
   deployment_network: string[];
   network_status: string;
   repositories: {
+    capability_blockers?: string[];
+    capability_checked_at?: number | null;
+    capability_error?: string | null;
+    capability_http_status?: number | null;
+    capability_stale?: boolean;
     delivery_ready?: boolean;
     id?: number;
     repository: {
@@ -1804,9 +1809,12 @@ export type AuthorizeGroupResponse =
       state: string;
     }
   | { error: string };
-export interface AuthorizeGroupRequest { draft_revision: number; request_id: string; version: number }
-export type EditGroupQueueResponse =
-  { affected: string[]; version: number } | { error: string };
+export interface AuthorizeGroupRequest {
+  draft_revision: number;
+  request_id: string;
+  version: number;
+}
+export type EditGroupQueueResponse = { affected: string[]; version: number } | { error: string };
 export interface EditGroupQueueRequest {
   change: {
     document?: {
@@ -1867,9 +1875,15 @@ export interface EditGroupQueueRequest {
   request_id: string;
   version: number;
 }
-export interface AuthCsrfResponse { csrf_token: string; username: string | null }
+export interface AuthCsrfResponse {
+  csrf_token: string;
+  username: string | null;
+}
 export type AuthLoginResponse =
   { csrf_token: string; username: string | null } | { message: string } | undefined;
-export interface AuthLoginRequest { password: string; username: string }
+export interface AuthLoginRequest {
+  password: string;
+  username: string;
+}
 export type AuthSessionResponse = { csrf_token: string; username: string | null } | undefined;
 export type AuthLogoutResponse = undefined;
