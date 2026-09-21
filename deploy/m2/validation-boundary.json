@@ -13,7 +13,9 @@
   "private_paths": [
     "/etc/codexsymphony-control",
     "/etc/codexsymphony-github",
-    "/etc/codexsymphony-verifier"
+    "/etc/codexsymphony-verifier",
+    "/etc/codexsymphony-notifier",
+    "/var/lib/codexsymphony-notifier"
   ],
   "environment": {"PATH": "/opt/codexsymphony-tools:/usr/bin:/bin"}
 }
