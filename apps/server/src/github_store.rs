@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use sqlx::{PgPool, Postgres, Transaction};
 
 pub async fn configure(pool: &PgPool, policy: &Policy, probe_pr: u64) -> Result<bool, sqlx::Error> {
-    let changed = sqlx::query("INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr) SELECT $1,$2,$3,$4 FROM repository WHERE version=$2 AND (document->>'github_repository_id')::bigint=$1 AND document->>'remote'=$5 AND document->>'base_branch'=$6 AND NOT (document->>'revoked')::boolean ON CONFLICT(repository_id) DO UPDATE SET repository_version=$2,policy=$3,probe_pr=$4,stale=true,next_attempt_at=0 WHERE github_repository.policy IS DISTINCT FROM $3 OR github_repository.probe_pr<>$4")
+    let changed = sqlx::query("INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr) SELECT $1,$2,$3,$4 FROM repository WHERE version=$2 AND (document->>'github_repository_id')::bigint=$1 AND document->>'remote'=$5 AND document->>'base_branch'=$6 AND NOT (document->>'revoked')::boolean ON CONFLICT(repository_id) DO UPDATE SET repository_version=$2,policy=$3,probe_pr=$4,stale=true,next_attempt_at=0 WHERE (github_repository.policy IS DISTINCT FROM $3 OR github_repository.probe_pr<>$4) AND (NOT (COALESCE(github_repository.policy->'delivery','null'::jsonb)<>'null'::jsonb OR COALESCE($3->'delivery','null'::jsonb)<>'null'::jsonb) OR github_repository.repository_version<$2 OR github_repository.policy=$3)")
         .bind(policy.repository_id as i64).bind(policy.version).bind(sqlx::types::Json(policy)).bind(probe_pr as i64)
         .bind(&policy.repository).bind(&policy.default_branch).execute(pool).await?;
     Ok(changed.rows_affected() == 1)
@@ -27,19 +27,34 @@ pub async fn claim_ready(
     requirement: i64,
     revision: i64,
 ) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement_revision v JOIN repository r ON r.id=COALESCE((v.document->>'repository_id')::bigint,1) JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint WHERE v.requirement_id=$1 AND v.revision=$2 AND g.repository_version=r.version AND (v.document->>'repository_version')::bigint=r.version AND NOT g.stale AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy)")
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement_revision v JOIN repository r ON r.id=COALESCE((v.document->>'repository_id')::bigint,1) JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint WHERE v.requirement_id=$1 AND v.revision=$2 AND g.repository_version=r.version AND (v.document->>'repository_version')::bigint=r.version AND NOT g.stale AND (NOT (g.policy->'delivery' IS NOT NULL AND g.policy->'delivery'<>'null'::jsonb) OR g.checked_at<=extract(epoch FROM now())::bigint) AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy)")
         .bind(requirement).bind(revision).fetch_one(&mut **tx).await
 }
 pub async fn save_capability(pool: &PgPool, capability: &Capability) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE github_repository SET capability=$2,checked_at=$3,stale=false,failures=0,error=NULL,next_attempt_at=$3+30 WHERE repository_id=$1 AND policy=$4")
+    let mut tx = pool.begin().await?;
+    sqlx::query("INSERT INTO github_evidence_history(repository_id,observed_at,policy,evidence) VALUES($1,$2,$3,$4)")
+        .bind(capability.policy.repository_id as i64).bind(capability.checked_at)
+        .bind(sqlx::types::Json(&capability.policy)).bind(sqlx::types::Json(capability)).execute(&mut *tx).await?;
+    sqlx::query("UPDATE github_repository SET stale=true WHERE repository_id=$1 AND checked_at=$3 AND capability IS DISTINCT FROM $2 AND policy=$4")
         .bind(capability.policy.repository_id as i64).bind(sqlx::types::Json(capability)).bind(capability.checked_at)
-        .bind(sqlx::types::Json(&capability.policy)).execute(pool).await?;
-    Ok(())
+        .bind(sqlx::types::Json(&capability.policy)).execute(&mut *tx).await?;
+    sqlx::query("UPDATE github_repository SET capability=$2,checked_at=$3,stale=false,failures=0,error=NULL,next_attempt_at=$3+30 WHERE repository_id=$1 AND policy=$4 AND (checked_at IS NULL OR checked_at<$3)")
+        .bind(capability.policy.repository_id as i64).bind(sqlx::types::Json(capability)).bind(capability.checked_at)
+        .bind(sqlx::types::Json(&capability.policy)).execute(&mut *tx).await?;
+    tx.commit().await
 }
 pub async fn save_observation(pool: &PgPool, observation: &Observation) -> Result<(), sqlx::Error> {
-    sqlx::query("UPDATE github_pr SET observation=$3,last_synced_at=$4,stale=false,failures=0,error=NULL,next_attempt_at=$4+30 WHERE repository_id=$1 AND number=$2 AND EXISTS(SELECT 1 FROM github_repository g WHERE g.repository_id=$1 AND g.policy=$5)")
-        .bind(observation.repository_id as i64).bind(observation.number as i64).bind(sqlx::types::Json(observation)).bind(observation.last_synced_at).bind(sqlx::types::Json(&observation.policy)).execute(pool).await?;
-    Ok(())
+    let mut tx = pool.begin().await?;
+    sqlx::query("INSERT INTO github_evidence_history(repository_id,pr_number,observed_at,policy,evidence) VALUES($1,$2,$3,$4,$5)")
+        .bind(observation.repository_id as i64).bind(observation.number as i64).bind(observation.last_synced_at)
+        .bind(sqlx::types::Json(&observation.policy)).bind(sqlx::types::Json(observation)).execute(&mut *tx).await?;
+    sqlx::query("UPDATE github_pr SET stale=true WHERE repository_id=$1 AND number=$2 AND last_synced_at=$4 AND observation IS DISTINCT FROM $3 AND EXISTS(SELECT 1 FROM github_repository g WHERE g.repository_id=$1 AND g.policy=$5)")
+        .bind(observation.repository_id as i64).bind(observation.number as i64).bind(sqlx::types::Json(observation))
+        .bind(observation.last_synced_at).bind(sqlx::types::Json(&observation.policy)).execute(&mut *tx).await?;
+    sqlx::query("UPDATE github_pr SET observation=$3,last_synced_at=$4,stale=false,failures=0,error=NULL,next_attempt_at=$4+30 WHERE repository_id=$1 AND number=$2 AND (last_synced_at IS NULL OR last_synced_at<$4) AND EXISTS(SELECT 1 FROM github_repository g WHERE g.repository_id=$1 AND g.policy=$5)")
+        .bind(observation.repository_id as i64).bind(observation.number as i64).bind(sqlx::types::Json(observation))
+        .bind(observation.last_synced_at).bind(sqlx::types::Json(&observation.policy)).execute(&mut *tx).await?;
+    tx.commit().await
 }
 pub async fn failed(
     pool: &PgPool,
@@ -53,12 +68,12 @@ pub async fn failed(
     let evidence = json!({"code":error.code,"phase":"github_observation","http_status":error.status,"attempts":failures+1,"next_attempt_at":next});
     match number {
         Some(number) => {
-            sqlx::query("UPDATE github_pr SET stale=true,failures=failures+1,next_attempt_at=$3,error=$4 WHERE repository_id=$1 AND number=$2")
-            .bind(repo as i64).bind(number as i64).bind(next).bind(evidence).execute(pool).await?;
+            sqlx::query("UPDATE github_pr SET stale=true,failures=failures+1,next_attempt_at=$3,error=$4 WHERE repository_id=$1 AND number=$2 AND (last_synced_at IS NULL OR last_synced_at<=$5)")
+            .bind(repo as i64).bind(number as i64).bind(next).bind(evidence).bind(now).execute(pool).await?;
         }
         None => {
-            sqlx::query("UPDATE github_repository SET stale=true,failures=failures+1,next_attempt_at=$2,error=$3 WHERE repository_id=$1")
-            .bind(repo as i64).bind(next).bind(evidence).execute(pool).await?;
+            sqlx::query("UPDATE github_repository SET stale=true,failures=failures+1,next_attempt_at=$2,error=$3 WHERE repository_id=$1 AND (checked_at IS NULL OR checked_at<=$4)")
+            .bind(repo as i64).bind(next).bind(evidence).bind(now).execute(pool).await?;
         }
     }
     Ok(())

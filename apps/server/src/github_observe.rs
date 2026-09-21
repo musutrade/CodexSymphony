@@ -13,17 +13,37 @@ pub async fn observe(
 ) -> Result<Observation> {
     let path = format!("/repos/{}/pulls/{number}", policy.repository);
     let pr = client.get(policy, &path, now).await?;
-    if pr["base"]["repo"]["id"] != policy.repository_id || pr["number"] != number {
-        return Err(invalid());
-    }
+    validate_pr(&pr, policy, number)?;
     let head = required_text(&pr["head"]["sha"])?;
-    let base = required_text(&pr["base"]["sha"])?;
-    let checks = collect_checks(client, policy, &head, &pr, now).await?;
+    let phases = crate::github_delivery::phases(client, policy, &pr, now).await?;
+    let checks = selected_checks(client, policy, &head, &pr, now, &phases).await?;
     let final_pr = client.get(policy, &path, now).await?;
     if pr != final_pr {
         return Err(invalid());
     }
-    parse_observation(policy, number, now, &pr, head, base, checks)
+    parse_observation(policy, number, now, &pr, head, checks, phases)
+}
+fn validate_pr(pr: &Value, policy: &Policy, number: u64) -> Result<()> {
+    if pr["base"]["repo"]["id"] != policy.repository_id
+        || pr["number"] != number
+        || pr["base"]["ref"] != policy.default_branch
+    {
+        return Err(invalid());
+    }
+    Ok(())
+}
+async fn selected_checks(
+    client: &mut AppClient,
+    policy: &Policy,
+    head: &str,
+    pr: &Value,
+    now: i64,
+    phases: &[crate::github_contract::PhaseEvidence],
+) -> Result<Vec<github::Check>> {
+    if let Some(phase) = phases.first() {
+        return Ok(phase.checks.clone());
+    }
+    collect_checks(client, policy, head, pr, now).await
 }
 fn parse_observation(
     policy: &Policy,
@@ -31,25 +51,34 @@ fn parse_observation(
     now: i64,
     pr: &Value,
     head: String,
-    base: String,
     checks: Vec<github::Check>,
+    phases: Vec<crate::github_contract::PhaseEvidence>,
 ) -> Result<Observation> {
     let merge = github::merge_fact(pr);
+    let associated_sha = pr["merge_commit_sha"]
+        .as_str()
+        .filter(nonempty)
+        .map(str::to_owned);
     let merged_sha = if merge == MergeFact::Merged {
-        pr["merge_commit_sha"].as_str().map(str::to_owned)
+        associated_sha.clone()
     } else {
         None
     };
     Ok(Observation {
         policy: policy.clone(),
+        phases: policy.delivery.as_ref().and(Some(phases)),
         actual_checkout_sha: None,
         repository_id: policy.repository_id,
         number,
         head,
-        base,
+        base: required_text(&pr["base"]["sha"])?,
         head_ref: required_text(&pr["head"]["ref"])?,
         base_ref: required_text(&pr["base"]["ref"])?,
-        test_merge_sha: pr["merge_commit_sha"].as_str().map(str::to_owned),
+        test_merge_sha: if merge == MergeFact::Merged {
+            None
+        } else {
+            associated_sha
+        },
         merged_sha,
         merge,
         closed: pr["state"] == "closed",
@@ -67,7 +96,7 @@ fn required_text(value: &Value) -> Result<String> {
         .map(str::to_owned)
         .ok_or_else(invalid)
 }
-async fn collect_checks(
+pub(crate) async fn collect_checks(
     client: &mut AppClient,
     policy: &Policy,
     head: &str,
@@ -178,6 +207,9 @@ pub async fn preflight(
     probe_pr: u64,
     now: i64,
 ) -> Result<Capability> {
+    if policy.delivery.is_some() {
+        return crate::github_delivery::preflight(client, policy, probe_pr, now).await;
+    }
     let repo = repository(client, policy, now).await?;
     let permissions = client.permissions(policy, now).await?;
     let mut blockers = permission_blockers(&permissions);
@@ -212,7 +244,7 @@ fn permission_blockers(permissions: &Value) -> Vec<String> {
     }
     blockers
 }
-fn segment(value: &str) -> String {
+pub(crate) fn segment(value: &str) -> String {
     value.bytes().map(|byte| format!("%{byte:02X}")).collect()
 }
 async fn workflow_configuration(
@@ -271,7 +303,7 @@ async fn workflow_configuration(
     }
     Ok(configuration)
 }
-fn check_rules(policy: &Policy, rules: &[Value], blockers: &mut Vec<String>) {
+pub(crate) fn check_rules(policy: &Policy, rules: &[Value], blockers: &mut Vec<String>) {
     for rule in rules {
         if rule["type"] != "required_status_checks" {
             continue;
@@ -307,7 +339,7 @@ fn rule_matches(selector: &github::Selector, check: &Value) -> bool {
     }
 }
 
-fn branch_rule(branch: &Value) -> Value {
+pub(crate) fn branch_rule(branch: &Value) -> Value {
     let required = &branch["protection"]["required_status_checks"];
     let checks = match required["checks"].as_array() {
         Some(checks) => checks.clone(),
@@ -375,7 +407,7 @@ fn source_blockers(observation: &Observation, blockers: &mut Vec<String>) {
     }
 }
 
-async fn repository(client: &mut AppClient, policy: &Policy, now: i64) -> Result<Value> {
+pub(crate) async fn repository(client: &mut AppClient, policy: &Policy, now: i64) -> Result<Value> {
     if !github::validate_policy(policy) {
         return Err(invalid());
     }

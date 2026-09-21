@@ -50,6 +50,9 @@ async fn handler(
     let path = request.uri().path().to_owned();
     let query = request.uri().query().unwrap_or("").to_owned();
     let method = request.method().to_string();
+    if path == "/fixture-log" {
+        assert!(request.headers().get("authorization").is_none());
+    }
     let delay = data.lock().unwrap().delays.get(&path).copied();
     if let Some(delay) = delay {
         tokio::time::sleep(delay).await;
@@ -84,7 +87,7 @@ async fn handler(
         );
         assert_eq!(
             body["permissions"],
-            json!({"contents":"write","pull_requests":"write","checks":"read","actions":"read"})
+            data.routes.get("expected-permissions").cloned().unwrap_or_else(|| json!({"contents":"write","pull_requests":"write","checks":"read","actions":"read"}))
         );
         data.grants += 1;
         return Json(data.routes[&path].clone()).into_response();
@@ -207,6 +210,7 @@ impl Fixture {
 }
 fn policy() -> Policy {
     Policy {
+        delivery: None,
         repository_id: 99,
         repository: "owner/repo".into(),
         default_branch: "main".into(),
@@ -542,7 +546,8 @@ async fn persistent_polling_blocks_claims_without_starting_a_model() {
     let mut c = f.client();
     let p = action_policy();
     f.actions();
-    let now = github_service::now();
+    // The later +61 observation is current when testing actual admission.
+    let now = github_service::now() - 61;
     let launch = Launch {
         key: RunKey {
             run_id: "run".into(),
@@ -1399,3 +1404,6 @@ async fn private_actions_do_not_require_unselected_legacy_status_permission() {
 
 #[path = "support/server_auth.rs"]
 mod server_auth;
+
+#[path = "github_support/v1.rs"]
+mod v1;

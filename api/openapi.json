@@ -1760,6 +1760,27 @@
                           },
                           "delivery_ready": {
                             "type": "boolean"
+                          },
+                          "capability_blockers": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "capability_checked_at": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "capability_stale": {
+                            "type": "boolean"
+                          },
+                          "capability_error": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "capability_http_status": {
+                            "type": "integer",
+                            "nullable": true
                           }
                         }
                       }

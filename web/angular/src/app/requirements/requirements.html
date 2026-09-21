@@ -133,6 +133,25 @@
             : '未就绪：等待检查仓库权限、受信检查来源及触发配置。'
         }}
       </p>
+      @if (entry.capability_stale) {
+        <p>交付能力证据已过期或尚未核验，领取前需要重新检查。</p>
+      }
+      @if (entry.capability_error) {
+        <p>
+          最近核验失败：{{ entry.capability_error }}（HTTP
+          {{ entry.capability_http_status ?? '未知' }}）。请管理员检查对应访问能力后重试。
+        </p>
+      }
+      @if (entry.capability_blockers?.length) {
+        <div role="group" aria-label="交付能力缺口">
+          <p>请管理员按以下缺口修正仓库配置，再等待能力检查：</p>
+          <ul>
+            @for (blocker of entry.capability_blockers; track $index) {
+              <li>{{ blocker }}</li>
+            }
+          </ul>
+        </div>
+      }
       @if (entry.repository.revoked) {
         <p role="alert">仓库授权已撤销，后续动作被阻止。</p>
       }
