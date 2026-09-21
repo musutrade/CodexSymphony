@@ -29,7 +29,7 @@ pub fn router(pool: PgPool) -> Router {
 }
 
 async fn summary(State(pool): State<PgPool>) -> Result<Json<Value>, axum::http::StatusCode> {
-    let facts: Value = sqlx::query_scalar(
+    let result: Result<Value, sqlx::Error> = sqlx::query_scalar(
         "SELECT jsonb_build_object('requirements',(SELECT count(*) FROM requirement),
          'paused',(SELECT count(*) FROM requirement WHERE paused),
          'revoked_sessions',(SELECT count(*) FROM platform_session WHERE revoked),
@@ -37,8 +37,11 @@ async fn summary(State(pool): State<PgPool>) -> Result<Json<Value>, axum::http::
          'pending_questions',(SELECT count(*) FROM runtime_question WHERE answer IS NULL))",
     )
     .fetch_one(&pool)
-    .await
-    .map_err(|_| axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    .await;
+    let facts = match result {
+        Ok(facts) => facts,
+        Err(_) => return Err(axum::http::StatusCode::SERVICE_UNAVAILABLE),
+    };
     Ok(Json(
         json!({"status":"isolated_read_only", "external_actions":false, "facts":facts}),
     ))
