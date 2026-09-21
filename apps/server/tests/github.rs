@@ -25,7 +25,9 @@ use std::{
 #[derive(Default)]
 struct Data {
     routes: HashMap<String, Value>,
+    raw: HashMap<String, Vec<u8>>,
     errors: HashMap<String, Vec<u16>>,
+    retry_after: HashMap<String, String>,
     redirects: HashMap<String, (u16, String)>,
     seen: Vec<String>,
     grants: usize,
@@ -72,9 +74,11 @@ async fn handler(
     if let Some(errors) = data.errors.get_mut(&path)
         && !errors.is_empty()
     {
-        return StatusCode::from_u16(errors.remove(0))
-            .unwrap()
-            .into_response();
+        let status = StatusCode::from_u16(errors.remove(0)).unwrap();
+        if let Some(after) = data.retry_after.get(&path) {
+            return (status, [("retry-after", after.clone())]).into_response();
+        }
+        return status.into_response();
     }
     if method == "POST" && path == "/app/installations/7/access_tokens" {
         assert_eq!(path, "/app/installations/7/access_tokens");
@@ -91,6 +95,9 @@ async fn handler(
         );
         data.grants += 1;
         return Json(data.routes[&path].clone()).into_response();
+    }
+    if let Some(value) = data.raw.get(&path) {
+        return value.clone().into_response();
     }
     if let Some(value) = data.routes.get(&format!("{method} {path}")) {
         return Json(value.clone()).into_response();
@@ -922,6 +929,7 @@ async fn identities_rules_and_incomplete_payloads_fail_closed() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn configured_server_and_transport_failure() {
+    let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
     use sqlx::ConnectOptions;
     let pool = database().await;
     let f = Fixture::new().await;
@@ -1081,6 +1089,8 @@ async fn delivery_adapter_reconciles_exact_branch_and_rechecks_before_close() {
         head_sha: baseline.clone(),
         manifest: json!(manifest),
         pr_number: None,
+        original_action_key: None,
+        expected_head: None,
     };
     let mut client = fixture.client();
     let mut remote = Github {
@@ -1303,6 +1313,26 @@ async fn configured_delivery_service_and_real_fast_forward_git() {
         git_fixture(&destination, &["rev-parse", "refs/heads/check"]),
         next
     );
+    // A lease rejects even a possible fast-forward when the observed remote
+    // head changed after admission. This is real local Git, no GitHub writes.
+    let mut lease = tokio::process::Command::new("git");
+    lease
+        .arg("--git-dir")
+        .arg(root.join("workspaces/canonical.git"))
+        .args(["push", "--no-verify"])
+        .arg(format!("--force-with-lease=refs/heads/check:{baseline}"))
+        .arg("--")
+        .arg(&destination)
+        .arg(format!("{baseline}:refs/heads/check"));
+    assert!(
+        codexsymphony_server::github_http::push_git(lease, &baseline)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        git_fixture(&destination, &["rev-parse", "refs/heads/check"]),
+        next
+    );
     std::fs::remove_dir_all(root).unwrap();
 }
 fn git_fixture(root: &std::path::Path, args: &[&str]) -> String {
@@ -1336,6 +1366,18 @@ async fn app_push_reports_local_git_failures_without_remote_writes_or_token_disc
         codexsymphony_server::github_http::push_git(tokio::process::Command::new(missing), "abc")
             .await
             .unwrap_err();
+    assert_eq!(error.code, "github_identity_conflict");
+    let error = client
+        .push_conditional(
+            &policy(),
+            &fixture.root.join("missing.git"),
+            "abc",
+            "ai/test",
+            Some("external"),
+            100,
+        )
+        .await
+        .unwrap_err();
     assert_eq!(error.code, "github_identity_conflict");
     assert_eq!(fixture.data.lock().unwrap().grants, 1);
 }
@@ -1407,3 +1449,6 @@ mod server_auth;
 
 #[path = "github_support/v1.rs"]
 mod v1;
+
+#[path = "github_support/recovery.rs"]
+mod recovery_acceptance;

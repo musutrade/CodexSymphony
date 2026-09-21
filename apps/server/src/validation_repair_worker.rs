@@ -16,7 +16,7 @@ pub async fn tick(
     incarnation: &str,
     config: &Config,
 ) -> Result<()> {
-    let Some(job) = job(pool, broker, incarnation, &config.launcher()?).await? else {
+    let Some(job) = planned_job(pool, broker, incarnation, config).await? else {
         return Ok(());
     };
     if !crate::storage_service::admit_workspace(pool, &job.workspace).await? {
@@ -27,6 +27,15 @@ pub async fn tick(
         return Ok(());
     }
     prepare(pool, root, broker, config, &job).await
+}
+async fn planned_job(
+    pool: &PgPool,
+    broker: &GitBroker,
+    incarnation: &str,
+    config: &Config,
+) -> Result<Option<Job>> {
+    crate::recovery_worker::plan(pool, broker, incarnation, config).await?;
+    job(pool, broker, incarnation, &config.launcher()?).await
 }
 async fn prepare(
     pool: &PgPool,

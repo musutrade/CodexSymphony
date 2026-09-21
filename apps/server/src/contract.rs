@@ -106,8 +106,11 @@ fn validate_policy(policy: &Policy) -> Result<(), &'static str> {
         "positive budget limits required",
     )?;
     require(
-        policy.gate_recovery_policy == "one_code_repair",
-        "0a permits only one code repair",
+        matches!(
+            policy.gate_recovery_policy.as_str(),
+            "one_code_repair" | "bounded_v1"
+        ),
+        "unsupported recovery policy",
     )
 }
 pub fn validate_contract(contract: &Contract) -> Result<(), &'static str> {

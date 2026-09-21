@@ -9,6 +9,7 @@ use std::collections::HashMap;
 pub struct Error {
     pub code: &'static str,
     pub status: Option<u16>,
+    pub retry_after_seconds: Option<u64>,
 }
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -21,12 +22,14 @@ pub fn invalid() -> Error {
     Error {
         code: "github_identity_conflict",
         status: None,
+        retry_after_seconds: None,
     }
 }
 fn transport(_: reqwest::Error) -> Error {
     Error {
         code: "github_transient_or_unknown",
         status: None,
+        retry_after_seconds: None,
     }
 }
 struct Token {
@@ -69,6 +72,39 @@ impl AppClient {
         branch: &str,
         now: i64,
     ) -> Result<Value> {
+        self.push_conditional(policy, repository, head, branch, None, now)
+            .await
+    }
+    pub async fn push_conditional(
+        &mut self,
+        policy: &Policy,
+        repository: &std::path::Path,
+        head: &str,
+        branch: &str,
+        expected: Option<&str>,
+        now: i64,
+    ) -> Result<Value> {
+        if let Some(expected) = expected {
+            let status = tokio::process::Command::new("git")
+                .arg("--git-dir")
+                .arg(repository)
+                .args([
+                    "merge-base",
+                    "--is-ancestor",
+                    "--end-of-options",
+                    expected,
+                    head,
+                ])
+                .stdin(std::process::Stdio::null())
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .await
+                .or(Err(invalid()))?;
+            if !status.success() {
+                return Err(invalid());
+            }
+        }
         self.ensure_token(policy, now).await?;
         let command = push_command(
             policy,
@@ -76,6 +112,7 @@ impl AppClient {
             head,
             branch,
             &self.tokens[&policy.repository_id].value,
+            expected,
         );
         push_git(command, head).await
     }
@@ -126,15 +163,46 @@ impl AppClient {
         let status = response.status();
         if !status.is_success() {
             return Err(Error {
-                code: "github_transient_or_unknown",
+                code: response_code(status.as_u16()),
                 status: Some(status.as_u16()),
+                retry_after_seconds: response
+                    .headers()
+                    .get("retry-after")
+                    .and_then(|value| value.to_str().ok())
+                    .and_then(parse_retry_after),
             });
+        }
+        if status.as_u16() == 204 || status.as_u16() == 202 {
+            return Ok(Value::Null);
         }
         response.json().await.map_err(transport)
     }
     /// Verify a bounded real log read. Signed URLs and log contents are never
     /// persisted, and App credentials are never forwarded to download storage.
     pub async fn logs_readable(&mut self, policy: &Policy, job: u64, now: i64) -> Result<Value> {
+        let response = self.job_log_response(policy, job, now).await?;
+        log_digest(response, job).await
+    }
+    pub async fn job_log(&mut self, policy: &Policy, job: u64, now: i64) -> Result<String> {
+        let mut response = self.job_log_response(policy, job, now).await?;
+        if !response.status().is_success() {
+            return Err(invalid());
+        }
+        let mut bytes = Vec::new();
+        while let Some(chunk) = response.chunk().await.map_err(transport)? {
+            if bytes.len().saturating_add(chunk.len()) > 8 * 1024 * 1024 {
+                return Err(invalid());
+            }
+            bytes.extend_from_slice(&chunk);
+        }
+        String::from_utf8(bytes).map_err(|_| invalid())
+    }
+    async fn job_log_response(
+        &mut self,
+        policy: &Policy,
+        job: u64,
+        now: i64,
+    ) -> Result<reqwest::Response> {
         self.ensure_token(policy, now).await?;
         let path = format!("/repos/{}/actions/jobs/{job}/logs", policy.repository);
         let url = self.api.join(&path).or(Err(invalid()))?;
@@ -151,18 +219,18 @@ impl AppClient {
             return Err(Error {
                 code: "github_logs_unavailable",
                 status: Some(response.status().as_u16()),
+                retry_after_seconds: None,
             });
         }
         let location = response.headers()["location"].to_str().or(Err(invalid()))?;
-        self.download_log(location, job).await
+        self.download_log(location).await
     }
-    async fn download_log(&self, location: &str, job: u64) -> Result<Value> {
+    async fn download_log(&self, location: &str) -> Result<reqwest::Response> {
         let url = Url::parse(location).or(Err(invalid()))?;
         if !log_origin(&self.api, &url) {
             return Err(invalid());
         }
-        let response = self.client.get(url).send().await.map_err(transport)?;
-        log_digest(response, job).await
+        self.client.get(url).send().await.map_err(transport)
     }
     pub async fn permissions(&mut self, policy: &Policy, now: i64) -> Result<Value> {
         if policy.delivery.is_some() {
@@ -261,6 +329,8 @@ impl AppClient {
         Err(Error {
             code: "github_pagination_incomplete",
             status: None,
+
+            retry_after_seconds: None,
         })
     }
 }
@@ -312,6 +382,8 @@ fn page_values<'a>(response: &'a Value, field: Option<&str>) -> Result<&'a Vec<V
         return Err(Error {
             code: "github_pagination_incomplete",
             status: None,
+
+            retry_after_seconds: None,
         });
     }
     let values = match field {
@@ -327,6 +399,7 @@ fn push_command(
     head: &str,
     branch: &str,
     token: &str,
+    expected: Option<&str>,
 ) -> tokio::process::Command {
     let authorization = encode_basic(&format!("x-access-token:{token}"));
     let mut command = tokio::process::Command::new("git");
@@ -346,7 +419,12 @@ fn push_command(
         .env("GIT_CONFIG_VALUE_1", "")
         .arg("--git-dir")
         .arg(repository)
-        .args(["push", "--porcelain", "--no-verify", "--"])
+        .args(["push", "--porcelain", "--no-verify"]);
+    if let Some(expected) = expected {
+        command.arg(format!("--force-with-lease=refs/heads/{branch}:{expected}"));
+    }
+    command
+        .arg("--")
         .arg(format!("https://github.com/{}.git", policy.repository))
         .arg(format!("{head}:refs/heads/{branch}"))
         .stdin(std::process::Stdio::null())
@@ -387,12 +465,16 @@ pub async fn push_git(mut command: tokio::process::Command, head: &str) -> Resul
         .or(Err(Error {
             code: "github_transient_or_unknown",
             status: None,
+
+            retry_after_seconds: None,
         }))?
         .or(Err(invalid()))?;
     if !status.success() {
         return Err(Error {
             code: "github_transient_or_unknown",
             status: None,
+
+            retry_after_seconds: None,
         });
     }
     Ok(json!({"push":"accepted","head":head}))
@@ -434,4 +516,23 @@ async fn log_digest(mut response: reqwest::Response, job: u64) -> Result<Value> 
         return Err(invalid());
     }
     Ok(json!({"job_id":job,"bytes":bytes,"sha256":format!("{:x}",digest.finalize())}))
+}
+
+fn parse_retry_after(value: &str) -> Option<u64> {
+    if let Ok(seconds) = value.parse() {
+        return Some(seconds);
+    }
+    let deadline = chrono::DateTime::parse_from_rfc2822(value)
+        .ok()?
+        .timestamp();
+    Some(deadline.saturating_sub(crate::github_service::now()).max(0) as u64)
+}
+
+fn response_code(status: u16) -> &'static str {
+    match status {
+        429 => "rate_limited",
+        401 | 403 => "permission_denied",
+        500..=599 => "service_unavailable",
+        _ => "github_transient_or_unknown",
+    }
 }

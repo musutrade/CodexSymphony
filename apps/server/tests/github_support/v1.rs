@@ -43,12 +43,12 @@ fn policy_v1() -> Policy {
     p.delivery = Some(contract());
     p
 }
-fn grants(f: &Fixture, p: &Policy) {
+pub(super) fn grants(f: &Fixture, p: &Policy) {
     let expected = permissions(p);
     f.put("expected-permissions", expected.clone());
     f.grant(expected);
 }
-async fn fixture() -> (Fixture, Policy) {
+pub(super) async fn fixture() -> (Fixture, Policy) {
     let f = Fixture::new().await;
     let p = policy_v1();
     grants(&f, &p);

@@ -1,4 +1,4 @@
-// harness-contract-sha256: 17adc84e156de5756ffa2e68e314e2ed573a9ce5df67efcfbca58bd8088bcc79
+// harness-contract-sha256: dd0dc737ec369089972228d48c15664b6ffb79cc191113fe6b231945a5f2c455
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -73,7 +73,13 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
+  requirements: {
+    id: number;
+    revision: number;
+    state: string;
+    title: string;
+    version: number;
+  }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -481,6 +487,16 @@ export type GetOperationsResponse =
         revision: number;
         run_id: string;
         version: number;
+      }[];
+      recoveries?: {
+        attempts: number;
+        candidate_sha: string;
+        decision: string;
+        event_key: string;
+        log_ref: string;
+        next_attempt_at: number | null;
+        phase: string;
+        reason: string;
       }[];
       requirement: {
         cancel_requested: boolean;

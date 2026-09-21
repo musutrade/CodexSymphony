@@ -778,5 +778,178 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
     }
 }
 
+#[tokio::test]
+async fn infrastructure_retry_preserves_failed_candidate_and_never_reserves_code() {
+    use codexsymphony_server::{
+        execution::RunKey, git_broker::GitBroker, validation_worker, workspace::Workspace,
+    };
+    for (restored, prior_repair) in [(true, false), (false, false), (true, true)] {
+        let pool = database().await;
+        let (root, repo, mut plan) = runner_fixture::fixture();
+        let ready = root.join("service-ready");
+        std::fs::write(&plan.entry,"#!/bin/sh\nif test -f \"$1\"; then echo service-restored; exit 0; fi\necho 'connection refused: disposable database'; exit 1\n").unwrap();
+        plan.entry_sha256 = sha256(std::fs::read(&plan.entry).unwrap());
+        plan.steps[0].command.push(ready.to_string_lossy().into());
+        let bundle = root.join("source.bundle");
+        assert!(
+            std::process::Command::new("git")
+                .arg("-C")
+                .arg(&repo)
+                .args(["bundle", "create"])
+                .arg(&bundle)
+                .arg("--all")
+                .output()
+                .unwrap()
+                .status
+                .success()
+        );
+        let broker = GitBroker::initialize(&root.join("broker"), &bundle).unwrap();
+        let candidate = codexsymphony_server::validation_runner::candidate(&repo).unwrap();
+        let workspace = Workspace {
+            key: RunKey {
+                run_id: "run1".into(),
+                request_id: "req".into(),
+                incarnation: "boot".into(),
+            },
+            identity: "owned".into(),
+            requirement: 1,
+            revision: 1,
+            phase: "execution".into(),
+            baseline: candidate.sha,
+            branch: "ai/req-1-run1".into(),
+            path: broker.path("run1").unwrap().to_string_lossy().into(),
+        };
+        broker.prepare(&workspace, true).unwrap();
+        let manifest = broker.preserve(&workspace).unwrap();
+        sqlx::query("UPDATE workspace_snapshot SET manifest=$1 WHERE run_id='run1'")
+            .bind(json!(manifest))
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(1,1,'{\"revoked\":false}'); UPDATE requirement_revision SET document=document||'{\"repository_version\":1}'; UPDATE execution_control SET requirement_id=1,incarnation='boot',recovery_complete=true; UPDATE agent_run SET phase='validation' WHERE id='run1'; INSERT INTO repair_authorization VALUES(1,3,'bounded_v1');").execute(&pool).await.unwrap();
+        if prior_repair {
+            preceding_repair(&pool).await;
+        }
+        assert!(
+            validation_worker::tick(&pool, &root, &broker, &plan)
+                .await
+                .unwrap()
+        );
+        assert_eq!(
+            store::status(&pool, "validation-run1")
+                .await
+                .unwrap()
+                .unwrap()["result"],
+            "gate_failed"
+        );
+        if restored {
+            std::fs::write(&ready, "ready").unwrap();
+        }
+        sqlx::query("UPDATE recovery_retry SET next_attempt_at=0")
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(
+            validation_worker::tick(&pool, &root, &broker, &plan)
+                .await
+                .unwrap()
+        );
+        if restored {
+            // Lost completion after validation committed: reconciliation must
+            // reuse the persisted attempt and binding, never rerun the command.
+            sqlx::query("UPDATE recovery_retry SET state='unknown',next_attempt_at=0")
+                .execute(&pool)
+                .await
+                .unwrap();
+            assert!(
+                validation_worker::tick(&pool, &root, &broker, &plan)
+                    .await
+                    .unwrap()
+            );
+            let attempts: i32 = sqlx::query_scalar("SELECT attempts FROM recovery_retry")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            assert_eq!(attempts, 1);
+        } else {
+            let previous: Value = sqlx::query_scalar("SELECT remote FROM recovery_retry")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            sqlx::query("UPDATE recovery_retry SET state='unknown',next_attempt_at=0,remote='{\"validation\":\"missing-retry-receipt\"}'").execute(&pool).await.unwrap();
+            assert!(
+                codexsymphony_server::recovery_retry::local(&pool, &root, &broker, &plan)
+                    .await
+                    .unwrap()
+            );
+            let pending: (String, i32) =
+                sqlx::query_as("SELECT state,attempts FROM recovery_retry")
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert_eq!(pending, ("unknown".into(), 1));
+            sqlx::query("UPDATE recovery_retry SET state='pending',remote=$1")
+                .bind(previous)
+                .execute(&pool)
+                .await
+                .unwrap();
+            sqlx::query("UPDATE recovery_retry SET next_attempt_at=0")
+                .execute(&pool)
+                .await
+                .unwrap();
+            assert!(
+                validation_worker::tick(&pool, &root, &broker, &plan)
+                    .await
+                    .unwrap()
+            );
+        }
+        let state: String = sqlx::query_scalar("SELECT state FROM recovery_retry")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(state, if restored { "complete" } else { "blocked" });
+        assert_eq!(
+            store::status(&pool, "validation-run1")
+                .await
+                .unwrap()
+                .unwrap()["result"],
+            "gate_failed"
+        );
+        let repairs: i64 = sqlx::query_scalar("SELECT count(*) FROM repair_reservation")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(repairs, i64::from(prior_repair));
+        if prior_repair {
+            let status: String = sqlx::query_scalar("SELECT status FROM repair_reservation")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            let decision: String = sqlx::query_scalar(
+                "SELECT decision FROM recovery_failure WHERE event_key='preceding-code'",
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+            assert_eq!(status, "succeeded");
+            assert_eq!(decision, "repaired");
+        }
+        let original: String = sqlx::query_scalar(
+            "SELECT output FROM validation_step WHERE validation_id='validation-run1'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert!(original.contains("connection refused"));
+        pool.close().await;
+    }
+}
+
 #[path = "support/auth.rs"]
 mod auth_client;
+
+async fn preceding_repair(pool: &PgPool) {
+    // Seed the already authorized coding boundary; the successor validation and
+    // infrastructure fault/reconciliation execute through the real Git runner.
+    sqlx::raw_sql("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,quiescent) VALUES('preceding',1,1,'boot','preceding','/tmp','preceding','{}','Succeeded',true); INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result) VALUES('preceding-v',1,1,'preceding','preceding-sha','tree','{}','[]','tree','tree','entry','entry','validation','gate_failed'); INSERT INTO recovery_failure(event_key,requirement_id,source_validation_id,phase,facts,fingerprint,decision,reason) VALUES('preceding-code',1,'preceding-v','local','{\"candidate_sha\":\"preceding-sha\",\"raw\":\"error[E0308]: original compiler diagnostic\",\"log_ref\":\"preceding.log\"}','preceding-fingerprint','reserved','authorized original code failure'); INSERT INTO repair_reservation(requirement_id,ordinal,source_validation_id,failure,status,repair_run_id,event_key) VALUES(1,1,'preceding-v','{}','started','run1','preceding-code');").execute(pool).await.unwrap();
+}

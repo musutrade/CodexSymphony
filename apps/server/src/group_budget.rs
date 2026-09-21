@@ -19,14 +19,18 @@ fn overflow() -> sqlx::Error {
     sqlx::Error::Protocol("group accounting overflow".into())
 }
 pub(crate) async fn allowed(tx: &mut Tx<'_>, id: i64, reserve: Amount) -> Result<bool> {
+    capacity(tx, id, reserve, false).await
+}
+pub(crate) async fn prepaid_fits(tx: &mut Tx<'_>, id: i64) -> Result<bool> {
+    capacity(tx, id, Amount::default(), true).await
+}
+async fn capacity(tx: &mut Tx<'_>, id: i64, reserve: Amount, prepaid: bool) -> Result<bool> {
     let rows:Vec<(Value,Value,Value)>=sqlx::query_as("SELECT b.limits,b.used,b.reserved FROM group_budget b JOIN group_execution_item i ON i.draft_id=b.draft_id AND (b.item_id='' OR b.item_id=i.child_id) WHERE i.requirement_id=$1")
         .bind(id).fetch_all(&mut **tx).await?;
     for (limit, used, reserved) in rows {
         let limit: Amount = decode(limit)?;
-        let exposure = decode::<Amount>(used)?
-            .checked_add(decode(reserved)?)
-            .ok_or_else(overflow)?;
-        if exposure.reached(limit)
+        let exposure = exposure(used, reserved)?;
+        if (!prepaid && exposure.reached(limit))
             || !exposure
                 .checked_add(reserve)
                 .ok_or_else(overflow)?
@@ -36,6 +40,11 @@ pub(crate) async fn allowed(tx: &mut Tx<'_>, id: i64, reserve: Amount) -> Result
         }
     }
     Ok(true)
+}
+fn exposure(used: Value, reserved: Value) -> Result<Amount> {
+    decode::<Amount>(used)?
+        .checked_add(decode(reserved)?)
+        .ok_or_else(overflow)
 }
 pub(crate) async fn sync(tx: &mut Tx<'_>, id: i64) -> Result<()> {
     let item: Option<(String, String)> = sqlx::query_as(

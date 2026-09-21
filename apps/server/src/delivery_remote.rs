@@ -28,7 +28,7 @@ impl Github<'_> {
         let manifest: Manifest =
             serde_json::from_value(job.manifest.clone()).map_err(|_| invalid())?;
         if manifest.head != job.head_sha
-            || manifest.workspace.branch != job.branch
+            || (manifest.workspace.branch != job.branch && job.original_action_key.is_none())
             || manifest.workspace.requirement != job.requirement_id
             || manifest.workspace.revision != job.revision
         {
@@ -118,11 +118,12 @@ impl Remote for Github<'_> {
         self.bound(job)?;
         let repository = self.candidate(job)?;
         self.client
-            .push(
+            .push_conditional(
                 &self.policy,
                 &repository,
                 &job.head_sha,
                 &job.branch,
+                job.expected_head.as_deref(),
                 self.now,
             )
             .await
@@ -137,7 +138,7 @@ impl Remote for Github<'_> {
         // Re-read immediately before close. Merge races preserve GitHub's fact.
         let path = self.path(&format!("pulls/{number}"));
         let pr = self.client.get(&self.policy, &path, self.now).await?;
-        if crate::delivery::pr_fact(&job.identity(), &pr) != crate::delivery::PrFact::Open {
+        if job.fact(&pr) != crate::delivery::PrFact::Open {
             return Ok(pr);
         }
         self.client

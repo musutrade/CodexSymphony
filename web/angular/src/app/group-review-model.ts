@@ -13,6 +13,19 @@ export function totalBudget(items: Review['items']) {
     };
   }, zeroBudget());
 }
+export function repairLimits(view: GroupView) {
+  return view.document.children.map((child) => {
+    const authorization = view.authorizations.find((entry) =>
+      entry.snapshot.document.children.some((original) => original.id === child.id),
+    );
+    const repositories = authorization?.snapshot.repositories ?? view.repositories;
+    const repository = repositories.find((entry) => entry.id === child.repository_id);
+    return {
+      childId: child.id,
+      limit: repository?.repository.policy.gate_recovery_policy === 'bounded_v1' ? 3 : 1,
+    };
+  });
+}
 export function initialReview(view: GroupView): Review {
   const items = view.document.children.map((child) => {
     const repo = view.repositories.find((r) => r.id === child.repository_id);

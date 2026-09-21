@@ -86,6 +86,14 @@
               ></mat-form-field
             >
           </div>
+          <mat-form-field>
+            <mat-label>新任务自动修复策略</mat-label>
+            <mat-select formControlName="gate_recovery_policy">
+              <mat-option value="bounded_v1">V1：每项最多三次，各阶段共用预算</mat-option>
+              <mat-option value="one_code_repair">旧策略：仅一次本地修复</mat-option>
+            </mat-select>
+          </mat-form-field>
+          <p>仅适用于该仓库的新授权；既有任务保留原额度。CI 重跑还需仓库交付策略明确授权。</p>
           <button matButton="filled" type="submit">确认仓库与初始策略</button>
         </fieldset>
       </form>
@@ -120,7 +128,8 @@
       <p>
         累计预算：{{ entry.repository.policy.token_limit }} tokens /
         {{ entry.repository.policy.turn_limit }} turns /
-        {{ entry.repository.policy.model_work_seconds }} 秒；代码修复最多一次。
+        {{ entry.repository.policy.model_work_seconds }} 秒；代码修复最多
+        {{ entry.repository.policy.gate_recovery_policy === 'bounded_v1' ? 3 : 1 }} 次。
       </p>
       <p>
         检查：{{ entry.repository.policy.allowed_checks.join(', ') }}；超时上限

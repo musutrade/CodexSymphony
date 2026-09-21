@@ -231,6 +231,7 @@ async fn link_resume(
     crate::run_store::insert_run(tx, id, revision, launch).await?;
     sqlx::query("INSERT INTO run_workspace(run_id,identity,restored_from) SELECT $1,job->'workspace',source_run FROM runtime_resume WHERE job->'launch'=$2 AND status='prepared'")
         .bind(&launch.key.run_id).bind(serde_json::json!(launch)).execute(&mut **tx).await?;
+    crate::recovery_store::link_resume(tx, &launch.key.run_id).await?;
     sqlx::query("UPDATE runtime_resume SET status='dispatched' WHERE job->'launch'=$1 AND status='prepared'")
         .bind(serde_json::json!(launch)).execute(&mut **tx).await?;
     sqlx::query("UPDATE runtime_question SET resume_state='linked',resumed_run=$2 WHERE requirement_id=$1 AND resume_state='pending'")
@@ -288,7 +289,14 @@ pub(crate) async fn budget_available(
     id: i64,
 ) -> Result<bool> {
     let balance = crate::budget_store::balance(tx, id).await?;
-    Ok(!balance.exhausted && !balance.exposure.reached(balance.limits))
+    let prepaid:bool=sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repair_reservation WHERE requirement_id=$1 AND status='started' AND resources IS NOT NULL AND NOT resources_transferred)").bind(id).fetch_one(&mut **tx).await?;
+    Ok(!balance.exhausted
+        && if prepaid {
+            balance.exposure.fits(balance.limits)
+                && crate::group_budget::prepaid_fits(tx, id).await?
+        } else {
+            !balance.exposure.reached(balance.limits)
+        })
 }
 
 async fn resume_admitted(

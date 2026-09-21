@@ -64,7 +64,16 @@ pub async fn failed(
     now: i64,
     error: &Error,
 ) -> Result<(), sqlx::Error> {
-    let next = now + retry_delay((failures + 1) as u32);
+    let delay = retry_delay((failures + 1) as u32).max(
+        error
+            .retry_after_seconds
+            .map(|seconds| {
+                // An unrepresentable server delay cannot become an immediate retry.
+                i64::try_from(seconds).unwrap_or(i64::MAX)
+            })
+            .unwrap_or(0),
+    );
+    let next = now.saturating_add(delay);
     let evidence = json!({"code":error.code,"phase":"github_observation","http_status":error.status,"attempts":failures+1,"next_attempt_at":next});
     match number {
         Some(number) => {

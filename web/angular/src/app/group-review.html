@@ -247,6 +247,15 @@
           {{ total().model_seconds }} 秒。重新授权不清零已用和预留，也不代表扣款或开始执行。
         </p>
         <button matButton="outlined" type="submit">保存评审版本</button>
+        <p>自动代码修复总上限：{{ totalRepairs() }} 次。各阶段共用次数，基础设施重试单独计数。</p>
+        <ul>
+          @for (item of repairs(); track item.childId) {
+            <li>{{ item.childId }}：最多 {{ item.limit }} 次自动代码修复</li>
+          }
+        </ul>
+        <p>
+          原授权次数保持不变；新增项目或增加额度需评审变化部分。暂停、重启及新修订不清零已用量。
+        </p>
         <button
           matButton="filled"
           type="button"
