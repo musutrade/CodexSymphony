@@ -93,13 +93,13 @@ async fn saved(
     if status == "prepared" && job.launch.key.incarnation == incarnation {
         return Ok(Some(Some(job)));
     }
-    if job.launch.key.incarnation != incarnation
-        && matches!(status.as_str(), "restoring" | "prepared")
-        && retire_prepared(tx, &job).await?
-    {
+    if interrupted_preparation(&job, &status, incarnation) && retire_prepared(tx, &job).await? {
         return Ok(None);
     }
     Ok(Some(None))
+}
+fn interrupted_preparation(job: &Job, status: &str, incarnation: &str) -> bool {
+    job.launch.key.incarnation != incarnation && matches!(status, "restoring" | "prepared")
 }
 async fn retire_prepared(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
