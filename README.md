@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[日常备份、升级保护与隔离恢复](docs/daily-recovery.md)：受限加密副本、停机一致性边界、只读恢复演练与管理员回退步骤。
+
 [Bark 行动通知](docs/bark-notifications.md)：默认关闭、宿主凭据/网络隔离、持久去重和有限投递重试。
 
 [手机接续与隔夜回答](docs/mobile-continuation.md)：同账号草稿/队列入口、持久问题、新 Run 恢复与暂停/取消验收。

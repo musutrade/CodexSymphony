@@ -25,6 +25,11 @@ async fn serve() -> Result<(), StartupError> {
         )
         .await;
     }
+    if std::env::args().nth(1).as_deref() == Some("--recovery-drill") {
+        let config = Config::from_env()?;
+        return codexsymphony_server::recovery::serve(&config.database_url, config.bind_address)
+            .await;
+    }
     initialize_logging();
     if let Some(path) = std::env::args_os().nth(2).filter(|_| {
         std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("--github-inspect"))
@@ -158,6 +163,7 @@ fn stop_workers(worker: tokio::task::JoinHandle<()>, github: Option<tokio::task:
 
 async fn prepare_database(url: &str) -> Result<PgPool, StartupError> {
     let pool = connect(url).await?;
+    codexsymphony_server::recovery::refuse_normal_start(&pool).await?;
     sqlx::migrate!("../../migrations").run(&pool).await?;
     Ok(pool)
 }

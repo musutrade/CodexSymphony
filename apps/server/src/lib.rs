@@ -2,6 +2,7 @@ pub mod auth;
 pub mod auth_admin;
 pub mod auth_api;
 pub mod auth_store;
+pub mod recovery;
 
 pub mod budget;
 pub mod budget_store;
