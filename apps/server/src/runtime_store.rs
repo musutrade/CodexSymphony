@@ -241,7 +241,10 @@ pub async fn stop(pool: &PgPool, key: &RunKey, reason: &str) -> Result<()> {
 pub async fn input(pool: &PgPool, key: &RunKey) -> Result<String> {
     let document:Value=sqlx::query_scalar("SELECT v.document FROM requirement_revision v JOIN agent_run a ON a.requirement_id=v.requirement_id AND a.revision=v.revision WHERE a.id=$1")
         .bind(&key.run_id).fetch_one(pool).await?;
-    let answers:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('question_id',id,'version',version,'original',original,'answer',answer,'source_run',run_id) FROM runtime_question WHERE resumed_run=$1 ORDER BY created_at,id")
+    // Answers belong to the reviewed business revision. A subsequent pause or
+    // storage recovery changes the Run again without invalidating those answers.
+    // Keep resumed_run as historical delivery evidence, not a lifetime filter.
+    let answers:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('question_id',q.id,'version',q.version,'original',q.original,'answer',q.answer,'source_run',q.run_id) FROM runtime_question q JOIN agent_run a ON a.requirement_id=q.requirement_id AND a.revision=q.revision WHERE a.id=$1 AND q.answer IS NOT NULL AND q.resume_state IN ('live','linked','pending') ORDER BY q.created_at,q.id")
         .bind(&key.run_id).fetch_all(pool).await?;
     let repair: Option<Value> =
         sqlx::query_scalar("SELECT failure FROM repair_reservation WHERE repair_run_id=$1")

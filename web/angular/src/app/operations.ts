@@ -54,7 +54,26 @@ export class Operations {
         : [Number(this.route.snapshot.paramMap.get('id'))];
       const items = await Promise.all(ids.map((id) => firstValueFrom(this.api.detail(id))));
       if (readVersion !== this.readVersion) return;
-      this.items.set(items.map(requireDetail));
+      const current = items.map(requireDetail);
+      const versions = new Map(
+        this.items().flatMap((item) =>
+          item.questions.map((question) => [question.id, question.version]),
+        ),
+      );
+      if (
+        current.some((item) =>
+          item.questions.some(
+            (question) =>
+              versions.has(question.id) && versions.get(question.id) !== question.version,
+          ),
+        )
+      ) {
+        this.invalidQuestion.set('');
+        this.message.set(
+          '问题已更新，请阅读当前版本并重新填写回答。旧版本的未提交回答不会自动提交。',
+        );
+      }
+      this.items.set(current);
       this.error.set('');
     } catch {
       if (readVersion !== this.readVersion) return;
@@ -93,8 +112,8 @@ export class Operations {
     );
     this.cancelId.set(null);
   }
-  answerControl(question: string, part: string) {
-    const key = question + ':' + part;
+  answerControl(question: Question, part: string) {
+    const key = JSON.stringify([question.id, question.version, part]);
     let control = this.drafts.get(key);
     if (!control) {
       control = new FormControl('', {
@@ -109,11 +128,11 @@ export class Operations {
     const answers = question.questions.map((q) => {
       return {
         id: q.id,
-        text: this.answerControl(question.id, q.id).value.trim(),
+        text: this.answerControl(question, q.id).value.trim(),
       };
     });
     if (answers.some((answer) => !answer.text)) {
-      question.questions.forEach((q) => this.answerControl(question.id, q.id).markAsTouched());
+      question.questions.forEach((q) => this.answerControl(question, q.id).markAsTouched());
       this.invalidQuestion.set(question.id);
       this.message.set('请填写每个问题的回答。');
       return;

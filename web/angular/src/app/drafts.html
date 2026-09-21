@@ -19,7 +19,9 @@
     用量通知可能延迟，此限制不是精确计费上限。生成不是执行授权，不创建编码 Run 或 PR。
   </p>
   <p>
-    生成结果仍需评审；缺失信息不会自动确认。对当前草稿生成前，请先保存编辑。草稿评审与执行授权尚未开放。
+    生成结果仍需评审；缺失信息不会自动确认。对当前草稿生成前，请先保存编辑。
+    保存或选择草稿后，进入“评审覆盖、策略与整组预算”，核对父子范围、AC
+    覆盖、依赖与预算，再整组确认。
   </p>
   <form (submit)="$event.preventDefault(); generation.generate(selected())">
     <fieldset [disabled]="generation.busy()">
@@ -116,7 +118,9 @@
   <section class="ui-panel" aria-labelledby="draft-detail-title">
     <h2 id="draft-detail-title">父目标 · {{ draft.document.parent.id }}</h2>
     <p>Draft · 版本 {{ draft.version }} · {{ draft.id }}</p>
-    <p>可保存整组评审并一次确认授权；依赖调度与 validation_only 执行尚未接通。</p>
+    <p>
+      整组确认后按依赖进入同一队列；未评审草稿不执行。validation_only 执行与最终业务验收尚未接通。
+    </p>
     <a matButton="outlined" [routerLink]="['/drafts', draft.id, 'review']"
       >评审覆盖、策略与整组预算</a
     >
