@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[M2 集成交付与上线清单](docs/m2-delivery.md)：同版本认证、HTTPS/执行隔离、手机接续、Bark 与恢复验收；区分受控通过、生产待验和 M3 范围。
+
 [日常备份、升级保护与隔离恢复](docs/daily-recovery.md)：受限加密副本、停机一致性边界、只读恢复演练与管理员回退步骤。
 
 [Bark 行动通知](docs/bark-notifications.md)：默认关闭、宿主凭据/网络隔离、持久去重和有限投递重试。

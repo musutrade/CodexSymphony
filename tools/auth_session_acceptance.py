@@ -1,5 +1,6 @@
 """AAuth real-process HTTPS/restart checks in a disposable test schema only."""
 import http.cookiejar
+import hashlib
 import io
 import json
 import os
@@ -54,7 +55,7 @@ def main():
     url = urllib.parse.urlunsplit(parts._replace(query=urllib.parse.urlencode(
         urllib.parse.parse_qsl(parts.query) + [('options','-csearch_path='+schema)])))
     binary = (ROOT / os.environ.get('CARGO_TARGET_DIR','target') / 'debug/codexsymphony-server').resolve()
-    logs, sentinels = [], set()
+    logs, sentinels, identities = [], set(), []
     server = None
     try:
         with tempfile.TemporaryDirectory(prefix='auth-process-') as directory, TLSCapture() as tls:
@@ -68,6 +69,7 @@ def main():
                 process = subprocess.Popen([str(binary)], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
                 startup = io.BytesIO()
                 address = wait_http_address(process, startup)
+                identities.append({'pid': process.pid, 'address': address, 'schema': schema})
                 logs.append(startup.getvalue())
                 thread = threading.Thread(target=lambda: logs.append(process.stdout.read()), daemon=True); thread.start()
                 tls.server.backend = address
@@ -83,15 +85,26 @@ def main():
             password = secrets.token_urlsafe(32); admin('init', password)
             desktop, mobile = Client(tls,sentinels), Client(tls,sentinels)
             assert desktop.login('operator',password) == mobile.login('operator',password) == 200
+            expired = Client(tls,sentinels)
+            assert expired.login('operator',password) == 200
+            expired_cookie = next(iter(expired.jar)).value
+            expired_digest = hashlib.sha256(expired_cookie.encode()).hexdigest()
+            # Move only this disposable session's deadline, never the host clock.
+            sql(url, "UPDATE platform_session SET expires_at=0 WHERE digest='" + expired_digest + "'")
+            assert expired.call('GET','/api/drafts',extra={'Cookie':'__Host-codexsession='+expired_cookie})[0] == 401
             desktop_cookie = next(iter(desktop.jar)).value
             assert desktop.call('POST','/api/auth/logout',{})[0] == 204
             stop(server,thread); server,thread = start()
+            assert expired.call('GET','/api/drafts',extra={'Cookie':'__Host-codexsession='+expired_cookie})[0] == 401
+            assert expired.login('operator',password) == 200
+            assert expired.call('GET','/api/drafts')[0] == 200
             replay = Client(tls,sentinels)
             assert replay.call('GET','/api/drafts',extra={'Cookie':'__Host-codexsession='+desktop_cookie})[0] == 401
             assert mobile.call('GET','/api/drafts')[0] == 200
             old_mobile = next(iter(mobile.jar)).value
             replacement = secrets.token_urlsafe(32); admin('change',replacement)
             assert mobile.call('GET','/api/drafts')[0] == 401
+            assert expired.call('GET','/api/drafts')[0] == 401
             stop(server,thread); server,thread = start()
             assert replay.call('GET','/api/drafts',extra={'Cookie':'__Host-codexsession='+old_mobile})[0] == 401
             assert desktop.login('operator',password) == 401
@@ -117,9 +130,14 @@ def main():
         output = b'\n'.join(logs)
         assert all(value.encode() not in output for value in sentinels if value)
         out = ROOT/'artifacts/gh71-resume'
+        out.mkdir(parents=True, exist_ok=True)
         (out/'auth-process-server.log').write_bytes(output)
         (out/'auth-process.json').write_text(json.dumps({'status':'passed','verified_https':True,
-            'real_process_restarts':4,'logout_replay_rejected':True,'change_and_reset_revoke_all':True,
+            'real_process_restarts':len(identities)-1,'process_instances':identities,
+            'binary_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),
+            'expired_session_rejected_across_restart':True,
+            'expired_client_relogin':True,
+            'logout_replay_rejected':True,'change_and_reset_revoke_all':True,
             'persistent_account_and_source_limits':True,'identity_headers_do_not_authenticate':True,
             'credential_sentinel_matches':0}, indent=2)+'\n')
         print('PASS: verified HTTPS, real process restarts, revocation, dual limits and zero credential log matches')
