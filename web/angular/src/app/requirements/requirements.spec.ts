@@ -84,7 +84,7 @@ describe('Requirement browser workflow', () => {
     const configured = c.configure();
     const req = http.expectOne('/api/multi/repository');
     expect(req.request.method).toBe('PUT');
-    expect(req.request.headers.get('x-codexsymphony-csrf')).toBe('1');
+    expect(req.request.headers.get('x-codexsymphony-csrf')).toBe(null);
     req.flush({ version: 1, repository });
     await Promise.resolve();
     http.expectOne('/api/multi/repository').flush(context);

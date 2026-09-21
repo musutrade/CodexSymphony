@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, headers as authHeaders } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -11,15 +11,29 @@ function fixture(id: number, suffix: string) {
     .replaceAll('900001', String(id))
     .replaceAll('capture-', `browser-${suffix}-`);
   const scenarios = JSON.parse(readFileSync('../../api/capture-scenarios.json', 'utf8')) as {
-    id: string; body?: { repository: unknown };
+    id: string;
+    body?: { repository: unknown };
   }[];
   const repository = scenarios.find((scenario) => scenario.id === 'configured')?.body?.repository;
   if (!repository) throw new Error('synthetic repository fixture missing');
-  execFileSync('psql', [url, '-X', '-v', 'ON_ERROR_STOP=1', '--single-transaction',
-    '--set', `repository_document=${JSON.stringify(repository)}`], {
-    input: "INSERT INTO repository(id,version,document) VALUES(1,1,:'repository_document'::jsonb) ON CONFLICT(id) DO NOTHING;\n" + sql,
-    stdio: ['pipe', 'pipe', 'pipe'],
-  });
+  execFileSync(
+    'psql',
+    [
+      url,
+      '-X',
+      '-v',
+      'ON_ERROR_STOP=1',
+      '--single-transaction',
+      '--set',
+      `repository_document=${JSON.stringify(repository)}`,
+    ],
+    {
+      input:
+        "INSERT INTO repository(id,version,document) VALUES(1,1,:'repository_document'::jsonb) ON CONFLICT(id) DO NOTHING;\n" +
+        sql,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    },
+  );
 }
 
 test('persisted inbox, six questions, paused answer, stale answer and cancellation survive reload', async ({
@@ -48,12 +62,12 @@ test('persisted inbox, six questions, paused answer, stale answer and cancellati
   );
   await page.getByRole('button', { name: '保存回答', exact: true }).click();
   const savedResponse = await saved;
-  expect(savedResponse.status(), await savedResponse.text()).toBe(200);
+  expect(savedResponse.status()).toBe(200);
   await expect(page.getByRole('status')).toContainText('操作已保存');
   await expect(page.getByRole('button', { name: '保存回答', exact: true })).toHaveCount(0);
   await expect(page.getByText('暂停意图：已暂停', { exact: false })).toBeVisible();
   const stale = await page.request.post(`/api/operator/questions/${question}/answer`, {
-    headers: { origin: 'http://127.0.0.1:4300', 'x-codexsymphony-csrf': '1' },
+    headers: await authHeaders(page.context()),
     data: { version: 1, answers: [{ id: 'choice', text: 'different' }] },
   });
   expect(stale.status()).toBe(409);
@@ -85,10 +99,12 @@ test('persisted inbox, six questions, paused answer, stale answer and cancellati
   await expect(page.getByRole('status')).toContainText('操作已保存');
   const context = page.context();
   await page.close();
-  await expect.poll(async () => {
-    const response = await context.request.get(`/api/requirements/${id}/operations`);
-    return (await response.json()).requirement.cleanup_complete;
-  }).toBe(true);
+  await expect
+    .poll(async () => {
+      const response = await context.request.get(`/api/requirements/${id}/operations`);
+      return (await response.json()).requirement.cleanup_complete;
+    })
+    .toBe(true);
   page = await context.newPage();
   await page.goto(`/requirements/${id}`);
   await expect(page.getByText('业务状态 Cancelled', { exact: false })).toBeVisible();

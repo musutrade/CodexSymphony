@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, headers as authHeaders } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 
@@ -6,7 +6,7 @@ test('imports deterministic JSON and Markdown, persists edits and shows accessib
   page,
   context,
 }, info) => {
-  const headers = { origin: 'http://127.0.0.1:4300', 'x-codexsymphony-csrf': '1' };
+  const headers = await authHeaders(context);
   const repositories = await context.request.get('/api/multi/repository');
   const current = (await repositories.json()) as { repositories: unknown[] };
   if (!current.repositories.length) {
@@ -28,7 +28,9 @@ test('imports deterministic JSON and Markdown, persists edits and shows accessib
     await page.getByRole('button', { name: '新建导入草稿', exact: true }).click();
     await page.getByLabel('输入格式', { exact: true }).selectOption(format);
     const source =
-      format === 'json' ? text : readFileSync('../../apps/server/tests/fixtures/draft-v1.md', 'utf8');
+      format === 'json'
+        ? text
+        : readFileSync('../../apps/server/tests/fixtures/draft-v1.md', 'utf8');
     await page
       .getByLabel('来源说明', { exact: true })
       .fill(`Browser ${info.project.name} ${format}`);
@@ -40,7 +42,14 @@ test('imports deterministic JSON and Markdown, persists edits and shows accessib
     await page.keyboard.press('Enter');
     const result = await response;
     expect(result.status()).toBe(200);
-    const saved = (await result.json()) as {
+    await expect(page.getByRole('status')).toContainText('未授权执行');
+    const link = await page
+      .getByRole('link', { name: '评审覆盖、策略与整组预算' })
+      .getAttribute('href');
+    const id = link!.split('/')[2];
+    const persisted = await context.request.get(`/api/drafts/${id}`);
+    expect(persisted.status()).toBe(200);
+    const saved = (await persisted.json()) as {
       id: string;
       document: unknown;
       source: { text: string };

@@ -1,3 +1,4 @@
+import { restoreTestSession } from '../../testing/auth-session';
 import { vi } from 'vitest';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
@@ -37,7 +38,7 @@ describe('Parent/child Draft entry', () => {
     const created = http.expectOne('/api/drafts');
     expect(created.request.method).toBe('POST');
     expect(created.request.body.version).toBe(0);
-    expect(created.request.headers.get('x-codexsymphony-csrf')).toBe('1');
+    expect(created.request.headers.get('x-codexsymphony-csrf')).toBe(null);
     created.flush(draft);
     await Promise.resolve();
     http
@@ -106,6 +107,7 @@ describe('Parent/child Draft entry', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
     });
+    await restoreTestSession();
     const harness = await RouterTestingHarness.create('/drafts');
     const http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/drafts').flush({}, { status: 503, statusText: 'offline' });

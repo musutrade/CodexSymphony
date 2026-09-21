@@ -1,3 +1,5 @@
+#[path = "auth.rs"]
+mod auth_client;
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -27,11 +29,11 @@ pub fn body(document: Value, version: i64) -> Value {
     json!({"version":version,"source":source(document)})
 }
 pub fn app(pool: &PgPool) -> Router {
-    codexsymphony_server::router(
+    auth_client::router(
         pool.clone(),
         codexsymphony_server::security::RequestPolicy::new(
             "127.0.0.1:3081".parse().unwrap(),
-            "http://localhost:4200".into(),
+            "https://localhost:4200".into(),
         )
         .unwrap(),
     )
@@ -44,7 +46,7 @@ pub async fn request(app: &Router, method: &str, path: &str, body: Value, expect
                 .method(method)
                 .uri(path)
                 .header("host", "127.0.0.1:3081")
-                .header("origin", "http://localhost:4200")
+                .header("origin", "https://localhost:4200")
                 .header("x-codexsymphony-csrf", "1")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))
@@ -71,7 +73,7 @@ pub async fn fixture() -> (PgPool, String, PathBuf) {
         .unwrap();
     admin.close().await;
     let sep = if database.contains('?') { '&' } else { '?' };
-    let url = format!("{database}{sep}options=-csearch_path%3D{schema}");
+    let url = format!("{database}{sep}options=-csearch_path%3D{schema}&application_name={schema}");
     let pool = PgPoolOptions::new()
         .max_connections(8)
         .connect(&url)

@@ -1,5 +1,11 @@
 # Initial HTTP contract
 
+GH-71 adds platform authentication. Business capture uses `capture-auth.json` for
+restricted-stdin account bootstrap, verified HTTPS, real cookies and response-derived
+CSRF proofs. The installed credential-safe bridge validates login exchanges in memory
+and retains only schema-validated masked observations. Fixed CSRF `1` is invalid.
+See [platform authentication](../docs/platform-authentication.md) for the application contract.
+
 `openapi.json` declares health plus repository and Requirement operations. Health
 retains JSON responses for HTTP 200 and 503. `baseline.json` establishes the initial reviewed
 contract for future comparisons; it is not evidence about an earlier API release.

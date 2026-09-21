@@ -25,7 +25,6 @@ export class DraftGeneration {
         this.http.post<GenerateDraftResponse>(
           '/api/draft-generations',
           { ...body, request_id: this.submission.requestId },
-          { headers: { 'x-codexsymphony-csrf': '1' } },
         ),
       );
       if (!('id' in record)) throw new Error(record.error);

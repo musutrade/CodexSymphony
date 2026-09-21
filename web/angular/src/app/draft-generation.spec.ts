@@ -37,7 +37,7 @@ describe('advisory draft generation', () => {
     await page.generate();
     const first = http.expectOne('/api/draft-generations');
     const id = first.request.body.request_id;
-    expect(first.request.headers.get('x-codexsymphony-csrf')).toBe('1');
+    expect(first.request.headers.get('x-codexsymphony-csrf')).toBe(null);
     first.error(new ProgressEvent('network'));
     await pending;
     expect(page.error()).toContain('请求 ID');

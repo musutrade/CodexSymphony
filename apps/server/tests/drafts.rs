@@ -1,3 +1,5 @@
+#[path = "support/auth.rs"]
+mod auth_client;
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -27,11 +29,11 @@ fn body(document: Value, version: i64) -> Value {
     json!({"version":version,"source":source(document)})
 }
 fn app(pool: &PgPool) -> Router {
-    codexsymphony_server::router(
+    auth_client::router(
         pool.clone(),
         codexsymphony_server::security::RequestPolicy::new(
             "127.0.0.1:3081".parse().unwrap(),
-            "http://localhost:4200".into(),
+            "https://localhost:4200".into(),
         )
         .unwrap(),
     )
@@ -44,7 +46,7 @@ async fn request(app: &Router, method: &str, path: &str, body: Value, expected: 
                 .method(method)
                 .uri(path)
                 .header("host", "127.0.0.1:3081")
-                .header("origin", "http://localhost:4200")
+                .header("origin", "https://localhost:4200")
                 .header("x-codexsymphony-csrf", "1")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))
@@ -245,6 +247,8 @@ fn start(url: &str, root: &std::path::Path) -> (Server, String) {
     let mut child = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
         .env("DATABASE_URL", url)
         .env("BIND_ADDRESS", "127.0.0.1:0")
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .env("AUTH_CONFIG", server_auth::config(root))
         .env("RUST_LOG", "info")
         .env("EXECUTION_DIRECTORY", root.join("execution"))
         .env_remove("RUNTIME_CONFIG")
@@ -390,15 +394,13 @@ async fn atomic_import_conflicts_legacy_guards_migration_and_real_restart() {
     assert_eq!(after["history"].as_array().unwrap().len(), 3);
     drop(router);
     pool.close().await;
-    let client = reqwest::Client::builder().no_proxy().build().unwrap();
     let mut process_saved = Value::Null;
     for lifetime in 0..2 {
         let (server, address) = start(&url, &root);
+        let client = server_auth::client(&address, &url).await;
         if lifetime == 0 {
             let response = client
                 .post(format!("{address}/api/drafts"))
-                .header("origin", &address)
-                .header("x-codexsymphony-csrf", "1")
                 .json(&body(sample(), 0))
                 .send()
                 .await
@@ -410,8 +412,6 @@ async fn atomic_import_conflicts_legacy_guards_migration_and_real_restart() {
                     "{address}/api/drafts/{}",
                     created["id"].as_str().unwrap()
                 ))
-                .header("origin", &address)
-                .header("x-codexsymphony-csrf", "1")
                 .json(&body(changed.clone(), 1))
                 .send()
                 .await
@@ -479,3 +479,6 @@ async fn gh59_database_upgrades_without_rewriting_draft_history_or_execution_fac
     reopened.close().await;
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[path = "support/server_auth.rs"]
+mod server_auth;

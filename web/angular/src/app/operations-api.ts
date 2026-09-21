@@ -13,7 +13,6 @@ import {
 @Service()
 export class OperationsApi {
   private readonly http = inject(HttpClient);
-  private readonly options = { headers: { 'x-codexsymphony-csrf': '1' } };
   detail(id: number) {
     return this.http.get<GetOperationsResponse>(`/api/requirements/${id}/operations`);
   }
@@ -24,14 +23,12 @@ export class OperationsApi {
     return this.http.post<ControlOperationsResponse>(
       `/api/requirements/${id}/operations`,
       body,
-      this.options,
     );
   }
   answer(id: string, body: AnswerOperatorQuestionRequest) {
     return this.http.post<AnswerOperatorQuestionResponse>(
       `/api/operator/questions/${id}/answer`,
       body,
-      this.options,
     );
   }
   evidence(id: number, run: string, channel: string) {

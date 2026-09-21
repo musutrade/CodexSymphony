@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, headers as authHeaders } from './auth-fixture';
 import { reviewRealGroup } from './m1-real-flow';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
@@ -10,7 +10,7 @@ test('explicit generation replay, edit, delete, reorder, reopen and readable fai
   context,
   browser,
 }, info) => {
-  const headers = { origin: 'http://127.0.0.1:4300', 'x-codexsymphony-csrf': '1' };
+  const headers = await authHeaders(context);
   const repositories = await context.request.get('/api/multi/repository');
   const current = (await repositories.json()) as { repositories: unknown[] };
   if (!current.repositories.length) {
@@ -73,12 +73,20 @@ test('explicit generation replay, edit, delete, reorder, reopen and readable fai
   await page.keyboard.press('Enter');
   const submitted = await response;
   expect(submitted.status()).toBe(200);
-  let record = (await submitted.json()) as {
+  await expect(page.getByText(`来源：${input.label}`, { exact: true })).toBeVisible();
+  type ObservedGeneration = {
     id: string;
     status: string;
     draft_id: string;
     usage: { input: number; output: number };
+    request: { label: string };
   };
+  const persisted = await context.request.get('/api/draft-generations');
+  expect(persisted.status()).toBe(200);
+  const listing = (await persisted.json()) as { generations: ObservedGeneration[] };
+  const selected = listing.generations.find((entry) => entry.request.label === input.label);
+  expect(selected).toBeDefined();
+  let record = selected!;
   draftId = record.draft_id;
   for (let attempt = 0; record.status === 'running' && attempt < 65; attempt++) {
     await page.waitForTimeout(2000);

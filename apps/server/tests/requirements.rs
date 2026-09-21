@@ -1,3 +1,5 @@
+#[path = "support/auth.rs"]
+mod auth_client;
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -21,10 +23,10 @@ async fn fixture() -> (PgPool, Router) {
         .unwrap();
     let policy = codexsymphony_server::security::RequestPolicy::new(
         "127.0.0.1:3081".parse().unwrap(),
-        "http://localhost:4200".into(),
+        "https://localhost:4200".into(),
     )
     .unwrap();
-    let app = codexsymphony_server::router(pool.clone(), policy);
+    let app = auth_client::router(pool.clone(), policy);
     (pool, app)
 }
 fn contract() -> Value {
@@ -41,7 +43,7 @@ async fn request(app: &Router, method: &str, path: &str, body: Value) -> (Status
                 .method(method)
                 .uri(path)
                 .header("host", "127.0.0.1:3081")
-                .header("origin", "http://localhost:4200")
+                .header("origin", "https://localhost:4200")
                 .header("x-codexsymphony-csrf", "1")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))
@@ -298,7 +300,8 @@ async fn database_api_acceptance() {
     ] {
         let response = request(&app, method, url, body).await;
         assert_eq!(response.0, StatusCode::SERVICE_UNAVAILABLE);
-        assert_eq!(response.1, json!({"error":"database unavailable"}));
+        // Authentication fails before entering a business handler.
+        assert_eq!(response.1, Value::Null);
     }
 }
 async fn failed_review_is_atomic(app: &Router, pool: &PgPool, ready: &str) {
@@ -447,11 +450,15 @@ async fn security_has_no_side_effects(app: &Router, pool: &PgPool, path: &str) {
                 .await
                 .unwrap();
         for (host, origin, csrf) in [
-            ("evil.test", Some("http://localhost:4200"), Some("1")),
+            ("evil.test", Some("https://localhost:4200"), Some("1")),
             ("127.0.0.1:3081", Some("http://evil.test"), Some("1")),
             ("127.0.0.1:3081", None, Some("1")),
-            ("127.0.0.1:3081", Some("http://localhost:4200"), None),
-            ("127.0.0.1:3081", Some("http://localhost:4200"), Some("bad")),
+            ("127.0.0.1:3081", Some("https://localhost:4200"), None),
+            (
+                "127.0.0.1:3081",
+                Some("https://localhost:4200"),
+                Some("bad"),
+            ),
         ] {
             let mut req = Request::builder()
                 .method(method)

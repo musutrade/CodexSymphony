@@ -1,4 +1,6 @@
 //! GH-14 acceptance with PostgreSQL and real Linux descendant processes.
+#[path = "support/auth.rs"]
+mod auth_client;
 use codexsymphony_server::{
     coordinator::{self, Coordinator},
     execution::{CODING_BLOCKER, Launch, Receipt, RunKey},
@@ -428,15 +430,15 @@ async fn api(
     use tower::ServiceExt;
     let policy = codexsymphony_server::security::RequestPolicy::new(
         "127.0.0.1:3081".parse().unwrap(),
-        "http://localhost:4200".into(),
+        "https://localhost:4200".into(),
     )
     .unwrap();
-    let app = codexsymphony_server::router(pool.clone(), policy);
+    let app = auth_client::router(pool.clone(), policy);
     let mut request = axum::http::Request::builder()
         .method(method)
         .uri(path)
         .header("host", "127.0.0.1:3081")
-        .header("origin", "http://localhost:4200")
+        .header("origin", "https://localhost:4200")
         .header("content-type", "application/json");
     if csrf {
         request = request.header("x-codexsymphony-csrf", "1");
@@ -576,33 +578,54 @@ async fn pause_api(pool: &PgPool) {
     .await
     .unwrap();
     assert_eq!(paused, (true, true));
-    let closed = PgPoolOptions::new()
-        .connect_lazy(&std::env::var("TEST_DATABASE_URL").unwrap())
+    // Obtain a real session before simulating loss of the persistence layer.
+    let isolated_pool = PgPoolOptions::new()
+        .connect(&std::env::var("TEST_DATABASE_URL").unwrap())
+        .await
         .unwrap();
-    closed.close().await;
-    assert_eq!(api(&closed, "GET", "/api/execution", "", false).await, 503);
-    assert_eq!(
-        api(
-            &closed,
-            "POST",
-            "/api/execution/pause",
-            r#"{"pause":true}"#,
-            true
+    let app = auth_client::router(
+        isolated_pool.clone(),
+        codexsymphony_server::security::RequestPolicy::new(
+            "127.0.0.1:3081".parse().unwrap(),
+            "https://localhost:4200".into(),
         )
-        .await,
-        503
+        .unwrap(),
     );
+    use tower::ServiceExt;
+    let request = |method: &str, path: &str| {
+        axum::http::Request::builder()
+            .method(method)
+            .uri(path)
+            .header("host", "127.0.0.1:3081")
+            .header("origin", "https://localhost:4200")
+            .header("x-codexsymphony-csrf", "1")
+            .header("content-type", "application/json")
+            .body(axum::body::Body::from(r#"{"pause":true}"#))
+            .unwrap()
+    };
     assert_eq!(
-        api(
-            &closed,
-            "POST",
-            "/api/requirements/1/pause",
-            r#"{"pause":true}"#,
-            true
-        )
-        .await,
-        503
+        app.clone()
+            .oneshot(request("GET", "/api/auth/session"))
+            .await
+            .unwrap()
+            .status(),
+        200
     );
+    isolated_pool.close().await;
+    for (method, path) in [
+        ("GET", "/api/execution"),
+        ("POST", "/api/execution/pause"),
+        ("POST", "/api/requirements/1/pause"),
+    ] {
+        assert_eq!(
+            app.clone()
+                .oneshot(request(method, path))
+                .await
+                .unwrap()
+                .status(),
+            503
+        );
+    }
 }
 
 async fn claim_and_pause(pool: &PgPool, root: &Path) {
@@ -895,10 +918,10 @@ async fn slow_query(pool: &PgPool, root: &Path) {
     use tower::ServiceExt;
     let policy = codexsymphony_server::security::RequestPolicy::new(
         "127.0.0.1:3081".parse().unwrap(),
-        "http://localhost:4200".into(),
+        "https://localhost:4200".into(),
     )
     .unwrap();
-    let app = codexsymphony_server::router(pool.clone(), policy);
+    let app = auth_client::router(pool.clone(), policy);
     let response = tokio::time::timeout(
         Duration::from_secs(1),
         app.oneshot(

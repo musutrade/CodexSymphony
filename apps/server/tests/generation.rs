@@ -1,3 +1,5 @@
+#[path = "support/auth.rs"]
+mod auth_client;
 use codexsymphony_server::{
     budget::Usage,
     generation::{self, Request},
@@ -373,11 +375,11 @@ async fn http_records_replay_validation_and_unconfigured_generation() {
     )
     .await
     .unwrap();
-    let app = codexsymphony_server::router(
+    let app = auth_client::router(
         pool.clone(),
         codexsymphony_server::security::RequestPolicy::new(
             "127.0.0.1:3081".parse().unwrap(),
-            "http://localhost:4200".into(),
+            "https://localhost:4200".into(),
         )
         .unwrap(),
     );
@@ -424,7 +426,7 @@ async fn http_records_replay_validation_and_unconfigured_generation() {
                     .method(method)
                     .uri(path)
                     .header("host", "127.0.0.1:3081")
-                    .header("origin", "http://localhost:4200")
+                    .header("origin", "https://localhost:4200")
                     .header("x-codexsymphony-csrf", "1")
                     .header("content-type", "application/json")
                     .body(Body::from(body.to_string()))
@@ -496,6 +498,8 @@ fn parent_identity_binding_runs_in_an_isolated_child() {
 }
 
 struct TestApi {
+    database: String,
+    client: tokio::sync::OnceCell<reqwest::Client>,
     child: std::process::Child,
     url: String,
 }
@@ -511,7 +515,9 @@ impl TestApi {
         let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
             .env("DATABASE_URL", database)
             .env("BIND_ADDRESS", "127.0.0.1:0")
-            .env("WEB_ORIGIN", "http://localhost:4200")
+            .env("WEB_ORIGIN", "https://localhost:4200")
+            .env("AUTH_CONFIG", server_auth::config(root))
+            .env("WEB_ORIGIN", "https://localhost:4200")
             .env("EXECUTION_DIRECTORY", root.join("execution"))
             .env("DRAFT_GENERATION_CONFIG", config)
             .env("RUST_LOG", "info")
@@ -526,6 +532,8 @@ impl TestApi {
             let line = line.unwrap();
             if let Some((_, address)) = line.split_once("API listening at http://") {
                 return Self {
+                    database: database.into(),
+                    client: tokio::sync::OnceCell::new(),
                     child,
                     url: format!("http://{}", address.trim()),
                 };
@@ -546,10 +554,12 @@ impl TestApi {
         assert!(self.child.wait().unwrap().success());
     }
     async fn call(&self, method: &str, path: &str, body: Value, status: u16) -> Value {
-        let response = reqwest::Client::new()
+        let client = self
+            .client
+            .get_or_init(|| server_auth::client(&self.url, &self.database))
+            .await;
+        let response = client
             .request(method.parse().unwrap(), format!("{}{path}", self.url))
-            .header("origin", "http://localhost:4200")
-            .header("x-codexsymphony-csrf", "1")
             .json(&body)
             .send()
             .await
@@ -740,9 +750,14 @@ async fn real_http_generation_edit_race_process_crash_and_failed_recovery() {
     let startup = std::process::Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
         .env("DATABASE_URL", database)
         .env("BIND_ADDRESS", "127.0.0.1:0")
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .env("AUTH_CONFIG", server_auth::config(&root))
         .output()
         .unwrap();
     assert!(!startup.status.success());
     assert!(String::from_utf8_lossy(&startup.stderr).contains("generation recovery failed"));
     provider.abort();
 }
+
+#[path = "support/server_auth.rs"]
+mod server_auth;

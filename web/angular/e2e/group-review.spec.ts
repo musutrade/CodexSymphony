@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, headers as authHeaders } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -9,7 +9,7 @@ test('reviews three code items plus integration, rejects missing coverage and au
   page,
   context,
 }, info) => {
-  const headers = { origin: 'http://127.0.0.1:4300', 'x-codexsymphony-csrf': '1' };
+  const headers = await authHeaders(context);
   const scenarios = JSON.parse(readFileSync('../../api/capture-scenarios.json', 'utf8')) as {
     id: string;
     body: Record<string, unknown>;
@@ -131,7 +131,7 @@ test('edits and reorders the persisted unstarted queue with difference review', 
   page,
   context,
 }, info) => {
-  const headers = { origin: 'http://127.0.0.1:4300', 'x-codexsymphony-csrf': '1' };
+  const headers = await authHeaders(context);
   const scenarios = JSON.parse(readFileSync('../../api/capture-scenarios.json', 'utf8')) as {
     id: string;
     body: Record<string, unknown>;

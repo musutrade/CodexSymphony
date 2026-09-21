@@ -1,3 +1,4 @@
+import { account, login } from './auth-fixture';
 import { expect, type Browser, type Page, type TestInfo } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { writeFileSync } from 'node:fs';
@@ -75,10 +76,11 @@ export async function reviewRealGroup(page: Page, browser: Browser, id: string, 
   await page.getByRole('heading', { name: '组依赖队列' }).scrollIntoViewIfNeeded();
   await page.screenshot({ path: info.outputPath('m1-mobile-queue-viewport.png') });
   const desktop = await browser.newContext({
-    baseURL: 'http://127.0.0.1:4300',
+    baseURL: process.env['E2E_HTTPS_ORIGIN'],
     viewport: { width: 1440, height: 1000 },
   });
   try {
+    await login(desktop, account());
     const other = await desktop.newPage();
     await other.goto(`/drafts/${id}/review`);
     await expect(other.getByRole('heading', { name: '组依赖队列' })).toBeVisible();

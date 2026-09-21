@@ -1,0 +1,58 @@
+{
+  "schema": "codexsymphony-http-auth/v1",
+  "config": {
+    "public_origin": {
+      "$capture": "origin"
+    },
+    "trusted_proxies": [
+      "127.0.0.1"
+    ]
+  },
+  "bootstrap_args": [
+    "auth",
+    "init",
+    "--stdin-json"
+  ],
+  "bootstrap_input": {
+    "username": {
+      "$capture": "username"
+    },
+    "password": {
+      "$capture": "password"
+    }
+  },
+  "login": [
+    {
+      "id": "captureCsrf",
+      "method": "GET",
+      "path": "/api/auth/csrf",
+      "status": 200,
+      "record": false
+    },
+    {
+      "id": "captureLogin",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "status": 200,
+      "record": false,
+      "headers": {
+        "x-codexsymphony-csrf": {
+          "$response": "captureCsrf#/csrf_token"
+        }
+      },
+      "body": {
+        "username": {
+          "$capture": "username"
+        },
+        "password": {
+          "$capture": "password"
+        }
+      }
+    }
+  ],
+  "headers": {
+    "x-codexsymphony-csrf": {
+      "$response": "captureLogin#/csrf_token"
+    }
+  }
+}

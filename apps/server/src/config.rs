@@ -13,7 +13,7 @@ impl Config {
         Self::parse(
             env::var("DATABASE_URL").or(Err("DATABASE_URL is required"))?,
             &env::var("BIND_ADDRESS").unwrap_or("127.0.0.1:3081".into()),
-            env::var("WEB_ORIGIN").unwrap_or("http://localhost:4200".into()),
+            env::var("WEB_ORIGIN").or(Err("WEB_ORIGIN is required"))?,
         )
     }
 

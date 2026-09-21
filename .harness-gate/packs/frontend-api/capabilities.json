@@ -1,10 +1,10 @@
 {
   "series": {
-    "id": "measurement-series/v1:9dcb23d7d9cd247c4d9093e98d954d3224f13d9d2d9b12cb3ef6a6fad66b0b43",
+    "id": "measurement-series/v1:2d137da6e7d786496c0a624f4abba9b1eac1e0dd32c0cde4393f6eeec7fbb915",
     "name": "http-json-contract",
     "collector": {
       "name": "http-json-contract",
-      "version": "0.1.0-rc.4"
+      "version": "0.1.0-rc.5"
     },
     "tool": {
       "name": "typescript-ast-http-observations",
@@ -12,7 +12,7 @@
     },
     "rule": {
       "name": "closed-json-business-contract/v2",
-      "version": "a9eb6f137d4e05cfe4d52e7ef4ab157de6cd9362da403d06c722b020f6400404"
+      "version": "eb87d882e76aba7d4c7e4ffb40dcf1ce4e7f9432708deb56da04fd9c830e7179"
     },
     "runtime": {
       "name": "node",

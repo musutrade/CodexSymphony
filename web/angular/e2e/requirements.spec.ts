@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 
 test('create, edit, review Ready, reload and withdraw a durable requirement', async ({

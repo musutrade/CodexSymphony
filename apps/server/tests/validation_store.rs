@@ -227,12 +227,22 @@ async fn durable_exact_evidence_and_read_only_api() {
     assert_eq!(run, "Succeeded");
     use axum::{body::Body, http::Request};
     use tower::ServiceExt;
-    let app = codexsymphony_server::validation_api::routes().with_state(pool.clone());
+    let app = auth_client::router(
+        pool.clone(),
+        codexsymphony_server::security::RequestPolicy::new(
+            "127.0.0.1:3081".parse().unwrap(),
+            "https://localhost:4200".into(),
+        )
+        .unwrap(),
+    );
     for (id, expected) in [("v1", 200), ("absent", 404)] {
         let response = app
             .clone()
             .oneshot(
                 Request::builder()
+                    .header("host", "127.0.0.1:3081")
+                    .header("origin", "https://localhost:4200")
+                    .header("x-codexsymphony-csrf", "1")
                     .uri(format!("/api/validations/{id}"))
                     .body(Body::empty())
                     .unwrap(),
@@ -245,6 +255,9 @@ async fn durable_exact_evidence_and_read_only_api() {
     let response = app
         .oneshot(
             Request::builder()
+                .header("host", "127.0.0.1:3081")
+                .header("origin", "https://localhost:4200")
+                .header("x-codexsymphony-csrf", "1")
                 .uri("/api/validations/v1")
                 .body(Body::empty())
                 .unwrap(),
@@ -764,3 +777,6 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
         pool.close().await;
     }
 }
+
+#[path = "support/auth.rs"]
+mod auth_client;

@@ -58,7 +58,7 @@ describe('Queue delta review', () => {
     const action = component.propose();
     const req = http.expectOne('/api/drafts/draft-edit/queue-edit');
     expect(req.request.body.change.kind).toBe('propose');
-    expect(req.request.headers.get('x-codexsymphony-csrf')).toBe('1');
+    expect(req.request.headers.get('x-codexsymphony-csrf')).toBe(null);
     req.flush({ version: 2, affected: ['C1'] });
     await action;
     expect(component.message()).toContain('C1');

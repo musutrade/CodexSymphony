@@ -1,3 +1,4 @@
+import { restoreTestSession } from '../../testing/auth-session';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -139,7 +140,7 @@ describe('Atomic group review UI', () => {
     const confirming = page.confirm();
     const confirm = http.expectOne('/api/drafts/draft-group/authorize');
     expect(confirm.request.body.version).toBe(1);
-    expect(confirm.request.headers.get('x-codexsymphony-csrf')).toBe('1');
+    expect(confirm.request.headers.get('x-codexsymphony-csrf')).toBe(null);
     await page.confirm();
     http.expectNone('/api/drafts/draft-group/authorize');
     confirm.flush({
@@ -213,6 +214,7 @@ describe('Atomic group review UI', () => {
       providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter(routes)],
     });
     const http = TestBed.inject(HttpTestingController);
+    await restoreTestSession();
     const harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/drafts/draft-group/review', GroupReview);
     http.expectOne('/api/drafts/draft-group/review').flush(fixtureView);

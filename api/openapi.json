@@ -2788,6 +2788,182 @@
           }
         }
       }
+    },
+    "/api/auth/csrf": {
+      "get": {
+        "operationId": "authCsrf",
+        "responses": {
+          "200": {
+            "description": "Authentication response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "username",
+                    "csrf_token"
+                  ],
+                  "properties": {
+                    "username": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "csrf_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "authLogin",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "username",
+                    "csrf_token"
+                  ],
+                  "properties": {
+                    "username": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "csrf_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "message"
+                  ],
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Authentication response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "message"
+                  ],
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Authentication response"
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "operationId": "authSession",
+        "responses": {
+          "200": {
+            "description": "Authentication response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "username",
+                    "csrf_token"
+                  ],
+                  "properties": {
+                    "username": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "csrf_token": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication response"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "authLogout",
+        "responses": {
+          "204": {
+            "description": "Authentication response"
+          },
+          "403": {
+            "description": "Authentication response"
+          },
+          "401": {
+            "description": "Authentication response"
+          }
+        }
+      }
     }
   },
   "components": {
