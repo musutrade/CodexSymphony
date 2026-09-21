@@ -93,10 +93,13 @@ async fn saved(
     if status == "prepared" && job.launch.key.incarnation == incarnation {
         return Ok(Some(Some(job)));
     }
-    if status == "prepared" && retire_prepared(tx, &job).await? {
+    if interrupted_preparation(&job, &status, incarnation) && retire_prepared(tx, &job).await? {
         return Ok(None);
     }
     Ok(Some(None))
+}
+fn interrupted_preparation(job: &Job, status: &str, incarnation: &str) -> bool {
+    job.launch.key.incarnation != incarnation && matches!(status, "restoring" | "prepared")
 }
 async fn retire_prepared(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -105,7 +108,7 @@ async fn retire_prepared(
     // No Run/process/model was dispatched. Preserve the old job, preparation
     // records and files; a fresh identity restores the authoritative source
     // checkpoint and must pass preparation in the new incarnation again.
-    let retired = sqlx::query("WITH retired AS (DELETE FROM runtime_resume WHERE source_run=$1 AND status='prepared' AND NOT EXISTS(SELECT 1 FROM agent_run WHERE id=$2) RETURNING job,status) INSERT INTO runtime_resume_history(source_run,run_id,job,status,reason) SELECT $1,$2,job,status,'controller incarnation changed before dispatch' FROM retired")
+    let retired = sqlx::query("WITH retired AS (DELETE FROM runtime_resume WHERE source_run=$1 AND status IN ('restoring','prepared') AND NOT EXISTS(SELECT 1 FROM agent_run WHERE id=$2) RETURNING job,status) INSERT INTO runtime_resume_history(source_run,run_id,job,status,reason) SELECT $1,$2,job,status,'controller incarnation changed before dispatch' FROM retired")
         .bind(&job.source).bind(&job.launch.key.run_id).execute(&mut **tx).await?;
     Ok(retired.rows_affected() == 1)
 }

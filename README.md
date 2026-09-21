@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[手机接续与隔夜回答](docs/mobile-continuation.md)：同账号草稿/队列入口、持久问题、新 Run 恢复与暂停/取消验收。
+
 [M2 HTTPS 与执行凭据边界](docs/m2-deployment.md)：部署配置、管理员安装/回退、源站检查与真实挂载隔离 fixture。
 
 [平台账号与会话](docs/platform-authentication.md)：M2 登录、宿主账号管理、HTTPS／可信代理配置与受控验收入口。

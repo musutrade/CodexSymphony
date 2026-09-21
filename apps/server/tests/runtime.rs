@@ -406,6 +406,30 @@ async fn resume_answer(pool: &PgPool, root: &Path, question: &str) {
     let input = store::input(pool, &launch.key).await.unwrap();
     assert!(input.contains(question));
     assert!(input.contains("first"));
+    // A later pause/resume must retain business answers without rewriting the
+    // historical link to the first Run that consumed them.
+    sqlx::query("UPDATE runtime_question SET resumed_run=run_id WHERE id=$1")
+        .bind(question)
+        .execute(pool)
+        .await
+        .unwrap();
+    assert_eq!(input, store::input(pool, &launch.key).await.unwrap());
+    sqlx::query("UPDATE runtime_question SET resume_state='invalid' WHERE id=$1")
+        .bind(question)
+        .execute(pool)
+        .await
+        .unwrap();
+    assert!(
+        !store::input(pool, &launch.key)
+            .await
+            .unwrap()
+            .contains(question)
+    );
+    sqlx::query("UPDATE runtime_question SET resume_state='linked' WHERE id=$1")
+        .bind(question)
+        .execute(pool)
+        .await
+        .unwrap();
     let state: String = sqlx::query_scalar("SELECT resume_state FROM runtime_question WHERE id=$1")
         .bind(question)
         .fetch_one(pool)
@@ -926,6 +950,14 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
     assert_eq!(attempts, 2);
     let incarnation = if storage_recovery {
         let old = job.clone();
+        if !guard_cleared {
+            // A restart can interrupt restoration before preparation is recorded.
+            // The source snapshot and partial destination must both survive.
+            sqlx::query("UPDATE runtime_resume SET status='restoring'")
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
         codexsymphony_server::run_store::begin_incarnation(&pool, "restarted")
             .await
             .unwrap();

@@ -171,6 +171,22 @@ describe('Durable operator UI', () => {
     await fixture.whenStable();
     expect(fixture.componentInstance.items()[0].requirement.version).toBe(3);
   });
+  it('keeps unsent answers bound to the question version after polling', async () => {
+    const fixture = setup();
+    await read();
+    const component = fixture.componentInstance;
+    const question = item.questions[0];
+    component.answerControl(question, 'choice').setValue('old scope');
+    const changed = { ...question, version: 2 };
+    const loading = component.reload();
+    await read({ ...item, questions: [changed] });
+    await loading;
+    expect(component.answerControl(changed, 'choice').value).toBe('');
+    expect(component.message()).toContain('问题已更新');
+    expect(component.answerControl(question, 'choice').value).toBe('old scope');
+    await component.answer(changed);
+    http.expectNone('/api/operator/questions/question/answer');
+  });
   it('associates required answer errors and saves answers independently of pause', async () => {
     const fixture = setup();
     await read();

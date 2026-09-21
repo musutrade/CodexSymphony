@@ -119,7 +119,18 @@
           }
         </dd>
         <dt>下一步</dt>
-        <dd>核对当前事实，回答未过期问题或使用当前可用操作；没有适用操作时需要人工恢复环境。</dd>
+        <dd>
+          核对当前版本并回答下方待答问题。电脑断开或旧 Run
+          超时不会使业务问题自动失效；范围变化后须重新评审。
+        </dd>
+        <dt>需要用户决定</dt>
+        <dd>
+          回答当前问题；已暂停时明确选择恢复；取消前核对保全与外部动作。通知未送达不影响此处持久待办。
+        </dd>
+        <dt>恢复条件</dt>
+        <dd>
+          当前范围仍获授权、全部问题已回答、未暂停或取消、预算可用、旧进程已停止且工作已保全，并通过环境预检后，从保存的工作自动继续。
+        </dd>
         <dt>恢复位置</dt>
         <dd>
           按已保存阶段
@@ -152,7 +163,7 @@
                 matInput
                 required
                 [readonly]="busy() || !!error()"
-                [formControl]="answerControl(question.id, part.id)"
+                [formControl]="answerControl(question, part.id)"
               /><mat-error>请填写回答。</mat-error
               ><mat-hint>回答会持久化；暂停期间不启动执行。</mat-hint></mat-form-field
             >
