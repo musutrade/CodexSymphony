@@ -3,7 +3,7 @@
 use axum::{Json, Router, extract::State, routing::get};
 use serde_json::{Value, json};
 use sqlx::{PgPool, postgres::PgPoolOptions};
-use std::{error::Error, net::SocketAddr};
+use std::{error::Error, io::Write, net::SocketAddr};
 
 type RecoveryError = Box<dyn Error + Send + Sync>;
 
@@ -64,7 +64,9 @@ pub async fn serve(url: &str, address: SocketAddr) -> Result<(), RecoveryError> 
         return Err("recovery drill requires restored database guard".into());
     }
     let listener = tokio::net::TcpListener::bind(address).await?;
-    println!("recovery drill listening at {}", listener.local_addr()?);
+    std::io::stdout().write_all(
+        format!("recovery drill listening at {}\n", listener.local_addr()?).as_bytes(),
+    )?;
     axum::serve(listener, router(pool))
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
