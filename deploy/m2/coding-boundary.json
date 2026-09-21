@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "role": "coding",
+  "workspace_root": "/var/lib/codexsymphony/workspaces",
+  "runtime_home_root": "/var/lib/codexsymphony/execution",
+  "program": "/opt/codexsymphony-tools/codex",
+  "mounts": [
+    {"path": "/usr", "writable": false},
+    {"path": "/opt/codexsymphony-tools", "writable": false},
+    {"path": "/etc/resolv.conf", "writable": false},
+    {"path": "/etc/ssl/certs", "writable": false}
+  ],
+  "private_paths": [
+    "/etc/codexsymphony-control",
+    "/etc/codexsymphony-github",
+    "/etc/codexsymphony-verifier"
+  ],
+  "environment": {"PATH": "/opt/codexsymphony-tools:/usr/bin:/bin"}
+}

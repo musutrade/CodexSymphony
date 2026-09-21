@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[M2 HTTPS 与执行凭据边界](docs/m2-deployment.md)：部署配置、管理员安装/回退、源站检查与真实挂载隔离 fixture。
+
 [平台账号与会话](docs/platform-authentication.md)：M2 登录、宿主账号管理、HTTPS／可信代理配置与受控验收入口。
 
 [M1 使用、迁移与交付索引](docs/m1-delivery.md)：需求与队列的阶段验收、测试入口及 M2/M3 边界。
