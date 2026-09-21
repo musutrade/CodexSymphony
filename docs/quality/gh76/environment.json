@@ -1,0 +1,153 @@
+{
+  "source_baseline": "86f19bacad6c36d025719a61ab9cc46c55e01c77",
+  "binary_sha256": "874d626f9f0f355b22a69452566fff69e5c817522f4874976daf504461ac78ca",
+  "uid": 1000,
+  "gid": 1000,
+  "kernel": "7.0.0-31-generic",
+  "namespaces": {
+    "user": "user:[4026533189]",
+    "mnt": "mnt:[4026533187]",
+    "pid": "pid:[4026533188]",
+    "net": "net:[4026531833]"
+  },
+  "database": {
+    "database": "codexsymphony_test",
+    "user": "codexsymphony_test",
+    "server": "16.14",
+    "schemas": [
+      "auth_browser_c6acdc8b9c9cd22b"
+    ]
+  },
+  "applied_migrations": {
+    "auth_browser_c6acdc8b9c9cd22b": [
+      {
+        "version": 1,
+        "success": true,
+        "checksum": "820bc41e6c33fb4242d62ee1ab5d28caef71bdefbc2dba3b4c4b9b5e1d907d1c3a04ed562c4f72398272b981240b1a47"
+      },
+      {
+        "version": 2,
+        "success": true,
+        "checksum": "4bac926c6a86faf86a0a338d03481a35d690d0580574f3e4d1d5a2053c531cb92ab40809c79652ce90ff38fd12c0f40b"
+      },
+      {
+        "version": 3,
+        "success": true,
+        "checksum": "b250d4a3902f69d349210ec8e688a1a7a24d681646788ba190fc813b1aed81af72900440619056841a05776e1d448c9d"
+      },
+      {
+        "version": 4,
+        "success": true,
+        "checksum": "9732dca0c43a0f9f5c83b73411084ab4e426854be4d6209478f64e91ae425708c2b51bf518aab0a27d8e767ecbff3f72"
+      },
+      {
+        "version": 5,
+        "success": true,
+        "checksum": "bfbdb3eb445b031972202f7cc1c2f8ad65e8d847dc5aaddedc680b0e7b8bd795ef8930186f0c08663481668be5882cef"
+      },
+      {
+        "version": 6,
+        "success": true,
+        "checksum": "5614c743b009f2271a98afed7d4e527c26f73f3c8a670a20723ee03fc49041c366787708a61a64848ac32e6232268d20"
+      },
+      {
+        "version": 7,
+        "success": true,
+        "checksum": "2a09a4c45f7daf180873bb0b93e89e612c19dbb45ea1aed06c74788e3193745f9eba5c3e3082e07e47087c2e53ebbab4"
+      },
+      {
+        "version": 8,
+        "success": true,
+        "checksum": "d83e70a5d7752d0d5c607d7c79f334899b25d278ad7146901447edae1fafbb2dfa73100b715b94fd03d77499d9e23484"
+      },
+      {
+        "version": 9,
+        "success": true,
+        "checksum": "447cdbd5b23ab7ca19f27b33f538bee7720a55fb36516c4fae454129ca4ed3f5c25afae75094436b1bef49748bdacb76"
+      },
+      {
+        "version": 10,
+        "success": true,
+        "checksum": "5dd5c92e5b88225a0012c21942a4cc4a859bab911481edb2367113b2baee83e11ab12cda2d0af31e63a2d2b23f1d4c30"
+      },
+      {
+        "version": 11,
+        "success": true,
+        "checksum": "54214c0dcb27a239ddcf196f51d69e347fafe0947a8c5e6067a7c42f4c9397ee24efc1d7e8f55a3b27f3ca0994b69604"
+      },
+      {
+        "version": 12,
+        "success": true,
+        "checksum": "1cb936d0b26c522f4d40f9fee58a325f35d13e92b44c5342b80b1108d41ee79cd1cdc2d6fc80a452f80094a793ab60d4"
+      },
+      {
+        "version": 13,
+        "success": true,
+        "checksum": "6a133ef39ec941273a07f46a0860eae36eb39c43005036b005c8b7860d479f5573086da936f436eba45c819827a7e2f1"
+      },
+      {
+        "version": 14,
+        "success": true,
+        "checksum": "f0895367b5f85490f3a9017cb33144dcd1371c09832a3a6ed0528858d385c84562314519e2988eff59eaaadff7b1489f"
+      },
+      {
+        "version": 15,
+        "success": true,
+        "checksum": "e5adf3f03920195502e8a749dc44eb800be68f7d0c1e882f7b27aabb19816d8f8de4aed16b36df56026f2f66ec772fd7"
+      },
+      {
+        "version": 16,
+        "success": true,
+        "checksum": "5b22089857bbbe72893479844db86379f72828db9dd992346d58d277011602f29f651a103c0702d020f386bf565d359a"
+      },
+      {
+        "version": 17,
+        "success": true,
+        "checksum": "f3874a7a510aa8222865d563af4d54690a49e6c928bbae43a21f4770561e3be7735e055e12a8f0fbd1e44477cb9c2dee"
+      },
+      {
+        "version": 18,
+        "success": true,
+        "checksum": "2bcbb5140a3d5c291bdd24491c4db5514d243f67554d01701a7cdb37c6a2d0fc31f61bf4dce551d4d57fbf272931687f"
+      },
+      {
+        "version": 19,
+        "success": true,
+        "checksum": "2dfba14386791f9d2c9f2e89b0af450088c786779b7ac38e3c7268f5b3277ca2c090a422ccae30fb4766b63853759de5"
+      },
+      {
+        "version": 20,
+        "success": true,
+        "checksum": "bc8c1c5b29f446e1c2736348afff25f98f4493ad416cb00ac4a92bd289bb7e3ee11e7fbadda7a5757cb70f73afbbc196"
+      },
+      {
+        "version": 21,
+        "success": true,
+        "checksum": "5e893354ba840dd47c86e6d276645f0fcd0c270a12c5f210979d970e6d71935eaf8a5fefffdb5835bb4faf5ea751658b"
+      },
+      {
+        "version": 22,
+        "success": true,
+        "checksum": "47e2e0fced1e6bd320c12aa4e0a350322b55cd0addd6ee855ac7ed5dff09c717dd289416c80260e33bc2abb64828b8a9"
+      },
+      {
+        "version": 23,
+        "success": true,
+        "checksum": "04a42f0ab277d7f7d0d1454d0e4043c00495a88cadce5f7eeb7181b323dddea9ad8cc029f6be98891197ac049a6e3561"
+      },
+      {
+        "version": 24,
+        "success": true,
+        "checksum": "63630bd625e6a4e9761d2e3294b47af2685582d29ee47be9826b2400f58a0b8c3b26feeff0288be6fe38f42978c64686"
+      }
+    ]
+  },
+  "tools": {
+    "rustc": "rustc 1.97.1 (8bab26f4f 2026-07-14)",
+    "node": "v24.18.0",
+    "npm": "11.16.0",
+    "pg_dump": "pg_dump (PostgreSQL) 16.14",
+    "pg_restore": "pg_restore (PostgreSQL) 16.14"
+  },
+  "production_operations": false
+}

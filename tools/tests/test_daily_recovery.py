@@ -265,6 +265,7 @@ class RecoveryTests(unittest.TestCase):
                 'data':'synthetic only','restarts':2,'write_routes':'404/405','normal_startup':'refused before migration',
                 'encrypted_archive_sha256':result['sha256'],'production_offsite':'not configured or exercised'}
         out=ROOT/'artifacts/gh75/recovery-acceptance.json'
+        out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(record,indent=2)+'\n')
 
     def test_02_failure_paths_and_retention(self):

@@ -1,0 +1,364 @@
+{
+  "schema": "gh76-controlled-integration/v1",
+  "source_baseline": "86f19bacad6c36d025719a61ab9cc46c55e01c77",
+  "binary_sha256": "874d626f9f0f355b22a69452566fff69e5c817522f4874976daf504461ac78ca",
+  "product_file_count": 255,
+  "product_source_manifest_sha256": "4d9943df0e4eb0fcd3ec51608828bc6cf29ac40433f1d102664afa080caf2aeb",
+  "product_source_changes": [],
+  "applied_migrations_match_current_source": true,
+  "https": {
+    "scope": "isolated HTTPS fixture",
+    "production_acceptance": false,
+    "checks": {
+      "shipped_nginx_template_syntax_and_start": true,
+      "verified_https": true,
+      "anonymous_access_headers_status": [
+        401,
+        401,
+        401
+      ],
+      "origin_pid_owned_loopback_only": true,
+      "direct_origin_rejected": true,
+      "untrusted_socket_peer_headers_do_not_authenticate": true,
+      "platform_login_without_access": true,
+      "secure_host_cookie": true,
+      "host_origin_and_proxy_spoof_rejected": true,
+      "logout_rejected": true,
+      "credential_free_logs": true
+    },
+    "process": {
+      "pid": 26651,
+      "backend": "127.0.0.1:37475",
+      "schema": "m2_https_5df2986abecae84f",
+      "binary_sha256": "874d626f9f0f355b22a69452566fff69e5c817522f4874976daf504461ac78ca"
+    },
+    "ingress": {
+      "pid": 26682,
+      "origin": "https://127.0.0.1:46873",
+      "certificate_sha256": "f8c8375726b89b1fbcf2f155901e590f0c2bcff115c60ae923f3d724a3dab46f",
+      "configuration_sha256": "74af1366d835565696f428f3b4443fa9afebbbb9074dce7db1046a3f1014caed"
+    },
+    "status": "passed"
+  },
+  "sessions": {
+    "status": "passed",
+    "verified_https": true,
+    "real_process_restarts": 4,
+    "process_instances": [
+      {
+        "pid": 19082,
+        "address": "127.0.0.1:44099",
+        "schema": "auth_process_bd2a301ae5724010"
+      },
+      {
+        "pid": 19116,
+        "address": "127.0.0.1:33051",
+        "schema": "auth_process_bd2a301ae5724010"
+      },
+      {
+        "pid": 19147,
+        "address": "127.0.0.1:33563",
+        "schema": "auth_process_bd2a301ae5724010"
+      },
+      {
+        "pid": 19219,
+        "address": "127.0.0.1:37223",
+        "schema": "auth_process_bd2a301ae5724010"
+      },
+      {
+        "pid": 19353,
+        "address": "127.0.0.1:39267",
+        "schema": "auth_process_bd2a301ae5724010"
+      }
+    ],
+    "binary_sha256": "874d626f9f0f355b22a69452566fff69e5c817522f4874976daf504461ac78ca",
+    "expired_session_rejected_across_restart": true,
+    "expired_client_relogin": true,
+    "logout_replay_rejected": true,
+    "change_and_reset_revoke_all": true,
+    "persistent_account_and_source_limits": true,
+    "identity_headers_do_not_authenticate": true,
+    "credential_sentinel_matches": 0
+  },
+  "mobile_recovery": {
+    "scenario": "B03/B07",
+    "transport": "scripted app-server; real service, subprocesses, PostgreSQL, Git and Chromium",
+    "clock_advance_seconds": 90000,
+    "baseline": "bf4ff78ebe95319ac255b049828ce884cec0c6e5",
+    "service_instances": [
+      {
+        "pid": 9321,
+        "address": "127.0.0.1:43207"
+      },
+      {
+        "pid": 9744,
+        "address": "127.0.0.1:37761"
+      },
+      {
+        "pid": 10224,
+        "address": "127.0.0.1:37101"
+      }
+    ],
+    "question_id": "4d01060d-5208-48f5-90dd-e9fc547fb011",
+    "question_version": 1,
+    "old_run": "695b53f6-fc15-41ce-befc-9694e0cbcf61",
+    "new_run": "6e849258-fad9-4ce8-a9b9-7b74502dc0cf",
+    "pause_resume_run": "b270c55b-b968-43e7-b38c-cd581a6010cd",
+    "baseline_meaning": "synthetic work repository; product SHA is source_baseline below",
+    "stages": {
+      "before": {
+        "runs": 1,
+        "snapshots": 0,
+        "calls": 1,
+        "state": "Running",
+        "paused": false,
+        "all_runs_quiescent": false
+      },
+      "stopped": {
+        "runs": 1,
+        "snapshots": 1,
+        "calls": 1,
+        "state": "Running",
+        "paused": false,
+        "all_runs_quiescent": true
+      },
+      "paused": {
+        "runs": 2,
+        "snapshots": 2,
+        "calls": 2,
+        "state": "Running",
+        "paused": true,
+        "all_runs_quiescent": true
+      },
+      "after_restart": {
+        "runs": 2,
+        "snapshots": 2,
+        "calls": 2,
+        "state": "Running",
+        "paused": true,
+        "all_runs_quiescent": true
+      },
+      "final": {
+        "runs": 3,
+        "snapshots": 3,
+        "calls": 3,
+        "state": "Cancelled",
+        "paused": false,
+        "all_runs_quiescent": true
+      }
+    },
+    "authorization_unchanged": true,
+    "budget_limits_unchanged": true
+  },
+  "backup_recovery": {
+    "schema": "gh75-controlled-recovery/v1",
+    "source_baseline": "86f19bacad6c36d025719a61ab9cc46c55e01c77",
+    "binary_sha256": "874d626f9f0f355b22a69452566fff69e5c817522f4874976daf504461ac78ca",
+    "database_tables_and_sequences": 73,
+    "facts_preserved": [
+      "_sqlx_migrations",
+      "agent_run",
+      "budget_authorization",
+      "business_event",
+      "business_request",
+      "candidate_validation",
+      "delivery",
+      "delivery_action",
+      "delivery_attempt",
+      "delivery_observation",
+      "draft_generation",
+      "execution_control",
+      "github_pr",
+      "github_repository",
+      "group_accounted",
+      "group_authorization",
+      "group_budget",
+      "group_claim_input",
+      "group_completion",
+      "group_edit",
+      "group_execution_item",
+      "group_queue",
+      "group_queue_event",
+      "group_review",
+      "group_review_revision",
+      "imported_draft",
+      "imported_draft_revision",
+      "initial_run",
+      "model_call",
+      "model_usage_event",
+      "operator_intervention",
+      "operator_measurement_epoch",
+      "operator_phase",
+      "platform_account",
+      "platform_login_limit",
+      "platform_session",
+      "preparation_history",
+      "preparation_record",
+      "repair_reservation",
+      "repository",
+      "requirement",
+      "requirement_budget",
+      "requirement_revision",
+      "run_event",
+      "run_workspace",
+      "runtime_blocker",
+      "runtime_evidence",
+      "runtime_evidence_chunk",
+      "runtime_question",
+      "runtime_request",
+      "runtime_resume",
+      "runtime_resume_history",
+      "runtime_session",
+      "storage_allocation",
+      "storage_attempt",
+      "storage_guard",
+      "storage_material",
+      "storage_policy",
+      "validation_step",
+      "workspace_operation",
+      "workspace_snapshot",
+      "sequence:agent_run_run_sequence_seq",
+      "sequence:business_event_id_seq",
+      "sequence:delivery_attempt_id_seq",
+      "sequence:delivery_observation_id_seq",
+      "sequence:group_authorization_id_seq",
+      "sequence:operator_intervention_id_seq",
+      "sequence:operator_phase_id_seq",
+      "sequence:preparation_history_id_seq",
+      "sequence:requirement_id_seq",
+      "sequence:run_event_id_seq",
+      "sequence:storage_attempt_sequence_seq",
+      "view:notification_action"
+    ],
+    "transport": "real mTLS HTTPS PUT + checksum GET",
+    "data": "synthetic only",
+    "restarts": 2,
+    "write_routes": "404/405",
+    "normal_startup": "refused before migration",
+    "encrypted_archive_sha256": "2be8f102252999773255b344ffaea76e103401c188c6a39b0cf1ef1c0994ff5c",
+    "production_offsite": "not configured or exercised"
+  },
+  "formal_exact_head_gate": "pending independent host",
+  "production_deployment": "blocked: see docs/m2-delivery.md",
+  "m3": "out-of-M2",
+  "rust_test_summary": {
+    "reported_passes_including_subprocess_suites": 140,
+    "ignored": 0,
+    "real_runtime": "passed",
+    "exit_code": 0
+  },
+  "evidence": [
+    {
+      "path": "artifacts/gh76/build-current.log",
+      "sha256": "81413cf01c353312d06d35fd84b849b4a4c562e22c2af6e8bd59d435fa6df18c"
+    },
+    {
+      "path": "artifacts/gh76/fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh76/clippy-all-features.log",
+      "sha256": "732186322402325172940531d8d6d7cfac85dc902585b2bef6715ad6839dacfd"
+    },
+    {
+      "path": "artifacts/gh76/check.log",
+      "sha256": "bd644ac4bb792b3c8229c4d47103dcdf2e966afad58894b3d0c057a07826e0c5"
+    },
+    {
+      "path": "artifacts/gh76/frontend-build.log",
+      "sha256": "250d08b629c028672b320b167c6d279387de0b42a71301c5e26f1d4bc1b7e1fe"
+    },
+    {
+      "path": "artifacts/gh76/frontend-lint.log",
+      "sha256": "b8e85c9119350c4d1fc9258f24919b7d6613994ccc102cba6450a7564779e9c2"
+    },
+    {
+      "path": "artifacts/gh76/frontend-test.log",
+      "sha256": "fae48a74992489ab9330f64994e87e3447172d80e2ea06e7a87f973dc25ae08e"
+    },
+    {
+      "path": "artifacts/gh76/browser.log",
+      "sha256": "551bae19e2b3b266157ef9d48fadc0f772669dbf022338b16352fcf181ccaec3"
+    },
+    {
+      "path": "artifacts/gh76/mobile-recovery.log",
+      "sha256": "d89e323dad1983696787634ea1da7788945ddae0cfa1348972ce4775931c80a8"
+    },
+    {
+      "path": "artifacts/gh76/bark.log",
+      "sha256": "90ea6bcb17f16122f526f3de425f7893ba048838afb7b97c8e3996bb32f48ceb"
+    },
+    {
+      "path": "artifacts/gh76/executor.log",
+      "sha256": "9c311b7484fcbb44697ebe8ddffdb5b433d86fe7e7c71422cced12b8c4090aea"
+    },
+    {
+      "path": "artifacts/gh76/verifier-boundary.log",
+      "sha256": "f289380344200af2da60d520a40d0b7b54ae5b196257ab5e9b9b6f6db2873fdf"
+    },
+    {
+      "path": "artifacts/gh76/auth-session-final.log",
+      "sha256": "57d7d3f4b44b038c0f29f42d0930da87bc3b7674666ee052258e12770b82ef15"
+    },
+    {
+      "path": "artifacts/gh76/recovery-final.log",
+      "sha256": "045108c77d1a3be79ab565b107fb7e01dc0c2beaf77f1cde1eacf756cc499eed"
+    },
+    {
+      "path": "artifacts/gh76/auth-contract.log",
+      "sha256": "0fb30e7fb83f444173bde5ab4d6d9b38f2160dd5b54afd8995a0779e23927e0e"
+    },
+    {
+      "path": "artifacts/gh76/https-final.log",
+      "sha256": "4fc57c20a8f7d4fd9a4b479895a1c3c2c77bf5037ceb464f48fe9af17eadc5e9"
+    },
+    {
+      "path": "artifacts/gh76/cargo-test-clean.log",
+      "sha256": "9bcd2fa9a339e7b8d0f4e51858ad155e5d812d3abd58732410b41d625864a881"
+    },
+    {
+      "path": "artifacts/gh76/gate-config.log",
+      "sha256": "8f5ed5ba80f98394734370f622002b17b5aab775adc75340d93549946aec1e6c"
+    },
+    {
+      "path": "artifacts/gh76/audit-final.log",
+      "sha256": "c0ad1e676b806cd17debc4e45c2a80059fc9a424736e20b48d2ec8f470008e7b"
+    },
+    {
+      "path": "artifacts/gh76/secrets-final.json",
+      "sha256": "49fb8eb3f7a3eeae5cf509025b5759003751abf57b629f033cc9ebbb65639151"
+    },
+    {
+      "path": "artifacts/gh76/source-environment.json",
+      "sha256": "9520da2ecc983e1543057743cfcd775e3a2af9011c47d0df007496073993582a"
+    },
+    {
+      "path": "artifacts/gh76/product-source.json",
+      "sha256": "4d9943df0e4eb0fcd3ec51608828bc6cf29ac40433f1d102664afa080caf2aeb"
+    },
+    {
+      "path": "artifacts/gh76/dependencies-current.json",
+      "sha256": "b222cb0c1fa9c13a32baa7539031a96f268c665310f75b52c41424f49b7bdfc3"
+    },
+    {
+      "path": "artifacts/gh76/test-fixture-recreate.json",
+      "sha256": "97dd0ba8b6c5e8e196ce147e7c5b3eaae687ed15f5e0310e0de582127cda78ae"
+    },
+    {
+      "path": "artifacts/gh72/https.json",
+      "sha256": "45381afb803ba31e57f09a9a662b86d5929fd50a0febb86cf8ca0e56583d21ae"
+    },
+    {
+      "path": "artifacts/gh71-resume/auth-process.json",
+      "sha256": "8077ab3e47f8dea98da2384a0d2d013f79e510597acc20541c439e9831ee2277"
+    },
+    {
+      "path": "artifacts/gh73/recovery/result.json",
+      "sha256": "a03dfbe54aedcae5d7a2452116356a437a3657de6ab06139b5dd6738dd777248"
+    },
+    {
+      "path": "artifacts/gh75/recovery-acceptance.json",
+      "sha256": "90b745089869b832b5b60dcc0afe71e5496644603eaefdb622443b5fca8ed993"
+    }
+  ]
+}

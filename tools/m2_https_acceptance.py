@@ -1,5 +1,6 @@
 """Isolated AAuth05 fixture. This is not public-domain or production acceptance."""
 import io
+import hashlib
 import http.client
 from contextlib import closing
 import json
@@ -44,10 +45,15 @@ def main():
             try:
                 startup = io.BytesIO()
                 address = wait_http_address(process, startup)
+                evidence['process'] = {'pid': process.pid, 'backend': address, 'schema': schema,
+                    'binary_sha256': hashlib.sha256(binary.read_bytes()).hexdigest()}
                 logs.append(startup.getvalue())
                 reader = threading.Thread(target=lambda: logs.append(process.stdout.read()), daemon=True)
                 reader.start()
                 tls.start(address)
+                evidence['ingress'] = {'pid': tls.process.pid, 'origin': tls.origin,
+                    'certificate_sha256': hashlib.sha256((Path(tls.directory.name)/'cert.pem').read_bytes()).hexdigest(),
+                    'configuration_sha256': hashlib.sha256((Path(tls.directory.name)/'nginx.conf').read_bytes()).hexdigest()}
                 checks = evidence['checks']
                 checks['shipped_nginx_template_syntax_and_start'] = True
                 checks.update(remote(tls.origin, str(Path(tls.directory.name)/'cert.pem')))
