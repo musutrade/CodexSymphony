@@ -287,6 +287,42 @@ fn legacy_migration_contract_gaps_and_test_merge_protection() {
     );
 }
 #[test]
+fn test_merge_requires_strict_checks_and_admin_enforcement() {
+    let p = policy_v1();
+    let mut c = contract();
+    c.pre_merge.source = PreMergeSource::TestMerge;
+    assert!(c.blockers(&p).is_empty());
+    for protection in [
+        json!({"required_status_checks":{"strict":false,"checks":[{"context":"ci","app_id":42}]},"enforce_admins":{"enabled":true}}),
+        json!({"required_status_checks":{"strict":true,"checks":[{"context":"ci","app_id":42}]},"enforce_admins":{"enabled":false}}),
+        json!({"required_status_checks":{"strict":true,"checks":[]},"enforce_admins":{"enabled":true}}),
+        json!({"required_status_checks":{"strict":true},"enforce_admins":{"enabled":true}}),
+    ] {
+        c.protection = protection;
+        assert!(c.blockers(&p).iter().any(|v| v.contains("test-merge")));
+    }
+}
+
+#[test]
+fn external_checks_reject_missing_publishers_and_unpinned_triggers() {
+    let p = policy_v1();
+    for source in [
+        Source::CheckRun { app_id: 0 },
+        Source::Status { creator_id: 0 },
+        Source::CheckRun { app_id: 42 },
+        Source::Status { creator_id: 5 },
+    ] {
+        let mut c = contract();
+        c.pre_merge.checks[0].selector.source = source;
+        assert!(
+            c.blockers(&p)
+                .iter()
+                .any(|v| v.contains("external publisher"))
+        );
+    }
+}
+
+#[test]
 fn rerun_preserves_failures_and_conflicts_never_pick_a_green() {
     let p = action_policy();
     let mut first = run();
@@ -488,6 +524,21 @@ async fn external_status_and_check_sources_need_pinned_triggers_and_publishers()
                 Value::Null
             }
         );
+        p.delivery.as_mut().unwrap().actions.read_logs = true;
+        let logs = github_observe::preflight(&mut f.client(), &p, 1, github_service::now())
+            .await
+            .unwrap();
+        for expected in [
+            "external publisher log adapter unavailable",
+            "job identity missing",
+        ] {
+            assert!(
+                logs.blockers.iter().any(|v| v.contains(expected)),
+                "{:?}",
+                logs.blockers
+            );
+        }
+        assert_eq!(logs.configuration["logs"], json!([]));
         if status_only {
             let mut forged = status(99, "success");
             forged["creator"]["id"] = json!(999);
