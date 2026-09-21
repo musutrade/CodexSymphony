@@ -38,7 +38,7 @@ assert subprocess.run([str(release/'coding'), 'app-server']).returncode != 0
         self.home = self.root/'execution/run/codex-home'
         self.home.mkdir(parents=True)
         self.private = []
-        for name in ('control', 'github', 'signing'):
+        for name in ('control', 'github', 'signing', 'notifier'):
             directory = self.root/name
             directory.mkdir(mode=0o700)
             secret = directory/'sentinel'

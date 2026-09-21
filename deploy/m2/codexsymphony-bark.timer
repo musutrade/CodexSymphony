@@ -1,0 +1,10 @@
+[Unit]
+Description=Check committed CodexSymphony action notifications
+
+[Timer]
+OnBootSec=30s
+OnUnitInactiveSec=15s
+Unit=codexsymphony-bark.service
+
+[Install]
+WantedBy=timers.target
