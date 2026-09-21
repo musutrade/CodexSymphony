@@ -100,7 +100,15 @@ async fn restored_database_is_guarded_and_drill_has_no_business_routes() {
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     drop(listener);
-    let task = tokio::spawn(async move { recovery::serve(&drill_url, address).await.unwrap() });
+    // Exercise the real CLI branch and graceful signal handling, not task abort.
+    let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+        .arg("--recovery-drill")
+        .env("DATABASE_URL", &drill_url)
+        .env("BIND_ADDRESS", address.to_string())
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .kill_on_drop(true)
+        .spawn()
+        .unwrap();
     let client = reqwest::Client::new();
     let endpoint = format!("http://{address}/api/recovery");
     let mut reached = false;
@@ -113,8 +121,33 @@ async fn restored_database_is_guarded_and_drill_has_no_business_routes() {
         tokio::time::sleep(std::time::Duration::from_millis(20)).await;
     }
     assert!(reached);
-    task.abort();
-    let _ = task.await;
+    let signal = std::process::Command::new("/bin/kill")
+        .args(["-INT", &child.id().unwrap().to_string()])
+        .status()
+        .unwrap();
+    assert!(signal.success());
+    let status = tokio::time::timeout(std::time::Duration::from_secs(5), child.wait())
+        .await
+        .expect("recovery drill must shut down gracefully")
+        .unwrap();
+    assert!(status.success());
+    assert!(client.get(&endpoint).send().await.is_err());
+
+    // A restored database must also be rejected through the normal CLI startup.
+    let refused = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        tokio::process::Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+            .env("DATABASE_URL", &drill_url)
+            .env("BIND_ADDRESS", address.to_string())
+            .env("WEB_ORIGIN", "https://localhost:4200")
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .expect("normal startup must promptly reject a restored database")
+    .unwrap();
+    assert!(!refused.status.success());
+    assert!(String::from_utf8_lossy(&refused.stderr).contains("normal startup forbidden"));
     pool.close().await;
     let response = app
         .oneshot(
