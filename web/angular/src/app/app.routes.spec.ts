@@ -1,3 +1,4 @@
+import { restoreTestSession } from '../../testing/auth-session';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
@@ -12,6 +13,8 @@ describe('Workspace navigation', () => {
     TestBed.configureTestingModule({
       imports: [App],
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         provideRouter([
           { path: '', children: [] },
           { path: 'requirements', children: [] },
@@ -40,6 +43,7 @@ describe('Lazy requirement route', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
     });
+    await restoreTestSession();
     const harness = await RouterTestingHarness.create('/requirements/list');
     const http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/multi/requirements').flush({ requirements: [] });
@@ -69,6 +73,7 @@ describe('Lazy requirement route', () => {
     TestBed.configureTestingModule({
       providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
     });
+    await restoreTestSession();
     const harness = await RouterTestingHarness.create('/requirements');
     const http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/multi/repository').flush({
@@ -82,5 +87,16 @@ describe('Lazy requirement route', () => {
     await harness.fixture.whenStable();
     expect(harness.routeNativeElement?.textContent).toContain('需求工作台');
     http.verify();
+  });
+});
+
+describe('Public login route', () => {
+  it('loads the login form without exposing business routes', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideRouter(routes), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const harness = await RouterTestingHarness.create('/login?return=%2Fdrafts');
+    expect(harness.routeNativeElement?.querySelector('h1')?.textContent).toContain('登录 CodexSymphony');
+    TestBed.inject(HttpTestingController).verify();
   });
 });

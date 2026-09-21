@@ -189,7 +189,7 @@ describe('Durable operator UI', () => {
     const answer = component.answer(question);
     const request = http.expectOne('/api/operator/questions/question/answer');
     expect(request.request.body).toEqual({ version: 1, answers: [{ id: 'choice', text: 'yes' }] });
-    expect(request.request.headers.get('x-codexsymphony-csrf')).toBe('1');
+    expect(request.request.headers.get('x-codexsymphony-csrf')).toBe(null);
     request.flush({ saved: true });
     await read({ ...item, questions: [{ ...question, answered: true, resume_state: 'pending' }] });
     await answer;

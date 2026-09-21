@@ -19,7 +19,6 @@ import {
 @Service()
 export class RequirementsApi {
   private readonly http = inject(HttpClient);
-  private readonly options = { headers: { 'x-codexsymphony-csrf': '1' } };
   repository() {
     return this.http.get<MultiGetRepositoryResponse>('/api/multi/repository');
   }
@@ -33,35 +32,30 @@ export class RequirementsApi {
     return this.http.put<MultiConfigureRepositoryResponse>(
       '/api/multi/repository',
       body,
-      this.options,
     );
   }
   create(body: MultiCreateRequirementRequest) {
     return this.http.post<MultiCreateRequirementResponse>(
       '/api/multi/requirements',
       body,
-      this.options,
     );
   }
   update(id: number, body: MultiUpdateRequirementRequest) {
     return this.http.patch<MultiUpdateRequirementResponse>(
       `/api/multi/requirements/${id}`,
       body,
-      this.options,
     );
   }
   ready(id: number, body: MultiReadyRequirementRequest) {
     return this.http.post<MultiReadyRequirementResponse>(
       `/api/multi/requirements/${id}/ready`,
       body,
-      this.options,
     );
   }
   withdraw(id: number, body: MultiWithdrawRequirementRequest) {
     return this.http.post<MultiWithdrawRequirementResponse>(
       `/api/multi/requirements/${id}/withdraw`,
       body,
-      this.options,
     );
   }
 }

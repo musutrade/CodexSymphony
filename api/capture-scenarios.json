@@ -1142,7 +1142,7 @@
       "source": {
         "format": "json",
         "label": "synthetic draft",
-        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"导入与读回需求草稿\",\n    \"scope\": \"仅草稿持久化；不授权执行\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"导入后可读回全部父子资料\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"实现草稿存储\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"保存后读回一致\"\n        }\n      ],\n      \"validation_plan\": \"运行独立数据库的存储集成测试\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"验证重启后父子草稿\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"重启后原文、顺序与依赖保持一致\"\n        }\n      ],\n      \"validation_plan\": \"关闭并启动测试应用，比较版本及完整响应\"\n    }\n  ]\n}\n"
+        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"\u5bfc\u5165\u4e0e\u8bfb\u56de\u9700\u6c42\u8349\u7a3f\",\n    \"scope\": \"\u4ec5\u8349\u7a3f\u6301\u4e45\u5316\uff1b\u4e0d\u6388\u6743\u6267\u884c\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"\u5bfc\u5165\u540e\u53ef\u8bfb\u56de\u5168\u90e8\u7236\u5b50\u8d44\u6599\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"\u5b9e\u73b0\u8349\u7a3f\u5b58\u50a8\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u4fdd\u5b58\u540e\u8bfb\u56de\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u8fd0\u884c\u72ec\u7acb\u6570\u636e\u5e93\u7684\u5b58\u50a8\u96c6\u6210\u6d4b\u8bd5\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"\u9a8c\u8bc1\u91cd\u542f\u540e\u7236\u5b50\u8349\u7a3f\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u91cd\u542f\u540e\u539f\u6587\u3001\u987a\u5e8f\u4e0e\u4f9d\u8d56\u4fdd\u6301\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u5173\u95ed\u5e76\u542f\u52a8\u6d4b\u8bd5\u5e94\u7528\uff0c\u6bd4\u8f83\u7248\u672c\u53ca\u5b8c\u6574\u54cd\u5e94\"\n    }\n  ]\n}\n"
       }
     }
   },
@@ -1182,7 +1182,7 @@
       "source": {
         "format": "json",
         "label": "synthetic draft",
-        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"导入与读回需求草稿\",\n    \"scope\": \"仅草稿持久化；不授权执行\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"导入后可读回全部父子资料\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"实现草稿存储\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"保存后读回一致\"\n        }\n      ],\n      \"validation_plan\": \"运行独立数据库的存储集成测试\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"验证重启后父子草稿\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"重启后原文、顺序与依赖保持一致\"\n        }\n      ],\n      \"validation_plan\": \"关闭并启动测试应用，比较版本及完整响应\"\n    }\n  ]\n}\n"
+        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"\u5bfc\u5165\u4e0e\u8bfb\u56de\u9700\u6c42\u8349\u7a3f\",\n    \"scope\": \"\u4ec5\u8349\u7a3f\u6301\u4e45\u5316\uff1b\u4e0d\u6388\u6743\u6267\u884c\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"\u5bfc\u5165\u540e\u53ef\u8bfb\u56de\u5168\u90e8\u7236\u5b50\u8d44\u6599\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"\u5b9e\u73b0\u8349\u7a3f\u5b58\u50a8\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u4fdd\u5b58\u540e\u8bfb\u56de\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u8fd0\u884c\u72ec\u7acb\u6570\u636e\u5e93\u7684\u5b58\u50a8\u96c6\u6210\u6d4b\u8bd5\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"\u9a8c\u8bc1\u91cd\u542f\u540e\u7236\u5b50\u8349\u7a3f\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u91cd\u542f\u540e\u539f\u6587\u3001\u987a\u5e8f\u4e0e\u4f9d\u8d56\u4fdd\u6301\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u5173\u95ed\u5e76\u542f\u52a8\u6d4b\u8bd5\u5e94\u7528\uff0c\u6bd4\u8f83\u7248\u672c\u53ca\u5b8c\u6574\u54cd\u5e94\"\n    }\n  ]\n}\n"
       }
     }
   },
@@ -1215,7 +1215,7 @@
       "source": {
         "format": "json",
         "label": "synthetic draft",
-        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"导入与读回需求草稿\",\n    \"scope\": \"仅草稿持久化；不授权执行\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"导入后可读回全部父子资料\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"实现草稿存储\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"保存后读回一致\"\n        }\n      ],\n      \"validation_plan\": \"运行独立数据库的存储集成测试\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"验证重启后父子草稿\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"重启后原文、顺序与依赖保持一致\"\n        }\n      ],\n      \"validation_plan\": \"关闭并启动测试应用，比较版本及完整响应\"\n    }\n  ]\n}\n"
+        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"\u5bfc\u5165\u4e0e\u8bfb\u56de\u9700\u6c42\u8349\u7a3f\",\n    \"scope\": \"\u4ec5\u8349\u7a3f\u6301\u4e45\u5316\uff1b\u4e0d\u6388\u6743\u6267\u884c\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"\u5bfc\u5165\u540e\u53ef\u8bfb\u56de\u5168\u90e8\u7236\u5b50\u8d44\u6599\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"\u5b9e\u73b0\u8349\u7a3f\u5b58\u50a8\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u4fdd\u5b58\u540e\u8bfb\u56de\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u8fd0\u884c\u72ec\u7acb\u6570\u636e\u5e93\u7684\u5b58\u50a8\u96c6\u6210\u6d4b\u8bd5\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"\u9a8c\u8bc1\u91cd\u542f\u540e\u7236\u5b50\u8349\u7a3f\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u91cd\u542f\u540e\u539f\u6587\u3001\u987a\u5e8f\u4e0e\u4f9d\u8d56\u4fdd\u6301\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u5173\u95ed\u5e76\u542f\u52a8\u6d4b\u8bd5\u5e94\u7528\uff0c\u6bd4\u8f83\u7248\u672c\u53ca\u5b8c\u6574\u54cd\u5e94\"\n    }\n  ]\n}\n"
       }
     }
   },
@@ -1234,7 +1234,7 @@
       "source": {
         "format": "json",
         "label": "synthetic draft",
-        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"导入与读回需求草稿\",\n    \"scope\": \"仅草稿持久化；不授权执行\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"导入后可读回全部父子资料\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"实现草稿存储\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"保存后读回一致\"\n        }\n      ],\n      \"validation_plan\": \"运行独立数据库的存储集成测试\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"验证重启后父子草稿\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"重启后原文、顺序与依赖保持一致\"\n        }\n      ],\n      \"validation_plan\": \"关闭并启动测试应用，比较版本及完整响应\"\n    }\n  ]\n}\n"
+        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"\u5bfc\u5165\u4e0e\u8bfb\u56de\u9700\u6c42\u8349\u7a3f\",\n    \"scope\": \"\u4ec5\u8349\u7a3f\u6301\u4e45\u5316\uff1b\u4e0d\u6388\u6743\u6267\u884c\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"\u5bfc\u5165\u540e\u53ef\u8bfb\u56de\u5168\u90e8\u7236\u5b50\u8d44\u6599\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"\u5b9e\u73b0\u8349\u7a3f\u5b58\u50a8\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u4fdd\u5b58\u540e\u8bfb\u56de\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u8fd0\u884c\u72ec\u7acb\u6570\u636e\u5e93\u7684\u5b58\u50a8\u96c6\u6210\u6d4b\u8bd5\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"\u9a8c\u8bc1\u91cd\u542f\u540e\u7236\u5b50\u8349\u7a3f\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u91cd\u542f\u540e\u539f\u6587\u3001\u987a\u5e8f\u4e0e\u4f9d\u8d56\u4fdd\u6301\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u5173\u95ed\u5e76\u542f\u52a8\u6d4b\u8bd5\u5e94\u7528\uff0c\u6bd4\u8f83\u7248\u672c\u53ca\u5b8c\u6574\u54cd\u5e94\"\n    }\n  ]\n}\n"
       }
     }
   },
@@ -1251,7 +1251,7 @@
       "source": {
         "format": "json",
         "label": "synthetic draft",
-        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"导入与读回需求草稿\",\n    \"scope\": \"仅草稿持久化；不授权执行\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"导入后可读回全部父子资料\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"实现草稿存储\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"保存后读回一致\"\n        }\n      ],\n      \"validation_plan\": \"运行独立数据库的存储集成测试\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"验证重启后父子草稿\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"重启后原文、顺序与依赖保持一致\"\n        }\n      ],\n      \"validation_plan\": \"关闭并启动测试应用，比较版本及完整响应\"\n    }\n  ]\n}\n"
+        "text": "{\n  \"schema\": \"codexsymphony-draft/v1\",\n  \"parent\": {\n    \"id\": \"P1\",\n    \"goal\": \"\u5bfc\u5165\u4e0e\u8bfb\u56de\u9700\u6c42\u8349\u7a3f\",\n    \"scope\": \"\u4ec5\u8349\u7a3f\u6301\u4e45\u5316\uff1b\u4e0d\u6388\u6743\u6267\u884c\",\n    \"acceptance_criteria\": [\n      {\n        \"id\": \"AC01\",\n        \"description\": \"\u5bfc\u5165\u540e\u53ef\u8bfb\u56de\u5168\u90e8\u7236\u5b50\u8d44\u6599\"\n      }\n    ]\n  },\n  \"children\": [\n    {\n      \"id\": \"C1\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"code_change\",\n      \"order\": 1,\n      \"depends_on\": [],\n      \"repository_id\": 1,\n      \"goal\": \"\u5b9e\u73b0\u8349\u7a3f\u5b58\u50a8\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u4fdd\u5b58\u540e\u8bfb\u56de\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u8fd0\u884c\u72ec\u7acb\u6570\u636e\u5e93\u7684\u5b58\u50a8\u96c6\u6210\u6d4b\u8bd5\"\n    },\n    {\n      \"id\": \"C2\",\n      \"parent_id\": \"P1\",\n      \"kind\": \"validation_only\",\n      \"order\": 2,\n      \"depends_on\": [\n        \"C1\"\n      ],\n      \"repository_id\": 1,\n      \"goal\": \"\u9a8c\u8bc1\u91cd\u542f\u540e\u7236\u5b50\u8349\u7a3f\",\n      \"acceptance_criteria\": [\n        {\n          \"id\": \"AC01\",\n          \"description\": \"\u91cd\u542f\u540e\u539f\u6587\u3001\u987a\u5e8f\u4e0e\u4f9d\u8d56\u4fdd\u6301\u4e00\u81f4\"\n        }\n      ],\n      \"validation_plan\": \"\u5173\u95ed\u5e76\u542f\u52a8\u6d4b\u8bd5\u5e94\u7528\uff0c\u6bd4\u8f83\u7248\u672c\u53ca\u5b8c\u6574\u54cd\u5e94\"\n    }\n  ]\n}\n"
       }
     }
   },
@@ -2171,5 +2171,170 @@
       }
     },
     "status": 200
+  },
+  {
+    "id": "auth-session",
+    "method": "GET",
+    "path": "/api/auth/session",
+    "status": 200
+  },
+  {
+    "id": "login-csrf-rejected",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 403,
+    "headers": {
+      "x-codexsymphony-csrf": "1"
+    },
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "logout-csrf-rejected",
+    "method": "POST",
+    "path": "/api/auth/logout",
+    "status": 403,
+    "headers": {
+      "x-codexsymphony-csrf": null
+    }
+  },
+  {
+    "id": "login-invalid-0",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-1",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-2",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-3",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-4",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-5",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-6",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-7",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-8",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-9",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 401,
+    "record": false,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "login-invalid-10",
+    "method": "POST",
+    "path": "/api/auth/login",
+    "status": 429,
+    "body": {
+      "username": "unknown-capture",
+      "password": "invalid"
+    }
+  },
+  {
+    "id": "logout",
+    "method": "POST",
+    "path": "/api/auth/logout",
+    "status": 204
+  },
+  {
+    "id": "session-logged-out",
+    "method": "GET",
+    "path": "/api/auth/session",
+    "status": 401
+  },
+  {
+    "id": "logout-logged-out",
+    "method": "POST",
+    "path": "/api/auth/logout",
+    "status": 401
   }
 ]

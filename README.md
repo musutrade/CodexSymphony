@@ -1,5 +1,7 @@
 # CodexSymphony
 
+[平台账号与会话](docs/platform-authentication.md)：M2 登录、宿主账号管理、HTTPS／可信代理配置与受控验收入口。
+
 [M1 使用、迁移与交付索引](docs/m1-delivery.md)：需求与队列的阶段验收、测试入口及 M2/M3 边界。
 
 [未开始队列编辑与差异评审](docs/queue-editing.md)：合法重排不重评内容，变化项及依赖冻结后按精确版本重新授权，累计预算与完成事实保留。

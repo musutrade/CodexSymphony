@@ -22,6 +22,8 @@ npm ci
 
 ## 持久化开发 / 内部试用启动
 
+先按[平台认证配置](platform-authentication.md)准备受控 HTTPS 入口与 AUTH_CONFIG，
+通过宿主管理命令初始化平台账号；数据库示例密码不是平台登录密码。
 在仓库根目录执行；示例只有合成的 localhost 凭据，不包含真实密钥。API 读取进程环境，
 不自动加载 `.env`。数据库密码和连接 URL 必须一致；自选密码含 URL 保留字符时须编码 URL。
 
@@ -36,16 +38,15 @@ export CARGO_TARGET_DIR="$PWD/target"
 cargo run --locked -p codexsymphony-server
 ```
 
-另一终端执行 `cd web/angular && npm ci && npm start`，打开 **http://localhost:4200**。
-健康接口为 `http://127.0.0.1:3081/api/health`。Angular 代理 `/api/**` 至 API，
-重写 Host 为目标地址并保留浏览器 Origin。直接使用 127.0.0.1 打开前端时，把
-`WEB_ORIGIN` 改为 `http://127.0.0.1:4200` 后重启 API；预期 Origin 必须含实际端口。
+前端 `npm start` 默认是 HTTP，不能用于 Secure Cookie 登录。开发访问同样需要受控 HTTPS：
+可将构建产物放在自己的 HTTPS 入口，或为 Angular 开发服务器配置受信的本地测试证书。
+不得关闭生产 Secure Cookie、Origin 或认证校验。浏览器入口必须与 `WEB_ORIGIN` 完全一致。
+API 健康探测仍可从 loopback 的 `/api/health` 发起。
 
-API 启动前校验 DATABASE_URL、数字 IP:port 的 BIND_ADDRESS、WEB_ORIGIN。
-BIND_ADDRESS 仅允许回环 IP，默认 `127.0.0.1:3081`；测试可用端口 0。
-WEB_ORIGIN 仅允许 HTTP 的 localhost、127.0.0.1 或 [::1]，不接受用户信息、路径、查询、
-片段、通配域和非法端口。校验失败不连接数据库、不宣布就绪；配置错误不回显数据库 URL。
-随后连接数据库、执行 SQLx migrations，最后开始监听；`0001_requirements.sql` 创建首批仓库、需求、修订、控制请求和事件记录。
+API 校验 DATABASE_URL、数字 IP:port 的 BIND_ADDRESS 和 HTTPS WEB_ORIGIN；
+BIND_ADDRESS 仅允许回环 IP，默认 `127.0.0.1:3081`，测试可用端口 0。
+随后连接数据库并运行 SQLx migrations，读取 AUTH_CONFIG，缺失或不一致时不宣布就绪。
+认证表迁移是新增表，不改写既有 M1 业务事实。代理头与账号初始化的完整规则见平台认证文档。
 
 ### 需求工作台
 
@@ -55,7 +56,7 @@ WEB_ORIGIN 仅允许 HTTP 的 localhost、127.0.0.1 或 [::1]，不接受用户�
 撤回后才可继续编辑；旧修订保留。浏览器关闭不删除记录。
 
 当前运行、仓库交付和部署网络检查均未就绪，Ready 只表示持久化排队。联网声明仅表达意图。
-仓库后续策略修订和安全撤销可通过 [业务 API](../api/README.md) 完成；网页用户名/密码认证按 M2 实施。
+仓库后续策略修订和安全撤销可通过 [业务 API](../api/README.md) 完成；网页登录和所有业务 API 已由平台账号会话认证。
 
 ### 持久目录与初始化
 
@@ -85,30 +86,15 @@ cargo test --workspace --locked
 
 测试只读取 TEST_DATABASE_URL，绝不从 DATABASE_URL 回退。不要把开发或真实用户库赋给
 TEST_DATABASE_URL。原测试 compose 保持 tmpfs；重建容器即丢弃数据。
-需要运行 E2E 时，给单独 API 进程设置 `DATABASE_URL="$TEST_DATABASE_URL"`、
-`WEB_ORIGIN=http://127.0.0.1:4300`，不要复用持久化内部试用进程。
+GH-71 的受控 E2E 使用 `tools/auth_browser_acceptance.py`，在专用一次性 schema 中启动本次
+构建的 API、临时 HTTPS 静态入口和真实登录。不要复用持久化内部试用进程。
 
-## Localhost 请求与 CSRF 契约
+## 请求认证与 CSRF 契约
 
-所有 API 路由最后统一通过 `RequestPolicy::protect` 包装（见 `apps/server/src/security.rs`）。
-合法 Host 为**实际监听 IP:端口**；其他 Host、缺失/重复 Host、矛盾的 absolute-form URI 拒绝为 403。
-存在 Origin 时只接受 WEB_ORIGIN 或实际 API origin 的精确值；无 Origin 的 GET/HEAD 可供健康探测。
-`Forwarded` / `X-Forwarded-*` 不参与授权，无远程代理信任或 CORS 放行。
-
-除 GET/HEAD/OPTIONS 外的请求还必须同时带：
-
-- 合法且唯一的 `Origin`；缺失、`null`、不同 scheme/host/port 均拒绝。
-- 唯一的 `X-CodexSymphony-CSRF: 1`；缺失、错误或重复均拒绝。
-
-这是 [OWASP 的自定义请求头 API CSRF 模式](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html#employing-custom-request-headers-for-ajaxapi)，
-利用浏览器不允许普通跨站表单设置此头且跨源脚本需要 CORS 预检的约束。常量不是秘密 token，
-也不是身份认证。即使提供正确头，非预期 Origin 仍拒绝；预检不返回 CORS 授权头。
-本机非浏览器进程可伪造头，0a 仅限本人可信主机/代码，不能据此开放远端。
-
-#13 必须将真实写路由放在同一中间件内，Angular 写请求添加上述头，并通过开发代理保持 Origin；
-补真实浏览器/数据库的成功、恶意来源、缺头/错头负例，验证拒绝请求无业务副作用。
-不得把 GET/HEAD/OPTIONS 实现为写操作。当前只有健康 GET，专用写路由仅存在于测试，
-没有业务写接口集成验收。用户名/密码登录仍按 M2，Cloudflare Access 不是产品认证。
+所有路由由最外层 `RequestPolicy::protect` 保护。除最小健康、登录和 CSRF 启动端点外，
+未认证返回 401，且不进入业务处理。写请求需要精确 Origin、有效会话及响应派生的 CSRF 证明；
+旧 `X-CodexSymphony-CSRF: 1` 已失效。Angular 拦截器统一提供证明，401 不自动重放请求。
+可信代理、Cookie、持久限流和恢复规则以[平台账号与会话](platform-authentication.md)为准。
 
 ## 验证
 
@@ -127,10 +113,12 @@ npm run lint
 npm test -- --watch=false
 npm run build
 npx playwright install chromium
-npm run test:e2e
 ```
 
-E2E 要求 API 与数据库运行；Playwright 自行启动并关闭 4300 端口的前端。
+分配环境中先构建 Rust 与前端，再在仓库根运行
+`python3 /opt/symphony-env/run.py python3 tools/auth_browser_acceptance.py`。
+该入口提供专用 HTTPS URL、仅测试证书的信任和受限 stdin 账号创建，不能仅运行旧 HTTP 代理。
+下文 2026-09-15 数量是历史骨架记录，当前 GH-71 结果由本次证据清单记录。
 2026-09-15 验证：5 项后端集成测试、6 项前端单元测试通过；桌面和手机各验证
 真实数据库健康状态、网络故障后重试，共 4 项 E2E 通过，包含 axe WCAG AA 检查。
 格式、Clippy、前端 lint 与 production build 通过。

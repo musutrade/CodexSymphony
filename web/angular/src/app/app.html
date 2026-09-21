@@ -1,15 +1,26 @@
 <a class="skip-link" href="#main-content">跳到主要内容</a>
 <main id="main-content" class="page" tabindex="-1">
-  <router-outlet />
-  <nav aria-label="工作台导航" class="ui-actions">
-    @for (item of navigation; track item.path) {
-      <a
-        [routerLink]="item.path"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        ariaCurrentWhenActive="page"
-        >{{ item.label }}</a
-      >
+  @if (auth.expired()) {
+    <app-login />
+  }
+  <div [hidden]="auth.expired()">
+    <router-outlet />
+    <nav aria-label="工作台导航" class="ui-actions">
+      @for (item of navigation; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+          ariaCurrentWhenActive="page"
+          >{{ item.label }}</a
+        >
+      }
+    </nav>
+    @if (auth.username()) {
+      <button matButton="outlined" type="button" (click)="logout()">退出登录</button>
     }
-  </nav>
+    @if (logoutError()) {
+      <p role="alert">{{ logoutError() }}</p>
+    }
+  </div>
 </main>

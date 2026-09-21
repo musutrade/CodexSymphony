@@ -1,3 +1,5 @@
+#[path = "support/auth.rs"]
+mod auth_client;
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -21,10 +23,10 @@ async fn fixture() -> (PgPool, Router) {
         .unwrap();
     let policy = codexsymphony_server::security::RequestPolicy::new(
         "127.0.0.1:3081".parse().unwrap(),
-        "http://localhost:4200".into(),
+        "https://localhost:4200".into(),
     )
     .unwrap();
-    let app = codexsymphony_server::router(pool.clone(), policy);
+    let app = auth_client::router(pool.clone(), policy);
     (pool, app)
 }
 fn contract() -> Value {
@@ -41,7 +43,7 @@ async fn request(app: &Router, method: &str, path: &str, body: Value) -> (Status
                 .method(method)
                 .uri(path.replace("/api/", "/api/multi/"))
                 .header("host", "127.0.0.1:3081")
-                .header("origin", "http://localhost:4200")
+                .header("origin", "https://localhost:4200")
                 .header("x-codexsymphony-csrf", "1")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))

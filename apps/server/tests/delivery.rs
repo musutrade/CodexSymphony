@@ -541,11 +541,21 @@ async fn fresh_exact_merge_releases_without_done_and_api_exposes_delivery() {
     assert!(control::resume(&pool, None).await.unwrap());
     control::settle(&pool).await.unwrap();
     assert_eq!(state(&pool).await, ("Submitted".into(), None, false));
-    let app = codexsymphony_server::execution_api::routes().with_state(pool.clone());
+    let app = auth_client::router(
+        pool.clone(),
+        codexsymphony_server::security::RequestPolicy::new(
+            "127.0.0.1:3081".parse().unwrap(),
+            "https://localhost:4200".into(),
+        )
+        .unwrap(),
+    );
     let response = app
         .clone()
         .oneshot(
             axum::http::Request::builder()
+                .header("host", "127.0.0.1:3081")
+                .header("origin", "https://localhost:4200")
+                .header("x-codexsymphony-csrf", "1")
                 .uri("/api/requirements/1/delivery")
                 .body(axum::body::Body::empty())
                 .unwrap(),
@@ -563,6 +573,9 @@ async fn fresh_exact_merge_releases_without_done_and_api_exposes_delivery() {
     let response = app
         .oneshot(
             axum::http::Request::builder()
+                .header("host", "127.0.0.1:3081")
+                .header("origin", "https://localhost:4200")
+                .header("x-codexsymphony-csrf", "1")
                 .method("POST")
                 .uri("/api/requirements/1/cancel")
                 .body(axum::body::Body::empty())
@@ -644,10 +657,20 @@ async fn missing_delivery_identity_rolls_back_and_cancel_reports_absent_requirem
     );
     tx.rollback().await.unwrap();
     assert_eq!(store::due(&pool, i64::MAX).await.unwrap().len(), 1);
-    let app = codexsymphony_server::execution_api::routes().with_state(pool);
+    let app = auth_client::router(
+        pool.clone(),
+        codexsymphony_server::security::RequestPolicy::new(
+            "127.0.0.1:3081".parse().unwrap(),
+            "https://localhost:4200".into(),
+        )
+        .unwrap(),
+    );
     let response = app
         .oneshot(
             axum::http::Request::builder()
+                .header("host", "127.0.0.1:3081")
+                .header("origin", "https://localhost:4200")
+                .header("x-codexsymphony-csrf", "1")
                 .method("POST")
                 .uri("/api/requirements/999/cancel")
                 .body(axum::body::Body::empty())
@@ -727,3 +750,6 @@ async fn operator_retry_preserves_attempts_and_resumes_after_push() {
         1
     );
 }
+
+#[path = "support/auth.rs"]
+mod auth_client;

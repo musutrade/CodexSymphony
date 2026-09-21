@@ -19,13 +19,22 @@ fn main() -> Result<(), StartupError> {
 
 #[tokio::main]
 async fn serve() -> Result<(), StartupError> {
+    if std::env::args().nth(1).as_deref() == Some("auth") {
+        return codexsymphony_server::auth_admin::run(
+            &std::env::args().skip(2).collect::<Vec<_>>(),
+        )
+        .await;
+    }
     initialize_logging();
     if let Some(path) = std::env::args_os().nth(2).filter(|_| {
         std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("--github-inspect"))
     }) {
         return codexsymphony_server::github_service::inspect(std::path::Path::new(&path)).await;
     }
-    let config = Config::from_env()?;
+    run_service(Config::from_env()?).await
+}
+
+async fn run_service(config: Config) -> Result<(), StartupError> {
     // A fixed host path deliberately cannot be changed per cwd/database/port.
     // Never unlink the lock inode on shutdown: another instance may hold it.
     let _instance =
@@ -44,7 +53,7 @@ async fn serve() -> Result<(), StartupError> {
 
 async fn listen(config: Config) -> Result<(TcpListener, RequestPolicy), StartupError> {
     let listener = TcpListener::bind(config.bind_address).await?;
-    let policy = RequestPolicy::new(listener.local_addr()?, config.web_origin)?;
+    let policy = RequestPolicy::configured(listener.local_addr()?, config.web_origin)?;
     Ok((listener, policy))
 }
 
@@ -131,9 +140,12 @@ async fn serve_http(
     if let Some(runtime) = runtime {
         app = app.layer(axum::Extension(runtime));
     }
-    axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
-        .await?;
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
+    )
+    .with_graceful_shutdown(shutdown_signal())
+    .await?;
     Ok(())
 }
 

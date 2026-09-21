@@ -1,3 +1,5 @@
+#[path = "support/auth.rs"]
+mod auth_client;
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -27,11 +29,11 @@ fn body(document: Value, version: i64) -> Value {
     json!({"version":version,"source":source(document)})
 }
 fn app(pool: &PgPool) -> Router {
-    codexsymphony_server::router(
+    auth_client::router(
         pool.clone(),
         codexsymphony_server::security::RequestPolicy::new(
             "127.0.0.1:3081".parse().unwrap(),
-            "http://localhost:4200".into(),
+            "https://localhost:4200".into(),
         )
         .unwrap(),
     )
@@ -44,7 +46,7 @@ async fn request(app: &Router, method: &str, path: &str, body: Value, expected: 
                 .method(method)
                 .uri(path)
                 .header("host", "127.0.0.1:3081")
-                .header("origin", "http://localhost:4200")
+                .header("origin", "https://localhost:4200")
                 .header("x-codexsymphony-csrf", "1")
                 .header("content-type", "application/json")
                 .body(Body::from(body.to_string()))
@@ -441,7 +443,7 @@ async fn competing_confirmations_create_one_authorization() {
                     .method("POST")
                     .uri(format!("/api/drafts/{id}/authorize"))
                     .header("host", "127.0.0.1:3081")
-                    .header("origin", "http://localhost:4200")
+                    .header("origin", "https://localhost:4200")
                     .header("x-codexsymphony-csrf", "1")
                     .header("content-type", "application/json")
                     .body(Body::from(

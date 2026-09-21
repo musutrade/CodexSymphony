@@ -1,5 +1,7 @@
 //! Launch the real service: migrations, HTTP wiring and orderly shutdown.
 #![cfg(unix)]
+#[path = "support/auth_admin.rs"]
+mod auth_admin;
 use std::{
     io::{BufRead, BufReader, Read, Write},
     net::{SocketAddr, TcpStream},
@@ -34,8 +36,16 @@ fn serve_and_shutdown(configured: bool) {
     let root = std::env::temp_dir().join(codexsymphony_server::process::new_identity().unwrap());
     let execution = root.join("execution");
     std::fs::create_dir_all(&execution).unwrap();
+    let auth_config = root.join("auth.json");
+    std::fs::write(
+        &auth_config,
+        r#"{"public_origin":"https://localhost:4200","trusted_proxies":[]}"#,
+    )
+    .unwrap();
     let mut command = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"));
     command
+        .env("AUTH_CONFIG", &auth_config)
+        .env("WEB_ORIGIN", "https://localhost:4200")
         .env_remove("RUNTIME_CONFIG")
         .env_remove("STORAGE_CONFIG");
     if configured {
@@ -97,27 +107,61 @@ fn serve_and_shutdown(configured: bool) {
     stream.read_to_string(&mut response).unwrap();
     assert!(response.starts_with("HTTP/1.1 200"), "{response}");
     assert!(response.contains(r#"{"status":"ok","database":"ok"}"#));
-    let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2)).unwrap();
-    stream
-        .set_read_timeout(Some(Duration::from_secs(3)))
+    let anonymous = request(address, "GET", "/api/multi/repository", "", "");
+    assert!(anonymous.starts_with("HTTP/1.1 401"));
+    let username = format!(
+        "startup-{}",
+        codexsymphony_server::process::new_identity().unwrap()
+    );
+    let mut admin = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+        .args(["auth", "init", "--stdin-json"])
+        .env("DATABASE_URL", std::env::var("TEST_DATABASE_URL").unwrap())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .spawn()
         .unwrap();
-    stream
+    admin
+        .stdin
+        .take()
+        .unwrap()
         .write_all(
-            format!(
-                "GET /api/multi/repository HTTP/1.1\r\nHost: {address}\r\nConnection: close\r\n\r\n"
-            )
-            .as_bytes(),
+            serde_json::json!({"username":username,"password":"synthetic-startup-password"})
+                .to_string()
+                .as_bytes(),
         )
         .unwrap();
-    let mut response = String::new();
-    stream.read_to_string(&mut response).unwrap();
-    assert!(response.starts_with("HTTP/1.1 200"), "{response}");
+    assert!(admin.wait().unwrap().success());
+    let bootstrap = request(address, "GET", "/api/auth/csrf", "", "");
+    let (cookie, proof) = session_headers(&bootstrap);
+    let headers = format!(
+        "Cookie: {cookie}\r\nOrigin: https://localhost:4200\r\nx-codexsymphony-csrf: {proof}\r\n"
+    );
+    let login = request(
+        address,
+        "POST",
+        "/api/auth/login",
+        &headers,
+        &serde_json::json!({"username":username,"password":"synthetic-startup-password"})
+            .to_string(),
+    );
+    assert!(login.starts_with("HTTP/1.1 200"));
+    let (cookie, _) = session_headers(&login);
+    let response = request(
+        address,
+        "GET",
+        "/api/multi/repository",
+        &format!("Cookie: {cookie}\r\n"),
+        "",
+    );
+    assert!(response.starts_with("HTTP/1.1 200"));
     let body: serde_json::Value =
         serde_json::from_str(response.split_once("\r\n\r\n").unwrap().1).unwrap();
     assert_eq!(body["runtime_ready"], configured);
     let duplicate = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
         .env("DATABASE_URL", std::env::var("TEST_DATABASE_URL").unwrap())
         .env("BIND_ADDRESS", "127.0.0.1:0")
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .env("AUTH_CONFIG", &auth_config)
         .current_dir(std::env::temp_dir())
         .output()
         .unwrap();
@@ -220,4 +264,49 @@ fn storage_fixture(execution: &std::path::Path, cold: &std::path::Path) -> serde
         })
         .collect();
     json!({"policy":{"version":codexsymphony_server::process::new_identity().unwrap(),"reason":"isolated startup fixture","global_bytes":4294967296_u64,"control_bytes":268435456,"run_bytes":33554432,"requirement_bytes":134217728,"entry_bytes":1048576,"entry_count":10000,"categories":categories},"execution":root(execution),"cold":root(cold),"database_filesystem":root(cold),"database_extras":[]})
+}
+
+fn request(address: SocketAddr, method: &str, path: &str, headers: &str, body: &str) -> String {
+    let mut stream = TcpStream::connect_timeout(&address, Duration::from_secs(2)).unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .unwrap();
+    write!(stream, "{method} {path} HTTP/1.1\r\nHost: {address}\r\nConnection: close\r\nContent-Type: application/json\r\nContent-Length: {}\r\n{headers}\r\n{body}", body.len()).unwrap();
+    let mut response = String::new();
+    stream.read_to_string(&mut response).unwrap();
+    response
+}
+fn session_headers(response: &str) -> (String, String) {
+    let (headers, body) = response.split_once("\r\n\r\n").unwrap();
+    let cookie = headers
+        .lines()
+        .find_map(|line| line.strip_prefix("set-cookie: "))
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_owned();
+    let body: serde_json::Value = serde_json::from_str(body).unwrap();
+    (cookie, body["csrf_token"].as_str().unwrap().into())
+}
+
+#[test]
+fn occupied_listener_fails_without_starting_workers() {
+    let _serial = STARTUP.lock().unwrap();
+    let occupied = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let root = std::env::temp_dir().join(codexsymphony_server::process::new_identity().unwrap());
+    std::fs::create_dir_all(&root).unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+        .env("DATABASE_URL", std::env::var("TEST_DATABASE_URL").unwrap())
+        .env("BIND_ADDRESS", occupied.local_addr().unwrap().to_string())
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .env("EXECUTION_DIRECTORY", root.join("execution"))
+        .env_remove("RUNTIME_CONFIG")
+        .env_remove("STORAGE_CONFIG")
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("AddrInUse"));
+    assert!(!root.join("execution").exists());
+    std::fs::remove_dir_all(root).unwrap();
 }

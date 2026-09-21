@@ -1,4 +1,8 @@
-//! Minimal localhost API; no scheduler or business completion state is implied.
+pub mod auth;
+pub mod auth_admin;
+pub mod auth_api;
+pub mod auth_store;
+
 pub mod budget;
 pub mod budget_store;
 pub mod business;
@@ -90,6 +94,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
     policy.protect(
         Router::new()
             .route("/api/health", get(health))
+            .merge(auth_api::routes())
             .merge(business::routes())
             .merge(draft_api::routes())
             .merge(group_api::routes())
@@ -100,7 +105,8 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .merge(validation_api::routes())
             .merge(runtime_api::routes())
             .layer(axum::middleware::from_fn(draft_api::guard_legacy))
-            .with_state(pool),
+            .with_state(pool.clone()),
+        pool,
     )
 }
 

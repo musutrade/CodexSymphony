@@ -106,13 +106,23 @@ async fn persistence_and_full_client_acceptance() {
             .id,
         q.id
     );
-    let app = codexsymphony_server::runtime_api::routes().with_state(pool.clone());
+    let app = auth_client::router(
+        pool.clone(),
+        codexsymphony_server::security::RequestPolicy::new(
+            "127.0.0.1:3081".parse().unwrap(),
+            "https://localhost:4200".into(),
+        )
+        .unwrap(),
+    );
     use axum::{body::Body, http::Request};
     use tower::ServiceExt;
     let response = app
         .clone()
         .oneshot(
             Request::builder()
+                .header("host", "127.0.0.1:3081")
+                .header("origin", "https://localhost:4200")
+                .header("x-codexsymphony-csrf", "1")
                 .uri("/api/requirements/1/questions")
                 .body(Body::empty())
                 .unwrap(),
@@ -133,6 +143,9 @@ async fn persistence_and_full_client_acceptance() {
             .clone()
             .oneshot(
                 Request::builder()
+                    .header("host", "127.0.0.1:3081")
+                    .header("origin", "https://localhost:4200")
+                    .header("x-codexsymphony-csrf", "1")
                     .method("POST")
                     .uri(format!("/api/questions/{id}/answer"))
                     .header("content-type", "application/json")
@@ -183,6 +196,9 @@ async fn persistence_and_full_client_acceptance() {
         .clone()
         .oneshot(
             Request::builder()
+                .header("host", "127.0.0.1:3081")
+                .header("origin", "https://localhost:4200")
+                .header("x-codexsymphony-csrf", "1")
                 .method("POST")
                 .uri(format!("/api/questions/{}/answer", q.id))
                 .header("content-type", "application/json")
@@ -290,6 +306,9 @@ async fn persistence_and_full_client_acceptance() {
     let response = app
         .oneshot(
             Request::builder()
+                .header("host", "127.0.0.1:3081")
+                .header("origin", "https://localhost:4200")
+                .header("x-codexsymphony-csrf", "1")
                 .uri("/api/requirements/1/questions")
                 .body(Body::empty())
                 .unwrap(),
@@ -1154,6 +1173,8 @@ async fn configured_controller(
         .env("STORAGE_CONFIG", &storage_path)
         .env("EXECUTION_DIRECTORY", root)
         .env("BIND_ADDRESS", address.to_string())
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .env("AUTH_CONFIG", server_auth::config(root))
         .env_remove("GITHUB_APP_CONFIG")
         .stdout(std::fs::File::create(&worker_log).unwrap())
         .stderr(std::process::Stdio::inherit())
@@ -1266,6 +1287,8 @@ async fn configured_controller(
         .env("STORAGE_CONFIG", &storage_path)
         .env("EXECUTION_DIRECTORY", root)
         .env("BIND_ADDRESS", "127.0.0.1:0")
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .env("AUTH_CONFIG", server_auth::config(root))
         .env_remove("GITHUB_APP_CONFIG")
         .output()
         .unwrap();
@@ -1497,3 +1520,9 @@ stream_max_retries = 0
     assert_eq!(ending, "blocker");
     pool.close().await;
 }
+
+#[path = "support/server_auth.rs"]
+mod server_auth;
+
+#[path = "support/auth.rs"]
+mod auth_client;

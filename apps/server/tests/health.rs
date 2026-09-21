@@ -23,6 +23,9 @@ async fn health_checks_a_real_database() {
         .oneshot(
             Request::builder()
                 .uri("/api/health")
+                .extension(axum::extract::ConnectInfo(
+                    "127.0.0.1:50000".parse::<std::net::SocketAddr>().unwrap(),
+                ))
                 .header("host", "127.0.0.1:3081")
                 .body(Body::empty())
                 .unwrap(),
@@ -47,6 +50,9 @@ async fn unavailable_database_is_503_without_connection_details() {
         .oneshot(
             Request::builder()
                 .uri("/api/health")
+                .extension(axum::extract::ConnectInfo(
+                    "127.0.0.1:50000".parse::<std::net::SocketAddr>().unwrap(),
+                ))
                 .header("host", "127.0.0.1:3081")
                 .body(Body::empty())
                 .unwrap(),
@@ -65,7 +71,7 @@ async fn unavailable_database_is_503_without_connection_details() {
 fn policy() -> codexsymphony_server::security::RequestPolicy {
     codexsymphony_server::security::RequestPolicy::new(
         "127.0.0.1:3081".parse().unwrap(),
-        "http://localhost:4200".into(),
+        "https://localhost:4200".into(),
     )
     .unwrap()
 }

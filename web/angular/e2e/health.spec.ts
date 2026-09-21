@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './auth-fixture';
 import AxeBuilder from '@axe-core/playwright';
 
 test('connects to the real API and is accessible on this viewport', async ({ page }, testInfo) => {

@@ -936,6 +936,8 @@ async fn configured_server_and_transport_failure() {
         .env("DATABASE_URL", url.as_str())
         .env("GITHUB_APP_CONFIG", &file)
         .env("BIND_ADDRESS", "127.0.0.1:0")
+        .env("WEB_ORIGIN", "https://localhost:4200")
+        .env("AUTH_CONFIG", server_auth::config(&f.root))
         .env("RUST_LOG", "off")
         .env("EXECUTION_DIRECTORY", f.root.join("execution"))
         .stdout(std::process::Stdio::null())
@@ -1394,3 +1396,6 @@ async fn private_actions_do_not_require_unselected_legacy_status_permission() {
         .unwrap_err();
     assert_eq!(error.status, Some(403));
 }
+
+#[path = "support/server_auth.rs"]
+mod server_auth;

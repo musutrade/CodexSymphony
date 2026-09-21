@@ -747,6 +747,7 @@ async fn queue_edit_and_real_claim_serialize_in_both_orders() {
         }
         review["coverage"][0]["child_revision"] = json!(2);
         let router = app(&pool);
+        request(&router, "GET", "/api/auth/session", json!({}), 200).await;
         let path = format!("/api/drafts/{draft}/queue-edit");
         let input = json!({"request_id":"race-change","version":1,"change":{"kind":"propose","document":document,"review":review}});
         if edit_wins {
@@ -759,7 +760,7 @@ async fn queue_edit_and_real_claim_serialize_in_both_orders() {
                 .unwrap();
             let edit =
                 tokio::spawn(async move { request(&router, "POST", &path, input, 200).await });
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            wait_for_queue_lock(&pool).await;
             let planning_pool = pool.clone();
             let planning = tokio::spawn(async move {
                 runtime_initial::plan(
@@ -799,7 +800,7 @@ async fn queue_edit_and_real_claim_serialize_in_both_orders() {
                     .await
                     .unwrap()
             });
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            wait_for_queue_lock(&pool).await;
             let edit =
                 tokio::spawn(async move { request(&router, "POST", &path, input, 409).await });
             blocker.commit().await.unwrap();
@@ -827,6 +828,7 @@ async fn legacy_draft_edit_serializes_with_first_queue_projection() {
         let (pool, _, _) = fixture().await;
         let draft = authorized(&pool, "legacy-race").await;
         let router = app(&pool);
+        request(&router, "GET", "/api/auth/session", json!({}), 200).await;
         let mut document = sample();
         document["children"][1]["goal"] = json!("legacy draft mutation");
         let mut blocker = pool.begin().await.unwrap();
@@ -849,11 +851,11 @@ async fn legacy_draft_edit_serializes_with_first_queue_projection() {
         let projection_job = async move { queue::materialize(&task_pool).await.unwrap() };
         let (editing, projection) = if editing_first {
             let editing = tokio::spawn(edit_job);
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            wait_for_queue_lock(&pool).await;
             (editing, tokio::spawn(projection_job))
         } else {
             let projection = tokio::spawn(projection_job);
-            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            wait_for_queue_lock(&pool).await;
             (tokio::spawn(edit_job), projection)
         };
         blocker.commit().await.unwrap();
@@ -869,4 +871,15 @@ async fn legacy_draft_edit_serializes_with_first_queue_projection() {
         assert_eq!(revision, if editing_first { 2 } else { 1 });
         assert_eq!(count(&pool, "agent_run").await, 0);
     }
+}
+
+async fn wait_for_queue_lock(pool: &PgPool) {
+    tokio::time::timeout(std::time::Duration::from_secs(10), async {
+        loop {
+            let waiting: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_locks l JOIN pg_stat_activity a ON a.pid=l.pid WHERE l.locktype='advisory' AND NOT l.granted AND l.objid=13002 AND a.application_name=current_schema())")
+                .fetch_one(pool).await.unwrap();
+            if waiting { break; }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+    }).await.expect("expected operation to reach the real queue lock");
 }
