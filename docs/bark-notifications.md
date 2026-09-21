@@ -32,7 +32,7 @@
   "application_origin": "https://platform.example.invalid",
   "endpoint": "https://api.day.app/push",
   "device_key": "REPLACE_IN_PRIVATE_HOST_CONFIGURATION",
-  "database": "postgresql://notifier:REPLACE_PRIVATELY@db.example.invalid/app?sslmode=verify-full",
+  "database": "postgresql://notifier:<PASSWORD>@db.example.invalid/app?sslmode=verify-full",
   "psql_program": "/usr/bin/psql",
   "state_directory": "/var/lib/codexsymphony-notifier",
   "local_fixture": false

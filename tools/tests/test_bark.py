@@ -59,7 +59,7 @@ class BarkTests(unittest.TestCase):
         self.cfg = dict(psql_program=shutil.which('psql'), enabled=True, application_origin='https://platform.example.invalid',
                         endpoint=f'http://127.0.0.1:{self.server.server_port}/push',
                         device_key='synthetic-fixture-only-' + secrets.token_hex(8),
-                        database='postgresql://fixture:synthetic@127.0.0.1/fixture', state_directory=str(self.root), local_fixture=True)
+                        database='postgresql://fixture@127.0.0.1/fixture', state_directory=str(self.root), local_fixture=True)
         self.path = self.root/'bark.json'
         self.save()
         self.item = dict(requirement_id=74, kind='question', action_key=hashlib.sha256(b'question1').hexdigest())
