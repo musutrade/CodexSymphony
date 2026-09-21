@@ -1,5 +1,7 @@
 # GH-76 同版本 M2 集成记录
 
+合并后核对（2026-09-21）：PR #82 最终 head 的两个正式检查均 SUCCESS，已合并为 `5c7934f6d86ba16f552b18c2bf90a19748f1a648`；精确 head、检查链接和时间见 [开发基线](../../development-baseline.md)。原始受控证据身份保持不变。
+
 验收日期：2026-09-21。范围与逐条 AAuth/B 状态见 [M2 交付矩阵](../../m2-delivery.md)。[可读机器记录](acceptance.json) 保存实际结果、进程身份和原始证据 SHA-256；[环境与迁移](environment.json) 保存 UID/namespace、PG16 版本及实际已应用的 24 条迁移 checksum。
 
 产品源码为完整 main `86f19bacad6c36d025719a61ab9cc46c55e01c77`，包含 #71–#75 最终合并。255 个产品/前端/迁移/部署文件无差异，完整清单在 `artifacts/gh76/product-source.json`。所有本次服务集成使用重新构建的同一二进制：
@@ -25,7 +27,7 @@
 | 独立 verifier namespace/策略不可写/重放拒绝 | passed，3 项 | `artifacts/gh76/verifier-boundary.log` |
 | 真实 PG16 加密备份、mTLS、隔离恢复、故障路径 | passed，3 项 | `artifacts/gh76/recovery-final.log`、`artifacts/gh75/recovery-acceptance.json` |
 | Gate config / architecture audit / secrets | passed | `artifacts/gh76/gate-config.log`、`audit-final.log`、`secrets-final.json` |
-| 最终 PR head 的 Harness-Gate / Trusted Harness-Gate | pending：独立宿主 | 当前本地记录不是正式签名质量结果 |
+| 最终 PR head 的 Harness-Gate / Trusted Harness-Gate | passed：合并后 GitHub 回读 | 精确 head 与两个检查链接见 [开发基线](../../development-baseline.md) |
 
 隔夜结果逐阶段核对数据库和工作文件：最初 1 个 Run；超时后 1 份保存；手机回答后第 2 个 Run 实际读取原工作；暂停/重启仍为 2 个 Run，未自动续跑；明确恢复产生第 3 个 Run，携带原问题回答；取消后 `Cancelled`、3 份保存、所有 Run 静止、执行槽释放，原授权和预算上限不变。未把取消写成 Done。模型协议对端与 GitHub 能力观察为明确标注的合成 fixture；真实 GitHub 写与模型服务不在本次测试范围。
 

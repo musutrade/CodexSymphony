@@ -1,5 +1,7 @@
 # 开发工具收尾与下一项工作（2026-09-20）
 
+本文为 2026-09-20 历史快照；当前 M2 收尾状态与 M3 起点见 [开发基线](../../development-baseline.md)。
+
 后续收尾状态见 [#56 部署及工作区保全修复](../workspace-preservation/README.md)。
 
 后续结果：[A13 证据恢复](../gh25/evidence-recovery.md) 已恢复 8/12 项原清单文件。
