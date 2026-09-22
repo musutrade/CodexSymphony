@@ -18,6 +18,7 @@ path = "web/angular"
 
 [policy]
 required_steps = [
+    "gate.selftest",
     "backend.format",
     "backend.clippy",
     "backend.compile",
@@ -151,6 +152,21 @@ components = [
 ]
 
 [[steps]]
+id = "gate.selftest"
+label = "gate regression tests"
+component = "backend"
+profiles = ["ci", "full", "hook"]
+program = "python3"
+args = ["-B", "{root}/tools/gate_selftest.py"]
+cwd = "{root}"
+log = "gate_selftest.log"
+timeout_secs = 180
+services = []
+remove_env = []
+depends_on = []
+input = "snapshot"
+
+[[steps]]
 id = "backend.format"
 label = "backend format"
 component = "backend"
@@ -237,15 +253,8 @@ profiles = [
     "ci",
     "full",
 ]
-program = "cargo"
-args = [
-    "test",
-    "--manifest-path",
-    "{backend}/Cargo.toml",
-    "--locked",
-    "--",
-    "--nocapture",
-]
+program = "python3"
+args = ["-B", "{root}/tools/quality-host/test_receipt.py"]
 cwd = "{root}"
 log = "backend_tests.log"
 timeout_secs = 600

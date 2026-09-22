@@ -14,17 +14,29 @@ jobs:
   quality:
     name: Harness-Gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 50
+    timeout-minutes: 180
     steps:
       - name: Await independently authenticated host gate
         uses: actions/github-script@v8
+        env:
+          GATE_QUEUE_MINUTES: ${{ vars.GATE_QUEUE_MINUTES || '60' }}
+          GATE_EXECUTION_MINUTES: ${{ vars.GATE_EXECUTION_MINUTES || '45' }}
         with:
           script: |
             const expected = context.payload.pull_request?.head.sha || context.sha;
             const identity = `${context.runId}/${process.env.GITHUB_RUN_ATTEMPT}`;
-            const deadline = Date.now() + 45 * 60 * 1000;
+            const minutes = (name, maximum) => {
+              const value = Number(process.env[name]);
+              if (!Number.isInteger(value) || value < 1 || value > maximum) {
+                throw new Error(`Invalid ${name}: expected 1..${maximum}`);
+              }
+              return value * 60 * 1000;
+            };
+            const queueDeadline = Date.now() + minutes('GATE_QUEUE_MINUTES', 120);
+            const executionBudget = minutes('GATE_EXECUTION_MINUTES', 55);
+            let executionDeadline;
             core.info(`Waiting for trusted host: ${expected}, attempt ${identity}`);
-            while (Date.now() < deadline) {
+            while (true) {
               const checks = await github.paginate(github.rest.checks.listForRef, {
                 ...context.repo, ref: expected, check_name: 'Trusted Harness-Gate',
                 filter: 'all', per_page: 100
@@ -33,6 +45,14 @@ jobs:
                 check.head_sha === expected && check.external_id === identity &&
                 check.app?.id === 4867361 && check.app?.slug === 'my-disposable-bot');
               const check = matches.sort((a, b) => b.id - a.id)[0];
+              if (check?.status === 'in_progress' && executionDeadline === undefined) {
+                const started = Date.parse(check.started_at);
+                if (!Number.isFinite(started) || started > Date.now() + 60000) {
+                  throw new Error('Trusted host check has an invalid start time');
+                }
+                executionDeadline = started + executionBudget;
+                core.info('Trusted host admitted this attempt; execution budget is now separate from queue wait');
+              }
               if (check?.status === 'completed') {
                 await core.summary.addRaw(check.output?.summary || 'Missing host summary').write();
                 if (check.conclusion !== 'success') {
@@ -42,6 +62,11 @@ jobs:
                 }
                 return;
               }
+              if (Date.now() >= (executionDeadline ?? queueDeadline)) {
+                core.setFailed(executionDeadline === undefined
+                  ? 'Trusted host queue wait exceeded its budget'
+                  : 'Trusted host execution exceeded its budget');
+                return;
+              }
               await new Promise(resolve => setTimeout(resolve, 15000));
             }
-            core.setFailed('No successful trusted host evidence before deadline');

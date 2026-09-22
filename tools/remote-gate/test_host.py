@@ -124,6 +124,19 @@ class DeploymentTransition(unittest.TestCase):
 
 
 class GateTimeBudget(unittest.TestCase):
+    def test_only_full_main_push_can_publish_compiler_cache(self):
+        from host import gate_command
+        root=Path('/source');job=Path('/job')
+        approval={'host_release':'/installed','execution_version':2}
+        config={'cache_max_bytes':1234,'cache_ttl_seconds':500}
+        for event,branch,publish in [('push','main',True),('pull_request','topic',False),('workflow_dispatch','main',False)]:
+            command=gate_command({'event':event,'head_branch':branch},config,approval,root,job)
+            self.assertEqual('--publish-cache' in command,publish)
+            self.assertEqual(command[command.index('--cache-max-bytes')+1],'1234')
+        legacy=gate_command({'event':'push','head_branch':'main'},config,{'host_release':'/old'},root,job)
+        self.assertNotIn('--publish-cache',legacy)
+        self.assertNotIn('--cache-max-bytes',legacy)
+
     def test_timeout_default_configuration_and_invalid_values(self):
         from host import gate_timeout
         self.assertEqual(gate_timeout({}),1500)

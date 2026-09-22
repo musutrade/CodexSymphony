@@ -10,6 +10,7 @@ import time
 import urllib.error
 import urllib.request
 from isolation import command
+from timing import phase
 
 PLUGIN_ROOT = Path('/home/gem/.local/share/harness-gate')
 RUST = PLUGIN_ROOT / 'rust-source/0.1.0-rc.5'
@@ -21,7 +22,7 @@ def write(path, data): path.write_text(json.dumps(data, indent=2) + '\n')
 def load(path): return json.loads(path.read_text())
 
 def run_logged(run, label, args, **kwargs):
-    with (run / (label + '.stdout')).open('wb') as out, (run / (label + '.stderr')).open('wb') as err:
+    with phase(run, label), (run / (label + '.stdout')).open('wb') as out, (run / (label + '.stderr')).open('wb') as err:
         subprocess.run(args, stdout=out, stderr=err, check=True, **kwargs)
 
 def node(plugin, operation, request):
@@ -120,7 +121,7 @@ def capture_http(run, repository, container, url):
         except subprocess.TimeoutExpired: os.killpg(server.pid,signal.SIGKILL);server.wait()
 
 def captures(run, repository, root, context, baseline):
-    for directory in ('probes','target'): (run/directory).mkdir()
+    for directory in ('probes','target'): (run/directory).mkdir(exist_ok=True)
     container,url=database(run)
     try:
         args=command(['python3',RUST/'capture.py','--repository',repository,'--output',run/'probes/backend','--target-dir',run/'target','--source-root','apps/server/src','--input','Cargo.toml','--input','Cargo.lock','--input','apps','--input','migrations','--manifest','apps/server/Cargo.toml'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
@@ -170,10 +171,13 @@ def captures(run, repository, root, context, baseline):
     contract['parameters']['receipt']={'schema':'http-json-capture/v1','context':context,'inputs':{name:sha((root/name).read_bytes()) for name in files},'baseline':baseline,'observations_sha256':sha(observation_path.read_bytes()),'binary_sha256':binary_hash,'consumer_sources':{f['path']:f['sha256'] for f in discovery['sources']}}
     contract['parameters']['subjects']=node(HTTP,'p.discover(q)',contract)['subjects']
     requests={'backend':backend,'frontend':frontend,'frontend-api':contract}
-    # Re-discover Rust subjects against the combined source tree, not old paths.
+    # Subject IDs use relative source paths and source hashes, not snapshot
+    # directories or commit IDs. Validate the relocated inventory; collect()
+    # still replays all native counters and checks the exact subject list.
     import sys
     sys.path.insert(0,str(RUST));import plugin as rust
-    backend['parameters']['subjects']=rust.discover(backend)
+    if rust.inventory(backend) != backend['parameters']['receipt']['sources']:
+        raise ValueError('relocated Rust source inventory differs from capture')
     identities={'backend':rust.series(backend),'frontend':node(TS,'p.series(q,q.parameters.receipt)',frontend),'frontend-api':node(HTTP,'p.series(q)',contract)}
     write(run/'requests.json',requests);write(run/'series.json',identities)
     return requests,identities

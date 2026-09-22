@@ -12,7 +12,7 @@ def compact_artifacts(response, root):
     refs = response.get('artifacts', [])
     nested = [ref for evidence in response.get('collection', {}).get('evidence', [])
               for ref in evidence.get('artifacts', [])]
-    by_id, paths = {}, {}
+    by_id, paths, blobs = {}, {}, {}
     for ref in refs:
         if ref['id'] in by_id and by_id[ref['id']] != ref:
             raise ValueError('conflicting artifact identity')
@@ -26,22 +26,28 @@ def compact_artifacts(response, root):
         data = path.read_bytes()
         if len(data) != ref['bytes'] or hashlib.sha256(data).hexdigest() != ref['sha256']:
             raise ValueError('artifact bytes differ from evidence')
-        paths[ref['path']] = data
+        paths[ref['path']] = ref['sha256']
+        blobs.setdefault(ref['sha256'], data)
     for ref in nested:
         if by_id.get(ref['id']) != ref:
             raise ValueError('nested artifact differs from envelope')
     # Core requires a distinct path/descriptor for each source. Keep those
     # identities; compress complete evidence bytes, never truncate/filter counters.
-    packed, updates = {}, {}
+    packed, decoded, updates = {}, {}, {}
     for ref in refs:
         name = ref['path']
         is_gzip = ref.get('media_type') == 'application/gzip' and name.endswith('.gz')
         is_json = ref.get('media_type') == 'application/json' and name.endswith('.json')
         if not (is_gzip or is_json):
             continue
-        data = paths[name]
-        raw = gzip.decompress(data) if is_gzip else data
-        digest = hashlib.sha256(raw).hexdigest()
+        data = blobs[paths[name]]
+        input_key = (paths[name], is_gzip)
+        if input_key not in decoded:
+            raw = gzip.decompress(data) if is_gzip else data
+            digest = hashlib.sha256(raw).hexdigest()
+            decoded[input_key] = digest
+        else:
+            digest = decoded[input_key]
         if digest not in packed:
             encoded = lzma.compress(raw, filters=[{'id': lzma.FILTER_LZMA2,
                                                      'preset': 9 | lzma.PRESET_EXTREME,

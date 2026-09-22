@@ -27,7 +27,7 @@ def main():
     spec=importlib.util.spec_from_file_location('installed_gate_host',target/'run.py')
     host=importlib.util.module_from_spec(spec);spec.loader.exec_module(host)
     if host.configuration_files(ROOT)!=previous['config_files']: raise ValueError('policy differs from last complete acceptance')
-    approval=previous|{'runtime_files':host.runtime_pins(),'trusted_files':host.trusted_files(ROOT),'host_release':str(target)}
+    approval=previous|{'runtime_files':host.runtime_pins(),'trusted_files':host.trusted_files(ROOT),'host_release':str(target),'execution_version':host.EXECUTION_VERSION}
     approvals=HOME/'approvals';approvals.mkdir(exist_ok=True)
     path=approvals/(version+'.json')
     content=json.dumps(approval,indent=2)+'\n'
