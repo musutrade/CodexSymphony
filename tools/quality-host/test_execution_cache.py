@@ -10,6 +10,32 @@ import test_receipt as capture
 
 
 class PrivateCache(unittest.TestCase):
+    def test_workspace_outputs_are_excluded_before_copying(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); repo = root / 'repo'; repo.mkdir()
+            (repo / 'Cargo.toml').write_text('[package]\nname="project-code"\n[lib]\nname="custom_lib"\n[[test]]\nname="declared_case"\n')
+            (repo / 'tests').mkdir(); (repo / 'tests/automatic.rs').write_text('test source')
+            (repo / 'src/bin/tool').mkdir(parents=True); (repo / 'src/bin/tool/main.rs').write_text('fn main() {}')
+            with patch.object(cache.subprocess, 'check_output', return_value='Cargo.toml\0tests/automatic.rs\0'):
+                packages, targets = cache.workspace_outputs(repo)
+            self.assertEqual(packages, {'project-code'})
+            self.assertTrue({'custom_lib', 'declared_case', 'automatic', 'tool'} <= targets)
+            source = root / 'target'; source.mkdir()
+            excluded = ['debug/project-code', 'debug/project-code.d', 'debug/deps/libcustom_lib-hash.rlib',
+                        'debug/deps/automatic-hash', 'debug/deps/declared_case-hash.d', 'debug/deps/tool-hash',
+                        'debug/.fingerprint/project-code-hash/state', 'debug/build/project-code-hash/out/data',
+                        'llvm-cov-target/debug/deps/project_code-hash', 'llvm-cov-target/debug/deps/automatic-hash',
+                        'llvm-cov-target/debug/incremental/data', 'llvm-cov-target/old.profraw']
+            retained = ['debug/deps/libserde-hash.rlib', 'debug/.fingerprint/serde-hash/state',
+                        'debug/build/serde-hash/out/private.rs', 'llvm-cov-target/debug/deps/libserde-hash.rlib']
+            for name in excluded + retained:
+                p = source / name; p.parent.mkdir(parents=True, exist_ok=True); p.write_text('bytes')
+            with patch.object(cache.shutil, 'copy2', wraps=cache.shutil.copy2) as copied:
+                cache.copy_dependencies(source, root / 'cache', packages, targets)
+                self.assertEqual(copied.call_count, len(retained))
+            for name in excluded: self.assertFalse((root / 'cache' / name).exists(), name)
+            for name in retained: self.assertEqual((root / 'cache' / name).read_text(), 'bytes')
+
     def test_main_seed_is_private_and_counters_never_cross_runs(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -34,6 +60,7 @@ class PrivateCache(unittest.TestCase):
             root = Path(temporary); source = root / 'source'; source.mkdir()
             (source / 'binary').write_bytes(b'x' * 100)
             self.assertFalse(cache.publish(root / 'cache', 'a' * 64, source, 'sha', max_bytes=1)['published'])
+            self.assertFalse(cache.publish(root / 'cache', 'a' * 64, source, 'sha', max_bytes=100)['published'])
             cache.publish(root / 'cache', 'b' * 64, source, 'sha', max_bytes=4096)
             os.utime(root / 'cache' / ('b' * 64), (0, 0))
             self.assertFalse(cache.restore(root / 'cache', 'b' * 64, root / 'restored', ttl=1)['hit'])

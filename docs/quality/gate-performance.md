@@ -34,8 +34,16 @@ Only a complete passing `push` run on `main` publishes a seed. PRs receive
 independent copies, never a writable mount or hard link to the seed. The key
 includes Cargo manifests/lockfiles/configuration, Rust/Cargo versions, approved
 runtime digests and policy digests. Instrumented and ordinary artifacts keep
-their separate Cargo directories. Profiles/counters and incremental output are
-excluded from publication, so each coverage run measures fresh execution.
+their separate Cargo directories. Only dependency outputs are retained. The
+host discovers repository package names and explicit/automatic Cargo targets,
+then excludes their executables, libraries, fingerprints and build outputs
+before copying. Profiles/counters and incremental output are also excluded,
+so each coverage run measures fresh execution. Cache schema 2 prevents an older
+whole-target seed from silently reintroducing project binaries.
+
+This distinction matters when restoring a cache requires physical copies: the first whole-target
+seed occupied 8.05 GiB and took 207 seconds merely to restore. Project test
+executables must not be copied when Cargo will rebuild them for a new snapshot.
 
 The reviewed remote installer exposes `--cache-max-bytes` (default 40 GiB;
 zero disables caching) and `--cache-ttl-seconds` (default seven days). Oldest
@@ -46,6 +54,11 @@ Per-run targets are still removed after success. `cache-restore.json` and
 
 The cache assumes main is an operator-reviewed branch. It never promotes PR
 build output merely because that PR's tests passed. Cold runs remain supported.
+An operator can migrate an existing full-PASS main seed by filtering its files
+under the new schema, after verifying the old report and that only cache/host
+orchestration code changed. The migrated receipt keeps the original main SHA;
+no PR-generated binaries are promoted. Retain the migration provenance and
+validate a complete run using the migrated seed before considering the rollout complete.
 
 ## Scheduling and post-merge verification
 
@@ -63,6 +76,10 @@ It writes a new `tree-equivalence.json` for the new SHA/attempt, explicitly sayi
 `full_suite_executed: false`; it never rewrites the original evidence's SHA.
 Changed trees/policies, missing evidence and manual `workflow_dispatch` runs
 execute the full suite. Equivalence receipts cannot themselves become baselines.
+When caching is enabled, a PR cache miss also requires a full main run to publish
+the new dependency seed. This prevents dependency or runtime updates from leaving
+all later PRs cold while main continually reuses their evidence. A missing cache
+receipt is treated as a miss. Explicitly disabled caches do not need warming.
 
 This policy establishes source-tree equivalence, not a second observation of
 runtime behavior at the merge SHA. It is appropriate while build/test inputs are

@@ -132,7 +132,7 @@ def main():
         write(args.approval,approval)
     if args.publish_cache and cache_key:
         with phase(run,'cache-publish'):
-            published=build_cache.publish(HOME/'build-cache',cache_key,run/'target',revision,args.cache_max_bytes,args.cache_ttl_seconds)
+            published=build_cache.publish(HOME/'build-cache',cache_key,run/'target',revision,args.cache_max_bytes,args.cache_ttl_seconds,repository=repo)
             write(run/'cache-publish.json',published)
     with phase(run,'cache-cleanup'):
         prune_build_cache(run)
