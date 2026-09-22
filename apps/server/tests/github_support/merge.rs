@@ -25,6 +25,18 @@ async fn setup_method(method: &str, failing_post: bool) -> Case {
     setup_source(method, failing_post, false).await
 }
 async fn setup_source(method: &str, failing_post: bool, test_merge: bool) -> Case {
+    setup_contract(method, failing_post, test_merge, false).await
+}
+async fn setup_contract(method: &str, failing_post: bool, test_merge: bool, checks: bool) -> Case {
+    setup_variant(method, failing_post, test_merge, checks, None).await
+}
+async fn setup_variant(
+    method: &str,
+    failing_post: bool,
+    test_merge: bool,
+    checks: bool,
+    post_argument: Option<&str>,
+) -> Case {
     let (pool, _, _) = groups::fixture().await;
     let mut repository = groups::repository();
     repository["github_repository_id"] = json!(99);
@@ -131,12 +143,16 @@ async fn setup_source(method: &str, failing_post: bool, test_merge: bool) -> Cas
     if failing_post {
         post_plan.steps[0].command.push("fail".into());
     }
+    if let Some(argument) = post_argument {
+        post_plan.steps[0].command.push(argument.into());
+        post_plan.steps[0].timeout_seconds = 5;
+    }
     std::fs::write(&plan_file, serde_json::to_vec(&post_plan).unwrap()).unwrap();
     let selector = Selector {
         name: "ci".into(),
         source: Source::CheckRun { app_id: 42 },
     };
-    let policy = Policy {
+    let mut policy = Policy {
         repository_id: 99,
         repository: "owner/repo".into(),
         default_branch: "main".into(),
@@ -185,6 +201,37 @@ async fn setup_source(method: &str, failing_post: bool, test_merge: bool) -> Cas
             rules: vec![],
         }),
     };
+    if checks {
+        let mut selector = action_policy().required.remove(0);
+        if let Source::Actions { event, branch, .. } = &mut selector.source {
+            *event = "workflow_dispatch".into();
+            *branch = "main".into();
+        }
+        policy.delivery.as_mut().unwrap().post_merge = PostMerge::Checks {
+            checks: vec![RequiredCheck {
+                selector,
+                applicability: "always".into(),
+                trigger: Trigger::WorkflowDispatch,
+                job: Some("build".into()),
+            }],
+            wait_seconds: 900,
+            probe_pr: 2,
+        };
+        f.put(
+            "/repos/owner/repo/actions/workflows/8",
+            json!({"id":8,"path":".github/workflows/ci.yml","state":"active"}),
+        );
+        f.put("/repos/owner/repo/contents/%2E%67%69%74%68%75%62%2F%77%6F%72%6B%66%6C%6F%77%73%2F%63%69%2E%79%6D%6C", json!({"sha":"pinned"}));
+        f.put(
+            "POST /repos/owner/repo/actions/workflows/8/dispatches",
+            json!({}),
+        );
+        f.put(
+            "/repos/owner/repo/git/ref/heads/%6D%61%69%6E",
+            json!({"object":{"sha":merged}}),
+        );
+        post_checks(&f, &merged, "success");
+    }
     v1::grants(&f, &policy);
     f.put("/repos/owner/repo",json!({"id":99,"full_name":"owner/repo","default_branch":"main","archived":false,"private":true,"allow_squash_merge":true,"allow_rebase_merge":true,"allow_merge_commit":true}));
     f.put(
@@ -234,10 +281,19 @@ async fn setup_source(method: &str, failing_post: bool, test_merge: bool) -> Cas
         json!({"merged":true,"sha":merged}),
     );
     f.put("expected-merge", json!({"sha":head,"merge_method":method}));
+    if checks {
+        let mut probe = pr.clone();
+        probe["number"] = json!(2);
+        probe["state"] = json!("closed");
+        probe["merged"] = json!(true);
+        probe["merged_at"] = json!("2026-09-22T00:00:00Z");
+        probe["merge_commit_sha"] = json!(merged);
+        f.put("/repos/owner/repo/pulls/2", probe);
+    }
     github_store::configure(&pool, &policy, 1).await.unwrap();
     let cap = github_observe::preflight(&mut f.client(), &policy, 1, github_service::now())
         .await
-        .unwrap();
+        .unwrap_or_else(|error| panic!("{error:?}; requests: {:?}", f.data.lock().unwrap().seen));
     assert!(cap.blockers.is_empty(), "{:?}", cap.blockers);
     github_store::save_capability(&pool, &cap).await.unwrap();
     sqlx::raw_sql("UPDATE delivery SET pr_number=1; UPDATE delivery_action SET state='confirmed'; UPDATE requirement SET state='Submitted' WHERE id=1; INSERT INTO github_pr(repository_id,number,requirement_id) VALUES(99,1,1);").execute(&pool).await.unwrap();
@@ -529,4 +585,304 @@ async fn test_merge_is_independently_validated_and_never_relabelled_as_merged() 
         .unwrap();
     assert_eq!(evidence["evidence"]["candidate"]["sha"], case.merged);
     case.close().await;
+}
+
+fn post_checks(f: &Fixture, sha: &str, conclusion: &str) {
+    f.put(
+        "/repos/owner/repo/actions/runs",
+        json!({"workflow_runs":[]}),
+    );
+    let mut check = super::check(22, conclusion);
+    check["head_sha"] = json!(sha);
+    check["check_suite"]["id"] = json!(19);
+    f.put(
+        &format!("/repos/owner/repo/commits/{sha}/check-suites"),
+        json!({"check_suites":[{"id":19}]}),
+    );
+    f.put(
+        "/repos/owner/repo/check-suites/19/check-runs",
+        json!({"check_runs":[check]}),
+    );
+    let mut run = super::run();
+    run["id"] = json!(11);
+    run["head_sha"] = json!(sha);
+    run["event"] = json!("workflow_dispatch");
+    run["head_branch"] = json!("main");
+    run["check_suite_id"] = json!(19);
+    f.put(
+        &format!("/repos/owner/repo/actions/runs?head_sha={sha}&per_page=100&page=1"),
+        json!({"workflow_runs":[run]}),
+    );
+    let mut job = super::job();
+    job["id"] = json!(21);
+    job["run_id"] = json!(11);
+    job["name"] = json!("build");
+    job["check_run_url"] = json!("https://api.github.com/repos/owner/repo/check-runs/22");
+    f.put(
+        "/repos/owner/repo/actions/runs/11/attempts/2/jobs",
+        json!({"jobs":[job]}),
+    );
+}
+
+#[tokio::test]
+async fn post_checks_dispatch_once_then_validate_actual_merged_source() {
+    let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
+    let mut case = setup_contract("squash", false, false, true).await;
+    let mut client = case.f.client();
+    case.tick(&mut client).await;
+    case.tick(&mut client).await;
+    case.merged();
+    case.f.put(
+        &format!(
+            "/repos/owner/repo/actions/runs?head_sha={}&per_page=100&page=1",
+            case.merged
+        ),
+        json!({"workflow_runs":[]}),
+    );
+    for _ in 0..2 {
+        case.tick(&mut client).await;
+    }
+    assert_eq!(case.state().await, "Submitted");
+    assert_eq!(
+        case.f
+            .data
+            .lock()
+            .unwrap()
+            .seen
+            .iter()
+            .filter(|r| r.starts_with("POST /repos/owner/repo/actions/workflows/8/dispatches"))
+            .count(),
+        1
+    );
+    post_checks(&case.f, &case.merged, "success");
+    case.tick(&mut client).await;
+    assert_eq!(case.state().await, "Done");
+    case.close().await;
+}
+
+#[tokio::test]
+async fn post_checks_failure_and_timeout_keep_owner_and_block_successors() {
+    let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
+    for timeout in [false, true] {
+        let mut case = setup_contract("squash", false, false, true).await;
+        let mut client = case.f.client();
+        case.tick(&mut client).await;
+        case.tick(&mut client).await;
+        case.merged();
+        if timeout {
+            case.f.put(
+                &format!(
+                    "/repos/owner/repo/actions/runs?head_sha={}&per_page=100&page=1",
+                    case.merged
+                ),
+                json!({"workflow_runs":[]}),
+            );
+            sqlx::query("UPDATE merge_operation SET merged_at=1,created_at=1")
+                .execute(&case.pool)
+                .await
+                .unwrap();
+        } else {
+            post_checks(&case.f, &case.merged, "failure");
+        }
+        case.tick(&mut client).await;
+        assert_eq!(case.state().await, "Submitted");
+        let (state, reason): (String, String) =
+            sqlx::query_as("SELECT state,blocker FROM merge_operation")
+                .fetch_one(&case.pool)
+                .await
+                .unwrap();
+        assert_eq!(state, "blocked", "{reason}");
+        assert!(
+            reason.contains(if timeout {
+                "deadline"
+            } else {
+                "required check failed"
+            }),
+            "{reason}"
+        );
+        case.close().await;
+    }
+}
+
+#[tokio::test]
+async fn transient_post_observation_retries_and_validation_honors_pause() {
+    let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
+    let mut case = setup().await;
+    let mut client = case.f.client();
+    case.tick(&mut client).await;
+    case.tick(&mut client).await;
+    case.merged();
+    // The merge response is already persisted. Skip the reconciliation worker
+    // so the error is exercised specifically by post-merge observation.
+    sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
+        .execute(&case.pool)
+        .await
+        .unwrap();
+    case.tick(&mut client).await;
+    sqlx::query("UPDATE requirement SET paused=false WHERE id=1")
+        .execute(&case.pool)
+        .await
+        .unwrap();
+    case.f.fail("/repos/owner/repo/pulls/1", vec![503]);
+    case.tick(&mut client).await;
+    let receipts: Value = sqlx::query_scalar("SELECT receipts FROM merge_operation")
+        .fetch_one(&case.pool)
+        .await
+        .unwrap();
+    assert!(
+        receipts
+            .to_string()
+            .contains("post_merge_observation_error")
+    );
+    assert_eq!(case.state().await, "Submitted");
+    sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
+        .execute(&case.pool)
+        .await
+        .unwrap();
+    case.tick(&mut client).await;
+    assert_eq!(case.state().await, "Submitted");
+    sqlx::query("UPDATE requirement SET paused=false WHERE id=1")
+        .execute(&case.pool)
+        .await
+        .unwrap();
+    case.tick(&mut client).await;
+    assert_eq!(case.state().await, "Done");
+    case.close().await;
+}
+
+#[tokio::test]
+async fn pause_during_actual_merged_validation_stops_process_and_retains_evidence() {
+    let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
+    let mut case = setup_variant("squash", false, false, false, Some("timeout")).await;
+    let mut client = case.f.client();
+    case.tick(&mut client).await;
+    case.tick(&mut client).await;
+    case.merged();
+    let pool = case.pool.clone();
+    let pause = tokio::spawn(async move {
+        for _ in 0..100 {
+            let started: bool =
+                sqlx::query_scalar("SELECT acceptance_started FROM merge_operation")
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            if started {
+                tokio::time::sleep(std::time::Duration::from_millis(350)).await;
+                sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+                return;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        }
+        panic!("acceptance never started");
+    });
+    case.tick(&mut client).await;
+    pause.await.unwrap();
+    assert_eq!(case.state().await, "Submitted");
+    let (key, state): (String, String) =
+        sqlx::query_as("SELECT action_key,state FROM merge_operation")
+            .fetch_one(&case.pool)
+            .await
+            .unwrap();
+    assert_eq!(state, "blocked");
+    let directory = case
+        .root
+        .join("validations")
+        .join(format!("post-merge-{key}"));
+    assert!(directory.join("binding.json").exists());
+    assert!(!directory.join("result.json").exists());
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM group_completion")
+            .fetch_one(&case.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    case.close().await;
+}
+
+#[tokio::test]
+async fn test_merge_missing_plan_blocks_before_merge_and_preserves_owner() {
+    let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
+    let case = setup_source("squash", false, true).await;
+    let mut client = case.f.client();
+    case.tick(&mut client).await;
+    sqlx::query("UPDATE candidate_validation SET approved_plan=NULL")
+        .execute(&case.pool)
+        .await
+        .unwrap();
+    case.tick(&mut client).await;
+    let (state, blocker, evidence): (String, String, Option<Value>) =
+        sqlx::query_as("SELECT state,blocker,pre_validation FROM merge_operation")
+            .fetch_one(&case.pool)
+            .await
+            .unwrap();
+    assert_eq!(state, "blocked");
+    assert!(
+        blocker.starts_with("pre_merge checkout validation blocked:"),
+        "{blocker}"
+    );
+    assert!(evidence.is_none());
+    assert!(
+        !case
+            .f
+            .data
+            .lock()
+            .unwrap()
+            .seen
+            .iter()
+            .any(|r| r.starts_with("PUT /repos/owner/repo/pulls/1/merge"))
+    );
+    let owner: Option<i64> = sqlx::query_scalar("SELECT requirement_id FROM execution_control")
+        .fetch_one(&case.pool)
+        .await
+        .unwrap();
+    assert_eq!(owner, Some(1));
+    case.close().await;
+}
+
+#[tokio::test]
+async fn dispatch_branch_movement_and_failed_send_cannot_repeat_a_write() {
+    let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
+    for moved in [true, false] {
+        let mut case = setup_contract("squash", false, false, true).await;
+        let mut client = case.f.client();
+        case.tick(&mut client).await;
+        case.tick(&mut client).await;
+        case.merged();
+        case.f.put(
+            &format!(
+                "/repos/owner/repo/actions/runs?head_sha={}&per_page=100&page=1",
+                case.merged
+            ),
+            json!({"workflow_runs":[]}),
+        );
+        if moved {
+            case.f.put(
+                "/repos/owner/repo/git/ref/heads/%6D%61%69%6E",
+                json!({"object":{"sha":"f".repeat(40)}}),
+            );
+        } else {
+            case.f.fail(
+                "/repos/owner/repo/actions/workflows/8/dispatches",
+                vec![503],
+            );
+        }
+        case.tick(&mut client).await;
+        case.tick(&mut client).await;
+        let sent = case
+            .f
+            .data
+            .lock()
+            .unwrap()
+            .seen
+            .iter()
+            .filter(|r| r.starts_with("POST /repos/owner/repo/actions/workflows/8/dispatches"))
+            .count();
+        assert_eq!(sent, usize::from(!moved));
+        assert_ne!(case.state().await, "Done");
+        case.close().await;
+    }
 }

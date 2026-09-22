@@ -44,12 +44,11 @@ async fn validate(
     if !automatic_merge::eligible(intent, &observation, now) {
         return Ok(());
     }
-    if intent
+    if !intent
         .policy
         .delivery
         .as_ref()
-        .map(|delivery| &delivery.pre_merge.checkout)
-        != Some(&PreMergeSource::TestMerge)
+        .is_some_and(|delivery| delivery.pre_merge.checkout == PreMergeSource::TestMerge)
     {
         return Ok(());
     }
@@ -57,27 +56,61 @@ async fn validate(
         .test_merge_sha
         .as_deref()
         .ok_or("test-merge SHA unavailable")?;
-    let mut tx = crate::run_store::lock(pool).await?;
-    if !merge_store::allowed(&mut tx, intent).await? {
+    validate_checkout(pool, client, root, intent, sha, now).await
+}
+async fn validate_checkout(
+    pool: &PgPool,
+    client: &mut AppClient,
+    root: &Path,
+    intent: &Intent,
+    sha: &str,
+    now: i64,
+) -> Result<()> {
+    if !validation_allowed(pool, intent).await? {
         return Ok(());
     }
-    tx.commit().await?;
     let plan = merge_validation::source_plan(pool, intent).await?;
     let (_, required) = merge_store::validation(pool, intent).await?;
     let checkout = merge_validation::checkout(pool, client, root, intent, sha, now).await?;
     let directory = root
         .join("validations")
         .join(format!("pre-merge-{}-{sha}", intent.action_key()));
-    let mut tx = crate::run_store::lock(pool).await?;
-    if !merge_store::allowed(&mut tx, intent).await? {
+    if !begin_validation(pool, intent).await? {
         return Ok(());
     }
-    sqlx::query("UPDATE merge_operation SET pre_validation_started=true WHERE action_key=$1 AND state='prepared'")
-        .bind(intent.action_key()).execute(&mut *tx).await?;
-    tx.commit().await?;
     let evidence =
         merge_validation::execute(pool, intent, checkout, directory, plan, required).await?;
+    save_validation(pool, intent, &evidence).await
+}
+async fn save_validation(
+    pool: &PgPool,
+    intent: &Intent,
+    evidence: &crate::validation::ValidationEvidence,
+) -> Result<()> {
     sqlx::query("UPDATE merge_operation SET pre_validation=$2 WHERE action_key=$1 AND state='prepared' AND pre_validation IS NULL")
         .bind(intent.action_key()).bind(json!(evidence)).execute(pool).await?;
     Ok(())
 }
+
+async fn validation_allowed(pool: &PgPool, intent: &Intent) -> Result<bool> {
+    let mut tx = crate::run_store::lock(pool).await?;
+    if !merge_store::allowed(&mut tx, intent).await? {
+        return Ok(false);
+    }
+    tx.commit().await?;
+    Ok(true)
+}
+async fn begin_validation(pool: &PgPool, intent: &Intent) -> Result<bool> {
+    let mut tx = crate::run_store::lock(pool).await?;
+    if !merge_store::allowed(&mut tx, intent).await? {
+        return Ok(false);
+    }
+    sqlx::query("UPDATE merge_operation SET pre_validation_started=true WHERE action_key=$1 AND state='prepared'")
+        .bind(intent.action_key()).execute(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(true)
+}
+
+#[cfg(test)]
+#[path = "../tests/unit/merge_prevalidation.rs"]
+mod tests;

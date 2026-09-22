@@ -100,6 +100,9 @@ pub async fn tick(pool: &PgPool, remote: &mut impl Remote, now: i64) -> Result<(
         }
         return Ok(());
     }
+    admit_candidate(pool, remote, now).await
+}
+async fn admit_candidate(pool: &PgPool, remote: &mut impl Remote, now: i64) -> Result<()> {
     let Some(mut intent) = store::candidate(pool).await? else {
         return Ok(());
     };
@@ -165,13 +168,10 @@ async fn prepare_send(
     if intent.policy.delivery.as_ref().is_some_and(|delivery| {
         delivery.pre_merge.checkout == crate::github_contract::PreMergeSource::TestMerge
     }) {
-        let saved: Option<Value> =
-            sqlx::query_scalar("SELECT pre_validation FROM merge_operation WHERE action_key=$1")
-                .bind(intent.action_key())
-                .fetch_one(pool)
-                .await?;
-        let Some(saved) = saved else { return Ok(()) };
-        evidence = serde_json::from_value(saved)?;
+        let Some(saved) = prevalidation(pool, intent).await? else {
+            return Ok(());
+        };
+        evidence = saved;
     }
     if !automatic_merge::admit(intent, &observation, &evidence, &required, now) {
         sqlx::query("UPDATE merge_operation SET state='invalidated',blocker='pre_merge identity or evidence changed' WHERE action_key=$1 AND state='prepared'")
@@ -181,6 +181,18 @@ async fn prepare_send(
     dispatch(pool, remote, intent, &observation, &required, now).await
 }
 
+async fn prevalidation(
+    pool: &PgPool,
+    intent: &Intent,
+) -> Result<Option<crate::validation::ValidationEvidence>> {
+    let saved: Option<Value> =
+        sqlx::query_scalar("SELECT pre_validation FROM merge_operation WHERE action_key=$1")
+            .bind(intent.action_key())
+            .fetch_one(pool)
+            .await?;
+    let Some(saved) = saved else { return Ok(None) };
+    Ok(Some(serde_json::from_value(saved)?))
+}
 async fn dispatch(
     pool: &PgPool,
     remote: &mut impl Remote,
@@ -189,6 +201,44 @@ async fn dispatch(
     required: &[String],
     now: i64,
 ) -> Result<()> {
+    if !ready_to_merge(pool, remote, intent, required).await? {
+        return Ok(());
+    }
+    // GitHub enforces required reviews and protection at the merge itself; the
+    // final read rejects unknown mergeability and a base/head movement first.
+    let pr = remote.pr(intent).await?;
+    let now = remote.current_time(now);
+    if !automatic_merge::eligible(intent, observation, now) {
+        return Ok(());
+    }
+    if !pr_ready(&pr, intent) {
+        store::receipt(pool, intent, json!({"pre_merge_pr":pr}), now, 30).await?;
+        return Ok(());
+    }
+    send_merge(pool, remote, intent, now).await
+}
+async fn send_merge(
+    pool: &PgPool,
+    remote: &mut impl Remote,
+    intent: &Intent,
+    now: i64,
+) -> Result<()> {
+    if store::begin(pool, intent, now).await? {
+        match remote.merge(intent).await {
+            Ok(response) => {
+                store::receipt(pool, intent, json!({"merge_response":response}), now, 30).await?
+            }
+            Err(error) => record_error(pool, intent, &error, now).await?,
+        }
+    }
+    Ok(())
+}
+async fn ready_to_merge(
+    pool: &PgPool,
+    remote: &mut impl Remote,
+    intent: &Intent,
+    required: &[String],
+) -> Result<bool> {
     let capability = remote.preflight(intent).await?;
     if capability.policy != intent.policy || !capability.blockers.is_empty() {
         store::block(
@@ -197,7 +247,7 @@ async fn dispatch(
             "current repository capability or protection changed",
         )
         .await?;
-        return Ok(());
+        return Ok(false);
     }
     // A merge cannot start before its configured acceptance path is executable.
     let plan = crate::merge_validation::plan(pool, intent).await?;
@@ -209,34 +259,17 @@ async fn dispatch(
             "post_merge plan does not cover authorized AC steps",
         )
         .await?;
-        return Ok(());
+        return Ok(false);
     }
-    // GitHub enforces required reviews and protection at the merge itself; the
-    // final read rejects unknown mergeability and a base/head movement first.
-    let pr = remote.pr(intent).await?;
-    let now = remote.current_time(now);
-    if !automatic_merge::eligible(intent, observation, now) {
-        return Ok(());
-    }
-    if pr["head"]["sha"] != intent.head
+    Ok(true)
+}
+fn pr_ready(pr: &Value, intent: &Intent) -> bool {
+    !(pr["head"]["sha"] != intent.head
         || pr["base"]["sha"] != intent.base
         || pr["mergeable"] != true
         || pr["mergeable_state"] != "clean"
         || pr["state"] != "open"
-        || pr["draft"] != false
-    {
-        store::receipt(pool, intent, json!({"pre_merge_pr":pr}), now, 30).await?;
-        return Ok(());
-    }
-    if store::begin(pool, intent, now).await? {
-        match remote.merge(intent).await {
-            Ok(response) => {
-                store::receipt(pool, intent, json!({"merge_response":response}), now, 30).await?
-            }
-            Err(error) => record_error(pool, intent, &error, now).await?,
-        }
-    }
-    Ok(())
+        || pr["draft"] != false)
 }
 async fn record_error(
     pool: &PgPool,
@@ -246,7 +279,7 @@ async fn record_error(
 ) -> Result<()> {
     let delay = error
         .downcast_ref::<Error>()
-        .and_then(|error| error.retry_after_seconds)
+        .and_then(retry_after)
         .unwrap_or(30);
     store::receipt(
         pool,
@@ -257,4 +290,8 @@ async fn record_error(
     )
     .await?;
     Ok(())
+}
+
+fn retry_after(error: &crate::github_http::Error) -> Option<u64> {
+    error.retry_after_seconds
 }

@@ -1,3 +1,4 @@
+extern crate self as codexsymphony_server;
 pub mod auth;
 pub mod auth_admin;
 pub mod auth_api;
@@ -164,3 +165,7 @@ pub mod recovery_remote;
 pub mod recovery_retry;
 pub mod recovery_store;
 pub mod recovery_worker;
+
+#[cfg(test)]
+#[path = "../tests/unit/support.rs"]
+mod merge_test_support;

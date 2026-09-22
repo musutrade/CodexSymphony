@@ -88,14 +88,7 @@ fn checkout_passes(
     else {
         return false;
     };
-    if phase.phase != "pre_merge"
-        || phase.head_sha != intent.head
-        || phase.base_sha != intent.base
-        || phase.expected_checkout_sha.as_deref() != Some(evidence.candidate.sha.as_str())
-        || phase.checks.is_empty()
-        || !phase.blockers.is_empty()
-        || !check_identity(intent, observation, phase)
-    {
+    if !phase_matches(intent, observation, phase, &evidence.candidate.sha) {
         return false;
     }
     phase
@@ -103,6 +96,21 @@ fn checkout_passes(
         .iter()
         .all(|check| check.state == CheckState::Success)
         && validation::verify(evidence, &evidence.candidate, &evidence.trusted, required).is_ok()
+}
+
+fn phase_matches(
+    intent: &Intent,
+    observation: &Observation,
+    phase: &crate::github_contract::PhaseEvidence,
+    candidate: &str,
+) -> bool {
+    !(phase.phase != "pre_merge"
+        || phase.head_sha != intent.head
+        || phase.base_sha != intent.base
+        || phase.expected_checkout_sha.as_deref() != Some(candidate)
+        || phase.checks.is_empty()
+        || !phase.blockers.is_empty()
+        || !check_identity(intent, observation, phase))
 }
 
 fn check_identity(
@@ -119,11 +127,12 @@ fn check_identity(
     };
     selected.is_some()
         && phase.check_sha.as_ref() == selected
-        && phase.checks.iter().map(|check| &check.selector).eq(contract
-            .pre_merge
+        && phase.checks.len() == contract.pre_merge.checks.len()
+        && phase
             .checks
             .iter()
-            .map(|check| &check.selector))
+            .zip(&contract.pre_merge.checks)
+            .all(|(actual, expected)| actual.selector == expected.selector)
 }
 
 fn sha(value: &str) -> bool {

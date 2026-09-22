@@ -48,7 +48,7 @@ pub struct AppClient {
 impl AppClient {
     /// Fetch an exact observed object into the platform-owned bare repository.
     /// Authentication is process-local and never written into Git configuration.
-    pub(crate) async fn fetch_commit(
+    pub async fn fetch_commit(
         &mut self,
         policy: &Policy,
         repository: &std::path::Path,
@@ -95,10 +95,15 @@ impl AppClient {
             .stderr(std::process::Stdio::null())
             .kill_on_drop(true);
         configure_proxy(&mut command, std::env::vars_os());
-        let status = tokio::time::timeout(std::time::Duration::from_secs(60), command.status())
-            .await
-            .map_err(|_| invalid())?
-            .map_err(|_| invalid())?;
+        let status = match tokio::time::timeout(
+            std::time::Duration::from_secs(60),
+            command.status(),
+        )
+        .await
+        {
+            Ok(Ok(status)) => status,
+            _ => return Err(invalid()),
+        };
         if !status.success() {
             return Err(invalid());
         }

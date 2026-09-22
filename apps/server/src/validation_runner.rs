@@ -213,11 +213,20 @@ fn run_plan(
         control.check()?;
         evidence.push(run_step(root, directory, index, step, plan, control)?);
     }
+    verify_unchanged(root, expected, plan, identity)?;
+    process::durable_write(&directory.join("result.json"), &evidence)?;
+    Ok(evidence)
+}
+fn verify_unchanged(
+    root: &Path,
+    expected: &Candidate,
+    plan: &Plan,
+    identity: &TrustedIdentity,
+) -> Result<()> {
     if candidate(root)? != *expected || plan.identity()? != *identity {
         return Err("validation source or tool changed".into());
     }
-    process::durable_write(&directory.join("result.json"), &evidence)?;
-    Ok(evidence)
+    Ok(())
 }
 fn run_step(
     root: &Path,
@@ -243,15 +252,19 @@ fn run_step(
         control.limit,
     );
     let exit = wait(&mut child, step.timeout_seconds, &capture, control)?;
+    finish_capture(capture, &path, control.limit)?;
+    control.check()?;
+    evidence(directory, index, step, exit)
+}
+fn finish_capture(capture: crate::storage_output::Capture, path: &Path, limit: u64) -> Result<()> {
     if capture.finish()? {
         process::durable_write(
             &path.with_extension("truncated.json"),
-            &serde_json::json!({"kept_range":[0,control.limit],"reason":"raw output byte limit","complete":false}),
+            &serde_json::json!({"kept_range":[0,limit],"reason":"raw output byte limit","complete":false}),
         )?;
         return Err("validation output limit reached".into());
     }
-    control.check()?;
-    evidence(directory, index, step, exit)
+    Ok(())
 }
 fn wait(
     child: &mut std::process::Child,

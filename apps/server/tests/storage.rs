@@ -1519,3 +1519,45 @@ async fn preparation_identity_mismatch_is_protected_and_deleted_material_stays_d
     assert_eq!(status, "deleted");
     tx.commit().await.unwrap();
 }
+
+#[path = "support/delivery.rs"]
+mod merge_storage_database;
+
+#[tokio::test]
+async fn merged_and_test_merge_material_is_inventoried_without_losing_originals() {
+    let pool = merge_storage_database::database().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    store::install(&pool, &config).await.unwrap();
+    sqlx::query("INSERT INTO merge_operation(action_key,delivery_key,requirement_id,intent,state,created_at,next_attempt_at,merged_sha) SELECT 'storage-merge',action_key,requirement_id,'{\"checkout_sha\":\"pre-sha\"}'::jsonb,'merged',1,1,'post-sha' FROM delivery")
+        .execute(&pool).await.unwrap();
+    for path in [
+        "validations/pre-merge-storage-merge-pre-sha",
+        "validations/post-merge-storage-merge",
+        "workspaces/runs/merge-storage-merge-pre-sha",
+        "workspaces/runs/merge-storage-merge-post-sha",
+    ] {
+        let path = config.execution.path.join(path);
+        fs::create_dir_all(&path).unwrap();
+        fs::write(path.join("original"), b"retained independent validation").unwrap();
+    }
+    let mut tx = pool.begin().await.unwrap();
+    codexsymphony_server::storage_inventory::discover(&mut tx, &config, 100)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let rows: Vec<(String, String)> = sqlx::query_as(
+        "SELECT id,path FROM storage_material WHERE id LIKE 'merge-storage-merge-%' ORDER BY id",
+    )
+    .fetch_all(&pool)
+    .await
+    .unwrap();
+    assert_eq!(rows.len(), 4);
+    for (_, path) in rows {
+        assert_eq!(
+            fs::read(PathBuf::from(path).join("original")).unwrap(),
+            b"retained independent validation"
+        );
+    }
+    pool.close().await;
+}

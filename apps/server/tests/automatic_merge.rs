@@ -1,141 +1,8 @@
-use codexsymphony_server::{
-    automatic_merge::{self, Intent},
-    delivery_control,
-    github::*,
-    github_contract::*,
-    github_http::Error,
-    merge_worker::{self, Remote},
-    validation::ValidationEvidence,
-};
-use serde_json::{Value, json};
-use sqlx::PgPool;
-#[path = "support/delivery.rs"]
-mod database;
-#[path = "support/validation_runner.rs"]
-mod source;
-
-fn policy(plan: &codexsymphony_server::validation_runner::Plan, path: &std::path::Path) -> Policy {
-    let selector = Selector {
-        name: "ci".into(),
-        source: Source::CheckRun { app_id: 42 },
-    };
-    Policy {
-        repository_id: 7,
-        repository: "owner/repo".into(),
-        default_branch: "main".into(),
-        version: 1,
-        required: vec![selector.clone()],
-        wait_seconds: 900,
-        delivery: Some(DeliveryContract {
-            schema_version: 1,
-            pre_merge: PreMerge {
-                source: PreMergeSource::Head,
-                checkout: PreMergeSource::Head,
-                checks: vec![RequiredCheck {
-                    selector,
-                    applicability: "always".into(),
-                    trigger: Trigger::External {
-                        event: "pull_request".into(),
-                        path: "ci.yml".into(),
-                        blob_sha: "a".repeat(40),
-                    },
-                    job: None,
-                }],
-                wait_seconds: 900,
-            },
-            post_merge: PostMerge::FixedValidation {
-                plan_id: path.to_string_lossy().into_owned(),
-                configuration_sha256: plan.identity().unwrap().config_sha256,
-                authorization: "disposable test only".into(),
-                wait_seconds: 900,
-            },
-            actions: Actions {
-                merge: true,
-                merge_method: Some("squash".into()),
-                rerun_actions: false,
-                rerequest_checks: false,
-                read_logs: false,
-            },
-            protection: json!({"required_status_checks":{"strict":true,"checks":[{"context":"ci","app_id":42}]},"enforce_admins":{"enabled":true}}),
-            rules: vec![],
-        }),
-    }
-}
-fn observation(intent: &Intent, now: i64) -> Observation {
-    let checks = vec![Check {
-        selector: intent.policy.required[0].clone(),
-        state: CheckState::Success,
-        evidence: vec![json!({"id":1})],
-        history: None,
-    }];
-    Observation {
-        policy: intent.policy.clone(),
-        repository_id: 7,
-        number: 12,
-        head: intent.head.clone(),
-        base: intent.base.clone(),
-        head_ref: intent.branch.clone(),
-        base_ref: "main".into(),
-        test_merge_sha: Some("c".repeat(40)),
-        merged_sha: None,
-        merge: MergeFact::Unmerged,
-        closed: false,
-        checks: checks.clone(),
-        last_synced_at: now,
-        actual_checkout_sha: None,
-        phases: Some(vec![PhaseEvidence {
-            phase: "pre_merge".into(),
-            head_sha: intent.head.clone(),
-            base_sha: intent.base.clone(),
-            check_sha: Some(intent.head.clone()),
-            expected_checkout_sha: Some(intent.head.clone()),
-            actual_checkout_sha: None,
-            validation: None,
-            checks,
-            blockers: vec![],
-            wait_seconds: 900,
-        }]),
-    }
-}
-fn evidence(
-    root: &std::path::Path,
-    repo: &std::path::Path,
-    plan: &codexsymphony_server::validation_runner::Plan,
-) -> ValidationEvidence {
-    let candidate = codexsymphony_server::validation_runner::candidate(repo).unwrap();
-    let trusted = plan.identity().unwrap();
-    ValidationEvidence {
-        source_before: candidate.tree.clone(),
-        source_after: candidate.tree.clone(),
-        entry_before: trusted.protected_entry_sha256.clone(),
-        entry_after: trusted.protected_entry_sha256.clone(),
-        steps: codexsymphony_server::validation_runner::execute(
-            repo,
-            &root.join("evidence"),
-            &candidate,
-            plan,
-        )
-        .unwrap(),
-        candidate,
-        trusted,
-    }
-}
-fn intent(policy: Policy, head: String) -> Intent {
-    Intent {
-        delivery_key: "delivery".into(),
-        requirement: 1,
-        revision: 1,
-        authorization: None,
-        policy,
-        pr: 12,
-        checkout_sha: Some(head.clone()),
-        head,
-        base: "b".repeat(40),
-        branch: "ai/req-1".into(),
-        validation_id: "validation".into(),
-        dependencies: json!([]),
-    }
-}
+use codexsymphony_server::{automatic_merge, delivery_control, github::*, merge_worker};
+use serde_json::json;
+#[path = "support/automatic_merge.rs"]
+mod fixture;
+use fixture::*;
 
 #[test]
 fn identities_checks_and_protection_are_not_interchangeable() {
@@ -188,107 +55,6 @@ fn identities_checks_and_protection_are_not_interchangeable() {
     std::fs::remove_dir_all(root).unwrap();
 }
 
-struct Fake {
-    observation: Observation,
-    merged: usize,
-    lost: bool,
-    read_error: Option<u16>,
-    pause: Option<PgPool>,
-}
-impl Remote for Fake {
-    async fn observe(&mut self, _: &Intent) -> Result<Observation, Error> {
-        if let Some(status) = self.read_error {
-            return Err(Error {
-                code: "read_denied",
-                status: Some(status),
-                retry_after_seconds: Some(120),
-            });
-        }
-        Ok(self.observation.clone())
-    }
-    async fn preflight(&mut self, intent: &Intent) -> Result<Capability, Error> {
-        Ok(Capability {
-            policy: intent.policy.clone(),
-            checked_at: self.observation.last_synced_at,
-            blockers: vec![],
-            permissions: json!({}),
-            configuration: json!({}),
-        })
-    }
-    async fn pr(&mut self, intent: &Intent) -> Result<Value, Error> {
-        if let Some(pool) = self.pause.take() {
-            sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
-                .execute(&pool)
-                .await
-                .unwrap();
-        }
-        Ok(
-            json!({"head":{"sha":intent.head},"base":{"sha":intent.base},"mergeable":true,"mergeable_state":"clean","state":"open","draft":false}),
-        )
-    }
-    async fn merge(&mut self, _: &Intent) -> Result<Value, Error> {
-        self.merged += 1;
-        if self.lost {
-            return Err(Error {
-                code: "lost_response",
-                status: None,
-                retry_after_seconds: None,
-            });
-        }
-        Ok(json!({"merged":true,"sha":"d".repeat(40)}))
-    }
-}
-async fn fixture() -> (PgPool, std::path::PathBuf, Intent, Fake) {
-    let pool = database::database().await;
-    let (root, repo, plan) = source::fixture();
-    let e = evidence(&root, &repo, &plan);
-    let path = root.join("plan.json");
-    std::fs::write(&path, serde_json::to_vec(&plan).unwrap()).unwrap();
-    let mut i = intent(policy(&plan, &path), e.candidate.sha.clone());
-    let key: String = sqlx::query_scalar("SELECT action_key FROM delivery")
-        .fetch_one(&pool)
-        .await
-        .unwrap();
-    i.delivery_key = key;
-    sqlx::query("UPDATE delivery SET head_sha=$1,pr_number=12")
-        .bind(&i.head)
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE requirement SET state='Submitted'")
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE delivery_action SET state='confirmed'")
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("UPDATE github_repository SET policy=$1,capability=jsonb_build_object('policy',$1::jsonb,'blockers','[]'::jsonb)").bind(json!(i.policy)).execute(&pool).await.unwrap();
-    sqlx::query("INSERT INTO github_pr(repository_id,number,requirement_id) VALUES(7,12,1)")
-        .execute(&pool)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO requirement_budget(requirement_id,limits) VALUES(1,'{\"tokens\":100,\"turns\":10,\"model_seconds\":100}')").execute(&pool).await.unwrap();
-    sqlx::query("UPDATE candidate_validation SET candidate_sha=$1,candidate_tree=$2,trusted=$3,required_steps='[\"test\"]',source_before=$2,source_after=$2,entry_before=$4,entry_after=$4")
-        .bind(&i.head).bind(&e.candidate.tree).bind(json!(e.trusted)).bind(&e.entry_before).execute(&pool).await.unwrap();
-    let step = &e.steps[0];
-    sqlx::query("UPDATE validation_step SET command=$1,exit_code=0,output=$2,output_sha256=$3,log_ref=$4,code_failure=true")
-        .bind(json!(step.command)).bind(&step.output).bind(&step.output_sha256).bind(&step.log_ref).execute(&pool).await.unwrap();
-    let f = Fake {
-        observation: observation(&i, 100),
-        merged: 0,
-        lost: false,
-        read_error: None,
-        pause: None,
-    };
-    (pool, root, i, f)
-}
-async fn state(pool: &PgPool) -> String {
-    sqlx::query_scalar("SELECT state FROM merge_operation ORDER BY created_at DESC LIMIT 1")
-        .fetch_one(pool)
-        .await
-        .unwrap()
-}
 #[tokio::test]
 async fn durable_unknown_reconciles_without_repeating_merge() {
     let (pool, root, _, mut remote) = fixture().await;
@@ -436,5 +202,56 @@ INSERT INTO group_budget(draft_id,item_id,limits,used,reserved) SELECT 'draft-bu
         }
         pool.close().await;
         std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[tokio::test]
+async fn final_capability_plan_and_pr_changes_never_send_merge() {
+    for case in ["capability", "plan", "pr", "evidence"] {
+        let (pool, root, _, mut remote) = fixture().await;
+        merge_worker::tick(&pool, &mut remote, 100).await.unwrap();
+        match case {
+            "capability" => remote.blockers.push("protection changed".into()),
+            "plan" => {
+                // Source acceptance has an extra successful step, but the separately
+                // authorized post-merge plan cannot execute that step.
+                sqlx::query("INSERT INTO validation_step(validation_id,step_id,command,exit_code,output,output_sha256,log_ref,consumer,code_failure,status) SELECT validation_id,'new-acceptance',command,exit_code,output,output_sha256,log_ref,consumer,code_failure,status FROM validation_step")
+                    .execute(&pool).await.unwrap();
+                sqlx::query(
+                    "UPDATE candidate_validation SET required_steps='[\"new-acceptance\"]'",
+                )
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+            "pr" => remote.final_pr = Some(json!({"mergeable":false})),
+            "evidence" => {
+                sqlx::query("UPDATE validation_step SET exit_code=1")
+                    .execute(&pool)
+                    .await
+                    .unwrap();
+            }
+            _ => unreachable!(),
+        }
+        merge_worker::tick(&pool, &mut remote, 100).await.unwrap();
+        assert_eq!(remote.merged, 0, "{case}");
+        let expected = match case {
+            "capability" | "plan" => "blocked",
+            "pr" => "prepared",
+            _ => "invalidated",
+        };
+        assert_eq!(state(&pool).await, expected, "{case}");
+        if case == "plan" {
+            let blocker: String = sqlx::query_scalar("SELECT blocker FROM merge_operation")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+            assert!(
+                blocker.contains("plan does not cover authorized AC steps"),
+                "{blocker}"
+            );
+        }
+        std::fs::remove_dir_all(root).unwrap();
+        pool.close().await;
     }
 }

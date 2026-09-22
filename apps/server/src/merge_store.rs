@@ -60,6 +60,9 @@ pub(crate) async fn allowed(tx: &mut Tx<'_>, intent: &Intent) -> Result<bool> {
     if !allowed || !crate::group_queue_store::authorized(tx, intent.requirement).await? {
         return Ok(false);
     }
+    dependencies_and_budget_allowed(tx, intent).await
+}
+async fn dependencies_and_budget_allowed(tx: &mut Tx<'_>, intent: &Intent) -> Result<bool> {
     let Some(dependencies) = crate::group_completion::dependencies(tx, intent.requirement).await?
     else {
         return Ok(false);
@@ -134,7 +137,7 @@ pub(crate) async fn merged(
             .fetch_one(&mut *tx)
             .await?;
     require(
-        saved.as_deref().is_none_or(|saved| saved == sha),
+        saved.is_none() || saved.as_deref() == Some(sha),
         "merged identity conflict",
     )?;
     sqlx::query("INSERT INTO github_evidence_history(repository_id,pr_number,observed_at,policy,evidence) VALUES($1,$2,$3,$4,$5)")

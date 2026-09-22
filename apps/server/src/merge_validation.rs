@@ -61,18 +61,7 @@ pub(crate) async fn checkout(
     now: i64,
 ) -> Result<PathBuf> {
     let broker = GitBroker::open(&root.join("workspaces"))?;
-    let manifest: serde_json::Value =
-        sqlx::query_scalar("SELECT manifest FROM delivery WHERE action_key=$1")
-            .bind(&intent.delivery_key)
-            .fetch_one(pool)
-            .await?;
-    let manifest: Manifest = serde_json::from_value(manifest)?;
-    let repository = broker.delivery_repository(&manifest)?;
-    if !broker.contains_commit(sha, sha) {
-        client
-            .fetch_commit(&intent.policy, &repository, sha, now)
-            .await?;
-    }
+    fetch_source(pool, client, &broker, intent, sha, now).await?;
     let id = format!("merge-{}-{}", intent.action_key(), sha);
     let path = broker.path(&id)?;
     let workspace = Workspace {
@@ -97,6 +86,29 @@ pub(crate) async fn checkout(
         broker.prepare(&workspace, true)?;
     }
     Ok(path)
+}
+
+async fn fetch_source(
+    pool: &PgPool,
+    client: &mut AppClient,
+    broker: &GitBroker,
+    intent: &Intent,
+    sha: &str,
+    now: i64,
+) -> Result<()> {
+    let manifest: serde_json::Value =
+        sqlx::query_scalar("SELECT manifest FROM delivery WHERE action_key=$1")
+            .bind(&intent.delivery_key)
+            .fetch_one(pool)
+            .await?;
+    let manifest: Manifest = serde_json::from_value(manifest)?;
+    let repository = broker.delivery_repository(&manifest)?;
+    if !broker.contains_commit(sha, sha) {
+        client
+            .fetch_commit(&intent.policy, &repository, sha, now)
+            .await?;
+    }
+    Ok(())
 }
 
 pub(crate) async fn execute(
@@ -151,3 +163,7 @@ impl Drop for StopOnDrop {
         self.0.store(true, Ordering::Release);
     }
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/merge_validation.rs"]
+mod tests;

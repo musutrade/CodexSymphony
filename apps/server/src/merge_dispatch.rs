@@ -48,31 +48,13 @@ async fn send(
     now: i64,
 ) -> Result<()> {
     let identity = json!({"workflow":workflow,"sha":sha,"branch":branch});
-    let mut tx = crate::run_store::lock(pool).await?;
-    if !merge_store::allowed(&mut tx, intent).await? {
+    if !dispatch_available(pool, intent, &identity).await? {
         return Ok(());
     }
-    let existing: bool =
-        sqlx::query_scalar("SELECT dispatches @> $2 FROM merge_operation WHERE action_key=$1")
-            .bind(intent.action_key())
-            .bind(json!([identity]))
-            .fetch_one(&mut *tx)
-            .await?;
-    if existing {
-        return Ok(());
-    }
-    tx.commit().await?;
     if !branch_matches(client, &intent.policy, branch, sha, now).await? {
         return Err("post_merge dispatch branch no longer names merged SHA".into());
     }
-    let mut tx = crate::run_store::lock(pool).await?;
-    if !merge_store::allowed(&mut tx, intent).await? {
-        return Ok(());
-    }
-    let changed=sqlx::query("UPDATE merge_operation SET dispatches=dispatches||$2 WHERE action_key=$1 AND state='merged' AND NOT dispatches @> $2")
-        .bind(intent.action_key()).bind(json!([identity])).execute(&mut *tx).await?;
-    tx.commit().await?;
-    if changed.rows_affected() != 1 {
+    if !reserve_dispatch(pool, intent, &identity).await? {
         return Ok(());
     }
     let result = client
@@ -94,6 +76,36 @@ async fn send(
     merge_store::receipt(pool, intent, receipt, now, 30).await?;
     Ok(())
 }
+async fn dispatch_available(pool: &PgPool, intent: &Intent, identity: &Value) -> Result<bool> {
+    let mut tx = crate::run_store::lock(pool).await?;
+    if !merge_store::allowed(&mut tx, intent).await? {
+        return Ok(false);
+    }
+    let existing: bool =
+        sqlx::query_scalar("SELECT dispatches @> $2 FROM merge_operation WHERE action_key=$1")
+            .bind(intent.action_key())
+            .bind(json!([identity]))
+            .fetch_one(&mut *tx)
+            .await?;
+    if existing {
+        return Ok(false);
+    }
+    tx.commit().await?;
+    Ok(true)
+}
+async fn reserve_dispatch(pool: &PgPool, intent: &Intent, identity: &Value) -> Result<bool> {
+    let mut tx = crate::run_store::lock(pool).await?;
+    if !merge_store::allowed(&mut tx, intent).await? {
+        return Ok(false);
+    }
+    let changed=sqlx::query("UPDATE merge_operation SET dispatches=dispatches||$2 WHERE action_key=$1 AND state='merged' AND NOT dispatches @> $2")
+        .bind(intent.action_key()).bind(json!([identity])).execute(&mut *tx).await?;
+    tx.commit().await?;
+    if changed.rows_affected() != 1 {
+        return Ok(false);
+    }
+    Ok(true)
+}
 async fn branch_matches(
     client: &mut AppClient,
     policy: &Policy,
@@ -109,3 +121,7 @@ async fn branch_matches(
     let value = client.get(policy, &path, now).await?;
     Ok(value["object"]["sha"] == sha)
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/merge_dispatch.rs"]
+mod tests;

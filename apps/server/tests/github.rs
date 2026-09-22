@@ -1461,3 +1461,30 @@ mod recovery_acceptance;
 
 #[path = "github_support/merge.rs"]
 mod merge_acceptance;
+
+#[tokio::test]
+async fn exact_commit_fetch_rejects_malformed_identity_and_keeps_credentials_out_of_git_config() {
+    let f = Fixture::new().await;
+    let mut client = f.client();
+    let p = policy();
+    let repository = f.root.join("not-a-repository");
+    for sha in ["bad", "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"] {
+        assert!(
+            client
+                .fetch_commit(&p, &repository, sha, github_service::now())
+                .await
+                .is_err()
+        );
+    }
+    assert_eq!(f.data.lock().unwrap().grants, 0);
+    // git rejects the missing local repository before contacting any network.
+    assert!(
+        client
+            .fetch_commit(&p, &repository, &"a".repeat(40), github_service::now())
+            .await
+            .is_err()
+    );
+    assert_eq!(f.data.lock().unwrap().grants, 1);
+    assert!(!repository.exists());
+    assert!(!f.root.join(".gitconfig").exists());
+}

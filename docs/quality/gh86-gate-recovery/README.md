@@ -1,0 +1,38 @@
+# GH-86 Gate recovery
+
+The original head `7e709d1e0a2712910cb3a59fc9de7d36236f2dc7` failed Rust
+source discovery before quality evaluation. The source-risk collector did not
+recognize `tokio::select!` and assumed closure entry counters always began at the
+outer expression. The rc.5 candidate adapts the existing select grammar and
+follows exact leading AST expression anchors, retaining nested callable ownership.
+Real rustc/LLVM regressions check constructor-wrapped tuples, unary expressions,
+arrays, structs, conditions, nested closures, and unpolled futures. No arbitrary
+contained-region matching or parent-counter substitution is allowed.
+
+Exact `#[cfg(test)]` modules are outside the production callable boundary; other
+conditional attributes still fail closed. Internal transaction tests cover pause
+barriers and retained checkout identity without racing wall-clock timing.
+
+The project also contained pure projection closures for which the compiler emits
+no independent coverage counter. Equivalent comparisons and a named retry-delay
+accessor remove that unsupported form. This does not waive missing mappings in
+the collector. Simple blocks were insufficient because rustfmt normalizes them.
+
+Automatic-merge orchestration is split into query/eligibility, persisted send,
+independent validation, fresh remote confirmation, and transactional completion
+helpers. The original ordering of authorization checks, pause/cancel barriers,
+unknown-send handling, recorded evidence, and completion commits is preserved.
+Validation invocation and output-finalization checks remain mandatory.
+
+Real HTTP/database/process regressions cover workflow dispatch idempotency,
+post-merge check failure/deadline, transient observation recovery, pause during
+actual merged-source validation, retained storage materials, and exact-commit
+fetch failure without persisting credentials. The bounded-recovery test fixture
+serializes process-global storage fault injection and uses the real recovery
+path between disposable schemas.
+
+The collector archive and digest are pinned in collector-candidates.json. A new
+measurement-series identity binds the changed implementation. Coverage remains
+at least 80%, CRAP remains at most 10, all policies remain required, and the API
+baseline is unchanged. Local tests and diagnostic replays are not formal CI
+acceptance; delivery requires fresh exact-head checks from the trusted host.
