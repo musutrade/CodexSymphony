@@ -38,4 +38,18 @@ python3 -m unittest discover -s tools/tests -p test_artifact_packaging.py
 Changes under `tools/quality-host` alter the reviewed host-source inventory.
 Before deploying this source revision, use the existing host review/provisioning
 process to produce the matching approval. Do not edit an immutable installed
-release or replace the active approval while another Issue is running.
+release or remove an active Issue's approved snapshot during the transition.
+
+For a rolling transition, `tools/install_remote_gate.py --gate-approval NEW
+--previous-config OLD --dependency-source NODE_MODULES` installs a bridge which
+accepts the current and one explicitly retained previous deployment. Each
+candidate includes its complete protected-file inventory and a separate host
+approval. Selection never combines pins from different candidates; unknown or
+mixed source snapshots fail. Each run's policy fingerprint uses the selected
+snapshot, and selection does not mutate the service configuration.
+
+Keep the previous deployment while existing Issues still use its source
+snapshot. Once those Issues finish or rebase, reinstall without
+`--previous-config` to retire compatibility. The gate host and worker releases
+remain immutable; retaining their reviewed runtime is appropriate when this PR
+only persists fixes already deployed there.
