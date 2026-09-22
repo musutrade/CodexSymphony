@@ -90,6 +90,49 @@ fn broker(root: &Path) -> GitBroker {
     GitBroker::open(root).unwrap()
 }
 #[tokio::test]
+async fn tool_dispatch_errors_are_sanitized_durable_and_replayable() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
+    let root = temporary();
+    let pool = fixture(&root).await;
+    session(&pool).await;
+    let git = broker(&root.join("broker"));
+    let expected = runtime::reply(
+        false,
+        "Tool rejected: invalid arguments, authorization, candidate or unresolved operation.",
+    );
+    for request in [
+        tool(
+            41,
+            "unknown-private-tool",
+            json!({"secret":"fixture-secret"}),
+        ),
+        tool(42, "create_local_commit", json!({"message":""})),
+    ] {
+        let result = runtime_tools::handle(&pool, &git, &key(), &request)
+            .await
+            .unwrap();
+        assert_eq!(result, expected);
+        assert!(!result.to_string().contains("fixture-secret"));
+        let saved: Value =
+            sqlx::query_scalar("SELECT result FROM runtime_request WHERE run_id=$1 AND rpc_id=$2")
+                .bind(&key().run_id)
+                .bind(&request["id"])
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(saved, result);
+        assert_eq!(
+            runtime_tools::handle(&pool, &git, &key(), &request)
+                .await
+                .unwrap(),
+            result
+        );
+    }
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
 async fn persistence_and_full_client_acceptance() {
     let _scenario = DATABASE_SCENARIO.lock().await;
     let root = temporary();
