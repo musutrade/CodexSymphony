@@ -14,6 +14,16 @@ m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 RAW=json.dumps([{'function':str(i),'count':i % 7,'file':'source.rs'} for i in range(2000)]).encode()
 
 class Packaging(unittest.TestCase):
+    def test_duplicate_payloads_are_decoded_and_encoded_once(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);response=self.fixture(root)
+            with patch.object(m.gzip,'decompress',wraps=gzip.decompress) as decode, \
+                 patch.object(m.lzma,'compress',wraps=lzma.compress) as encode:
+                m.compact_artifacts(response,root)
+                self.assertEqual(decode.call_count,1)
+                self.assertEqual(encode.call_count,1)
+
     def fixture(self,root):
         refs=[]
         for i in range(80):

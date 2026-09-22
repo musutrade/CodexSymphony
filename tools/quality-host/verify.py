@@ -16,6 +16,8 @@ def verify(run, repository, root, profile="ci"):
     modules=root/'web/angular/node_modules';modules.mkdir(exist_ok=True)
     paths=[str(CORE.parent),str(Path(shutil.which('harness-gate-rust-collector')).resolve().parent)]
     environment={'PATH':':'.join(paths+['/opt/codex','/home/gem/.cargo/bin','/usr/local/bin','/usr/bin','/bin'])}
+    if (run/'test-capture.json').exists():
+        environment['HARNESS_GATE_TEST_RECEIPT']=str(run/'test-capture.json')
     baseline=Path(load(run/'requests.json')['frontend-api']['parameters']['receipt']['baseline']['path'])
     container,url=database(run)
     try:
