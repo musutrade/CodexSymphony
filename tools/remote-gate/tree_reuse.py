@@ -30,6 +30,12 @@ def identical_tree_result(root, run, config, approval, job):
         if path.resolve() != path:
             raise ValueError('unsafe equivalence baseline')
         prior = json.loads(path.read_text())
+        if prior.get('finished') and prior.get('status') == 'FAIL':
+            try:
+                if tree(root, prior['source_sha']) == current_tree:
+                    return None  # Never hide a newer known failure behind an older PASS.
+            except (KeyError, subprocess.CalledProcessError):
+                pass
         if not (prior.get('finished') and prior.get('status') == 'PASS' and prior.get('scope') == 'full'
                 and prior.get('policy_identity') == policy and prior.get('event') == 'pull_request'):
             continue

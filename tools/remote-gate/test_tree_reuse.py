@@ -39,6 +39,10 @@ class TreeReuse(unittest.TestCase):
             self.assertEqual(result['baseline_sha'], prior_sha)
             self.assertFalse(result['full_suite_executed'])
             self.assertEqual(report.read_bytes(), original)
+            failed = root / 'jobs/failed/receipt.json'; failed.parent.mkdir()
+            failed.write_text(json.dumps({'finished': True, 'status': 'FAIL', 'source_sha': prior_sha}))
+            self.assertIsNone(identical_tree_result(repo, run, config, approval, job))
+            failed.unlink()
             for event in ('pull_request', 'workflow_dispatch'):
                 self.assertIsNone(identical_tree_result(repo, run | {'event': event}, config, approval, job))
             for change in ({'scope': 'identical-tree'}, {'policy_identity': 'old'}, {'finished': False}, {'status': 'FAIL'}):
