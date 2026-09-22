@@ -1,4 +1,6 @@
 version = 1
+[limits]
+max_artifact_bytes = 1073741824
 [project]
 id = "codexsymphony"
 name = "codexsymphony"
