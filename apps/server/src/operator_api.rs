@@ -76,6 +76,7 @@ async fn inbox(State(pool): State<PgPool>) -> Result<Json<Value>> {
     let ids: Vec<i64> = sqlx::query_scalar(
         "SELECT r.id FROM requirement r WHERE
          (r.cancel_requested AND NOT r.cleanup_complete) OR
+         EXISTS(SELECT 1 FROM merge_operation m WHERE m.requirement_id=r.id AND m.state='blocked') OR
          (EXISTS(SELECT 1 FROM storage_attempt s WHERE s.requirement_id=r.id) AND
           EXISTS(SELECT 1 FROM storage_guard g WHERE g.blocked OR (g.scan_retry->>'todo')::boolean OR (g.measured->>'classification_todo')::bigint>0)) OR
          EXISTS(SELECT 1 FROM storage_material m JOIN storage_attempt a ON a.run_id=m.run_id

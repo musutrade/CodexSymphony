@@ -142,6 +142,9 @@ async fn delivery_tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Resul
 }
 pub async fn deliver(pool: &PgPool, client: &mut AppClient, root: &Path, now: i64) -> Result<()> {
     crate::delivery_control::settle(pool).await?;
+    crate::merge_prevalidation::tick(pool, client, root, now).await?;
+    crate::merge_worker::tick(pool, &mut crate::merge_worker::Broker { client, now }, now).await?;
+    crate::merge_acceptance::tick(pool, client, root, now).await?;
     let jobs = crate::delivery_store::due(pool, now).await?;
     let Some(job) = jobs.first() else {
         return Ok(());

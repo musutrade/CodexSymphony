@@ -42,8 +42,11 @@ async fn environment(
 }
 
 async fn timeline(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Result<Value> {
-    let recoveries: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',f.event_key,'phase',f.phase,'decision',f.decision,'reason',f.reason,'log_ref',f.facts->>'log_ref','candidate_sha',f.facts->>'candidate_sha','attempts',COALESCE(t.attempts,0),'next_attempt_at',t.next_attempt_at) FROM recovery_failure f LEFT JOIN recovery_retry t USING(event_key) WHERE f.requirement_id=$1 ORDER BY f.created_at,f.event_key")
+    let mut recoveries: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',f.event_key,'phase',f.phase,'decision',f.decision,'reason',f.reason,'log_ref',f.facts->>'log_ref','candidate_sha',f.facts->>'candidate_sha','attempts',COALESCE(t.attempts,0),'next_attempt_at',t.next_attempt_at) FROM recovery_failure f LEFT JOIN recovery_retry t USING(event_key) WHERE f.requirement_id=$1 ORDER BY f.created_at,f.event_key")
         .bind(id).fetch_all(&mut **tx).await?;
+    let merges: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',action_key,'phase',CASE WHEN merged_sha IS NULL THEN 'merge' ELSE 'post_merge' END,'decision',state,'reason',COALESCE(blocker,'waiting for confirmed merge and applicable acceptance'),'log_ref','merge-operation:'||action_key,'candidate_sha',COALESCE(merged_sha,intent->>'head'),'attempts',jsonb_array_length(receipts),'next_attempt_at',next_attempt_at) FROM merge_operation WHERE requirement_id=$1 ORDER BY created_at,action_key")
+        .bind(id).fetch_all(&mut **tx).await?;
+    recoveries.extend(merges);
     let runs:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'revision',revision,'state',state,'phase',phase,'blocker',blocker,'quiescent',quiescent,'created_at',created_at,'waiting',waiting::text) FROM agent_run WHERE requirement_id=$1 ORDER BY created_at,id")
         .bind(id).fetch_all(&mut **tx).await?;
     let validations:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'revision',revision,'source_run_id',source_run_id,'candidate_sha',candidate_sha,'stage',stage,'result',result,'failure',failure) FROM candidate_validation WHERE requirement_id=$1 ORDER BY revision,id")

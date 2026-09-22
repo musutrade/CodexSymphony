@@ -1,5 +1,5 @@
-//! Completion protocol for a future trusted acceptance adapter, not a public API.
-//! M1 installs no verifier. Protocol fixtures are not M3 business acceptance.
+//! Completion protocol used by the trusted merged-checkout acceptance adapter.
+//! Protocol fixtures remain distinct from real M3 business acceptance.
 use crate::{
     budget_store::{decode, require},
     group_queue_store::{Result, Tx},
@@ -10,21 +10,29 @@ use sqlx::PgPool;
 
 pub use crate::group_dependency::{Fact, Verifier, validate};
 pub async fn record(pool: &PgPool, verifier: &impl Verifier, fact: &Fact) -> Result<()> {
+    let mut tx = run_store::lock(pool).await?;
+    record_in(&mut tx, verifier, fact).await?;
+    tx.commit().await
+}
+pub(crate) async fn record_in(
+    tx: &mut Tx<'_>,
+    verifier: &impl Verifier,
+    fact: &Fact,
+) -> Result<()> {
     require(
         validate(fact) && verifier.verify(fact),
         "untrusted or inapplicable completion evidence",
     )?;
-    let mut tx = run_store::lock(pool).await?;
-    bind(&mut tx, fact).await?;
+    bind(tx, fact).await?;
     sqlx::query("INSERT INTO group_completion(requirement_id,authorization_id,fact) VALUES($1,$2,$3) ON CONFLICT DO NOTHING")
-        .bind(fact.requirement_id).bind(fact.authorization_id).bind(json!(fact)).execute(&mut *tx).await?;
+        .bind(fact.requirement_id).bind(fact.authorization_id).bind(json!(fact)).execute(&mut **tx).await?;
     let saved: Value =
         sqlx::query_scalar("SELECT fact FROM group_completion WHERE requirement_id=$1")
             .bind(fact.requirement_id)
-            .fetch_one(&mut *tx)
+            .fetch_one(&mut **tx)
             .await?;
     require(saved == json!(fact), "completion identity conflict")?;
-    tx.commit().await
+    Ok(())
 }
 async fn bind(tx: &mut Tx<'_>, fact: &Fact) -> Result<()> {
     let input: Value=sqlx::query_scalar("SELECT i.input FROM group_execution_item i JOIN requirement r ON r.id=i.requirement_id WHERE i.requirement_id=$1 AND i.authorization_id=$2 AND NOT r.cancel_requested AND r.state='Submitted'")
@@ -59,7 +67,7 @@ pub(crate) async fn dependencies(tx: &mut Tx<'_>, id: i64) -> Result<Option<Vec<
     names.dedup();
     let mut facts = Vec::new();
     for name in names {
-        let fact: Option<Value>=sqlx::query_scalar("SELECT c.fact FROM group_execution_item i JOIN group_completion c ON c.requirement_id=i.requirement_id AND c.authorization_id=i.authorization_id JOIN requirement r ON r.id=i.requirement_id WHERE i.draft_id=$1 AND i.child_id=$2 AND NOT r.cancel_requested AND r.state='Submitted'")
+        let fact: Option<Value>=sqlx::query_scalar("SELECT c.fact FROM group_execution_item i JOIN group_completion c ON c.requirement_id=i.requirement_id AND c.authorization_id=i.authorization_id JOIN requirement r ON r.id=i.requirement_id WHERE i.draft_id=$1 AND i.child_id=$2 AND NOT r.cancel_requested AND r.state IN ('Submitted','Done')")
             .bind(&draft).bind(name).fetch_optional(&mut **tx).await?;
         let Some(fact) = fact else {
             return Ok(None);

@@ -2,6 +2,13 @@ pub mod auth;
 pub mod auth_admin;
 pub mod auth_api;
 pub mod auth_store;
+pub mod automatic_merge;
+mod merge_acceptance;
+mod merge_dispatch;
+mod merge_prevalidation;
+mod merge_store;
+mod merge_validation;
+pub mod merge_worker;
 pub mod recovery;
 
 pub mod budget;

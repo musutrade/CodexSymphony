@@ -131,6 +131,31 @@ pub(crate) async fn bind_baseline(
         .bind(id).bind(authorization).bind(baseline).bind(json!(facts)).fetch_one(&mut **tx).await?;
     Ok(matches)
 }
+
+/// Advance a same-repository successor to the dependency commit already fetched
+/// by merged-checkout validation. Cross-repository artifacts never become Git bases.
+pub(crate) async fn dependency_baseline(
+    tx: &mut Tx<'_>,
+    broker: &crate::git_broker::GitBroker,
+    id: i64,
+    configured: &str,
+) -> Result<String> {
+    let repository: Option<i64> = sqlx::query_scalar("SELECT (input#>>'{child,repository_id}')::bigint FROM group_execution_item WHERE requirement_id=$1")
+        .bind(id).fetch_optional(&mut **tx).await?;
+    let Some(repository) = repository else {
+        return Ok(configured.into());
+    };
+    let Some(facts) = crate::group_completion::dependencies(tx, id).await? else {
+        return Ok(configured.into());
+    };
+    let mut baseline = configured.to_owned();
+    for fact in facts {
+        if fact.repository_id == repository && broker.contains_commit(&fact.merged_sha, &baseline) {
+            baseline = fact.merged_sha;
+        }
+    }
+    Ok(baseline)
+}
 fn repository_baseline_matches(
     broker: &crate::git_broker::GitBroker,
     repository: i64,

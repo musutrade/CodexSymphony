@@ -181,3 +181,37 @@ fn deployment_mount_boundary_runs_real_candidate_validation() {
     assert!(runner::execute(&repo, &directory, &candidate, &plan).is_err());
     assert!(directory.join("binding.json").exists());
 }
+
+#[test]
+fn cancellation_stops_validation_and_preserves_incomplete_invocation() {
+    use std::sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    };
+    let (root, repo, mut plan) = fixture();
+    plan.steps[0].command.push("timeout".into());
+    plan.steps[0].timeout_seconds = 30;
+    let candidate = runner::candidate(&repo).unwrap();
+    let directory = root.join("cancelled");
+    let flag = Arc::new(AtomicBool::new(false));
+    let signal = flag.clone();
+    let trigger = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(150));
+        signal.store(true, Ordering::Release);
+    });
+    let started = std::time::Instant::now();
+    let error =
+        runner::execute_cancellable(&repo, &directory, &candidate, &plan, &flag).unwrap_err();
+    trigger.join().unwrap();
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    assert!(
+        error
+            .to_string()
+            .contains("stopped by current control intent")
+    );
+    assert!(directory.join("binding.json").exists());
+    assert!(directory.join("step-0.log").exists());
+    assert!(!directory.join("result.json").exists());
+    assert!(runner::execute(&repo, &directory, &candidate, &plan).is_err());
+    fs::remove_dir_all(root).unwrap();
+}

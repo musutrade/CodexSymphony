@@ -139,6 +139,10 @@ async fn save_initial(
     selected: (i64, i64),
 ) -> Result<Option<(Launch, Workspace)>> {
     let (requirement, revision) = selected;
+    let baseline =
+        crate::group_queue_store::dependency_baseline(&mut tx, broker, requirement, baseline)
+            .await?;
+    let baseline = baseline.as_str();
     if !crate::group_queue_store::bind_baseline(&mut tx, broker, requirement, baseline).await? {
         return Ok(None);
     }

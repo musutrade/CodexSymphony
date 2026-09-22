@@ -123,6 +123,60 @@ fn dirty(workspace: &Workspace) -> String {
 }
 
 #[test]
+fn commit_ignored_caches_and_literal_source_paths() {
+    for ignored in [false, true] {
+        let f = Fixture::new();
+        let workspace = f.workspace("cache-commit");
+        f.broker.prepare(&workspace, true).unwrap();
+        let path = Path::new(&workspace.path);
+        if ignored {
+            fs::write(
+                path.join(".gitignore"),
+                "/target/\n/node_modules/\n/.angular/\n/private.tmp\n",
+            )
+            .unwrap();
+            fs::write(path.join("private.tmp"), "ignored source").unwrap();
+        }
+        for cache in ["target", "node_modules", ".angular"] {
+            fs::create_dir(path.join(cache)).unwrap();
+            fs::write(path.join(cache).join("cache"), "rebuildable").unwrap();
+        }
+        fs::write(path.join("source.rs"), "changed").unwrap();
+        fs::remove_file(path.join("deleted.rs")).unwrap();
+        for name in ["new source.rs", "line\nbreak.rs", ":(glob)*.rs"] {
+            fs::write(path.join(name), "literal source").unwrap();
+        }
+        let sha = f
+            .broker
+            .commit(&workspace, "commit source after compilation")
+            .unwrap();
+        assert_eq!(f.broker.head(&workspace).unwrap(), sha);
+        let files = git(path, &["ls-tree", "-r", "--name-only", "-z", "HEAD"]);
+        let files: Vec<_> = files.split(|b| *b == 0).filter(|v| !v.is_empty()).collect();
+        for name in [
+            "source.rs",
+            "new source.rs",
+            "line\nbreak.rs",
+            ":(glob)*.rs",
+        ] {
+            assert!(files.contains(&name.as_bytes()));
+        }
+        for name in [
+            "target/cache",
+            "node_modules/cache",
+            ".angular/cache",
+            "private.tmp",
+            "deleted.rs",
+        ] {
+            assert!(!files.contains(&name.as_bytes()));
+        }
+        assert_eq!(git(path, &["show", "HEAD:source.rs"]), b"changed");
+        assert!(git(path, &["diff", "--cached", "--name-only"]).is_empty());
+        fs::remove_dir_all(f.root).unwrap();
+    }
+}
+
+#[test]
 fn git_round_trip_and_security() {
     let f = Fixture::new();
     let original = f.workspace("original");

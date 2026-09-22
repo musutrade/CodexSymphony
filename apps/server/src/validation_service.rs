@@ -66,6 +66,8 @@ async fn create(
         &trusted.protected_entry_sha256,
     )
     .await?;
+    sqlx::query("UPDATE candidate_validation SET approved_plan=$4 WHERE id=$1 AND source_run_id=$2 AND trusted=$3 AND (approved_plan IS NULL OR approved_plan=$4)")
+        .bind(r.id).bind(r.source_run).bind(serde_json::json!(trusted)).bind(serde_json::json!(r.plan)).execute(pool).await?;
     Ok(())
 }
 async fn pending(

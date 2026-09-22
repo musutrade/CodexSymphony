@@ -99,6 +99,12 @@ async fn handler(
     if let Some(value) = data.raw.get(&path) {
         return value.clone().into_response();
     }
+    if method == "PUT"
+        && path.ends_with("/merge")
+        && let Some(expected) = data.routes.get("expected-merge")
+    {
+        assert_eq!(&serde_json::from_slice::<Value>(&body).unwrap(), expected);
+    }
     if let Some(value) = data.routes.get(&format!("{method} {path}")) {
         return Json(value.clone()).into_response();
     }
@@ -1452,3 +1458,6 @@ mod v1;
 
 #[path = "github_support/recovery.rs"]
 mod recovery_acceptance;
+
+#[path = "github_support/merge.rs"]
+mod merge_acceptance;

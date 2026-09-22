@@ -46,6 +46,64 @@ pub struct AppClient {
     tokens: HashMap<u64, Token>,
 }
 impl AppClient {
+    /// Fetch an exact observed object into the platform-owned bare repository.
+    /// Authentication is process-local and never written into Git configuration.
+    pub(crate) async fn fetch_commit(
+        &mut self,
+        policy: &Policy,
+        repository: &std::path::Path,
+        sha: &str,
+        now: i64,
+    ) -> Result<()> {
+        if sha.len() != 40 || !sha.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+            return Err(invalid());
+        }
+        self.ensure_token(policy, now).await?;
+        let authorization = encode_basic(&format!(
+            "x-access-token:{}",
+            self.tokens[&policy.repository_id].value
+        ));
+        let mut command = tokio::process::Command::new("git");
+        command
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .env("GIT_CONFIG_COUNT", "2")
+            .env("GIT_CONFIG_KEY_0", "http.https://github.com/.extraHeader")
+            .env(
+                "GIT_CONFIG_VALUE_0",
+                format!("Authorization: Basic {authorization}"),
+            )
+            .env("GIT_CONFIG_KEY_1", "credential.helper")
+            .env("GIT_CONFIG_VALUE_1", "")
+            .arg("--git-dir")
+            .arg(repository)
+            .args([
+                "-c",
+                "core.hooksPath=/dev/null",
+                "fetch",
+                "--no-tags",
+                "--no-write-fetch-head",
+                "--",
+            ])
+            .arg(format!("https://github.com/{}.git", policy.repository))
+            .arg(sha)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .kill_on_drop(true);
+        configure_proxy(&mut command, std::env::vars_os());
+        let status = tokio::time::timeout(std::time::Duration::from_secs(60), command.status())
+            .await
+            .map_err(|_| invalid())?
+            .map_err(|_| invalid())?;
+        if !status.success() {
+            return Err(invalid());
+        }
+        Ok(())
+    }
     pub(crate) async fn write(
         &mut self,
         policy: &Policy,

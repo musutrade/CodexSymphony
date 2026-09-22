@@ -322,19 +322,41 @@ impl GitBroker {
     }
 
     fn stage(&self, workspace: &Workspace) -> Result<()> {
-        self.git(
+        // Negative directory pathspecs can make Git reject an ignored cache
+        // after staging source files. Select literal source paths instead, with
+        // tracked deletions included and ignored untracked files excluded.
+        let listing = self.git(
             Some(workspace),
             &[
-                "add",
-                "--all",
-                "--",
-                ".",
-                ":(exclude)target",
-                ":(exclude)node_modules",
-                ":(exclude).angular",
+                "ls-files",
+                "-z",
+                "--cached",
+                "--others",
+                "--exclude-standard",
             ],
             b"",
         )?;
+        let mut paths = Vec::new();
+        for name in listing.split(zero).filter(nonempty) {
+            let path = std::str::from_utf8(name)?;
+            if !files::CACHE_ROOTS.contains(&path.split('/').next().unwrap_or("")) {
+                paths.extend_from_slice(name);
+                paths.push(0);
+            }
+        }
+        if !paths.is_empty() {
+            self.git(
+                Some(workspace),
+                &[
+                    "--literal-pathspecs",
+                    "add",
+                    "--all",
+                    "--pathspec-from-file=-",
+                    "--pathspec-file-nul",
+                ],
+                &paths,
+            )?;
+        }
         Ok(())
     }
 
