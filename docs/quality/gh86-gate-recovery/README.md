@@ -36,3 +36,8 @@ measurement-series identity binds the changed implementation. Coverage remains
 at least 80%, CRAP remains at most 10, all policies remain required, and the API
 baseline is unchanged. Local tests and diagnostic replays are not formal CI
 acceptance; delivery requires fresh exact-head checks from the trusted host.
+
+The HTTP fixture waits for the real asynchronous recovery barrier before command
+replay. A listening socket alone does not authorize resume operations. The wait
+is bounded and fails closed; expected HTTP statuses and the API baseline remain
+unchanged. Formal attempt 35687991414/1 retained the prior startup conflict.
