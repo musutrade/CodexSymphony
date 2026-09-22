@@ -61,6 +61,17 @@ def identical_tree_result(root, run, config, approval, job):
             p = Path(name)
             if p.resolve() != p or sha(p) != digest:
                 raise ValueError('approved runtime changed: ' + name)
+        # Only full main runs may publish caches. A cold PR (for example after
+        # Cargo.lock changes) must therefore get one full main run, or every
+        # subsequent PR would remain cold while merges keep reusing evidence.
+        if approval.get('execution_version') == 2 and config.get('cache_max_bytes', 40 * 1024**3) > 0:
+            cache = Path(prior['run']) / 'cache-restore.json'
+            if not cache.is_file():
+                return None
+            if cache.resolve() != cache:
+                raise ValueError('unsafe baseline cache receipt')
+            if json.loads(cache.read_text()).get('hit') is not True:
+                return None
         result = {'scope': 'identical-tree', 'status': 'PASS', 'source_sha': run['head_sha'],
                   'identity': f"{run['id']}/{run['run_attempt']}", 'policy_identity': policy,
                   'tree': current_tree, 'baseline_sha': prior['source_sha'],

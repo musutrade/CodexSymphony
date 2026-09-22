@@ -76,6 +76,10 @@ It writes a new `tree-equivalence.json` for the new SHA/attempt, explicitly sayi
 `full_suite_executed: false`; it never rewrites the original evidence's SHA.
 Changed trees/policies, missing evidence and manual `workflow_dispatch` runs
 execute the full suite. Equivalence receipts cannot themselves become baselines.
+When caching is enabled, a PR cache miss also requires a full main run to publish
+the new dependency seed. This prevents dependency or runtime updates from leaving
+all later PRs cold while main continually reuses their evidence. A missing cache
+receipt is treated as a miss. Explicitly disabled caches do not need warming.
 
 This policy establishes source-tree equivalence, not a second observation of
 runtime behavior at the merge SHA. It is appropriate while build/test inputs are

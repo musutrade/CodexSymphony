@@ -20,13 +20,14 @@ class TreeReuse(unittest.TestCase):
             git('commit', '--allow-empty', '-qm', 'merge')
             head = git('rev-parse', 'HEAD')
             runtime = root / 'runtime'; runtime.write_text('reviewed runtime')
-            approval = {'runtime_files': {str(runtime): hashlib.sha256(runtime.read_bytes()).hexdigest()}}
+            approval = {'execution_version': 2, 'runtime_files': {str(runtime): hashlib.sha256(runtime.read_bytes()).hexdigest()}}
             config = {'reuse_identical_tree': True, 'repository': 'owner/repo', 'protected_files': {}, 'state_root': str(root)}
             run_dir = root / 'retained'
             report = run_dir / 'workspace/.harness-gate/reports/test_result.json'; report.parent.mkdir(parents=True)
             report.write_text(json.dumps({'passed': True, 'evidence_complete': True,
                 'source_identity': 'commit:' + prior_sha, 'quality': {'evidence': [{'context': {'commit': prior_sha}}]}}))
             original = report.read_bytes()
+            cache = run_dir / 'cache-restore.json'; cache.write_text(json.dumps({'hit': True}))
             prior = {'finished': True, 'scope': 'full', 'status': 'PASS', 'event': 'pull_request',
                      'policy_identity': policy_identity(config, approval), 'source_sha': prior_sha,
                      'identity': '1/1', 'report_sha256': hashlib.sha256(original).hexdigest(), 'run': str(run_dir)}
@@ -39,6 +40,14 @@ class TreeReuse(unittest.TestCase):
             self.assertEqual(result['baseline_sha'], prior_sha)
             self.assertFalse(result['full_suite_executed'])
             self.assertEqual(report.read_bytes(), original)
+            for hit in (False, 'true', None):
+                cache.write_text(json.dumps({'hit': hit}))
+                self.assertIsNone(identical_tree_result(repo, run, config, approval, job))
+            # Explicitly disabling caching does not require warming a seed.
+            self.assertIsNotNone(identical_tree_result(repo, run, config | {'cache_max_bytes': 0}, approval, job))
+            cache.unlink()
+            self.assertIsNone(identical_tree_result(repo, run, config, approval, job))
+            cache.write_text(json.dumps({'hit': True}))
             failed = root / 'jobs/failed/receipt.json'; failed.parent.mkdir()
             failed.write_text(json.dumps({'finished': True, 'status': 'FAIL', 'source_sha': prior_sha}))
             self.assertIsNone(identical_tree_result(repo, run, config, approval, job))
