@@ -76,6 +76,8 @@ Install an immutable host release and a complete reviewed approval with
 `execution_version: 2`. Update the frontend measurement-series binding because
 its capture recipe includes `tools/quality-host/capture.py`. Keep an indivisible
 previous approval during rollout for already-running old source snapshots.
+Repeat `--previous-config` for each older primary snapshot that is still needed;
+the installer does not implicitly inherit an unbounded approval chain.
 Drain the current remote job before switching the service. Do not replace the
 installed HTTP authentication runtime with the older repository implementation;
 carry its reviewed files forward when assembling this performance release.

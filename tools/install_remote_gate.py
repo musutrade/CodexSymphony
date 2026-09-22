@@ -19,7 +19,7 @@ def main():
     os.umask(0o077);HOME.mkdir(parents=True,exist_ok=True)
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--gate-approval',type=Path,default=Path.home()/'.local/share/codexsymphony/gate-host/approval.json')
-    parser.add_argument('--previous-config',type=Path)
+    parser.add_argument('--previous-config',type=Path,action='append',default=[],help='retain this reviewed primary snapshot; repeat for active older branches')
     parser.add_argument('--gate-timeout-seconds',type=int,default=1500)
     parser.add_argument('--cache-max-bytes',type=int,default=40*1024**3)
     parser.add_argument('--cache-ttl-seconds',type=int,default=7*86400)
@@ -30,11 +30,12 @@ def main():
     if args.cache_max_bytes < 0 or args.cache_ttl_seconds <= 0:parser.error('invalid cache capacity or TTL')
     gate=args.gate_approval
     previous=[]
-    if args.previous_config:
-        prior=json.loads(args.previous_config.read_text())
+    for previous_config in args.previous_config:
+        prior=json.loads(previous_config.read_text())
         if prior['repository']!='musutrade/CodexSymphony':raise ValueError('previous repository differs')
-        previous=[{key:prior[key] for key in ('protected_files','gate_approval')}]
-        json.loads(Path(previous[0]['gate_approval']).read_text())
+        candidate={key:prior[key] for key in ('protected_files','gate_approval')}
+        json.loads(Path(candidate['gate_approval']).read_text())
+        if candidate not in previous:previous.append(candidate)
     approval=json.loads(gate.read_text())
     for name,digest in approval['trusted_files'].items():
         if sha(ROOT/name)!=digest:raise ValueError('gate host input changed: '+name)
