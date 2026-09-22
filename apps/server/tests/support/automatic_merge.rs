@@ -143,12 +143,8 @@ pub(crate) struct Fake {
     pub(crate) pause: Option<PgPool>,
     pub(crate) blockers: Vec<String>,
     pub(crate) final_pr: Option<Value>,
-    pub(crate) clock: Option<i64>,
 }
 impl Remote for Fake {
-    fn current_time(&self, fallback: i64) -> i64 {
-        self.clock.unwrap_or(fallback)
-    }
     async fn observe(&mut self, _: &Intent) -> Result<Observation, Error> {
         if let Some(status) = self.read_error {
             return Err(Error {
@@ -238,7 +234,6 @@ pub(crate) async fn fixture() -> (PgPool, std::path::PathBuf, Intent, Fake) {
         pause: None,
         blockers: vec![],
         final_pr: None,
-        clock: None,
     };
     (pool, root, i, f)
 }
