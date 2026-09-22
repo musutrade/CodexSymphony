@@ -102,7 +102,7 @@ async fn propose(
     validate_plan(document)?;
     let (before, affected) = difference(tx, id, document, review).await?;
     guard_changes(tx, id, &before, document, &affected).await?;
-    let repositories = edits::repositories(tx, document).await?;
+    let repositories = edits::repositories(tx, document, review).await?;
     let version = edits::bump(tx, id).await?;
     sqlx::query("INSERT INTO group_edit(draft_id,version,document,review,affected,repositories) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(draft_id) DO UPDATE SET version=excluded.version,document=excluded.document,review=excluded.review,affected=excluded.affected,repositories=excluded.repositories")
         .bind(id).bind(version).bind(json!(document)).bind(json!(review)).bind(json!(affected)).bind(json!(repositories)).execute(&mut **tx).await.map_err(store::db)?;

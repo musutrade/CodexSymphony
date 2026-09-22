@@ -26,6 +26,7 @@ pub struct Verification {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Item {
+    pub integration: Option<crate::integration::Authorization>,
     pub child_id: String,
     pub revision: i64,
     pub repository_version: i64,
@@ -131,6 +132,9 @@ fn validate_items(
             "stale repository policy; review again",
         )?;
         validate_item(child, item, &repo.repository)?;
+        if let Some(integration) = &item.integration {
+            crate::integration::validate(integration, item, document, repositories)?;
+        }
     }
     require(
         ids.len() == document.children.len(),

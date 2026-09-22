@@ -16,6 +16,7 @@ import {
   totalBudget,
   zeroBudget,
   repairLimits,
+  reviewPayload,
 } from './group-review-model';
 @Component({
   selector: 'app-group-review',
@@ -57,8 +58,51 @@ export class GroupReview {
     void this.reload();
   }
   payload(): Review {
-    const { automatic_budget, ...review } = this.model();
-    return { ...review, group_budget: automatic_budget ? null : review.group_budget };
+    return reviewPayload(this.model());
+  }
+  addValidationRepository(index: number, repositoryId: number) {
+    const repository = this.view()?.repositories.find((r) => r.id === repositoryId);
+    if (!repository) return;
+    this.model.update((model) => {
+      return {
+        ...model,
+        items: model.items.map((item, i) =>
+          i !== index
+            ? item
+            : {
+                ...item,
+                integration_repositories: [
+                  ...item.integration_repositories,
+                  {
+                    repository_id: repositoryId,
+                    repository_version: repository.version,
+                    repair_scope: '',
+                    selection: { kind: 'completed_dependencies' as const },
+                    selection_kind: 'completed_dependencies' as const,
+                    sha: '',
+                  },
+                ],
+              },
+        ),
+      };
+    });
+  }
+  removeValidationRepository(index: number, repositoryIndex: number) {
+    this.model.update((model) => {
+      return {
+        ...model,
+        items: model.items.map((item, i) =>
+          i !== index
+            ? item
+            : {
+                ...item,
+                integration_repositories: item.integration_repositories.filter(
+                  (_, j) => j !== repositoryIndex,
+                ),
+              },
+        ),
+      };
+    });
   }
   private apply(view: GroupView) {
     this.view.set(view);
@@ -141,8 +185,13 @@ export class GroupReview {
   waitingReason(reason: string) {
     const labels: Record<string, string> = {
       confirmed_merge_and_acceptance: '已确认合并且适用验收通过',
-      waiting_validation_only_execution_not_implemented:
-        '等待 validation_only 执行能力（尚未实现）；不会创建编码 Run 或空 PR',
+      waiting_explicit_validation_authorization: '等待评审精确版本验证配置与授权仓库',
+      waiting_authorized_validation_claim: '等待前置完成与纯验证领取',
+      validating_exact_version_set: '正在验证已冻结的仓库版本组合',
+      validation_process_or_output_reconciliation_required: '等待核对原验证进程与输出，保持占用',
+      integration_failed_waiting_current_item_recovery:
+        '集成失败，保留当前项等待恢复；代码修复尚未启用',
+      exact_version_validation_passed: '精确版本组合的必需验证已通过',
       paused: '已暂停，重启不会自动恢复',
       cancelled_not_success: '已取消；不能满足后继依赖',
       waiting_authorization_or_scheduler: '等待有效组授权与调度',

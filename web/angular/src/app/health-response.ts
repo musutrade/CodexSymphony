@@ -1,4 +1,4 @@
-// harness-contract-sha256: dd0dc737ec369089972228d48c15664b6ffb79cc191113fe6b231945a5f2c455
+// harness-contract-sha256: ab67ff1e2be4ef65946679de6ae32a357303612b9422ed1c3c27ea21c1c29fd7
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -73,13 +73,7 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: {
-    id: number;
-    revision: number;
-    state: string;
-    title: string;
-    version: number;
-  }[];
+  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -1311,6 +1305,15 @@ export type GetGroupReviewResponse =
             items: {
               budget: { model_seconds: number; tokens: number; turns: number };
               child_id: string;
+              integration?: {
+                configuration_sha256: string;
+                repositories: {
+                  repair_scope: string;
+                  repository_id: number;
+                  repository_version: number;
+                  selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+                }[];
+              } | null;
               merged_baseline_review: string;
               repair_scope: string;
               repository_version: number;
@@ -1438,6 +1441,15 @@ export type GetGroupReviewResponse =
           items: {
             budget: { model_seconds: number; tokens: number; turns: number };
             child_id: string;
+            integration?: {
+              configuration_sha256: string;
+              repositories: {
+                repair_scope: string;
+                repository_id: number;
+                repository_version: number;
+                selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+              }[];
+            } | null;
             merged_baseline_review: string;
             repair_scope: string;
             repository_version: number;
@@ -1493,6 +1505,15 @@ export type GetGroupReviewResponse =
         items: {
           budget: { model_seconds: number; tokens: number; turns: number };
           child_id: string;
+          integration?: {
+            configuration_sha256: string;
+            repositories: {
+              repair_scope: string;
+              repository_id: number;
+              repository_version: number;
+              selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+            }[];
+          } | null;
           merged_baseline_review: string;
           repair_scope: string;
           repository_version: number;
@@ -1578,6 +1599,15 @@ export type SaveGroupReviewResponse =
             items: {
               budget: { model_seconds: number; tokens: number; turns: number };
               child_id: string;
+              integration?: {
+                configuration_sha256: string;
+                repositories: {
+                  repair_scope: string;
+                  repository_id: number;
+                  repository_version: number;
+                  selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+                }[];
+              } | null;
               merged_baseline_review: string;
               repair_scope: string;
               repository_version: number;
@@ -1705,6 +1735,15 @@ export type SaveGroupReviewResponse =
           items: {
             budget: { model_seconds: number; tokens: number; turns: number };
             child_id: string;
+            integration?: {
+              configuration_sha256: string;
+              repositories: {
+                repair_scope: string;
+                repository_id: number;
+                repository_version: number;
+                selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+              }[];
+            } | null;
             merged_baseline_review: string;
             repair_scope: string;
             repository_version: number;
@@ -1760,6 +1799,15 @@ export type SaveGroupReviewResponse =
         items: {
           budget: { model_seconds: number; tokens: number; turns: number };
           child_id: string;
+          integration?: {
+            configuration_sha256: string;
+            repositories: {
+              repair_scope: string;
+              repository_id: number;
+              repository_version: number;
+              selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+            }[];
+          } | null;
           merged_baseline_review: string;
           repair_scope: string;
           repository_version: number;
@@ -1797,6 +1845,15 @@ export interface SaveGroupReviewRequest {
     items: {
       budget: { model_seconds: number; tokens: number; turns: number };
       child_id: string;
+      integration?: {
+        configuration_sha256: string;
+        repositories: {
+          repair_scope: string;
+          repository_id: number;
+          repository_version: number;
+          selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+        }[];
+      } | null;
       merged_baseline_review: string;
       repair_scope: string;
       repository_version: number;
@@ -1869,6 +1926,15 @@ export interface EditGroupQueueRequest {
       items: {
         budget: { model_seconds: number; tokens: number; turns: number };
         child_id: string;
+        integration?: {
+          configuration_sha256: string;
+          repositories: {
+            repair_scope: string;
+            repository_id: number;
+            repository_version: number;
+            selection: { kind: 'completed_dependencies' | 'fixed'; sha?: string };
+          }[];
+        } | null;
         merged_baseline_review: string;
         repair_scope: string;
         repository_version: number;

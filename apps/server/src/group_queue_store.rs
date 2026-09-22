@@ -45,7 +45,7 @@ async fn project(tx: &mut Tx<'_>, draft: &str, authorization: i64, snapshot: Val
                 "missing authorized repository".into(),
             ))?;
         let input = json!({"child":child,"review":item,"parent_revision":review.parent_revision,"repository":repository});
-        let requirement = if child.kind == "code_change" {
+        let requirement = if executable(child, item) {
             Some(project_requirement(tx, child, item, repository, authorization).await?)
         } else {
             None
@@ -178,4 +178,8 @@ pub(crate) async fn claim_input_ready(
     let bound: bool=sqlx::query_scalar("SELECT NOT EXISTS(SELECT 1 FROM group_execution_item WHERE requirement_id=$1) OR EXISTS(SELECT 1 FROM group_execution_item i JOIN group_claim_input b ON b.requirement_id=i.requirement_id AND b.authorization_id=i.authorization_id JOIN initial_run n ON n.requirement_id=i.requirement_id WHERE i.requirement_id=$1 AND n.workspace->>'baseline'=b.baseline AND n.launch=$2)")
         .bind(id).bind(json!(launch)).fetch_one(&mut **tx).await?;
     Ok(bound && crate::group_budget::allowed(tx, id, crate::budget::Amount::default()).await?)
+}
+
+pub(crate) fn executable(child: &crate::draft::Child, item: &crate::group_review::Item) -> bool {
+    child.kind == "code_change" || item.integration.is_some()
 }

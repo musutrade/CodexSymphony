@@ -54,12 +54,39 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
         // descendants from memory even if this process cannot write stop files.
         // Still consume stop receipts once persistence returns; otherwise the
         // storage latch and the quiescence requirement would block each other.
-        for run in run_store::unresolved(pool).await? {
-            observe(pool, root, run).await?;
-        }
+        observe_storage_stop(pool, root, incarnation).await?;
         return Ok(false);
     }
     reconcile_runs(pool, root, incarnation).await?;
+    if !recover_validation(pool, root, incarnation).await? {
+        return Ok(false);
+    }
+    crate::runtime_store::finalize(pool).await?;
+    crate::delivery_control::settle(pool).await?;
+    run_store::finish_recovery(pool, incarnation).await
+}
+
+async fn observe_storage_stop(
+    pool: &PgPool,
+    root: &Path,
+    incarnation: &str,
+) -> Result<(), sqlx::Error> {
+    for run in run_store::unresolved(pool).await? {
+        observe(pool, root, run).await?;
+    }
+    crate::integration_worker::recover(pool, root, incarnation)
+        .await
+        .map_err(|e| {
+            let message = e.to_string();
+            sqlx::Error::Protocol(message)
+        })?;
+    Ok(())
+}
+async fn recover_validation(
+    pool: &PgPool,
+    root: &Path,
+    incarnation: &str,
+) -> Result<bool, sqlx::Error> {
     match crate::workspace_store::recover_stopped(pool, &root.join("workspaces")).await {
         Ok(true) => {}
         Ok(false) => return Ok(false),
@@ -69,11 +96,17 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
             ));
         }
     }
-    crate::runtime_store::finalize(pool).await?;
-    crate::delivery_control::settle(pool).await?;
-    run_store::finish_recovery(pool, incarnation).await
+    if !crate::integration_worker::recover(pool, root, incarnation)
+        .await
+        .map_err(|e| {
+            let message = e.to_string();
+            sqlx::Error::Protocol(message)
+        })?
+    {
+        return Ok(false);
+    }
+    Ok(true)
 }
-
 async fn reconcile_runs(pool: &PgPool, root: &Path, incarnation: &str) -> Result<(), sqlx::Error> {
     crate::budget_store::expire_runs(pool).await?;
     crate::runtime_questions::expire(pool, crate::runtime_client::now()).await?;

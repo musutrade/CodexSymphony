@@ -99,6 +99,32 @@ async fn tick_selected(
     config: &Config,
     selected: Option<(i64, i64)>,
 ) -> Result<()> {
+    if let Some(plan) = &config.validation
+        && crate::integration_worker::tick(pool, root, supervisor, broker, incarnation, plan)
+            .await?
+    {
+        return Ok(());
+    }
+    runtime_pipeline(
+        pool,
+        root,
+        supervisor,
+        broker,
+        incarnation,
+        config,
+        selected,
+    )
+    .await
+}
+async fn runtime_pipeline(
+    pool: &PgPool,
+    root: &Path,
+    supervisor: &Path,
+    broker: &GitBroker,
+    incarnation: &str,
+    config: &Config,
+    selected: Option<(i64, i64)>,
+) -> Result<()> {
     if let Some(launch) = reserved(pool, incarnation).await? {
         return runtime_client::execute(pool, root, supervisor, broker, &launch, &config.settings)
             .await;
