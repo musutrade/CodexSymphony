@@ -47,3 +47,19 @@
 `apps/server/tests/workspaces.rs` 使用真实 Git 和独立 PostgreSQL schema：staged/unstaged、未跟踪源码/测试/进度、二进制、执行位、删除、中间提交、替换 canonical 后恢复；恶意 hooks/helper、链接、错误归属；重复与 stale 操作；真实 SQL 写入失败；写文件大小限制导致的真实部分写入；文件写完后的子进程退出与重启对账屏障。
 
 Runtime 动态工具、完成声明受理、受信验证、预算/磁盘预检、远端获取与 PR 交付仍属于后续 Issue。Ready 不因此开始真实编码；0a 的整体 A03/A04/A06 和 DoD 不因本项自动完成。此产品 Broker 与开发本仓库的宿主发布工具是独立实现。
+
+### GH-86 真实 Runtime 验收恢复
+
+本地提交暂存使用 `ls-files --cached --others --exclude-standard -z` 选择源文件，
+过滤固定缓存根后，以 NUL 分隔的 literal pathspec 交给 `git add --all`。
+这保留跟踪文件删除、特殊文件名和忽略规则，避免负目录 pathspec 在已忽略的
+`target` 存在时返回失败，即使源文件已经进入暂存区。
+
+最新 Run 已静止、Interrupted 且工作区操作仍 pending/partial 时，任务组进度返回
+`workspace_reconciliation_required`。这只是阻塞原因，不释放 owner、不伪造 Done、
+不自动重放部分操作。外部验收调用方应同时检查 Run 和交付记录，不能只等待
+Requirement 的 Running 字段变化。
+
+GH-86 合并收尾不申请新模型轮次，因此使用已有预留额度的 `prepaid_fits` 检查。
+最后一个已授权轮次恰好占满预留额度时仍可完成合并与验收；已耗尽标记、实际/预留
+超出子项或父组上限仍拒绝。此恢复不增加、清空或重置任何预算。

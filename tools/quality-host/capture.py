@@ -12,7 +12,7 @@ import urllib.request
 from isolation import command
 
 PLUGIN_ROOT = Path('/home/gem/.local/share/harness-gate')
-RUST = PLUGIN_ROOT / 'rust-source/0.1.0-rc.3'
+RUST = PLUGIN_ROOT / 'rust-source/0.1.0-rc.5'
 TS = PLUGIN_ROOT / 'typescript/0.1.0-rc.4/node_modules/@harness-gate/typescript-collector'
 HTTP = PLUGIN_ROOT / 'http-contract/0.1.0-rc.4/node_modules/@harness-gate/http-json-contract-collector'
 

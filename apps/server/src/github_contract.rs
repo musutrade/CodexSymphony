@@ -145,12 +145,13 @@ impl DeliveryContract {
         if !self.protection.is_object() {
             blockers.push("delivery.protection: reviewed protection snapshot required".into());
         }
-        if (self.pre_merge.source == PreMergeSource::TestMerge
+        if (self.actions.merge
+            || self.pre_merge.source == PreMergeSource::TestMerge
             || self.pre_merge.checkout == PreMergeSource::TestMerge)
             && !strict(&self.protection)
         {
             blockers.push(
-                "delivery.pre_merge: test-merge requires enforced strict base protection".into(),
+                "delivery.pre_merge: automatic merge or test-merge requires enforced strict base protection".into(),
             );
         }
     }

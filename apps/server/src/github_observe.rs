@@ -32,6 +32,25 @@ fn validate_pr(pr: &Value, policy: &Policy, number: u64) -> Result<()> {
     }
     Ok(())
 }
+
+/// Reconcile an already-sent merge independently of Checks availability. The
+/// empty phase list proves no CI success; normal observation still collects CI.
+pub async fn observe_merge(
+    client: &mut AppClient,
+    policy: &Policy,
+    number: u64,
+    now: i64,
+) -> Result<Observation> {
+    let path = format!("/repos/{}/pulls/{number}", policy.repository);
+    let pr = client.get(policy, &path, now).await?;
+    validate_pr(&pr, policy, number)?;
+    let head = required_text(&pr["head"]["sha"])?;
+    let second = client.get(policy, &path, now).await?;
+    if pr != second {
+        return Err(invalid());
+    }
+    parse_observation(policy, number, now, &pr, head, Vec::new(), Vec::new())
+}
 async fn selected_checks(
     client: &mut AppClient,
     policy: &Policy,

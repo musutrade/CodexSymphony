@@ -59,6 +59,11 @@ async fn eligible_reason(tx: &mut Tx<'_>, id: i64, state: &str) -> Result<&'stat
     if !crate::group_queue_store::authorized(tx, id).await? {
         return Ok("needs_review");
     }
+    let interrupted: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM agent_run a WHERE a.requirement_id=$1 AND a.quiescent AND a.state='Interrupted' AND NOT EXISTS(SELECT 1 FROM agent_run newer WHERE newer.requirement_id=a.requirement_id AND newer.run_sequence>a.run_sequence) AND EXISTS(SELECT 1 FROM workspace_operation o WHERE o.run_id=a.id AND o.status<>'complete'))")
+        .bind(id).fetch_one(&mut **tx).await?;
+    if interrupted {
+        return Ok("workspace_reconciliation_required");
+    }
     if state == "Submitted" {
         return Ok("waiting_confirmed_merge_and_applicable_acceptance");
     }

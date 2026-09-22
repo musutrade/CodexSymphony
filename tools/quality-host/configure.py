@@ -18,6 +18,8 @@ def configure(root, requests, identities):
     assert all(groups.values()),'bootstrap expects the complete initial production inventory'
     selected={'backend':['backend-functions'],'frontend':['frontend-files','frontend-declarations','frontend-functions'],'frontend-api':['api-provider','api-consumer']}
     quality='''version = 1
+[limits]
+max_artifact_bytes = 1073741824
 [project]
 id = "codexsymphony"
 name = "codexsymphony"

@@ -138,6 +138,60 @@ async fn directories(tx: &mut Tx<'_>, config: &Deployment, run: &str, now: i64) 
     }
     caches(tx, config, run, now).await?;
     preparations(tx, config, run, now).await?;
+    merge_directories(tx, config, run, now).await?;
+    Ok(())
+}
+
+async fn merge_directories(
+    tx: &mut Tx<'_>,
+    config: &Deployment,
+    run: &str,
+    now: i64,
+) -> Result<()> {
+    let merges: Vec<(String,Option<String>,Option<String>)> = sqlx::query_as("SELECT m.action_key,m.intent->>'checkout_sha',m.merged_sha FROM merge_operation m JOIN delivery d ON d.action_key=m.delivery_key JOIN candidate_validation v ON v.id=d.validation_id WHERE v.source_run_id=$1")
+        .bind(run).fetch_all(&mut **tx).await?;
+    for (key, pre, post) in merges {
+        for (phase, sha) in [("pre", pre), ("post", post)] {
+            let Some(sha) = sha else { continue };
+            let evidence = if phase == "pre" {
+                format!("pre-merge-{key}-{sha}")
+            } else {
+                format!("post-merge-{key}")
+            };
+            for (suffix, path, kind, category) in [
+                (
+                    "evidence",
+                    config.execution.path.join("validations").join(evidence),
+                    Kind::Retrospective,
+                    Category::Hot,
+                ),
+                (
+                    "checkout",
+                    config
+                        .execution
+                        .path
+                        .join("workspaces/runs")
+                        .join(format!("merge-{key}-{sha}")),
+                    Kind::Recovery,
+                    Category::Workspace,
+                ),
+            ] {
+                register_path(
+                    tx,
+                    config,
+                    Material {
+                        id: &format!("merge-{key}-{phase}-{suffix}"),
+                        run,
+                        path: &path,
+                        kind,
+                        category,
+                        now,
+                    },
+                )
+                .await?;
+            }
+        }
+    }
     Ok(())
 }
 

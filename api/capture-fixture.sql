@@ -1,5 +1,21 @@
 -- HTTP-only data fixtures; no real model, credentials or GitHub writes.
 -- IDs are outside the normal scenario sequence; global scheduler stays paused.
+-- HTTP listening is liveness, not completion of the asynchronous recovery barrier.
+-- Observe the real barrier before replaying commands that legitimately reject
+-- recovery-in-progress. Never manufacture recovery or storage readiness here.
+DO $$
+BEGIN
+  FOR attempt IN 1..100 LOOP
+    IF (SELECT recovery_complete FROM execution_control WHERE id=1)
+       AND NOT (SELECT blocked FROM storage_guard WHERE id=1) THEN
+      RETURN;
+    END IF;
+    PERFORM pg_sleep(0.1);
+  END LOOP;
+  RAISE EXCEPTION 'HTTP fixture requires completed recovery and available storage';
+END;
+$$;
+
 INSERT INTO requirement(id,version,state,contract,revision,paused)
 OVERRIDING SYSTEM VALUE VALUES(900001,1,'Running','{"title": "Persisted HTTP fixture", "description": "Implement a future assertion", "acceptance_criteria": [{"description": "Future test passes", "verification_ref": "test"}], "validation_plan": [{"id": "test", "check": "cargo_test", "selector": "future::passes", "expected_result": "exit 0 and assertions pass", "timeout_seconds": 60}], "network_access": []}',1,true);
 INSERT INTO requirement_revision(requirement_id,revision,document)

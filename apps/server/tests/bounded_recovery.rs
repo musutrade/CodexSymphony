@@ -14,6 +14,8 @@ mod groups;
 #[path = "support/validation_runner.rs"]
 mod source_fixture;
 
+static DATABASE_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 fn failure(sha: &str) -> Failure {
     Failure {
         phase: "local".into(),
@@ -119,6 +121,14 @@ async fn setup() -> (PgPool, String, i64, String) {
     .execute(&pool)
     .await
     .unwrap();
+    // Storage failure is intentionally process-global. Each disposable fixture
+    // starts through the real recovery path so fault-injection tests cannot
+    // poison unrelated schemas in the same test binary.
+    assert!(
+        codexsymphony_server::storage::recover(&pool, &std::env::temp_dir())
+            .await
+            .unwrap()
+    );
     (pool, url, id, draft)
 }
 
@@ -197,6 +207,7 @@ fn resources() -> Amount {
 
 #[tokio::test]
 async fn durable_reservations_settlement_restart_duplicate_events_and_exact_exhaustion() {
+    let _guard = DATABASE_TEST.lock().await;
     let (mut pool, url, id, draft) = setup().await;
     for n in 1..=3 {
         let job = seed(&pool, id, n).await;
@@ -368,6 +379,7 @@ async fn durable_reservations_settlement_restart_duplicate_events_and_exact_exha
 
 #[tokio::test]
 async fn insufficient_parent_balance_and_cancel_do_not_charge_or_launch() {
+    let _guard = DATABASE_TEST.lock().await;
     let (pool, _, id, draft) = setup().await;
     let job = seed(&pool, id, 1).await;
     sqlx::query("UPDATE group_budget SET limits='{\"tokens\":9,\"turns\":5,\"model_seconds\":60}' WHERE draft_id=$1 AND item_id=''").bind(&draft).execute(&pool).await.unwrap();
@@ -395,6 +407,7 @@ async fn insufficient_parent_balance_and_cancel_do_not_charge_or_launch() {
 
 #[tokio::test]
 async fn durable_recovery_child() {
+    let _guard = DATABASE_TEST.lock().await;
     let Ok(url) = std::env::var("GH85_RESTART_URL") else {
         return;
     };
@@ -423,6 +436,7 @@ async fn durable_recovery_child() {
 
 #[tokio::test]
 async fn cold_start_barrier_reconciles_unstarted_intent_without_new_ordinal() {
+    let _guard = DATABASE_TEST.lock().await;
     use codexsymphony_server::{
         git_broker::GitBroker, recovery_worker, run_store, runtime_service::Config,
     };
@@ -534,6 +548,7 @@ async fn cold_start_barrier_reconciles_unstarted_intent_without_new_ordinal() {
 
 #[tokio::test]
 async fn ci_admission_requires_current_pr_head_and_original_candidate_identity() {
+    let _guard = DATABASE_TEST.lock().await;
     let (pool, _, id, _) = setup().await;
     let job = seed(&pool, id, 1).await;
     sqlx::query("UPDATE candidate_validation SET result='succeeded' WHERE id='validation-1'")
@@ -580,6 +595,7 @@ async fn ci_admission_requires_current_pr_head_and_original_candidate_identity()
 
 #[tokio::test]
 async fn late_parent_exposure_blocks_prepaid_call_without_releasing_its_hold() {
+    let _guard = DATABASE_TEST.lock().await;
     let (pool, _, id, draft) = setup().await;
     let job = seed(&pool, id, 1).await;
     assert!(
@@ -627,6 +643,7 @@ async fn late_parent_exposure_blocks_prepaid_call_without_releasing_its_hold() {
 
 #[tokio::test]
 async fn storage_configuration_failure_rolls_back_ordinal_and_group_hold() {
+    let _guard = DATABASE_TEST.lock().await;
     let (pool, _, id, draft) = setup().await;
     let job = seed(&pool, id, 1).await;
     // Fault injection into this disposable schema: malformed persisted storage
@@ -676,6 +693,7 @@ async fn storage_configuration_failure_rolls_back_ordinal_and_group_hold() {
 
 #[tokio::test]
 async fn paused_repair_resumes_under_same_ordinal_and_prepaid_exact_budget() {
+    let _guard = DATABASE_TEST.lock().await;
     let (pool, _, id, draft) = setup().await;
     let original = seed(&pool, id, 1).await;
     sqlx::query("UPDATE requirement_budget SET limits=$2 WHERE requirement_id=$1")
@@ -808,6 +826,7 @@ async fn paused_repair_resumes_under_same_ordinal_and_prepaid_exact_budget() {
 
 #[tokio::test]
 async fn invalid_phase_evidence_blocks_instead_of_charging_a_repair() {
+    let _guard = DATABASE_TEST.lock().await;
     let (pool, _, id, _) = setup().await;
     let job = seed(&pool, id, 1).await;
     let mut f = failure("sha-1");

@@ -6,6 +6,7 @@ import subprocess
 from capture import PLUGIN_ROOT, database, write, load
 from isolation import command
 from replay import broker
+from signing import CORE
 
 def verify(run, repository, root, profile="ci"):
     reports=root/'.harness-gate/reports'
@@ -13,7 +14,7 @@ def verify(run, repository, root, profile="ci"):
     for name in ('web/angular/.angular','web/angular/dist'):
         p=root/name;p.mkdir(parents=True,exist_ok=True);writable.append(p)
     modules=root/'web/angular/node_modules';modules.mkdir(exist_ok=True)
-    paths=[str(Path(shutil.which(name)).resolve().parent) for name in ('harness-gate','harness-gate-rust-collector')]
+    paths=[str(CORE.parent),str(Path(shutil.which('harness-gate-rust-collector')).resolve().parent)]
     environment={'PATH':':'.join(paths+['/opt/codex','/home/gem/.cargo/bin','/usr/local/bin','/usr/bin','/bin'])}
     baseline=Path(load(run/'requests.json')['frontend-api']['parameters']['receipt']['baseline']['path'])
     container,url=database(run)

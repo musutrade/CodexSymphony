@@ -11,6 +11,7 @@ use std::{
     os::unix::process::CommandExt,
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -65,6 +66,24 @@ fn validate_step(step: &Step) -> Result<()> {
     }
     Ok(())
 }
+#[derive(Clone, Copy)]
+struct Control<'a> {
+    limit: u64,
+    cancelled: Option<&'a AtomicBool>,
+}
+impl Control<'_> {
+    fn stopped(self) -> bool {
+        self.cancelled
+            .is_some_and(|flag| flag.load(Ordering::Acquire))
+    }
+    fn check(self) -> Result<()> {
+        if self.stopped() {
+            return Err("validation stopped by current control intent".into());
+        }
+        Ok(())
+    }
+}
+
 fn digest(path: &Path) -> Result<String> {
     Ok(sha256(fs::read(path)?))
 }
@@ -109,6 +128,46 @@ pub fn execute_limited(
     plan: &Plan,
     limit: u64,
 ) -> Result<Vec<StepEvidence>> {
+    execute_controlled(
+        root,
+        directory,
+        expected,
+        plan,
+        Control {
+            limit: limit.min(LIMIT),
+            cancelled: None,
+        },
+    )
+}
+
+/// Control-plane cancellation stops the whole local command group and retains
+/// the original invocation. Incomplete invocations are never silently replayed.
+pub fn execute_cancellable(
+    root: &Path,
+    directory: &Path,
+    expected: &Candidate,
+    plan: &Plan,
+    cancelled: &AtomicBool,
+) -> Result<Vec<StepEvidence>> {
+    execute_controlled(
+        root,
+        directory,
+        expected,
+        plan,
+        Control {
+            limit: LIMIT,
+            cancelled: Some(cancelled),
+        },
+    )
+}
+fn execute_controlled(
+    root: &Path,
+    directory: &Path,
+    expected: &Candidate,
+    plan: &Plan,
+    control: Control<'_>,
+) -> Result<Vec<StepEvidence>> {
+    control.check()?;
     fs::create_dir_all(directory)?;
     let _lock = process::InstanceLock::acquire(&directory.join("lock"))?;
     let identity = plan.identity()?;
@@ -120,13 +179,7 @@ pub fn execute_limited(
         return Ok(evidence);
     }
     run_plan(
-        root,
-        directory,
-        expected,
-        plan,
-        &identity,
-        &binding,
-        limit.min(LIMIT),
+        root, directory, expected, plan, &identity, &binding, control,
     )
 }
 fn replay(directory: &Path, binding: &serde_json::Value) -> Result<Option<Vec<StepEvidence>>> {
@@ -152,18 +205,28 @@ fn run_plan(
     plan: &Plan,
     identity: &TrustedIdentity,
     binding: &serde_json::Value,
-    limit: u64,
+    control: Control<'_>,
 ) -> Result<Vec<StepEvidence>> {
     process::durable_write(&directory.join("binding.json"), &binding)?;
     let mut evidence = Vec::new();
     for (index, step) in plan.steps.iter().enumerate() {
-        evidence.push(run_step(root, directory, index, step, plan, limit)?);
+        control.check()?;
+        evidence.push(run_step(root, directory, index, step, plan, control)?);
     }
+    verify_unchanged(root, expected, plan, identity)?;
+    process::durable_write(&directory.join("result.json"), &evidence)?;
+    Ok(evidence)
+}
+fn verify_unchanged(
+    root: &Path,
+    expected: &Candidate,
+    plan: &Plan,
+    identity: &TrustedIdentity,
+) -> Result<()> {
     if candidate(root)? != *expected || plan.identity()? != *identity {
         return Err("validation source or tool changed".into());
     }
-    process::durable_write(&directory.join("result.json"), &evidence)?;
-    Ok(evidence)
+    Ok(())
 }
 fn run_step(
     root: &Path,
@@ -171,7 +234,7 @@ fn run_step(
     index: usize,
     step: &Step,
     plan: &Plan,
-    limit: u64,
+    control: Control<'_>,
 ) -> Result<StepEvidence> {
     let path = directory.join(format!("step-{index}.log"));
     let file = fs::OpenOptions::new()
@@ -186,9 +249,14 @@ fn run_step(
         child.stdout.take().ok_or("stdout unavailable")?,
         child.stderr.take().ok_or("stderr unavailable")?,
         file,
-        limit,
+        control.limit,
     );
-    let exit = wait(&mut child, step.timeout_seconds, &capture)?;
+    let exit = wait(&mut child, step.timeout_seconds, &capture, control)?;
+    finish_capture(capture, &path, control.limit)?;
+    control.check()?;
+    evidence(directory, index, step, exit)
+}
+fn finish_capture(capture: crate::storage_output::Capture, path: &Path, limit: u64) -> Result<()> {
     if capture.finish()? {
         process::durable_write(
             &path.with_extension("truncated.json"),
@@ -196,19 +264,20 @@ fn run_step(
         )?;
         return Err("validation output limit reached".into());
     }
-    evidence(directory, index, step, exit)
+    Ok(())
 }
 fn wait(
     child: &mut std::process::Child,
     timeout: u64,
     output: &crate::storage_output::Capture,
+    control: Control<'_>,
 ) -> Result<Option<i32>> {
     let deadline = Instant::now() + Duration::from_secs(timeout);
     let exit = loop {
         if let Some(status) = child.try_wait()? {
             break status.code();
         }
-        if Instant::now() >= deadline || output.stopped() {
+        if Instant::now() >= deadline || output.stopped() || control.stopped() {
             stop_group(child.id());
             child.wait()?;
             break None;

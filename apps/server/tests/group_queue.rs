@@ -883,3 +883,47 @@ async fn wait_for_queue_lock(pool: &PgPool) {
         }
     }).await.expect("expected operation to reach the real queue lock");
 }
+
+#[tokio::test]
+async fn interrupted_workspace_operation_is_visible_without_releasing_owner() {
+    let (pool, _, _) = fixture().await;
+    bootstrap(&pool).await;
+    let draft = authorized(&pool, "interrupted-workspace").await;
+    queue::materialize(&pool).await.unwrap();
+    let (root, broker, base) = broker();
+    let (launch, _) = plan(&pool, &broker, &base).await.unwrap();
+    prepared(&pool, &launch, 1).await;
+    assert!(run_store::reserve_prepared(&pool, &launch).await.unwrap());
+    sqlx::query(
+        "UPDATE agent_run SET state='Interrupted',quiescent=true,stop_requested=true WHERE id=$1",
+    )
+    .bind(&launch.key.run_id)
+    .execute(&pool)
+    .await
+    .unwrap();
+    sqlx::query("INSERT INTO workspace_operation(run_id,request_id,command,status,error) VALUES($1,'rpc:0','{}','partial','local operation failed')")
+        .bind(&launch.key.run_id).execute(&pool).await.unwrap();
+    let view = request(
+        &app(&pool),
+        "GET",
+        &format!("/api/drafts/{draft}/review"),
+        json!({}),
+        200,
+    )
+    .await;
+    assert_eq!(
+        view["execution"]["items"][0]["waiting_reason"],
+        "workspace_reconciliation_required"
+    );
+    assert_eq!(
+        view["execution"]["items"][1]["waiting_reason"],
+        "waiting_dependency_completion"
+    );
+    assert_eq!(view["execution"]["completed"], 0);
+    assert_eq!(view["business_complete"], false);
+    assert_eq!(owner(&pool).await, Some(1));
+    assert!(!delivery_control::resume(&pool, Some(1)).await.unwrap());
+    assert!(plan(&pool, &broker, &base).await.is_none());
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
