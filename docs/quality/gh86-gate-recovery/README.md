@@ -41,3 +41,10 @@ The HTTP fixture waits for the real asynchronous recovery barrier before command
 replay. A listening socket alone does not authorize resume operations. The wait
 is bounded and fails closed; expected HTTP statuses and the API baseline remain
 unchanged. Formal attempt 35687991414/1 retained the prior startup conflict.
+
+Formal attempt 35689596282/1 exposed two infrastructure capacity limits: the
+complete backend suite takes about 329 seconds without compilation, exceeding
+the prior 300-second command deadline; its deadline is now 600 seconds. The
+host's lossless XZ encoding uses an extreme text profile to retain every byte
+and source descriptor within the unchanged 64 MiB artifact limit. No tests,
+coverage counters, required checks, or quality thresholds are removed.

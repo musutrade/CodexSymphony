@@ -248,7 +248,7 @@ args = [
 ]
 cwd = "{root}"
 log = "backend_tests.log"
-timeout_secs = 300
+timeout_secs = 600
 parser = "rust"
 services = ["test-postgres"]
 remove_env = ["DATABASE_URL"]
