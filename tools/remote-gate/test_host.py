@@ -86,3 +86,48 @@ class InterruptedRecovery(unittest.TestCase):
                 self.assertEqual(json.loads(p.read_text())['status'],'interrupted')
                 host.reconcile_interrupted({'repository':'owner/repo'},home,'fixture')
                 self.assertEqual(request.call_count,1)
+
+class DeploymentTransition(unittest.TestCase):
+    def test_only_whole_approved_snapshots_match(self):
+        import json
+        from host import approved_deployment
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); candidates=[]
+            for version in ('old','new'):
+                pins={}
+                for name in ('protected','collector','policy'):
+                    content=(version+name).encode();(root/name).write_bytes(content)
+                    pins[name]=hashlib.sha256(content).hexdigest()
+                approval=root/(version+'.json')
+                approval.write_text(json.dumps({'trusted_files':{'collector':pins['collector']},
+                    'config_files':{'policy':pins['policy']},'version':version}))
+                candidates.append({'protected_files':{'protected':pins['protected']},'gate_approval':str(approval)})
+            config=candidates[1]|{'previous_deployments':[candidates[0]]}
+            for version in ('new','old'):
+                for name in ('protected','collector','policy'):(root/name).write_text(version+name)
+                self.assertEqual(approved_deployment(root,config)[1]['version'],version)
+            (root/'protected').write_text('newprotected')
+            with self.assertRaisesRegex(ValueError,'complete reviewed'):approved_deployment(root,config)
+            (root/'collector').write_text('newcollector');(root/'policy').write_text('newpolicy')
+            (root/'protected').unlink();(root/'protected').symlink_to(root/'collector')
+            with self.assertRaises(ValueError):approved_deployment(root,config)
+            self.assertEqual(config['gate_approval'],candidates[1]['gate_approval'])
+
+    def test_unknown_deployment_fields_are_not_configuration_overrides(self):
+        from host import approved_deployment
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);approval=root/'approval.json'
+            approval.write_text('{"trusted_files": {"missing":"digest"}, "config_files": {}}')
+            config={'gate_approval':str(approval),'protected_files':{},
+                    'previous_deployments':[{'protected_files':{},'gate_approval':str(approval),'repository':'other'}]}
+            with self.assertRaisesRegex(ValueError,'invalid reviewed'):approved_deployment(root,config)
+
+
+class GateTimeBudget(unittest.TestCase):
+    def test_timeout_default_configuration_and_invalid_values(self):
+        from host import gate_timeout
+        self.assertEqual(gate_timeout({}),1500)
+        self.assertEqual(gate_timeout({'gate_timeout_seconds':2400}),2400)
+        for value in (0,-1,True,'2400',1.5,None):
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                gate_timeout({'gate_timeout_seconds':value})

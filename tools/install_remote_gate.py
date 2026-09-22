@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Install reviewed remote gate bridge and service; does not start scheduling."""
+import argparse
 import hashlib
 import json
 import os
@@ -16,16 +17,29 @@ def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
 def main():
     os.umask(0o077);HOME.mkdir(parents=True,exist_ok=True)
-    gate=Path.home()/'.local/share/codexsymphony/gate-host/approval.json'
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--gate-approval',type=Path,default=Path.home()/'.local/share/codexsymphony/gate-host/approval.json')
+    parser.add_argument('--previous-config',type=Path)
+    parser.add_argument('--gate-timeout-seconds',type=int,default=1500)
+    parser.add_argument('--dependency-source',type=Path,default=ROOT/'web/angular/node_modules')
+    args=parser.parse_args()
+    if args.gate_timeout_seconds <= 0:parser.error('--gate-timeout-seconds must be positive')
+    gate=args.gate_approval
+    previous=[]
+    if args.previous_config:
+        prior=json.loads(args.previous_config.read_text())
+        if prior['repository']!='musutrade/CodexSymphony':raise ValueError('previous repository differs')
+        previous=[{key:prior[key] for key in ('protected_files','gate_approval')}]
+        json.loads(Path(previous[0]['gate_approval']).read_text())
     approval=json.loads(gate.read_text())
     for name,digest in approval['trusted_files'].items():
         if sha(ROOT/name)!=digest:raise ValueError('gate host input changed: '+name)
     names=['.github/workflows/quality.yml','WORKFLOW.lifecycle.md','web/angular/package.json','web/angular/package-lock.json']
-    names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/symphony/trusted_environment.py']
+    names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/symphony/trusted_environment.py','tools/symphony/reviewed_gate.py']
     names += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tools/remote-gate').glob('*.py'))]
     protected={name:sha(ROOT/name) for name in names}
     identity={'protected_files':protected,'gate_approval':str(gate.resolve()),
-              'dependency_source':str(ROOT/'web/angular/node_modules')}
+              'dependency_source':str(args.dependency_source.resolve()),'previous_deployments':previous,'gate_timeout_seconds':args.gate_timeout_seconds}
     version=hashlib.sha256(json.dumps(identity,sort_keys=True).encode()).hexdigest()[:16]
     release=HOME/'releases'/version
     if not release.exists():shutil.copytree(ROOT/'tools/remote-gate',release,ignore=shutil.ignore_patterns('__pycache__'))
@@ -34,7 +48,7 @@ def main():
     config={'schema':'codexsymphony-remote-gate/v1','repository':'musutrade/CodexSymphony','app_id':4867361,
             'app_key':str(Path.home()/'.secrets/my-disposable-bot.2026-09-08.private-key.pem'),
             'state_root':str(HOME),'gate_approval':str(gate.resolve()),'protected_files':protected,
-            'dependency_source':str(ROOT/'web/angular/node_modules')}
+            'dependency_source':str(args.dependency_source.resolve()),'previous_deployments':previous,'gate_timeout_seconds':args.gate_timeout_seconds}
     path=HOME/('config-'+version+'.json');body=json.dumps(config,indent=2)+'\n'
     if path.exists() and path.read_text()!=body:raise ValueError('immutable config collision')
     path.write_text(body)

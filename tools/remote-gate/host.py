@@ -68,14 +68,31 @@ def check_files(root,pins):
         if path.is_symlink() or sha(path)!=digest: raise ValueError('unapproved input: '+name)
 
 
+def approved_deployment(root, config):
+    # Each host-owned snapshot is indivisible: never mix old/new file pins.
+    candidates=[{'protected_files':config['protected_files'],'gate_approval':config['gate_approval']}]
+    candidates+=config.get('previous_deployments',[])
+    for candidate in candidates:
+        if set(candidate)!={'protected_files','gate_approval'}:
+            raise ValueError('invalid reviewed deployment')
+        approval=load(candidate['gate_approval'])
+        try:
+            check_files(root,candidate['protected_files'])
+            check_files(root,approval['trusted_files'])
+            check_files(root,approval['config_files'])
+        except (ValueError,FileNotFoundError):
+            continue
+        return candidate,approval
+    raise ValueError('source does not match a complete reviewed deployment')
+
+
 def prepare(run,config,job):
     root=job/'source'
     subprocess.run(['git','clone','--quiet','--no-checkout','https://github.com/'+config['repository']+'.git',root],check=True)
     subprocess.run(['git','-C',root,'fetch','--quiet','origin',run['head_sha']],check=True)
     subprocess.run(['git','-C',root,'checkout','--quiet','--detach',run['head_sha']],check=True)
-    check_files(root,config['protected_files'])
-    approval=load(config['gate_approval'])
-    check_files(root,approval['trusted_files']);check_files(root,approval['config_files'])
+    deployment,approval=approved_deployment(root,config)
+    config.update(deployment)
     return root,approval
 
 
@@ -97,7 +114,15 @@ def actions_cancelled(run,config):
     return current['run_attempt']!=run['run_attempt'] or current['status']=='completed'
 
 
+def gate_timeout(config):
+    seconds=config.get('gate_timeout_seconds',1500)
+    if type(seconds) is not int or seconds <= 0:
+        raise ValueError('gate_timeout_seconds must be a positive integer')
+    return seconds
+
+
 def evaluate(run,config,job):
+    config=dict(config)  # Selection is local to this run; service policy stays immutable.
     root,approval=prepare(run,config,job)
     if actions_cancelled(run,config): raise SupersededRun('Actions attempt no longer active')
     docs=documentation_result(root,run,config,approval,job)
@@ -106,7 +131,7 @@ def evaluate(run,config,job):
     root,approval=prepare_dependencies(root,approval,config,job)
     launcher=Path(approval['host_release'])/'run.py'
     with (job/'gate.stdout').open('w') as out,(job/'gate.stderr').open('w') as err:
-        code=run_cancellable(['/usr/bin/python3',launcher,'--repository',root,'--approval',job/'gate-approval.json'],out,err,lambda: actions_cancelled(run,config))
+        code=run_cancellable(['/usr/bin/python3',launcher,'--repository',root,'--approval',job/'gate-approval.json'],out,err,lambda: actions_cancelled(run,config),timeout=gate_timeout(config))
     if code: raise RuntimeError('complete gate failed; inspect retained gate.stderr and run reports')
     lines=(job/'gate.stdout').read_text().splitlines()
     accepted=json.loads(lines[-1])

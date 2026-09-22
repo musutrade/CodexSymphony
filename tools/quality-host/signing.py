@@ -35,6 +35,17 @@ def runtime_launcher(host, collector):
                         +'if not answer["accepted"]: raise SystemExit(answer["reason"])\n'
                         +'fd=os.memfd_create("collector-request")\nos.write(fd,data)\nos.lseek(fd,0,0)\nos.dup2(fd,0)\nos.close(fd)\n'
                         +f'os.execv({str(interpreter)!r},[{str(interpreter)!r},{str(entry)!r},*sys.argv[1:]])\n')
+    if collector in ('backend', 'frontend'):
+        source=(Path(__file__).parent/'artifact_packaging.py').read_text()
+        text=launcher.read_text()
+        execute=f'os.execv({str(interpreter)!r},[{str(interpreter)!r},{str(entry)!r},*sys.argv[1:]])\n'
+        replacement=(source+'\nimport subprocess\n'
+                     +f'child=subprocess.run([{str(interpreter)!r},{str(entry)!r},*sys.argv[1:]],stdout=subprocess.PIPE)\n'
+                     +'if child.returncode: raise SystemExit(child.returncode)\n'
+                     +'response=json.loads(child.stdout)\n'
+                     +'print(json.dumps(compact_artifacts(response,Path(request["artifact_root"]))))\n')
+        if execute not in text: raise ValueError('missing collector execution boundary')
+        launcher.write_text(text.replace(execute,replacement))
     launcher.chmod(0o700);return launcher
 
 def provision(run, root, state, requests, expected_config, key_root):
