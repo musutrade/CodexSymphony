@@ -53,3 +53,11 @@ snapshot. Once those Issues finish or rebase, reinstall without
 `--previous-config` to retire compatibility. The gate host and worker releases
 remain immutable; retaining their reviewed runtime is appropriate when this PR
 only persists fixes already deployed there.
+
+The remote bridge's `gate_timeout_seconds` is an operator-configured positive
+integer. Omission retains the legacy 1,500-second limit. Install with
+`--gate-timeout-seconds 2400` for a 40-minute complete host run. The Actions
+workflow waits 45 minutes and has a 50-minute job limit, leaving room for
+publication and queue startup. Per-step deadlines and required checks still
+apply. Increase these coordinated bounds when project size or shared-host load
+outgrows them; a timeout never supplies passing evidence.

@@ -114,6 +114,13 @@ def actions_cancelled(run,config):
     return current['run_attempt']!=run['run_attempt'] or current['status']=='completed'
 
 
+def gate_timeout(config):
+    seconds=config.get('gate_timeout_seconds',1500)
+    if type(seconds) is not int or seconds <= 0:
+        raise ValueError('gate_timeout_seconds must be a positive integer')
+    return seconds
+
+
 def evaluate(run,config,job):
     config=dict(config)  # Selection is local to this run; service policy stays immutable.
     root,approval=prepare(run,config,job)
@@ -124,7 +131,7 @@ def evaluate(run,config,job):
     root,approval=prepare_dependencies(root,approval,config,job)
     launcher=Path(approval['host_release'])/'run.py'
     with (job/'gate.stdout').open('w') as out,(job/'gate.stderr').open('w') as err:
-        code=run_cancellable(['/usr/bin/python3',launcher,'--repository',root,'--approval',job/'gate-approval.json'],out,err,lambda: actions_cancelled(run,config))
+        code=run_cancellable(['/usr/bin/python3',launcher,'--repository',root,'--approval',job/'gate-approval.json'],out,err,lambda: actions_cancelled(run,config),timeout=gate_timeout(config))
     if code: raise RuntimeError('complete gate failed; inspect retained gate.stderr and run reports')
     lines=(job/'gate.stdout').read_text().splitlines()
     accepted=json.loads(lines[-1])

@@ -121,3 +121,13 @@ class DeploymentTransition(unittest.TestCase):
             config={'gate_approval':str(approval),'protected_files':{},
                     'previous_deployments':[{'protected_files':{},'gate_approval':str(approval),'repository':'other'}]}
             with self.assertRaisesRegex(ValueError,'invalid reviewed'):approved_deployment(root,config)
+
+
+class GateTimeBudget(unittest.TestCase):
+    def test_timeout_default_configuration_and_invalid_values(self):
+        from host import gate_timeout
+        self.assertEqual(gate_timeout({}),1500)
+        self.assertEqual(gate_timeout({'gate_timeout_seconds':2400}),2400)
+        for value in (0,-1,True,'2400',1.5,None):
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                gate_timeout({'gate_timeout_seconds':value})
