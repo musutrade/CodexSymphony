@@ -24,6 +24,7 @@ def resolver_mount(resolver=Path('/etc/resolv.conf')):
 
 
 def command(argv, state_home=None):
+    from reviewed_gate import gate_bin
     cwd=Path.cwd().resolve()
     if not cwd.is_relative_to(WORKSPACES) or cwd==WORKSPACES:
         raise ValueError('Codex must run in an assigned project workspace')
@@ -56,6 +57,7 @@ def command(argv, state_home=None):
          'PATH':'/opt/codex:/home/gem/.local/share/harness-gate/versions/v0.4.5/bin:/home/gem/.local/share/harness-gate/versions/rust-collector-v0.1.0-rc.6/bin:/home/gem/.cargo/bin:/usr/local/bin:/usr/bin:/bin',
          'LANG':'C.UTF-8','TZ':'UTC','NO_COLOR':'1','HTTP_PROXY':'http://192.168.0.26:10809',
          'HTTPS_PROXY':'http://192.168.0.26:10809','ALL_PROXY':'http://192.168.0.26:10809','NO_PROXY':'127.0.0.1,localhost,::1'}
+    env['PATH']=env['PATH'].replace('/home/gem/.local/share/harness-gate/versions/v0.4.5/bin',gate_bin(cwd))
     if (provision/'requirements.toml').is_file():
         env['npm_config_cache']=str(cwd/'.agent-env/npm-cache')
     args+=['--clearenv']

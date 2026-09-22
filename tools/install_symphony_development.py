@@ -53,18 +53,20 @@ def main():
     state=BASE/'symphony';state.mkdir(parents=True,exist_ok=True)
     workflow=(ROOT/'WORKFLOW.lifecycle.md').read_bytes()
     wrapper=(ROOT/'tools/symphony/trusted_environment.py').read_bytes()
+    reviewed_gate=(ROOT/'tools/symphony/reviewed_gate.py').read_bytes()
     provision=(ROOT/'tools/symphony/provision_issue_environment.py').read_bytes()
     sources=environment_sources()
     check_environment_resources(state)
     check_preservation_controller(state)
     active=state/'WORKFLOW.lifecycle.md'
     routed=routed_workflow(workflow,active.read_bytes() if active.exists() else None)
-    revision=hashlib.sha256(workflow+wrapper+provision+b''.join(sources[key] for key in sorted(sources))).hexdigest()[:16]
+    revision=hashlib.sha256(workflow+wrapper+reviewed_gate+provision+b''.join(sources[key] for key in sorted(sources))).hexdigest()[:16]
     release=state/'releases'/revision;release.mkdir(parents=True,exist_ok=True)
-    for name,data in [('WORKFLOW.lifecycle.md',workflow),('trusted_environment.py',wrapper)]:
+    for name,data in [('WORKFLOW.lifecycle.md',workflow),('trusted_environment.py',wrapper),('reviewed_gate.py',reviewed_gate)]:
         path=release/name
         if path.exists() and path.read_bytes()!=data:raise ValueError('immutable release differs')
         path.write_bytes(data)
+    (state/'reviewed_gate.py').write_bytes(reviewed_gate)
     # Stable journal path is retained across workflow releases.
     (state/'provision_issue_environment.py').write_bytes(provision)
     (state/'preserve_workspace.py').write_bytes((ROOT/'tools/symphony/preserve_workspace.py').read_bytes())

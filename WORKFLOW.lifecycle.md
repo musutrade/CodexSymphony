@@ -43,6 +43,8 @@ hooks:
     command -v cargo >/dev/null
     command -v node >/dev/null
     command -v npm >/dev/null
+    reviewed_gate_bin=$(python3 /home/gem/.local/share/codexsymphony/symphony/reviewed_gate.py)
+    export PATH="$reviewed_gate_bin:$PATH"
     python3 tools/gate.py config check
     mkdir -p target
     test -w target
