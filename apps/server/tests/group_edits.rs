@@ -691,7 +691,7 @@ async fn kind_rebinding_is_rejected_and_added_validation_items_never_create_a_ru
     let saved = view(&pool, &id).await;
     assert_eq!(
         saved["execution"]["items"][4]["waiting_reason"],
-        "waiting_validation_only_execution_not_implemented"
+        "waiting_explicit_validation_authorization"
     );
     assert!(saved["execution"]["items"][4]["requirement_id"].is_null());
     let runs: i64 = sqlx::query_scalar("SELECT count(*) FROM agent_run")

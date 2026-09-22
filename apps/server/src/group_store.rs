@@ -82,7 +82,7 @@ pub async fn view(tx: &mut Tx<'_>, id: &str, revision: i64, document: &Document)
         .map_err(db)?;
     let (version, review) = saved.map(review_json).unwrap_or((0, Value::Null));
     Ok(
-        json!({"draft_id":id,"draft_revision":revision,"document":document,"version":version,"review":review,"repositories":repositories(tx).await?,"budgets":budgets,"queue":queue,"authorizations":authorizations,"scheduler_available":true,"business_complete":false,"execution":execution,"pending_edit":pending_edit}),
+        json!({"draft_id":id,"draft_revision":revision,"document":document,"version":version,"review":review,"repositories":repositories(tx).await?,"budgets":budgets,"queue":queue,"authorizations":authorizations,"scheduler_available":true,"business_complete":execution["parent_state"]=="Done","execution":execution,"pending_edit":pending_edit}),
     )
 }
 pub async fn balances(tx: &mut Tx<'_>, id: &str, review: &Review, total: Amount) -> Result<()> {

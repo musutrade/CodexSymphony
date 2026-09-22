@@ -72,7 +72,23 @@ pub(crate) async fn dependencies(tx: &mut Tx<'_>, id: i64) -> Result<Option<Vec<
         let Some(fact) = fact else {
             return Ok(None);
         };
-        facts.push(decode(fact)?);
+        facts.extend(dependency_fact(tx, fact).await?);
     }
     Ok(Some(facts))
+}
+
+async fn validation_dependency(tx: &mut Tx<'_>, fact: &Value) -> Result<bool> {
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM integration_validation WHERE id=$1 AND state='passed' AND quiescent)")
+        .bind(fact["validation_id"].as_str()).fetch_one(&mut **tx).await
+}
+
+async fn dependency_fact(tx: &mut Tx<'_>, fact: Value) -> Result<Option<Fact>> {
+    if fact["source"] == "platform-integration-validation/v1" {
+        require(
+            validation_dependency(tx, &fact).await?,
+            "validation completion identity unavailable",
+        )?;
+        return Ok(None);
+    }
+    Ok(Some(decode(fact)?))
 }

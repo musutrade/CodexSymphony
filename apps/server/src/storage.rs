@@ -119,7 +119,7 @@ pub async fn recover_in(
     if !crate::storage_service::capacity_in(tx).await? {
         return Ok(false);
     }
-    let result = sqlx::query("UPDATE storage_guard SET blocked=false,error=NULL WHERE id=1 AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent)")
+    let result = sqlx::query("UPDATE storage_guard SET blocked=false,error=NULL WHERE id=1 AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent) AND NOT EXISTS(SELECT 1 FROM integration_validation WHERE NOT quiescent AND state<>'prepared')")
         .execute(&mut **tx).await?;
     if result.rows_affected() == 1 {
         FAILED.store(false, Ordering::SeqCst);

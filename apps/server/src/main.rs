@@ -14,6 +14,12 @@ fn main() -> Result<(), StartupError> {
         let directory = std::env::args_os().nth(2).ok_or("Run directory required")?;
         return Ok(process::supervise(std::path::Path::new(&directory))?);
     }
+    if std::env::args().nth(1).as_deref() == Some("--integration-validation") {
+        let directory = std::env::args_os()
+            .nth(2)
+            .ok_or("validation directory required")?;
+        return codexsymphony_server::integration_process::run(std::path::Path::new(&directory));
+    }
     serve()
 }
 

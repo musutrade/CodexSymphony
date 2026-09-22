@@ -66,7 +66,62 @@ export function initialReview(view: GroupView): Review {
 export function editableReview(review: Review) {
   return {
     ...review,
+    items: review.items.map((item) => {
+      return {
+        ...item,
+        integration_enabled: item.integration != null,
+        integration_config: item.integration?.configuration_sha256 ?? '',
+        integration_repositories:
+          item.integration?.repositories.map((repo) => {
+            return {
+              ...repo,
+              selection_kind: repo.selection.kind,
+              sha: repo.selection.sha ?? '',
+            };
+          }) ?? [],
+      };
+    }),
     group_budget: review.group_budget ?? totalBudget(review.items),
     automatic_budget: review.group_budget === null,
+  };
+}
+
+export function reviewPayload(model: ReturnType<typeof editableReview>): Review {
+  const { automatic_budget, ...review } = model;
+  return {
+    ...review,
+    group_budget: automatic_budget ? null : review.group_budget,
+    items: review.items.map((item) => {
+      const {
+        integration_enabled,
+        integration_config,
+        integration_repositories,
+        integration: _previous,
+        ...base
+      } = item;
+      void _previous;
+      return {
+        ...base,
+        ...(integration_enabled
+          ? {
+              integration: {
+                configuration_sha256: integration_config,
+                repositories: integration_repositories.map(
+                  ({ selection_kind, sha, selection: _selection, ...repo }) => {
+                    void _selection;
+                    return {
+                      ...repo,
+                      selection: {
+                        kind: selection_kind,
+                        ...(selection_kind === 'fixed' ? { sha } : {}),
+                      },
+                    };
+                  },
+                ),
+              },
+            }
+          : {}),
+      };
+    }),
   };
 }

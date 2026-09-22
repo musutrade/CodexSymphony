@@ -56,7 +56,7 @@ async fn load(tx: &mut Tx<'_>, id: &str, expected: i64) -> Result<Pending> {
     Ok(pending)
 }
 async fn validate(tx: &mut Tx<'_>, id: &str, pending: &Pending) -> Result<crate::budget::Amount> {
-    let repositories = edits::repositories(tx, &pending.document).await?;
+    let repositories = edits::repositories(tx, &pending.document, &pending.review).await?;
     if json!(repositories) != json!(pending.repositories) {
         return Err(store::conflict(
             "repository policy changed after difference review; propose again",

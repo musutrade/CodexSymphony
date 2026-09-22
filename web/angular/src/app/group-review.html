@@ -25,7 +25,9 @@
         全局占用者：{{ queue.owner ?? '无' }} · {{ queue.paused ? '队列已暂停' : '队列未暂停' }}
       </p>
       <p>
-        子项完成 {{ queue.completed }} / {{ queue.total }}。父项等待整体验收，发布 PR 不计为完成。
+        子项完成 {{ queue.completed }} / {{ queue.total }}。父项：{{
+          queue.parent_state === 'Done' ? '整体验收完成' : '等待整体验收'
+        }}。
       </p>
       @for (item of queue.items; track item.child_id) {
         <article class="ui-panel">
@@ -133,6 +135,63 @@
                 {{ child.depends_on.join(', ') || '无' }} · 仓库 ID {{ child.repository_id }}
               </p>
               <p>{{ child.goal }} · {{ child.validation_plan }}</p>
+              @if (child.kind === 'validation_only') {
+                <label
+                  ><input
+                    type="checkbox"
+                    [formField]="fields.items[i].integration_enabled"
+                  />授权执行精确版本验证</label
+                >
+                @if (item.integration_enabled) {
+                  <label
+                    >受信验证配置 SHA-256<input [formField]="fields.items[i].integration_config"
+                  /></label>
+                  <p>核对部署提供的配置身份。领取时冻结版本组合；仅验证通过无需提交或 PR。</p>
+                  @for (repo of current.repositories; track repo.id) {
+                    <button
+                      matButton="text"
+                      type="button"
+                      (click)="addValidationRepository(i, repo.id)"
+                    >
+                      添加验证仓库 {{ repo.repository.remote }}
+                    </button>
+                  }
+                  @for (repo of item.integration_repositories; track $index; let j = $index) {
+                    <article class="ui-panel">
+                      <h3>
+                        验证仓库 {{ repo.repository_id }} · 策略版本 {{ repo.repository_version }}
+                      </h3>
+                      <label
+                        >版本选择<select
+                          [formField]="fields.items[i].integration_repositories[j].selection_kind"
+                        >
+                          <option value="completed_dependencies">已完成前置项的合并版本</option>
+                          <option value="fixed">固定提交</option>
+                        </select></label
+                      >
+                      @if (repo.selection_kind === 'fixed') {
+                        <label
+                          >完整提交 SHA<input
+                            [formField]="fields.items[i].integration_repositories[j].sha"
+                        /></label>
+                      }
+                      <label
+                        >本仓库允许修复范围<textarea
+                          [formField]="fields.items[i].integration_repositories[j].repair_scope"
+                        ></textarea>
+                      </label>
+                      <button
+                        matButton="text"
+                        type="button"
+                        (click)="removeValidationRepository(i, j)"
+                      >
+                        移除此验证仓库
+                      </button>
+                    </article>
+                  }
+                }
+              }
+
               @for (ac of child.acceptance_criteria; track ac.id) {
                 <p>{{ ac.id }} · {{ ac.description }}</p>
               }

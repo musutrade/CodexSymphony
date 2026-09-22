@@ -124,6 +124,11 @@ pub(crate) async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
     Ok(Some((id, revision)))
 }
 async fn group_ready(tx: &mut Tx<'_>, id: i64) -> Result<bool> {
+    let validation_only: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM group_execution_item WHERE requirement_id=$1 AND input#>>'{child,kind}'='validation_only')")
+        .bind(id).fetch_one(&mut **tx).await?;
+    if validation_only {
+        return Ok(false);
+    }
     Ok(crate::group_queue_store::authorized(tx, id).await?
         && crate::group_completion::dependencies(tx, id)
             .await?

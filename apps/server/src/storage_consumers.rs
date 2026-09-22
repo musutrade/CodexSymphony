@@ -15,10 +15,11 @@ pub async fn protection(
 ) -> Result<Protection> {
     let facts: (bool,bool,bool,bool,bool) = sqlx::query_as(
         "SELECT
-          EXISTS(SELECT 1 FROM agent_run a WHERE a.requirement_id=s.requirement_id AND NOT a.quiescent),
+          EXISTS(SELECT 1 FROM agent_run a WHERE a.requirement_id=s.requirement_id AND NOT a.quiescent) OR EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=s.requirement_id AND NOT v.quiescent),
           EXISTS(SELECT 1 FROM candidate_validation v WHERE v.requirement_id=s.requirement_id AND (v.result='pending' OR (v.result='succeeded' AND v.stage<>'done'))) OR
           EXISTS(SELECT 1 FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id WHERE v.source_run_id=s.run_id AND p.status IN ('reserved','started')) OR
           EXISTS(SELECT 1 FROM delivery d WHERE d.requirement_id=s.requirement_id AND NOT d.released) OR
+          EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=s.requirement_id AND v.state NOT IN ('passed','cancelled','interrupted')) OR
           EXISTS(SELECT 1 FROM merge_operation m WHERE m.requirement_id=s.requirement_id AND m.state NOT IN ('complete','cancelled','invalidated')) OR
           EXISTS(SELECT 1 FROM runtime_resume r WHERE r.source_run=s.run_id AND r.status IN ('restoring','prepared')) OR
           EXISTS(SELECT 1 FROM runtime_question q WHERE q.run_id=s.run_id AND q.resume_state IN ('waiting','pending')) OR
@@ -27,8 +28,9 @@ pub async fn protection(
           EXISTS(SELECT 1 FROM preparation_record p WHERE p.run_id=s.run_id AND NOT p.ready AND NOT (p.retry->>'todo')::boolean AND p.retry->'next_attempt_at'='null'::jsonb),
           COALESCE(s.identity->>'repository','')='' OR
           (NOT EXISTS(SELECT 1 FROM agent_run a WHERE a.id=s.run_id) AND
+           NOT EXISTS(SELECT 1 FROM integration_validation v WHERE v.id=s.run_id) AND
            NOT EXISTS(SELECT 1 FROM preparation_record p WHERE p.run_id=s.run_id AND (p.retry->>'todo')::boolean)),
-          s.resolved_by IS NULL AND EXISTS(SELECT 1 FROM candidate_validation v WHERE v.source_run_id=s.run_id AND v.result='succeeded')
+          s.resolved_by IS NULL AND EXISTS(SELECT 1 FROM candidate_validation v WHERE v.source_run_id=s.run_id AND v.result='succeeded') OR EXISTS(SELECT 1 FROM integration_validation v WHERE v.id=s.run_id AND v.state='passed')
          FROM storage_attempt s WHERE s.run_id=$1")
         .bind(run).fetch_one(&mut **tx).await?;
     let mut protection = Protection {

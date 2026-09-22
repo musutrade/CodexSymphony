@@ -121,6 +121,7 @@ pub fn result(version: i64, affected: &[String]) -> Value {
 pub async fn repositories(
     tx: &mut Tx<'_>,
     document: &Document,
+    review: &crate::group_review::Review,
 ) -> Result<Vec<crate::group_review::RepositorySnapshot>> {
     let repositories = store::repositories(tx).await?;
     Ok(repositories
@@ -130,6 +131,11 @@ pub async fn repositories(
                 .children
                 .iter()
                 .any(|c| c.repository_id == Some(r.id))
+                || review
+                    .items
+                    .iter()
+                    .filter_map(|i| i.integration.as_ref())
+                    .any(|a| a.repositories.iter().any(|p| p.repository_id == r.id))
         })
         .collect())
 }

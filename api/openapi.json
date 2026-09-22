@@ -3858,6 +3858,63 @@
             "items": {
               "$ref": "#/components/schemas/GroupVerification"
             }
+          },
+          "integration": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "configuration_sha256",
+              "repositories"
+            ],
+            "properties": {
+              "configuration_sha256": {
+                "type": "string"
+              },
+              "repositories": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "repository_id",
+                    "repository_version",
+                    "selection",
+                    "repair_scope"
+                  ],
+                  "properties": {
+                    "repository_id": {
+                      "type": "integer"
+                    },
+                    "repository_version": {
+                      "type": "integer"
+                    },
+                    "repair_scope": {
+                      "type": "string"
+                    },
+                    "selection": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "kind"
+                      ],
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "fixed",
+                            "completed_dependencies"
+                          ]
+                        },
+                        "sha": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "nullable": true
           }
         }
       },
@@ -4446,6 +4503,62 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "IntegrationAuthorization": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "configuration_sha256",
+          "repositories"
+        ],
+        "properties": {
+          "configuration_sha256": {
+            "type": "string"
+          },
+          "repositories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "repository_id",
+                "repository_version",
+                "selection",
+                "repair_scope"
+              ],
+              "properties": {
+                "repository_id": {
+                  "type": "integer"
+                },
+                "repository_version": {
+                  "type": "integer"
+                },
+                "repair_scope": {
+                  "type": "string"
+                },
+                "selection": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "fixed",
+                        "completed_dependencies"
+                      ]
+                    },
+                    "sha": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
             }
           }
         }

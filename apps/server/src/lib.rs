@@ -169,3 +169,10 @@ pub mod recovery_worker;
 #[cfg(test)]
 #[path = "../tests/unit/support.rs"]
 mod merge_test_support;
+
+pub mod integration;
+mod integration_claim;
+pub mod integration_process;
+mod integration_retry;
+mod integration_store;
+pub mod integration_worker;

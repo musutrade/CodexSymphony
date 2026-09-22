@@ -173,6 +173,11 @@ async fn prepare_snapshot(
                 .children
                 .iter()
                 .any(|c| c.repository_id == Some(r.id))
+                || review
+                    .items
+                    .iter()
+                    .filter_map(|i| i.integration.as_ref())
+                    .any(|a| a.repositories.iter().any(|p| p.repository_id == r.id))
         })
         .collect();
     let snapshot = json!({"parent_revision":revision,"document":document,"review_version":version,"review":review,"repositories":used_repositories,"group_budget":total,"reviewer":"local-user","scheduler_available":true,"business_complete":false});

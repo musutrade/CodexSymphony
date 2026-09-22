@@ -25,8 +25,10 @@ pub async fn view(tx: &mut Tx<'_>, draft: &str, document: &Document) -> Result<V
         completed += usize::from(saved["complete"] == true);
         items.push(json!({"child_id":child.id,"kind":child.kind,"order":child.order,"depends_on":child.depends_on,"repository_id":child.repository_id,"requirement_id":requirement,"state":saved["state"].as_str().unwrap_or("Queued"),"owner":requirement.is_some() && owner==requirement,"complete":saved["complete"]==true,"waiting_reason":reason}));
     }
+    let done: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM group_acceptance a JOIN imported_draft d ON d.id=a.draft_id AND d.version=a.draft_revision JOIN group_review g ON g.draft_id=a.draft_id AND g.version=a.review_version JOIN group_queue q ON q.draft_id=a.draft_id AND q.authorization_id=a.authorization_id WHERE a.draft_id=$1)")
+        .bind(draft).fetch_one(&mut **tx).await?;
     Ok(
-        json!({"owner":owner,"paused":paused,"completed":completed,"total":document.children.len(),"parent_state":"waiting_business_acceptance","items":items}),
+        json!({"owner":owner,"paused":paused,"completed":completed,"total":document.children.len(),"parent_state":if done {"Done"} else {"waiting_business_acceptance"},"items":items}),
     )
 }
 async fn reason(
@@ -39,11 +41,13 @@ async fn reason(
         return Ok("needs_review");
     }
     if saved["complete"] == true {
-        return Ok("confirmed_merge_and_acceptance");
+        return Ok(if child.kind == "validation_only" {
+            "exact_version_validation_passed"
+        } else {
+            "confirmed_merge_and_acceptance"
+        });
     }
-    if child.kind == "validation_only" {
-        return Ok("waiting_validation_only_execution_not_implemented");
-    }
+
     if paused || saved["paused"] == true {
         return Ok("paused");
     }
@@ -51,8 +55,15 @@ async fn reason(
         return Ok("cancelled_not_success");
     }
     let Some(id) = saved["requirement_id"].as_i64() else {
-        return Ok("waiting_authorization_or_scheduler");
+        return Ok(if child.kind == "validation_only" {
+            "waiting_explicit_validation_authorization"
+        } else {
+            "waiting_authorization_or_scheduler"
+        });
     };
+    if child.kind == "validation_only" {
+        return validation_reason(tx, id).await;
+    }
     eligible_reason(tx, id, saved["state"].as_str().unwrap_or("")).await
 }
 async fn eligible_reason(tx: &mut Tx<'_>, id: i64, state: &str) -> Result<&'static str> {
@@ -89,4 +100,14 @@ async fn ready_reason(tx: &mut Tx<'_>, id: i64) -> Result<&'static str> {
         return Ok("waiting_queue_order");
     }
     Ok("waiting_repository_baseline_or_preparation")
+}
+
+async fn validation_reason(tx: &mut Tx<'_>, id: i64) -> Result<&'static str> {
+    let state: Option<String> = sqlx::query_scalar("SELECT state FROM integration_validation WHERE requirement_id=$1 ORDER BY created_at DESC LIMIT 1").bind(id).fetch_optional(&mut **tx).await?;
+    Ok(match state.as_deref() {
+        Some("unknown") => "validation_process_or_output_reconciliation_required",
+        Some("failed") => "integration_failed_waiting_current_item_recovery",
+        Some("executing") => "validating_exact_version_set",
+        _ => "waiting_authorized_validation_claim",
+    })
 }

@@ -326,7 +326,7 @@ async fn global_claim_restart_budget_and_completion_protocol() {
     assert_eq!(view["execution"]["completed"], 1);
     assert_eq!(
         view["execution"]["items"][3]["waiting_reason"],
-        "waiting_validation_only_execution_not_implemented"
+        "waiting_explicit_validation_authorization"
     );
     assert_eq!(view["business_complete"], false);
     delivery_control::cancel(&pool, 1).await.unwrap();

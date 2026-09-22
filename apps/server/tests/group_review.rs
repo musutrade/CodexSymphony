@@ -16,7 +16,7 @@ fn sample() -> Value {
     json!({"schema":"codexsymphony-draft/v1","parent":{"id":"P1","goal":"Complete chain","scope":"test feature only","acceptance_criteria":[{"id":"P-AC1","description":"integrated flow works"}]},"children":children})
 }
 fn review() -> Value {
-    let items:Vec<Value> = (1..=4).map(|i|json!({"child_id":format!("C{i}"),"revision":1,"repository_version":1,"budget":{"tokens":100,"turns":2,"model_seconds":60},"repair_scope":"only this item AC in this repository; no new permissions","merged_baseline_review":"independent regression check on main after predecessors merge; safe without later changes","verification":[{"ac_id":"AC1","step":{"id":"test","check":"cargo_test","selector":"group_review","expected_result":"exit 0","timeout_seconds":30}}]})).collect();
+    let items:Vec<Value> = (1..=4).map(|i|json!({"integration":null,"child_id":format!("C{i}"),"revision":1,"repository_version":1,"budget":{"tokens":100,"turns":2,"model_seconds":60},"repair_scope":"only this item AC in this repository; no new permissions","merged_baseline_review":"independent regression check on main after predecessors merge; safe without later changes","verification":[{"ac_id":"AC1","step":{"id":"test","check":"cargo_test","selector":"group_review","expected_result":"exit 0","timeout_seconds":30}}]})).collect();
     json!({"parent_revision":1,"full_chain_acs":["P-AC1"],"coverage":[{"parent_ac":"P-AC1","child_id":"C4","child_revision":1,"child_ac":"AC1","step_id":"test"}],"items":items,"group_budget":null,"semantic_review":"Reviewed the integration test against the complete parent flow"})
 }
 fn repository() -> Value {

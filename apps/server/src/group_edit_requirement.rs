@@ -23,21 +23,7 @@ pub async fn project(
     .await
     .map_err(store::db)?;
     let Some((requirement, input)) = previous else {
-        return if child.kind == "code_change" {
-            Ok(Some(
-                crate::group_queue_store::project_requirement(
-                    tx,
-                    child,
-                    item,
-                    repository,
-                    authorization,
-                )
-                .await
-                .map_err(store::db)?,
-            ))
-        } else {
-            Ok(None)
-        };
+        return create(tx, child, item, repository, authorization).await;
     };
     if input["child"]["kind"] != child.kind
         || input["child"]["repository_id"] != json!(child.repository_id)
@@ -46,10 +32,35 @@ pub async fn project(
             "stable child identity cannot change kind or repository; add a reviewed child and retain the group ledger",
         ));
     }
+    if requirement.is_none() && item.integration.is_some() {
+        return create(tx, child, item, repository, authorization).await;
+    }
     if let Some(id) = requirement {
         revise(tx, id, child, item, repository, authorization).await?;
     }
     Ok(requirement)
+}
+async fn create(
+    tx: &mut Tx<'_>,
+    child: &Child,
+    item: &Item,
+    repository: &RepositorySnapshot,
+    authorization: i64,
+) -> Result<Option<i64>> {
+    if crate::group_queue_store::executable(child, item) {
+        return Ok(Some(
+            crate::group_queue_store::project_requirement(
+                tx,
+                child,
+                item,
+                repository,
+                authorization,
+            )
+            .await
+            .map_err(store::db)?,
+        ));
+    }
+    Ok(None)
 }
 async fn revise(
     tx: &mut Tx<'_>,

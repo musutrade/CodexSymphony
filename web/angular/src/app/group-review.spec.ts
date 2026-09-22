@@ -81,7 +81,7 @@ describe('Atomic group review UI', () => {
     http.expectOne('/api/drafts/draft-group/review').flush(fixtureView);
     return { fixture, http, page: fixture.componentInstance };
   }
-  it('shows owner, dependencies, progress and explicit unsupported execution', async () => {
+  it('shows owner, dependencies, progress and explicit validation authorization', async () => {
     const { fixture, page, http } = setup();
     await fixture.whenStable();
     page.view.set({
@@ -115,7 +115,7 @@ describe('Atomic group review UI', () => {
             state: 'Queued',
             owner: false,
             complete: false,
-            waiting_reason: 'waiting_validation_only_execution_not_implemented',
+            waiting_reason: 'waiting_explicit_validation_authorization',
           },
         ],
       },
@@ -124,9 +124,57 @@ describe('Atomic group review UI', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('全局占用者：19');
     expect(text).toContain('当前执行占用者');
-    expect(text).toContain('父项等待整体验收');
-    expect(text).toContain('不会创建编码 Run 或空 PR');
+    expect(text).toContain('等待整体验收');
+    expect(text).toContain('等待评审精确版本验证配置与授权仓库');
     expect(page.waitingReason('unknown')).toBe('unknown');
+    http.verify();
+  });
+  it('preserves opt-in version rules and scopes in the review payload', async () => {
+    const { fixture, page, http } = setup();
+    await fixture.whenStable();
+    page.addValidationRepository(0, 999);
+    page.addValidationRepository(0, 1);
+    page.model.update((model) => ({
+      ...model,
+      items: model.items.map((item, i) =>
+        i !== 0
+          ? item
+          : {
+              ...item,
+              integration_enabled: true,
+              integration_config: 'a'.repeat(64),
+              integration_repositories: item.integration_repositories.map((repo) => ({
+                ...repo,
+                repair_scope: 'this AC only',
+                selection_kind: 'fixed',
+                sha: 'b'.repeat(40),
+              })),
+            },
+      ),
+    }));
+    const authorization = page.payload().items[0].integration;
+    expect(authorization?.configuration_sha256).toBe('a'.repeat(64));
+    expect(authorization?.repositories[0].selection).toEqual({
+      kind: 'fixed',
+      sha: 'b'.repeat(40),
+    });
+    expect(authorization?.repositories[0].repair_scope).toBe('this AC only');
+    page.addValidationRepository(0, 1);
+    expect(page.payload().items[0].integration?.repositories[1].selection).toEqual({
+      kind: 'completed_dependencies',
+    });
+    const payload = page.payload();
+    const saving = page.save();
+    http.expectOne('/api/drafts/draft-group/review').flush({
+      ...fixtureView,
+      version: 1,
+      review: payload,
+    });
+    await saving;
+    expect(page.payload()).toEqual(payload);
+    expect(page.model().items[0].integration_repositories[0].sha).toBe('b'.repeat(40));
+    page.removeValidationRepository(0, 0);
+    expect(page.payload().items[0].integration?.repositories.length).toBe(1);
     http.verify();
   });
   it('reviews persisted revisions, maps coverage, edits budgets, saves and confirms once', async () => {

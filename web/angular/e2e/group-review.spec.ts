@@ -110,7 +110,7 @@ test('reviews three code items plus integration, rejects missing coverage and au
   expect(result.business_complete).toBe(false);
   await expect(page.getByRole('heading', { name: '组依赖队列' })).toBeVisible();
   await expect(
-    page.getByText('等待 validation_only 执行能力（尚未实现）；不会创建编码 Run 或空 PR'),
+    page.getByText('等待评审精确版本验证配置与授权仓库'),
   ).toBeVisible();
   expect(result.execution?.owner).toBeNull();
   expect(result.execution?.completed).toBe(0);
