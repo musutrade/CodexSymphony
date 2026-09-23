@@ -1,6 +1,6 @@
 # CodexSymphony Architecture Boundaries
 
-Status: **Normative responsibility boundaries** · 2026-09-14
+Status: **Normative responsibility boundaries** · updated 2026-09-23
 
 This document defines responsibility, not implementation scope. Current behavior and acceptance live in the [main specification](../Personal_AI_Software_Factory_综合方案.md). Deferred framework designs have no current normative force.
 
@@ -10,7 +10,7 @@ This document defines responsibility, not implementation scope. Current behavior
 |---|---|
 | Requirement | Reviewed input, business lifecycle and acceptance |
 | AgentRun | Execution attempts, processes, completion declarations and consumption |
-| GitHub / CI observations | Observed repository, PR, check and merge facts |
+| Delivery observations (currently GitHub / CI) | Observed repository, PR, check and merge facts; local delivery facts only when that mode is implemented and enabled |
 
 Keep these independently queryable and reconcilable. A single coordinator does not imply a single status for all domains.
 
@@ -74,3 +74,11 @@ keys stay in the independent verifier, which fetches an exact commit and evaluat
 approved policy. Neither service's credentials enter the development environment.
 Development test output is not a signed Gate decision. Budgets, candidate identity,
 recovery, real CI checks and external-action authorization remain in force.
+
+## 8. Extension boundaries and implementation scope
+
+The core owns authorization, scheduling, budgets, process quiescence, preservation, independent acceptance and reconciliation. Project hooks supply preparation and auxiliary cleanup; execution adapters supply Agent interactions; delivery adapters supply observed delivery facts; optional decision adapters supply advice. Platform PostgreSQL is not a mandatory dependency of managed projects.
+
+The [extension requirements](extension-requirements.md) own staged scope and acceptance; the [extension protocol](extension-protocol.md) owns interface and lifecycle semantics. They are pending implementation, not a claim that local delivery, generic hooks or task model selection exist today. Existing frozen tasks retain their policy; merging documentation does not start the paused queue.
+
+The extension work does not require a plugin marketplace, a service per adapter, or moving authoritative preservation into best-effort scripts. The development controller's WORKFLOW.lifecycle.md hooks are separate from the Rust product interfaces described here.
