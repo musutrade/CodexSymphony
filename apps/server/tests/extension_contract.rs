@@ -1,9 +1,9 @@
 use codexsymphony_server::{
     contract::{Policy, Repository},
     extension_contract::{
-        AgentCapability, Capabilities, DeliveryMode, ExtensionConfig, HookConfig, HookEvent,
-        HookInvocation, HookOutcome, HookResult, HookRole, InvocationIdentity, ModelConfig,
-        ProtocolError, ReplayPolicy, parse_hook_result,
+        AgentCapability, ArtifactRef, Capabilities, DeliveryMode, ExtensionConfig, HookConfig,
+        HookError, HookEvent, HookInvocation, HookOutcome, HookResult, HookRole,
+        InvocationIdentity, ModelConfig, ProtocolError, ReplayPolicy, parse_hook_result,
     },
 };
 
@@ -305,4 +305,170 @@ fn response_version_identity_shape_and_size_are_checked() {
         Err(ProtocolError::InvalidConfig("invalid invocation identity"))
     );
     missing_run.validate(&frozen, true).unwrap();
+}
+
+#[test]
+fn hook_registration_rejects_each_required_field_and_unknown_decisions() {
+    let mut config = ExtensionConfig::from_legacy_repository(&legacy());
+    let mut allowed = Capabilities::legacy_codex(config.model.model.clone());
+    let hook = HookConfig {
+        name: "prepare".into(),
+        event: HookEvent::BeforeRun,
+        roles: vec![HookRole::Coding],
+        argv: vec!["/trusted/prepare".into()],
+        script_identity: "sha256:reviewed".into(),
+        timeout_seconds: 30,
+        output_limit_bytes: 1024,
+        replay: ReplayPolicy::Never,
+    };
+    allowed.hooks.push(hook.clone());
+    config.hooks.push(hook.clone());
+    config.validate(&allowed).unwrap();
+
+    for invalid in [
+        HookConfig {
+            name: " ".into(),
+            ..hook.clone()
+        },
+        HookConfig {
+            script_identity: "".into(),
+            ..hook.clone()
+        },
+        HookConfig {
+            argv: vec![],
+            ..hook.clone()
+        },
+        HookConfig {
+            argv: vec!["".into()],
+            ..hook.clone()
+        },
+        HookConfig {
+            roles: vec![],
+            ..hook.clone()
+        },
+        HookConfig {
+            timeout_seconds: 0,
+            ..hook.clone()
+        },
+        HookConfig {
+            output_limit_bytes: 0,
+            ..hook.clone()
+        },
+    ] {
+        config.hooks[0] = invalid;
+        assert_eq!(
+            config.validate(&allowed),
+            Err(ProtocolError::InvalidConfig("invalid hook"))
+        );
+    }
+    config.hooks[0] = hook;
+    config.decision = Some(" ".into());
+    assert_eq!(
+        config.validate(&allowed),
+        Err(ProtocolError::UnsupportedCapability("decision"))
+    );
+    config.decision = Some("reviewed-advisor".into());
+    allowed.decisions.push("reviewed-advisor".into());
+    config.validate(&allowed).unwrap();
+    config.agent = "".into();
+    assert_eq!(
+        config.validate(&allowed),
+        Err(ProtocolError::InvalidConfig("agent/provider required"))
+    );
+}
+
+#[test]
+fn hook_result_checks_malformed_input_failure_fields_and_artifact_paths() {
+    let expected = identity("sha256:reviewed".into());
+    for bytes in [b"{".as_slice(), b"[]".as_slice()] {
+        assert_eq!(
+            parse_hook_result(bytes, &expected),
+            Err(ProtocolError::InvalidResult("malformed result"))
+        );
+    }
+    let success = HookResult {
+        identity: expected.clone(),
+        outcome: HookOutcome::Success {
+            artifacts: vec![ArtifactRef {
+                path: "output/log.txt".into(),
+                kind: "log".into(),
+            }],
+        },
+    };
+    assert_eq!(
+        parse_hook_result(&serde_json::to_vec(&success).unwrap(), &expected),
+        Ok(success.clone())
+    );
+    for path in ["", "/absolute", "a//b", "a/./b", "a/../b", "a\\b", "a\0b"] {
+        let invalid = HookResult {
+            identity: expected.clone(),
+            outcome: HookOutcome::Success {
+                artifacts: vec![ArtifactRef {
+                    path: path.into(),
+                    kind: "log".into(),
+                }],
+            },
+        };
+        assert_eq!(
+            parse_hook_result(&serde_json::to_vec(&invalid).unwrap(), &expected),
+            Err(ProtocolError::InvalidResult("invalid artifact reference")),
+            "path {path:?}"
+        );
+    }
+    let empty_kind = HookResult {
+        identity: expected.clone(),
+        outcome: HookOutcome::Success {
+            artifacts: vec![ArtifactRef {
+                path: "output/log.txt".into(),
+                kind: " ".into(),
+            }],
+        },
+    };
+    assert_eq!(
+        parse_hook_result(&serde_json::to_vec(&empty_kind).unwrap(), &expected),
+        Err(ProtocolError::InvalidResult("invalid artifact reference"))
+    );
+
+    let failure = HookResult {
+        identity: expected.clone(),
+        outcome: HookOutcome::Failed {
+            error: HookError {
+                code: "script_failed".into(),
+                message: "exit 1".into(),
+                evidence_ref: None,
+            },
+        },
+    };
+    let bytes = serde_json::to_vec(&failure).unwrap();
+    let envelope: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(envelope["status"], "failed");
+    assert!(envelope.get("artifacts").is_none());
+    assert_eq!(parse_hook_result(&bytes, &expected), Ok(failure.clone()));
+    for error in [
+        HookError {
+            code: " ".into(),
+            message: "exit 1".into(),
+            evidence_ref: None,
+        },
+        HookError {
+            code: "script_failed".into(),
+            message: " ".into(),
+            evidence_ref: None,
+        },
+    ] {
+        let invalid = HookResult {
+            identity: expected.clone(),
+            outcome: HookOutcome::Failed { error },
+        };
+        assert_eq!(
+            parse_hook_result(&serde_json::to_vec(&invalid).unwrap(), &expected),
+            Err(ProtocolError::InvalidResult("invalid hook error"))
+        );
+    }
+    let mut malformed: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    malformed["attempt"] = serde_json::json!("not a number");
+    assert_eq!(
+        parse_hook_result(&serde_json::to_vec(&malformed).unwrap(), &expected),
+        Err(ProtocolError::InvalidResult("malformed result"))
+    );
 }
