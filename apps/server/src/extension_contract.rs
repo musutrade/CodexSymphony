@@ -183,12 +183,24 @@ impl ExtensionConfig {
         }
         self.model.validate()?;
         capabilities.require_config(self)?;
+        self.validate_hook_registration(capabilities)?;
+        self.validate_decision_registration(capabilities)
+    }
+
+    fn validate_hook_registration(&self, capabilities: &Capabilities) -> Result<(), ProtocolError> {
         for hook in &self.hooks {
             hook.validate()?;
             if !capabilities.hooks.contains(hook) {
                 return Err(ProtocolError::UnsupportedCapability("hook registration"));
             }
         }
+        Ok(())
+    }
+
+    fn validate_decision_registration(
+        &self,
+        capabilities: &Capabilities,
+    ) -> Result<(), ProtocolError> {
         if let Some(decision) = &self.decision
             && (!nonempty(decision) || !capabilities.decisions.contains(decision))
         {
@@ -531,26 +543,50 @@ impl Serialize for HookResult {
         S: serde::Serializer,
     {
         let mut map = serializer.serialize_map(Some(10))?;
-        map.serialize_entry("protocol_version", &self.identity.protocol_version)?;
-        map.serialize_entry("requirement_id", &self.identity.requirement_id)?;
-        map.serialize_entry("revision", &self.identity.revision)?;
-        map.serialize_entry("run_id", &self.identity.run_id)?;
-        map.serialize_entry("resource_id", &self.identity.resource_id)?;
-        map.serialize_entry("invocation_id", &self.identity.invocation_id)?;
-        map.serialize_entry("attempt", &self.identity.attempt)?;
-        map.serialize_entry("config_id", &self.identity.config_id)?;
-        match &self.outcome {
-            HookOutcome::Success { artifacts } => {
-                map.serialize_entry("status", "success")?;
-                map.serialize_entry("artifacts", artifacts)?;
-            }
-            HookOutcome::Failed { error } => {
-                map.serialize_entry("status", "failed")?;
-                map.serialize_entry("error", error)?;
-            }
-        }
+        serialize_result_identity_head(&mut map, &self.identity)?;
+        serialize_result_identity_tail(&mut map, &self.identity)?;
+        serialize_result_outcome(&mut map, &self.outcome)?;
         map.end()
     }
+}
+
+fn serialize_result_identity_head<M: SerializeMap>(
+    map: &mut M,
+    identity: &InvocationIdentity,
+) -> Result<(), M::Error> {
+    map.serialize_entry("protocol_version", &identity.protocol_version)?;
+    map.serialize_entry("requirement_id", &identity.requirement_id)?;
+    map.serialize_entry("revision", &identity.revision)?;
+    map.serialize_entry("run_id", &identity.run_id)?;
+    Ok(())
+}
+
+fn serialize_result_identity_tail<M: SerializeMap>(
+    map: &mut M,
+    identity: &InvocationIdentity,
+) -> Result<(), M::Error> {
+    map.serialize_entry("resource_id", &identity.resource_id)?;
+    map.serialize_entry("invocation_id", &identity.invocation_id)?;
+    map.serialize_entry("attempt", &identity.attempt)?;
+    map.serialize_entry("config_id", &identity.config_id)?;
+    Ok(())
+}
+
+fn serialize_result_outcome<M: SerializeMap>(
+    map: &mut M,
+    outcome: &HookOutcome,
+) -> Result<(), M::Error> {
+    match outcome {
+        HookOutcome::Success { artifacts } => {
+            map.serialize_entry("status", "success")?;
+            map.serialize_entry("artifacts", artifacts)?;
+        }
+        HookOutcome::Failed { error } => {
+            map.serialize_entry("status", "failed")?;
+            map.serialize_entry("error", error)?;
+        }
+    }
+    Ok(())
 }
 
 impl<'de> Deserialize<'de> for HookResult {
@@ -685,6 +721,16 @@ pub fn parse_hook_result(
     let fields = object
         .as_object()
         .ok_or(ProtocolError::InvalidResult("malformed result"))?;
+    validate_result_shape(fields)?;
+    let result: HookResult = serde_json::from_value(object).map_err(malformed_result)?;
+    expected.matches_result(&result.identity)?;
+    validate_result_payload(&result)?;
+    Ok(result)
+}
+
+fn validate_result_shape(
+    fields: &serde_json::Map<String, serde_json::Value>,
+) -> Result<(), ProtocolError> {
     if fields.keys().any(|key| !known_result_field(key)) {
         return Err(ProtocolError::InvalidResult("unknown result field"));
     }
@@ -693,8 +739,10 @@ pub fn parse_hook_result(
         Some("failed") if fields.contains_key("error") && !fields.contains_key("artifacts") => {}
         _ => return Err(ProtocolError::InvalidResult("inconsistent result status")),
     }
-    let result: HookResult = serde_json::from_value(object).map_err(malformed_result)?;
-    expected.matches_result(&result.identity)?;
+    Ok(())
+}
+
+fn validate_result_payload(result: &HookResult) -> Result<(), ProtocolError> {
     match &result.outcome {
         HookOutcome::Success { artifacts } => {
             if artifacts
@@ -710,7 +758,7 @@ pub fn parse_hook_result(
             }
         }
     }
-    Ok(result)
+    Ok(())
 }
 
 fn malformed_result(_: serde_json::Error) -> ProtocolError {

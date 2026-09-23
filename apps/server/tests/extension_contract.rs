@@ -6,6 +6,26 @@ use codexsymphony_server::{
         InvocationIdentity, ModelConfig, ProtocolError, ReplayPolicy, parse_hook_result,
     },
 };
+use std::io::{self, Write};
+
+struct FailAfter {
+    remaining: usize,
+}
+
+impl Write for FailAfter {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        if self.remaining == 0 {
+            return Err(io::Error::other("sink full"));
+        }
+        let written = bytes.len().min(self.remaining);
+        self.remaining -= written;
+        Ok(written)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
 
 fn legacy() -> Repository {
     Repository {
@@ -471,4 +491,40 @@ fn hook_result_checks_malformed_input_failure_fields_and_artifact_paths() {
         parse_hook_result(&serde_json::to_vec(&malformed).unwrap(), &expected),
         Err(ProtocolError::InvalidResult("malformed result"))
     );
+}
+
+#[test]
+fn hook_result_serialization_propagates_output_failures() {
+    let identity = identity("sha256:reviewed".into());
+    let results = [
+        HookResult {
+            identity: identity.clone(),
+            outcome: HookOutcome::Success {
+                artifacts: vec![ArtifactRef {
+                    path: "output/log.txt".into(),
+                    kind: "log".into(),
+                }],
+            },
+        },
+        HookResult {
+            identity,
+            outcome: HookOutcome::Failed {
+                error: HookError {
+                    code: "script_failed".into(),
+                    message: "exit 1".into(),
+                    evidence_ref: None,
+                },
+            },
+        },
+    ];
+    for result in results {
+        let complete = serde_json::to_vec(&result).unwrap();
+        for remaining in 0..complete.len() {
+            assert!(
+                serde_json::to_writer(FailAfter { remaining }, &result).is_err(),
+                "writer accepted {remaining} of {} bytes",
+                complete.len()
+            );
+        }
+    }
 }
