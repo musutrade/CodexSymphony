@@ -1011,6 +1011,17 @@ async fn serial_repair_versions_rerun_all_checks_and_preserve_failed_combination
 async fn integration_supervisor_growth_uses_its_preallocated_hot_budget() {
     let f = fixture("linked", true).await;
     install_storage(&f).await;
+    let mut tx = f.pool.begin().await.unwrap();
+    sqlx::query("UPDATE storage_guard SET blocked=true")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    assert!(
+        !codexsymphony_server::storage_service::reserve_integration(&mut tx, "blocked-validation")
+            .await
+            .unwrap()
+    );
+    tx.rollback().await.unwrap();
     complete(&f, "failed").await;
     let id: String = sqlx::query_scalar("SELECT id FROM integration_validation")
         .fetch_one(&f.pool)

@@ -1180,6 +1180,7 @@ async fn policy_and_control(pool: &PgPool, config: &Deployment) {
             .unwrap()
     );
     assert!(codexsymphony_server::storage::permit(pool, &config.execution.path).await);
+    control_lock_contention_denies_without_relatching(pool, config).await;
     let displaced_cold = config.cold.path.with_extension("admission-missing");
     fs::rename(&config.cold.path, &displaced_cold).unwrap();
     assert!(!codexsymphony_server::storage::permit(pool, &config.execution.path).await);
@@ -1257,6 +1258,38 @@ async fn policy_and_control(pool: &PgPool, config: &Deployment) {
             .await
             .unwrap()
     );
+}
+
+async fn control_lock_contention_denies_without_relatching(pool: &PgPool, config: &Deployment) {
+    let options = pool
+        .connect_options()
+        .as_ref()
+        .clone()
+        .options([("lock_timeout", "50ms")]);
+    let contender = PgPoolOptions::new()
+        .max_connections(2)
+        .connect_with(options)
+        .await
+        .unwrap();
+    for query in [
+        "SELECT id FROM storage_guard FOR UPDATE",
+        "SELECT pg_advisory_xact_lock(13002)",
+    ] {
+        let mut held = pool.begin().await.unwrap();
+        sqlx::query(query).execute(&mut *held).await.unwrap();
+        assert!(!codexsymphony_server::storage::permit(&contender, &config.execution.path).await);
+        held.rollback().await.unwrap();
+        let blocked: bool = sqlx::query_scalar("SELECT blocked FROM storage_guard")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+        assert!(
+            !blocked,
+            "known lock contention must not undo an explicit recovery"
+        );
+        assert!(codexsymphony_server::storage::permit(&contender, &config.execution.path).await);
+    }
+    contender.close().await;
 }
 
 async fn repeated_requirements_stop_before_cumulative_exhaustion(pool: &PgPool) {

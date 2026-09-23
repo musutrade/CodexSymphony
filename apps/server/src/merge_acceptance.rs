@@ -56,19 +56,31 @@ async fn reconcile_classified_failure(
     if !directory.join("binding.json").is_file() || !directory.join("result.json").is_file() {
         return Ok(());
     }
+    replay_failed_merge(pool, client, root, &intent, &sha, directory, now).await
+}
+
+async fn replay_failed_merge(
+    pool: &PgPool,
+    client: &mut AppClient,
+    root: &Path,
+    intent: &Intent,
+    sha: &str,
+    directory: std::path::PathBuf,
+    now: i64,
+) -> Result<()> {
     let mut tx = crate::run_store::lock(pool).await?;
-    if !store::allowed(&mut tx, &intent).await? {
+    if !store::allowed(&mut tx, intent).await? {
         return Ok(());
     }
     tx.commit().await?;
-    let plan = merge_validation::plan(pool, &intent).await?;
-    let (_, required) = store::validation(pool, &intent).await?;
-    let checkout = merge_validation::checkout(pool, client, root, &intent, &sha, now).await?;
+    let plan = merge_validation::plan(pool, intent).await?;
+    let (_, required) = store::validation(pool, intent).await?;
+    let checkout = merge_validation::checkout(pool, client, root, intent, sha, now).await?;
     let evidence =
-        merge_validation::collect(pool, &intent, checkout, directory, plan, required.clone())
+        merge_validation::collect(pool, intent, checkout, directory, plan, required.clone())
             .await?;
     if evidence.candidate.sha == sha && crate::linked_repair::failed_code(&evidence, &required) {
-        crate::linked_failure_store::post_merge(pool, &intent, &evidence, &required).await?;
+        crate::linked_failure_store::post_merge(pool, intent, &evidence, &required).await?;
     }
     Ok(())
 }

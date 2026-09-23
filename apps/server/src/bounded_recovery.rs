@@ -126,7 +126,14 @@ pub fn native_failure(raw: &str) -> &'static str {
     if lower.contains("http 429") || lower.contains("rate limit exceeded") {
         return "rate_limited";
     }
-    if raw.contains("error[E")
+    if code_diagnostic(raw, &lower) {
+        return "check_exit";
+    }
+    "unknown"
+}
+
+fn code_diagnostic(raw: &str, lower: &str) -> bool {
+    raw.contains("error[E")
         || raw.contains("error TS")
         || lower.contains("assertion `left == right` failed")
         || lower.contains("assertion failed:")
@@ -136,8 +143,4 @@ pub fn native_failure(raw: &str) -> &'static str {
                 && (line.contains(" acceptance contract:")
                     || line.contains(" integration contract:"))
         })
-    {
-        return "check_exit";
-    }
-    "unknown"
 }

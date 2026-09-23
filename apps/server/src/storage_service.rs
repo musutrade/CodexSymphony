@@ -106,6 +106,7 @@ pub async fn validation(pool: &PgPool, run: &str) -> Result<bool> {
     let (config, measured) = validation_usage(&mut tx).await?;
     if !reserve_validation(&mut tx, &config, run, &measured).await? {
         tx.rollback().await?;
+        tracing::warn!(run, "validation storage reservation unavailable");
         block(
             pool,
             "validation storage reservation unavailable; preserve candidate",

@@ -160,17 +160,28 @@ async fn duplicate_reservation_pause_restart_bind_and_scope_remain_on_original_i
         .await
         .unwrap();
     assert_eq!(status, "reserved");
+    sqlx::query("UPDATE requirement SET paused=true")
+        .execute(&pool)
+        .await
+        .unwrap();
+    prepare_job(&pool, &root, &broker, &config, &job)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE requirement SET paused=false")
+        .execute(&pool)
+        .await
+        .unwrap();
     sqlx::query("UPDATE execution_control SET incarnation='boot2'")
         .execute(&pool)
         .await
         .unwrap();
-    let job = rebind(&pool, &broker, "boot2", &config, &id, job)
-        .await
-        .unwrap();
-    sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,checked_at) VALUES($1,1,1,$2,'{}',true,extract(epoch FROM now())::bigint)").bind(&job.launch.key.run_id).bind(json!(job.launch)).execute(&pool).await.unwrap();
+    tick(&pool, &root, &broker, "boot2", &config).await.unwrap();
+    let (_, job) = pending_job(&pool).await.unwrap().unwrap();
+    sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,checked_at) VALUES($1,1,1,$2,'{}',true,extract(epoch FROM now())::bigint) ON CONFLICT(run_id) DO UPDATE SET ready=true,checked_at=EXCLUDED.checked_at").bind(&job.launch.key.run_id).bind(json!(job.launch)).execute(&pool).await.unwrap();
     tick(&pool, &root, &broker, "boot2", &config).await.unwrap();
     let bound:(String,i64,String)=sqlx::query_as("SELECT p.status,a.requirement_id,i.failure_id FROM repair_reservation p JOIN agent_run a ON a.id=p.repair_run_id JOIN linked_run_input i ON i.run_id=a.id").fetch_one(&pool).await.unwrap();
     assert_eq!(bound, ("started".into(), 1, id.clone()));
+    tick(&pool, &root, &broker, "boot2", &config).await.unwrap();
     let snapshot = broker.preserve(&job.workspace).unwrap();
     assert!(
         !candidate_allowed(&pool, &broker, &job.launch.key.run_id, &snapshot)
@@ -190,6 +201,67 @@ async fn duplicate_reservation_pause_restart_bind_and_scope_remain_on_original_i
     assert_eq!(owner, Some(1));
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn committed_repair_diff_accepts_only_reviewed_paths_and_rejects_baseline_drift() {
+    let _serial = SERIAL.lock().await;
+    for (file, permitted) in [("source", true), ("outside", false)] {
+        let (pool, root, broker, config, id) = setup().await;
+        reserve(&pool, &broker, "boot", &config).await.unwrap();
+        let (_, job) = pending_job(&pool).await.unwrap().unwrap();
+        restore(&broker, &job).unwrap();
+        sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,checked_at) VALUES($1,1,1,$2,'{}',true,extract(epoch FROM now())::bigint) ON CONFLICT(run_id) DO UPDATE SET ready=true,checked_at=EXCLUDED.checked_at")
+            .bind(&job.launch.key.run_id).bind(json!(job.launch)).execute(&pool).await.unwrap();
+        assert!(bind(&pool, &job.launch).await.unwrap());
+        let path = Path::new(&job.workspace.path);
+        std::fs::write(path.join(file), "repair change").unwrap();
+        for args in [
+            vec!["add", file],
+            vec![
+                "-c",
+                "user.name=fixture",
+                "-c",
+                "user.email=fixture@example.com",
+                "commit",
+                "-m",
+                "repair diff",
+            ],
+        ] {
+            assert!(
+                std::process::Command::new("git")
+                    .arg("-C")
+                    .arg(path)
+                    .args(args)
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+        }
+        assert!(
+            restore(&broker, &job)
+                .unwrap_err()
+                .to_string()
+                .contains("baseline drift")
+        );
+        let manifest = broker.preserve(&job.workspace).unwrap();
+        assert_eq!(
+            candidate_allowed(&pool, &broker, &job.launch.key.run_id, &manifest)
+                .await
+                .unwrap(),
+            permitted
+        );
+        let (state, evidence): (String, Value) =
+            sqlx::query_as("SELECT state,evidence FROM linked_failure WHERE id=$1")
+                .bind(id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(state, if permitted { "reserved" } else { "blocked" });
+        assert_eq!(evidence["steps"][0]["exit_code"], 1);
+        pool.close().await;
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }
 #[tokio::test]
 async fn quota_counts_prior_repair_stages_and_keeps_original_failure() {

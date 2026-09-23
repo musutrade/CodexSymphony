@@ -96,6 +96,11 @@ async fn updated_combo_gets_new_checkouts_and_full_independent_validation() {
     assert_ne!(job.invocation, "original");
     let mut tx = crate::run_store::lock(&pool).await.unwrap();
     assert!(
+        crate::storage_service::reserve_integration(&mut tx, "unconfigured-validation")
+            .await
+            .unwrap()
+    );
+    assert!(
         checkout_all(&mut tx, &broker, "boot", &mut job)
             .await
             .unwrap()
@@ -130,6 +135,19 @@ async fn updated_combo_gets_new_checkouts_and_full_independent_validation() {
         outcome.evidence.as_ref().unwrap()
     ));
     assert_ne!(outcome.evidence.unwrap().candidate, old);
+    job.invocation = "mismatched-version".into();
+    let checked = workspace(&broker, "boot", &job, &job.binding.versions[0]).unwrap();
+    let mut wrong = job.binding.versions[0].clone();
+    wrong.candidate = old;
+    let mut tx = crate::run_store::lock(&pool).await.unwrap();
+    assert!(
+        checkout(&mut tx, &broker, &checked, &wrong)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("checkout mismatch")
+    );
+    tx.rollback().await.unwrap();
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
     std::fs::remove_dir_all(other_root).unwrap();

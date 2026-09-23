@@ -215,8 +215,8 @@ impl Remote for RemoteGit<'_> {
     ) -> Result<()> {
         self.client
             .fetch_commit(policy, path, sha, self.now)
-            .await?;
-        Ok(())
+            .await
+            .map_err(Into::into)
     }
 }
 async fn repository_policy(
