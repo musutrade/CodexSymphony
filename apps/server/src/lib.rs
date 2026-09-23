@@ -27,6 +27,7 @@ pub mod draft;
 pub mod draft_api;
 pub mod execution;
 pub mod execution_api;
+pub mod extension_contract;
 pub mod generation;
 pub mod generation_api;
 pub mod generation_runtime;
