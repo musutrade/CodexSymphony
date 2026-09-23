@@ -67,8 +67,10 @@ B06-R2 的两个代码子项分别通过
 - 集成监督文件增长使用启动前预留的 hot 额度，checkout 仅预留实际生产的存储类别。
 
 这些边界夹具可能构造数据库或远端适配器输入，不能单独证明真实 PR 合并与业务 Done。
-`cargo test --workspace --locked` 在接手修复后通过 238 项；新增存储修复后，集成套件
-20 项通过，Clippy 通过。最终源码仍须通过完整独立双 Gate。
+候选 `789fe9200c0932348019df58e56afde7ac7aa98a` 的独立 Gate 完整后端回归通过 243 项；
+该轮仍因准备分支覆盖率和失败重放复杂度拒绝交付，失败原件保留为 Actions
+`35821117242/1`。后续补充真实准备适配器成功绑定的边界测试，并拆分保留证据读取；
+17 项库测试及 Clippy 通过。最终提交的完整独立双 Gate 以 PR 检查记录为准。
 
 ```sh
 python3 /opt/symphony-env/run.py cargo test --workspace --locked

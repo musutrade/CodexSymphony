@@ -112,6 +112,53 @@ pub(crate) async fn setup() -> (PgPool, std::path::PathBuf, GitBroker, Config, S
     (pool, root, broker, config, id)
 }
 #[tokio::test]
+async fn successful_preparation_binds_exact_reserved_repair_once() {
+    let _serial = SERIAL.lock().await;
+    let (pool, root, broker, mut config, id) = setup().await;
+    reserve(&pool, &broker, "boot", &config).await.unwrap();
+    let (_, job) = pending_job(&pool).await.unwrap().unwrap();
+    let adapter = root.join("preparation-success.py");
+    let evidence = json!({
+        "deployment_identity":"fixture", "execution_identity":"reviewed-test-execution",
+        "network":{"configuration_identity":"fixture","reachable":true},
+        "failures":[],"sample":{"model_calls":0}
+    });
+    std::fs::write(&adapter, format!("print({:?})\n", evidence.to_string())).unwrap();
+    config.preparation_adapter = adapter;
+    prepare_job(&pool, &root, &broker, &config, &job)
+        .await
+        .unwrap();
+    let (status, run, owner): (String, String, i64) = sqlx::query_as(
+        "SELECT p.status,p.repair_run_id,a.requirement_id FROM repair_reservation p JOIN agent_run a ON a.id=p.repair_run_id WHERE p.linked_failure_id=$1",
+    ).bind(&id).fetch_one(&pool).await.unwrap();
+    assert_eq!(
+        (status.as_str(), run.as_str(), owner),
+        ("started", job.launch.key.run_id.as_str(), 1)
+    );
+    tick(&pool, &root, &broker, "boot", &config).await.unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM repair_reservation WHERE linked_failure_id=$1"
+        )
+        .bind(&id)
+        .fetch_one(&pool)
+        .await
+        .unwrap(),
+        1
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM agent_run WHERE id=$1")
+            .bind(&run)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        1
+    );
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
 async fn duplicate_reservation_pause_restart_bind_and_scope_remain_on_original_item() {
     let _serial = crate::linked_repair_worker::tests::SERIAL.lock().await;
     let (pool, root, broker, config, id) = setup().await;
