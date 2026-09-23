@@ -45,52 +45,36 @@ pub fn check(path: &Path) -> io::Result<()> {
     fs::File::open(path)?.sync_all()
 }
 
-/// The database probe includes a committed write; SELECT 1 cannot prove durability.
-pub async fn persistence(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let result = tokio::time::timeout(
-        std::time::Duration::from_secs(2),
-        sqlx::query("UPDATE storage_guard SET error=error WHERE id=1").execute(pool),
+pub async fn latch(pool: &PgPool) {
+    latch_reason(
+        pool,
+        "confirmed shared storage unavailable; retain originals and reconcile",
     )
     .await;
-    let Ok(result) = result else {
-        return Err(sqlx::Error::PoolTimedOut);
-    };
-    result?;
-    Ok(())
 }
 
-pub async fn latch(pool: &PgPool) {
+async fn latch_reason(pool: &PgPool, reason: &str) {
     FAILED.store(true, Ordering::SeqCst);
-    let _ = tokio::time::timeout(std::time::Duration::from_secs(2), sqlx::raw_sql("UPDATE storage_guard SET blocked=true,error=COALESCE(error,'storage_unavailable; retain originals and reconcile') WHERE id=1")
-        .execute(pool)).await;
+    let _ = tokio::time::timeout(
+        std::time::Duration::from_secs(2),
+        sqlx::query("UPDATE storage_guard SET blocked=true,error=COALESCE(error,$1) WHERE id=1")
+            .bind(reason)
+            .execute(pool),
+    )
+    .await;
 }
 
-pub async fn write(pool: &PgPool, path: &Path, value: &impl serde::Serialize) -> io::Result<()> {
-    let result = process::durable_write(path, value);
-    if result.is_err() {
-        latch(pool).await;
-    }
-    result
+/// A failed task file write is returned unchanged to its caller. It does not
+/// establish that every task's shared storage is unavailable.
+pub async fn write(_pool: &PgPool, path: &Path, value: &impl serde::Serialize) -> io::Result<()> {
+    process::durable_write(path, value)
 }
 
-/// Recheck before every model continuation or remote write. Unknown is refused.
-pub async fn permit(pool: &PgPool, root: &Path) -> bool {
+/// Read the confirmed shared stop state without a synthetic write or inventory.
+/// Heartbeat renewal uses this instead of repeating a maintenance inventory.
+pub async fn allowed(pool: &PgPool) -> bool {
     if FAILED.load(Ordering::SeqCst) {
         return false;
-    }
-    if check(root).is_err() {
-        latch(pool).await;
-        return false;
-    }
-    match database_ready(pool).await {
-        Ok(true) => {}
-        // Rolled-back lock acquisition denies this action; it is not proof of
-        // lost persistence. Recovery itself holds these same control rows.
-        Err(error) if lock_contention(error.as_ref()) => return false,
-        _ => {
-            latch(pool).await;
-            return false;
-        }
     }
     sqlx::query_scalar::<_, bool>("SELECT NOT blocked FROM storage_guard WHERE id=1")
         .fetch_one(pool)
@@ -98,19 +82,35 @@ pub async fn permit(pool: &PgPool, root: &Path) -> bool {
         .unwrap_or(false)
 }
 
-async fn database_ready(pool: &PgPool) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    persistence(pool).await?;
-    crate::storage_service::capacity(pool)
-        .await
-        .inspect_err(|error| {
+/// Unknown capacity refuses this action, but never becomes a persistent outage.
+/// Actual evidence/intent commits remain mandatory at the caller before publishing.
+pub async fn permit(pool: &PgPool, root: &Path) -> bool {
+    if !allowed(pool).await {
+        return false;
+    }
+    match crate::storage_service::capacity(pool).await {
+        Ok(true) => match available(root) {
+            Ok(bytes) if bytes >= RESERVE_BYTES => allowed(pool).await,
+            result => {
+                tracing::warn!("task storage capacity unavailable: {result:?}");
+                false
+            }
+        },
+        Ok(false) => {
+            // capacity() now reports only shared capacity, never a task quota.
+            latch_reason(
+                pool,
+                "shared storage capacity exhausted; retain originals and reconcile",
+            )
+            .await;
+            false
+        }
+        Err(error) => {
             let diagnostic = crate::operator_view::redact_text(&error.to_string());
-            tracing::warn!("storage capacity check failed; originals retained: {diagnostic}");
-        })
-}
-
-fn lock_contention(error: &(dyn std::error::Error + 'static)) -> bool {
-    matches!(error.downcast_ref::<sqlx::Error>(), Some(sqlx::Error::Database(database))
-        if database.code().as_deref() == Some("55P03"))
+            tracing::warn!("storage capacity check incomplete; action deferred: {diagnostic}");
+            false
+        }
+    }
 }
 
 /// Explicit operator recovery, after stop and preservation reconciliation.
@@ -119,8 +119,6 @@ pub async fn recover(
     pool: &PgPool,
     root: &Path,
 ) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
-    check(root)?;
-    persistence(pool).await?;
     let mut tx = crate::run_store::lock(pool).await?;
     let result = recover_in(&mut tx, root).await?;
     tx.commit().await?;

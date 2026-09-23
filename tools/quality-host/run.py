@@ -24,7 +24,7 @@ def runtime_pins():
     pins={str(p):sha(p.read_bytes()) for base in roots for p in sorted(base.rglob('*')) if p.is_file() and '__pycache__' not in p.parts}
     for name in ('harness-gate','harness-gate-rust-collector','node','python3','cargo-llvm-cov','/usr/local/libexec/codexsymphony/bwrap'):
         p=CORE if name=='harness-gate' else Path(shutil.which(name)).resolve();pins[str(p)]=sha(p.read_bytes())
-    codex=Path('/home/gem/.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin/codex').resolve()
+    codex=Path('/home/gem/.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin/codex').resolve()
     pins[str(codex)]=sha(codex.read_bytes())
     pins.update({str(p):sha(p.read_bytes()) for p in Path(__file__).parent.glob('*.py')})
     return pins

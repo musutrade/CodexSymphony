@@ -165,7 +165,7 @@ impl Client<'_> {
         runtime_store::require(
             initialized["userAgent"]
                 .as_str()
-                .is_some_and(|s| s.contains("/0.154.0 ")),
+                .is_some_and(|s| s.contains("/0.156.1 ")),
             "app-server version mismatch",
         )?;
         self.transport

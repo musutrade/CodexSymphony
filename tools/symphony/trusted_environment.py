@@ -11,7 +11,7 @@ import sys
 HOME=Path('/home/gem')
 BASE=HOME/'.local/share/codexsymphony'
 WORKSPACES=BASE/'workspaces'
-CODEX=HOME/'.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin'
+CODEX=HOME/'.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin'
 
 
 def resolver_mount(resolver=Path('/etc/resolv.conf')):

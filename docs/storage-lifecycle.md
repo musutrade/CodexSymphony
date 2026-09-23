@@ -64,10 +64,10 @@ backup/log roots, retained summaries, outstanding background reservations and th
 control-plane reserve. Reclaiming files frees occupied capacity but does not refund
 cumulative Run/requirement allocations. Policy versions, intervening retries and
 requirement revisions do not reset that history. Actual writes above a reservation
-are recorded and block further work. Existing materials are adopted into accounting
+are recorded and stop only the affected active Run. Existing materials are adopted into accounting
 without retroactively deleting protected originals. Expired critical decision
-records remain intact and block new work until exported or their retention policy
-is explicitly extended.
+records remain intact and block new reservations for their requirement until
+exported or their retention policy is explicitly extended.
 
 The operations page shows measured capacity, measurement time, reservations,
 protection reasons, material expiry/deletion, replacement references and cleanup
@@ -89,3 +89,25 @@ and verify a suitable filesystem/execution adapter before making that claim.
 迁移 0014 保留已准备但未派发的恢复任务历史。新控制实例重新准备新身份，原任务及文件保留；
 已存在 agent_run 的任务不能走此路径。仅本地提交、没有结束声明/验证记录的中断可恢复执行；
 已接受的完成声明和独立验证继续使用原阶段恢复。
+
+### Storage failure scope
+
+A failed background scan retains its diagnostic and existing bounded retry budget;
+it never sets the global stop flag. Lock contention, query timeout and incomplete
+inventory are not proof of a shared storage outage. Admission defers the current
+action when capacity is unknown and can succeed on its next attempt without an
+operator clearing a latch. Run heartbeats read the confirmed stop flag and perform
+their actual durable write; they do not run inventory or synthetic database writes.
+Loss of controller/database connectivity or an actual heartbeat write failure can
+still expire the supervisor lease.
+
+Task file writes and preparation evidence commits propagate their original failure
+to the caller. Preparation completion saves the actual result directly, without a
+second capacity scan; routine admission no longer performs synthetic durable writes. Failed evidence or intent commits still prevent the dependent
+execution/publication step. They do not by themselves disable unrelated tasks.
+Run/requirement quotas, record retention and reservation denials stay scoped to
+the affected task or requirement. Category limits apply to category reservations.
+Confirmed shared capacity exhaustion (global managed budget or filesystem reserve)
+retains the global latch and explicit recovery procedure. Existing latches are not
+automatically cleared by upgrading. These are local platform policies, not built-in
+requirements inherited from official Symphony.

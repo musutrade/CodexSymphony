@@ -38,7 +38,7 @@ with (base/'command-preflight.stderr').open('w') as err:
   result=call(2,'command/exec',{'command':['python3','-c',script],'cwd':str(root),'sandboxPolicy':{'type':'dangerFullAccess'},'timeoutMs':20000})
   assert result['exitCode']==0,result
   proof=json.loads(result['stdout']);print(json.dumps(proof))
-  (base/'command-preflight.json').write_text(json.dumps({'command_exec':'PASS','codex':'0.154.0','proof':proof},indent=2)+'\n')
+  (base/'command-preflight.json').write_text(json.dumps({'command_exec':'PASS','codex':'0.156.1','proof':proof},indent=2)+'\n')
  finally:
   p.terminate()
   try:p.wait(timeout=5)

@@ -204,20 +204,15 @@ async fn control(
     launch: &Launch,
     stopping: bool,
 ) -> Result<()> {
-    if control_allowed(pool, directory, job, stopping).await? {
+    if control_allowed(pool, job, stopping).await? {
         renew(pool, directory, launch).await?;
     } else {
         process::durable_write(&directory.join("stop.json"), &true)?;
     }
     Ok(())
 }
-async fn control_allowed(
-    pool: &PgPool,
-    directory: &Path,
-    job: &Job,
-    stopping: bool,
-) -> Result<bool> {
-    let permit = crate::storage::permit(pool, directory).await;
+async fn control_allowed(pool: &PgPool, job: &Job, stopping: bool) -> Result<bool> {
+    let permit = crate::storage::allowed(pool).await;
     let mut tx = run_store::lock(pool).await?;
     let allowed = !stopping && permit && store::allowed(&mut tx, job).await?;
     tx.commit().await?;
