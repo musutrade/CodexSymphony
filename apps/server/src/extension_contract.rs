@@ -1,6 +1,7 @@
 //! Versioned, pure extension contracts. Adapters may consume these values, but
 //! authorization, preservation and business conclusions remain with the core.
 use crate::contract::Repository;
+use serde::ser::SerializeMap;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -77,17 +78,15 @@ pub enum HookRole {
     Validation,
 }
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ReplayPolicy {
-    #[default]
     Never,
     Idempotent,
     Reconcile,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct HookConfig {
     pub name: String,
     pub event: HookEvent,
@@ -97,8 +96,39 @@ pub struct HookConfig {
     pub script_identity: String,
     pub timeout_seconds: u32,
     pub output_limit_bytes: u32,
-    #[serde(default)]
     pub replay: ReplayPolicy,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HookConfigWire {
+    name: String,
+    event: HookEvent,
+    roles: Vec<HookRole>,
+    argv: Vec<String>,
+    script_identity: String,
+    timeout_seconds: u32,
+    output_limit_bytes: u32,
+    replay: Option<ReplayPolicy>,
+}
+
+impl<'de> Deserialize<'de> for HookConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = HookConfigWire::deserialize(deserializer)?;
+        Ok(Self {
+            name: wire.name,
+            event: wire.event,
+            roles: wire.roles,
+            argv: wire.argv,
+            script_identity: wire.script_identity,
+            timeout_seconds: wire.timeout_seconds,
+            output_limit_bytes: wire.output_limit_bytes,
+            replay: wire.replay.unwrap_or(ReplayPolicy::Never),
+        })
+    }
 }
 
 impl HookConfig {
@@ -141,7 +171,7 @@ impl ExtensionConfig {
                 effort: None,
             },
             delivery: DeliveryMode::GithubPr,
-            hooks: vec![],
+            hooks: Vec::new(),
             decision: None,
         }
     }
@@ -222,22 +252,22 @@ impl Capabilities {
 
     pub fn legacy_codex(model: Option<String>) -> Self {
         Self {
-            agents: vec![AgentCapability {
+            agents: Vec::from([AgentCapability {
                 name: "codex".into(),
-                models: vec![ModelConfig {
+                models: Vec::from([ModelConfig {
                     provider: "codex".into(),
                     model,
                     effort: None,
-                }],
+                }]),
                 reliable_stop: true,
                 resume: true,
                 cancel: true,
                 structured_events: true,
                 usage_reporting: true,
-            }],
-            deliveries: vec![DeliveryMode::GithubPr],
-            hooks: vec![],
-            decisions: vec![],
+            }]),
+            deliveries: Vec::from([DeliveryMode::GithubPr]),
+            hooks: Vec::new(),
+            decisions: Vec::new(),
         }
     }
 
@@ -337,10 +367,8 @@ impl InvocationIdentity {
 /// P3 script stdin. The caller freezes the configuration and validates this
 /// envelope before #104 starts a process; the context contains task data, not
 /// credentials or authority to perform a later action.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct HookInvocation {
-    #[serde(flatten)]
     pub identity: InvocationIdentity,
     pub event: HookEvent,
     pub role: HookRole,
@@ -348,6 +376,82 @@ pub struct HookInvocation {
     pub output_dir: String,
     pub deadline_at: String,
     pub context: serde_json::Map<String, serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HookInvocationWire {
+    protocol_version: u32,
+    requirement_id: i64,
+    revision: i64,
+    run_id: Option<String>,
+    resource_id: String,
+    invocation_id: String,
+    attempt: u32,
+    config_id: String,
+    event: HookEvent,
+    role: HookRole,
+    workspace: String,
+    output_dir: String,
+    deadline_at: String,
+    context: serde_json::Map<String, serde_json::Value>,
+}
+
+impl From<&HookInvocation> for HookInvocationWire {
+    fn from(value: &HookInvocation) -> Self {
+        Self {
+            protocol_version: value.identity.protocol_version,
+            requirement_id: value.identity.requirement_id,
+            revision: value.identity.revision,
+            run_id: value.identity.run_id.clone(),
+            resource_id: value.identity.resource_id.clone(),
+            invocation_id: value.identity.invocation_id.clone(),
+            attempt: value.identity.attempt,
+            config_id: value.identity.config_id.clone(),
+            event: value.event.clone(),
+            role: value.role.clone(),
+            workspace: value.workspace.clone(),
+            output_dir: value.output_dir.clone(),
+            deadline_at: value.deadline_at.clone(),
+            context: value.context.clone(),
+        }
+    }
+}
+
+impl Serialize for HookInvocation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        HookInvocationWire::from(self).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for HookInvocation {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = HookInvocationWire::deserialize(deserializer)?;
+        Ok(Self {
+            identity: InvocationIdentity {
+                protocol_version: wire.protocol_version,
+                requirement_id: wire.requirement_id,
+                revision: wire.revision,
+                run_id: wire.run_id,
+                resource_id: wire.resource_id,
+                invocation_id: wire.invocation_id,
+                attempt: wire.attempt,
+                config_id: wire.config_id,
+            },
+            event: wire.event,
+            role: wire.role,
+            workspace: wire.workspace,
+            output_dir: wire.output_dir,
+            deadline_at: wire.deadline_at,
+            context: wire.context,
+        })
+    }
 }
 
 impl HookInvocation {
@@ -392,12 +496,88 @@ pub enum HookOutcome {
     Failed { error: HookError },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HookResult {
-    #[serde(flatten)]
     pub identity: InvocationIdentity,
-    #[serde(flatten)]
     pub outcome: HookOutcome,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum HookStatus {
+    Success,
+    Failed,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HookResultWire {
+    protocol_version: u32,
+    requirement_id: i64,
+    revision: i64,
+    run_id: Option<String>,
+    resource_id: String,
+    invocation_id: String,
+    attempt: u32,
+    config_id: String,
+    status: HookStatus,
+    artifacts: Option<Vec<ArtifactRef>>,
+    error: Option<HookError>,
+}
+
+impl Serialize for HookResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut map = serializer.serialize_map(Some(10))?;
+        map.serialize_entry("protocol_version", &self.identity.protocol_version)?;
+        map.serialize_entry("requirement_id", &self.identity.requirement_id)?;
+        map.serialize_entry("revision", &self.identity.revision)?;
+        map.serialize_entry("run_id", &self.identity.run_id)?;
+        map.serialize_entry("resource_id", &self.identity.resource_id)?;
+        map.serialize_entry("invocation_id", &self.identity.invocation_id)?;
+        map.serialize_entry("attempt", &self.identity.attempt)?;
+        map.serialize_entry("config_id", &self.identity.config_id)?;
+        match &self.outcome {
+            HookOutcome::Success { artifacts } => {
+                map.serialize_entry("status", "success")?;
+                map.serialize_entry("artifacts", artifacts)?;
+            }
+            HookOutcome::Failed { error } => {
+                map.serialize_entry("status", "failed")?;
+                map.serialize_entry("error", error)?;
+            }
+        }
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for HookResult {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = HookResultWire::deserialize(deserializer)?;
+        let outcome = match (wire.status, wire.artifacts, wire.error) {
+            (HookStatus::Success, Some(artifacts), None) => HookOutcome::Success { artifacts },
+            (HookStatus::Failed, None, Some(error)) => HookOutcome::Failed { error },
+            _ => return Err(serde::de::Error::custom("inconsistent result status")),
+        };
+        Ok(Self {
+            identity: InvocationIdentity {
+                protocol_version: wire.protocol_version,
+                requirement_id: wire.requirement_id,
+                revision: wire.revision,
+                run_id: wire.run_id,
+                resource_id: wire.resource_id,
+                invocation_id: wire.invocation_id,
+                attempt: wire.attempt,
+                config_id: wire.config_id,
+            },
+            outcome,
+        })
+    }
 }
 
 /// P4 observations are execution facts. Completion is an agent declaration,

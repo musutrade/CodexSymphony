@@ -176,7 +176,6 @@ fn script_registration_and_frozen_identity_reject_workspace_or_default_changes()
 
 #[test]
 fn hook_input_is_versioned_and_bound_to_registered_event_role() {
-    assert_eq!(ReplayPolicy::default(), ReplayPolicy::Never);
     let omitted_replay = serde_json::json!({
         "name": "prepare", "event": "before_run", "roles": ["coding"],
         "argv": ["/trusted/prepare"], "script_identity": "sha256:reviewed",
@@ -214,6 +213,10 @@ fn hook_input_is_versioned_and_bound_to_registered_event_role() {
     };
     input.validate(&frozen, &hook).unwrap();
     let encoded = serde_json::to_vec(&input).unwrap();
+    let envelope: serde_json::Value = serde_json::from_slice(&encoded).unwrap();
+    assert_eq!(envelope["protocol_version"], 1);
+    assert_eq!(envelope["invocation_id"], "hook-42");
+    assert!(envelope.get("identity").is_none());
     assert_eq!(
         serde_json::from_slice::<HookInvocation>(&encoded).unwrap(),
         input
@@ -245,6 +248,11 @@ fn response_version_identity_shape_and_size_are_checked() {
         outcome: HookOutcome::Success { artifacts: vec![] },
     };
     let bytes = serde_json::to_vec(&success).unwrap();
+    let envelope: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(envelope["status"], "success");
+    assert_eq!(envelope["invocation_id"], "hook-42");
+    assert!(envelope.get("identity").is_none());
+    assert!(envelope.get("outcome").is_none());
     assert_eq!(parse_hook_result(&bytes, &expected), Ok(success.clone()));
     let mut mixed: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     mixed["error"] = serde_json::json!({"code":"x","message":"wrong","evidence_ref":null});
