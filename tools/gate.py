@@ -12,11 +12,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def main():
     expected = (ROOT / "harness-gate-version.lock").read_text().splitlines()
-    if expected != ["harness-gate v0.4.6-rc.1", "rust-collector rust-collector-v0.1.0-rc.6"]:
+    if expected != ["harness-gate v0.4.7", "rust-collector rust-collector-v0.1.0-rc.7"]:
         raise SystemExit("Gate lock changed: review launcher versions/digests together")
     pins = {
-        "harness-gate": ("harness-gate 0.4.6-rc.1", "6d5dcf10b8d6b1248679974664a97b29628fa24778047484f18b0ebbe5d27dd3"),
-        "harness-gate-rust-collector": ("harness-gate-rust-collector 0.1.0-rc.6", "520e3fc0fa4938694a10abc504e3a5d0f164cf2bf9314cd4a00c5d613bbbf861"),
+        "harness-gate": ("harness-gate 0.4.7", "b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9"),
+        "harness-gate-rust-collector": ("harness-gate-rust-collector 0.1.0-rc.7", "663823010a6830ce1abd326317ce1983495103a69d647bed886a7ad65bc25b38"),
     }
     binaries = {}
     for name, (version, digest) in pins.items():

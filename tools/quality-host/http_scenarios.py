@@ -1,5 +1,7 @@
 """Data-only JSON request scenarios against the just-built isolated local API."""
 import json
+import http.cookiejar
+import ssl
 import re
 import urllib.error
 import urllib.parse
@@ -30,14 +32,22 @@ def resolve(value, responses):
     return value
 
 
-def capture(address, spec, scenarios):
+def capture(address, spec, scenarios, *, tls=None, variables=None, default_headers=None, setup_count=0, observer=None):
     if not re.fullmatch(r'127\.0\.0\.1:\d+', address):
         raise ValueError('capture requires the actual IPv4 loopback API listener')
     if not isinstance(scenarios, list) or len(scenarios) > 200:
         raise ValueError('bounded scenario list required')
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    origin = tls.origin if tls else 'http://' + address
+    if tls and (not origin.startswith('https://127.0.0.1:') or tls.context.verify_mode != ssl.CERT_REQUIRED or not tls.context.check_hostname):
+        raise ValueError('verified loopback TLS required')
+    cookies = http.cookiejar.CookieJar()
+    handlers = [urllib.request.ProxyHandler({}), NoRedirect(), urllib.request.HTTPCookieProcessor(cookies)]
+    if tls:
+        handlers.append(urllib.request.HTTPSHandler(context=tls.context))
+    opener = urllib.request.build_opener(*handlers)
+    variables = variables or {}
     observed, responses = [], {}
-    for step in scenarios:
+    for index, step in enumerate(scenarios):
         allowed = {'id', 'method', 'path', 'status', 'path_parameters', 'body', 'headers', 'record'}
         if set(step) - allowed:
             raise ValueError('unknown capture scenario field')
@@ -62,9 +72,14 @@ def capture(address, spec, scenarios):
             if value in ['', '.', '..'] or any(c in value for c in ['/', '\\', '?', '#']):
                 raise ValueError('invalid path parameter value')
             actual = actual.replace('{'+name+'}', urllib.parse.quote(value, safe=''))
-        origin = 'http://' + address
         headers = {'Origin': origin, 'Content-Type': 'application/json', 'x-codexsymphony-csrf': '1'}
-        override = step.get('headers', {})
+        override = dict(default_headers or {}) if index >= setup_count else {}
+        override.update(step.get('headers', {}))
+        referenced_proofs = [value for key, value in override.items()
+                             if key.lower() == 'x-codexsymphony-csrf'
+                             and isinstance(value, dict) and '$response' in value]
+        credentials = [resolve(value, responses) for value in referenced_proofs]
+        override = resolve(capture_values(override, variables), responses)
         if any(key.lower() not in ['origin', 'x-codexsymphony-csrf', 'idempotency-key', 'if-match'] for key in override):
             raise ValueError('unsupported scenario header')
         for key, value in override.items():
@@ -75,7 +90,7 @@ def capture(address, spec, scenarios):
                 if not isinstance(value, str) or '\r' in value or '\n' in value:
                     raise ValueError('invalid scenario header value')
                 headers[key] = value
-        body = resolve(step['body'], responses) if 'body' in step else None
+        body = resolve(capture_values(step['body'], variables), responses) if 'body' in step else None
         data = json.dumps(body).encode() if 'body' in step else None
         if data and len(data) > 1024 * 1024:
             raise ValueError('scenario request too large')
@@ -98,6 +113,23 @@ def capture(address, spec, scenarios):
                 observation['operation_path'] = path
             if 'body' in step:
                 observation['request_body'] = body
-            if step.get('record', True):
+            if observer is not None:
+                observer.observe(observation, setup=index < setup_count,
+                                 record=step.get('record', True), cookies=[c.value for c in cookies],
+                                 credentials=credentials)
+            elif step.get('record', True):
                 observed.append(observation)
     return observed
+
+
+def capture_values(value, variables):
+    """Only host-generated fixture values, never environment/file/shell interpolation."""
+    if isinstance(value, dict):
+        if '$capture' in value:
+            if set(value) != {'$capture'} or value['$capture'] not in variables:
+                raise ValueError('invalid capture variable')
+            return variables[value['$capture']]
+        return {k: capture_values(v, variables) for k, v in value.items()}
+    if isinstance(value, list):
+        return [capture_values(v, variables) for v in value]
+    return value

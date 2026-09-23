@@ -52,11 +52,10 @@ async fn commit_restore(
 ) -> Result<Option<Job>> {
     if !crate::storage_service::reserve_workspace(&mut tx, &job.workspace).await? {
         tx.rollback().await?;
-        crate::storage_service::block(
-            pool,
-            "recovery storage allocation unavailable; retain source checkpoint",
-        )
-        .await?;
+        tracing::warn!(
+            "recovery storage reservation unavailable for run {}; retain source checkpoint",
+            job.workspace.key.run_id
+        );
         return Ok(None);
     }
     tx.commit().await?;

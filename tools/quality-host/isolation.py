@@ -7,7 +7,7 @@ HOME = Path('/home/gem')
 
 def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=(), environment=None, cwd=None):
     run = Path(run).resolve()
-    codex = HOME / '.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin'
+    codex = HOME / '.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin'
     if not codex.is_dir():
         codex = Path('/opt/codex')
     if not (codex/'codex').is_file():

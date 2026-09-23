@@ -1,7 +1,8 @@
 # CodexSymphony 开发门禁
 
-2026-09-15 按用户要求接入。Core v0.4.5 + Rust collector 0.1.0-rc.6，
-版本以根目录 `harness-gate-version.lock` 为准。本仓库从开发阶段使用门禁；
+2026-09-15 按用户要求接入；当前锁定 Core v0.4.7 + 原生 Rust/MIR collector 0.1.0-rc.7，
+版本以根目录 `harness-gate-version.lock` 为准。源码风险 collector 是独立测量系列，
+仍使用已批准的 0.1.0-rc.5；升级它需要单独审核项目绑定和基线。本仓库从开发阶段使用门禁；
 未来 Rust 平台对受管仓库的 Gate 编排集成仍按方案分期。
 
 ## 入口和策略
@@ -14,7 +15,10 @@ python3 tools/gate.py verify --profile ci --all
 ```
 
 入口同时检查两个程序的实际版本和已验证发布二进制 SHA-256；目前支持 Linux amd64。
-默认使用 PATH，本机已安装锁定版本。其他平台必须先审定并增加对应发布摘要。
+默认使用 PATH，本机已安装锁定版本。Core 0.4.7 与原生 collector rc.7 的
+Linux amd64 摘要分别为 `b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9`
+和 `663823010a6830ce1abd326317ce1983495103a69d647bed886a7ad65bc25b38`。
+其他平台必须先审定并增加对应发布摘要。
 GitHub Actions 的 job 名为 `Harness-Gate`，等待独立 App 宿主对精确提交运行同一门禁入口。
 main 同时要求该检查（App 15368）和 `Trusted Harness-Gate`（App 4867361），
 启用 strict 更新、管理员强制、禁止 force push 和删除。真实远端接入见 `docs/remote-gate.md`。
@@ -58,8 +62,9 @@ Core 0.4.5 的完整 verify 未配置持久化 replay state，已提交
 
 - Rust 源码插件：0.1.0-rc.2；MIR 仍仅作独立诊断。
 - TypeScript 插件：0.1.0-rc.4，已接入生产文件／函数清单及共享产物目录。
-- HTTP 合约插件：0.1.0-rc.4，检查真实健康响应及数据场景驱动的业务响应、完整支持范围内的客户端清单、
-  生成类型来源及初始兼容性基线。未知合约或客户端语法会拒绝采集。
+- HTTP 合约插件：0.1.0-rc.5，检查真实健康响应及数据场景驱动的业务响应、完整支持范围内的客户端清单、
+  生成类型来源及初始兼容性基线。当前受信采集使用上游发布的 0.1.0-rc.5，
+  并通过一次性 HTTPS 登录会话验证受保护的业务响应；未知合约或客户端语法会拒绝采集。
 - 插件安装包在 `tools/gate-plugins/packages/`，摘要在 `collector-candidates.json`；
   本机与 CI 使用 `tools/install_gate_plugins.py` 安装，旧版本保留。它们仍是候选发行，
   不冒充 Harness-Gate 上游正式签名发布。

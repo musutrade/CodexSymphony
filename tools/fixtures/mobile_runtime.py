@@ -28,7 +28,7 @@ for line in sys.stdin:
     method, params = request.get('method'), request.get('params', {})
     identity = request.get('id')
     if method == 'initialize':
-        send({'id': identity, 'result': {'userAgent': 'scripted-mobile-fixture/0.154.0 (test)'}})
+        send({'id': identity, 'result': {'userAgent': 'scripted-mobile-fixture/0.156.1 (test)'}})
     elif method == 'command/exec':
         result = subprocess.run(params['command'], cwd=params['cwd'], capture_output=True, text=True, timeout=80)
         send({'id': identity, 'result': {'exitCode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr}})

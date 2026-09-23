@@ -7,7 +7,7 @@ import subprocess
 import time
 from capture import RUST, TS, HTTP, sha, write, run_logged
 
-CORE=Path('/home/gem/.local/share/harness-gate/versions/v0.4.6-rc.1/bin/harness-gate')
+CORE=Path('/home/gem/.local/share/harness-gate/versions/v0.4.7/bin/harness-gate')
 
 def canonical(value): return json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False)
 

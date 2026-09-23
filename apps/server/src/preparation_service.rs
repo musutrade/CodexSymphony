@@ -78,9 +78,8 @@ pub async fn prepare(pool: &PgPool, request: Request<'_>) -> Result<bool> {
     let now = request
         .now
         .saturating_add(started.elapsed().as_secs() as i64);
-    if !storage_ready(pool, &request).await {
-        return Ok(false);
-    }
+    // Persist the actual result directly. A second inventory cannot establish
+    // whether this evidence commit will succeed and can discard useful failures.
     record_result(pool, request.launch, &expected, result, &directory, now).await
 }
 
@@ -145,16 +144,7 @@ async fn record_evidence(
     evidence: &Evidence,
     now: i64,
 ) -> Result<bool> {
-    let result = preparation_store::finish(pool, launch, expected, evidence, now).await;
-    if result.is_err()
-        || evidence
-            .failures
-            .iter()
-            .any(|failure| failure.code == "storage_unavailable")
-    {
-        storage::latch(pool).await;
-    }
-    Ok(result?)
+    Ok(preparation_store::finish(pool, launch, expected, evidence, now).await?)
 }
 
 fn broker_ready(broker: &GitBroker, workspace: &Workspace, launch: &Launch) -> Result<()> {

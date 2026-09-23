@@ -11,7 +11,7 @@ type Tx<'a> = Transaction<'a, Postgres>;
 
 pub(crate) async fn allowed(tx: &mut Tx<'_>, job: &Job) -> Result<bool> {
     let b = &job.binding;
-    let current: Option<Value> = sqlx::query_scalar("SELECT i.input FROM group_execution_item i JOIN requirement r ON r.id=i.requirement_id JOIN execution_control c ON c.requirement_id=r.id WHERE r.id=$1 AND r.revision=$2 AND i.authorization_id=$3 AND NOT r.cancel_requested AND NOT r.paused AND NOT c.paused AND c.recovery_complete AND NOT (SELECT blocked FROM storage_guard WHERE id=1)")
+    let current: Option<Value> = sqlx::query_scalar("SELECT i.input FROM group_execution_item i JOIN requirement r ON r.id=i.requirement_id JOIN execution_control c ON c.requirement_id=r.id WHERE r.id=$1 AND r.revision=$2 AND i.authorization_id=$3 AND NOT r.cancel_requested AND NOT r.paused AND NOT c.paused AND c.recovery_complete AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=r.id AND v.blocker='storage allocation exceeded; retain originals')")
         .bind(b.requirement).bind(b.revision).bind(b.authorization).fetch_optional(&mut **tx).await?;
     let Some(input) = current else {
         return Ok(false);
