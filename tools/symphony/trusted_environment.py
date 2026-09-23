@@ -54,10 +54,9 @@ def command(argv, state_home=None):
         args+=['--symlink','/opt/'+cwd.name.lower().replace('-', '')+'-env','/opt/symphony-env']
     env={'HOME':str(HOME),'CODEX_HOME':str(auth),'CARGO_HOME':str(HOME/'.cargo'),
          'RUSTUP_HOME':str(HOME/'.rustup'),'CARGO_TARGET_DIR':str(cwd/'target'),
-         'PATH':'/opt/codex:/home/gem/.local/share/harness-gate/versions/v0.4.5/bin:/home/gem/.local/share/harness-gate/versions/rust-collector-v0.1.0-rc.6/bin:/home/gem/.cargo/bin:/usr/local/bin:/usr/bin:/bin',
+         'PATH':'/opt/codex:'+gate_bin(cwd)+':/home/gem/.local/share/harness-gate/versions/rust-collector-v0.1.0-rc.7/bin:/home/gem/.cargo/bin:/usr/local/bin:/usr/bin:/bin',
          'LANG':'C.UTF-8','TZ':'UTC','NO_COLOR':'1','HTTP_PROXY':'http://192.168.0.26:10809',
          'HTTPS_PROXY':'http://192.168.0.26:10809','ALL_PROXY':'http://192.168.0.26:10809','NO_PROXY':'127.0.0.1,localhost,::1'}
-    env['PATH']=env['PATH'].replace('/home/gem/.local/share/harness-gate/versions/v0.4.5/bin',gate_bin(cwd))
     if (provision/'requirements.toml').is_file():
         env['npm_config_cache']=str(cwd/'.agent-env/npm-cache')
     args+=['--clearenv']

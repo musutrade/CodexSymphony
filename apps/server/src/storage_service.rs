@@ -26,7 +26,10 @@ pub async fn admit_workspace(pool: &PgPool, workspace: &Workspace) -> Result<boo
     let mut tx = run_store::lock(pool).await?;
     if !reserve_workspace(&mut tx, workspace).await? {
         tx.rollback().await?;
-        tracing::warn!(run = %workspace.key.run_id, "storage reservation unavailable; task deferred");
+        tracing::warn!(
+            "storage reservation unavailable for run {}; task deferred",
+            workspace.key.run_id
+        );
         return Ok(false);
     }
     tx.commit().await?;

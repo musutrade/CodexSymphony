@@ -1,7 +1,8 @@
 # CodexSymphony 开发门禁
 
-2026-09-15 按用户要求接入。Core v0.4.5 + Rust collector 0.1.0-rc.6，
-版本以根目录 `harness-gate-version.lock` 为准。本仓库从开发阶段使用门禁；
+2026-09-15 按用户要求接入；当前锁定 Core v0.4.7 + 原生 Rust/MIR collector 0.1.0-rc.7，
+版本以根目录 `harness-gate-version.lock` 为准。源码风险 collector 是独立测量系列，
+仍使用已批准的 0.1.0-rc.5；升级它需要单独审核项目绑定和基线。本仓库从开发阶段使用门禁；
 未来 Rust 平台对受管仓库的 Gate 编排集成仍按方案分期。
 
 ## 入口和策略
@@ -14,7 +15,10 @@ python3 tools/gate.py verify --profile ci --all
 ```
 
 入口同时检查两个程序的实际版本和已验证发布二进制 SHA-256；目前支持 Linux amd64。
-默认使用 PATH，本机已安装锁定版本。其他平台必须先审定并增加对应发布摘要。
+默认使用 PATH，本机已安装锁定版本。Core 0.4.7 与原生 collector rc.7 的
+Linux amd64 摘要分别为 `b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9`
+和 `663823010a6830ce1abd326317ce1983495103a69d647bed886a7ad65bc25b38`。
+其他平台必须先审定并增加对应发布摘要。
 GitHub Actions 的 job 名为 `Harness-Gate`，等待独立 App 宿主对精确提交运行同一门禁入口。
 main 同时要求该检查（App 15368）和 `Trusted Harness-Gate`（App 4867361），
 启用 strict 更新、管理员强制、禁止 force push 和删除。真实远端接入见 `docs/remote-gate.md`。

@@ -5,6 +5,7 @@ import hashlib
 PINS = {
     'harness-gate v0.4.5': ('v0.4.5', '70721282c751826ed4d57e14bd7de9516e73e833aa058d758dbd2154c0aa5e10'),
     'harness-gate v0.4.6-rc.1': ('v0.4.6-rc.1', '6d5dcf10b8d6b1248679974664a97b29628fa24778047484f18b0ebbe5d27dd3'),
+    'harness-gate v0.4.7': ('v0.4.7', 'b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9'),
 }
 
 VERSIONS = Path('/home/gem/.local/share/harness-gate/versions')
