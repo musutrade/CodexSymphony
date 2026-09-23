@@ -7,6 +7,17 @@ SPOOL=Path('/home/gem/.local/share/codexsymphony/workspaces/GH-12/.agent-env/req
 IMAGE='sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777'
 NETWORK='codexsymphony-gh12-env'
 
+def fixture_policy():
+    return json.loads((BASE/'fixture-policy.json').read_text())
+
+def memory_bytes(role):
+    setting=fixture_policy()[role+'_memory']
+    return int(setting[:-1])*(1024**3 if setting.endswith('g') else 1024**2)
+
+def memory_events(name):
+    lines=docker('exec',name,'cat','/sys/fs/cgroup/memory.events').splitlines()
+    return {key:int(value) for key,value in (line.split() for line in lines)}
+
 def docker(*args):
     p=subprocess.run(['docker',*args],capture_output=True,text=True,timeout=60)
     if p.returncode: raise RuntimeError(p.stderr[-2000:])
@@ -27,10 +38,12 @@ def perform(request):
     if request['action']=='recreate':
         docker('stop','--time','10',name);docker('rm',name)
         user='codexsymphony_'+role
+        policy=fixture_policy()
         args=['run','-d','--restart','unless-stopped','--name',name,'--label','codexsymphony.fixture=GH-12-'+role,
               '--network',NETWORK,'--ip','172.30.212.'+('2' if role=='test' else '3'),
               '--user','postgres','--cap-drop','ALL','--security-opt','no-new-privileges',
-              '--memory','512m','--cpus','1','-e','POSTGRES_USER='+user,
+              '--memory',policy[role+'_memory'],'--memory-swap',policy[role+'_memory_swap'],
+              '--cpus',policy['cpus'],'-e','POSTGRES_USER='+user,
               '-e','POSTGRES_PASSWORD='+user,'-e','POSTGRES_DB='+user]
         if role=='test': args+=['--tmpfs','/var/lib/postgresql/data:uid=70,gid=70,mode=0700']
         else: args+=['--mount','type=volume,source=codexsymphony-gh12-dev-data,target=/var/lib/postgresql/data']
@@ -48,9 +61,13 @@ def perform(request):
             time.sleep(.5)
         else: raise TimeoutError('Database did not become ready')
     after=info(role)
+    if after['HostConfig']['Memory']!=memory_bytes(role):
+        raise RuntimeError('Fixture memory policy mismatch: '+name)
     return {'ok':True,'role':role,'before_id':before['Id'],'container_id':after['Id'],
-            'running':after['State']['Running'],'image':after['Image'],
-            'storage':'tmpfs' if role=='test' else 'named-volume'}
+        'running':after['State']['Running'],'image':after['Image'],
+        'storage':'tmpfs' if role=='test' else 'named-volume',
+        'memory_limit_bytes':after['HostConfig']['Memory'],
+        'memory_events':memory_events(name)}
 
 def main():
     flags=os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW

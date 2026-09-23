@@ -13,8 +13,12 @@ test|dev` manages these fixed fixtures. The test fixture is disposable; the dev
 fixture contains synthetic data and persists across recreation.
 
 Before coding: check dependencies, writable target/tmp paths, actual database
-connectivity and the relevant project smoke tests. Run `cargo test --workspace
---locked`, including runtime_real, directly through the fixture settings wrapper.
+connectivity and the relevant project smoke tests. Run the full Rust suite with
+`python3 /opt/symphony-env/workspace_tests.py`. This single entry checks the
+Codex lock, recreates only the disposable test fixture, verifies its memory
+policy, uses a fresh short temporary directory, and executes
+`cargo test --workspace --locked` with `RUST_TEST_THREADS=1`. The persistent
+synthetic dev fixture is untouched.
 No reviewed-runtime manifest, copied binary, runtime_product_acceptance.py or
 backend_tests.py host receipt exists in this model. Old reports requesting those
 entries describe the superseded environment; preserve their history, do not

@@ -1,0 +1,7 @@
+{
+  "test_memory": "2g",
+  "test_memory_swap": "4g",
+  "dev_memory": "512m",
+  "dev_memory_swap": "1g",
+  "cpus": "1"
+}

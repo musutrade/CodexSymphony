@@ -16,8 +16,32 @@ def module(name,path):
 
 install=module('install',ROOT/'tools/install_symphony_development.py')
 provision=module('provision',Path(__file__).with_name('provision_issue_environment.py'))
+environment=module('environment',Path(__file__).with_name('trusted_environment.py'))
 
 class EnvironmentInstallationTests(unittest.TestCase):
+    def test_locked_codex_uses_workspace_lock_and_rejects_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);workspace=root/'workspace';workspace.mkdir()
+            releases=root/'releases';binary=releases/'0.156.1-x86_64-unknown-linux-musl/bin/codex'
+            binary.parent.mkdir(parents=True)
+            binary.write_text('#!/bin/sh\necho codex-cli 0.156.1\n');binary.chmod(0o755)
+            (workspace/'codex-version.lock').write_text('codex-cli 0.156.1\n')
+            self.assertEqual(environment.locked_codex(workspace,releases),binary.parent)
+            (workspace/'codex-version.lock').write_text('codex-cli 0.156.2\n')
+            with self.assertRaises(FileNotFoundError):
+                environment.locked_codex(workspace,releases)
+            (workspace/'codex-version.lock').write_text('codex-cli ../other\n')
+            with self.assertRaisesRegex(ValueError,'Invalid codex-version.lock'):
+                environment.locked_codex(workspace,releases)
+
+    def test_test_fixture_has_more_memory_than_persistent_dev(self):
+        with patch.object(provision,'TEMPLATE',ROOT/'tools/symphony/environment'):
+            self.assertEqual(provision.memory_bytes('test'),2*1024**3)
+            self.assertEqual(provision.memory_bytes('dev'),512*1024**2)
+        sources=install.environment_sources()
+        self.assertIn(Path('client/workspace_tests.py'),sources)
+        self.assertIn(Path('fixture-policy.json'),sources)
+
     def test_install_persists_reviewed_gate_and_versions_release_with_it(self):
         with tempfile.TemporaryDirectory() as directory:
             home=Path(directory); source=home/'source'; state=home/'state/symphony'

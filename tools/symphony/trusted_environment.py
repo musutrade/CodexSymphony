@@ -6,12 +6,28 @@ The environment omits GitHub credentials and the independent Gate service.
 """
 import os
 from pathlib import Path
+import re
+import subprocess
 import sys
 
 HOME=Path('/home/gem')
 BASE=HOME/'.local/share/codexsymphony'
 WORKSPACES=BASE/'workspaces'
-CODEX=HOME/'.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin'
+
+def locked_codex(workspace, releases=None):
+    expected=(workspace/'codex-version.lock').read_text().strip()
+    match=re.fullmatch(r'codex-cli ([0-9]+\.[0-9]+\.[0-9]+)',expected)
+    if match is None:
+        raise ValueError('Invalid codex-version.lock: '+expected)
+    releases=releases or HOME/'.codex/packages/standalone/releases'
+    binary=releases/(match.group(1)+'-x86_64-unknown-linux-musl/bin/codex')
+    if not binary.is_file():
+        raise FileNotFoundError('Locked Codex binary is missing: '+str(binary))
+    actual=subprocess.run([str(binary),'--version'],capture_output=True,text=True,
+                          check=True,timeout=10).stdout.strip()
+    if actual!=expected:
+        raise ValueError(f'Locked Codex version mismatch: expected {expected}, got {actual}')
+    return binary.parent
 
 
 def resolver_mount(resolver=Path('/etc/resolv.conf')):
@@ -28,6 +44,7 @@ def command(argv, state_home=None):
     cwd=Path.cwd().resolve()
     if not cwd.is_relative_to(WORKSPACES) or cwd==WORKSPACES:
         raise ValueError('Codex must run in an assigned project workspace')
+    codex=locked_codex(cwd)
     cargo=cwd/'.agent-cargo';cargo.mkdir(exist_ok=True)
     temporary=cwd/'.agent-tmp';temporary.mkdir(exist_ok=True)
     auth=BASE/'codex-home'
@@ -37,7 +54,7 @@ def command(argv, state_home=None):
           '--proc','/proc','--dev','/dev','--tmpfs','/run',*resolver_mount(),
           '--bind',str(temporary),'/tmp','--dir',str(HOME),
           '--bind',str(cwd),str(cwd),
-          '--bind',str(state_home or auth),str(auth),'--ro-bind',str(CODEX),'/opt/codex',
+          '--bind',str(state_home or auth),str(auth),'--ro-bind',str(codex),'/opt/codex',
           '--bind',str(cargo),str(HOME/'.cargo'),
           '--ro-bind',str(HOME/'.cargo/bin'),str(HOME/'.cargo/bin'),
           '--bind',str(HOME/'.cargo/registry'),str(HOME/'.cargo/registry'),
