@@ -99,6 +99,7 @@ async fn tick_selected(
     config: &Config,
     selected: Option<(i64, i64)>,
 ) -> Result<()> {
+    crate::linked_integration::tick(pool, root, supervisor, broker, incarnation).await?;
     if let Some(plan) = &config.validation
         && crate::integration_worker::tick(pool, root, supervisor, broker, incarnation, plan)
             .await?
@@ -135,6 +136,7 @@ async fn runtime_pipeline(
         return Ok(());
     }
     if config.validation.is_some() {
+        crate::linked_repair_worker::tick(pool, root, broker, incarnation, config).await?;
         crate::validation_repair_worker::tick(pool, root, broker, incarnation, config).await?;
     }
     resume(pool, root, supervisor, broker, incarnation, config).await?;

@@ -1186,7 +1186,8 @@ async fn storage_retirement_requires_durable_delivery_and_preserves_reclaim_proo
     .unwrap();
     state(&pool, "retire-run", "Succeeded", true).await;
     execute(&pool, &f, &w, "preserve", Operation::Preserve).await;
-    storage_cleanup::scan(&pool, 100).await.unwrap();
+    let now = codexsymphony_server::runtime_client::now();
+    storage_cleanup::scan(&pool, now).await.unwrap();
     sqlx::raw_sql("UPDATE agent_run SET user_paused=true WHERE id='retire-run'; INSERT INTO requirement_budget(requirement_id,limits) VALUES(1,'{\"tokens\":1000,\"turns\":10,\"model_seconds\":600}');").execute(&pool).await.unwrap();
     let mut denied = config.clone();
     denied.policy.version = "denied-restore".into();
@@ -1255,7 +1256,7 @@ async fn storage_retirement_requires_durable_delivery_and_preserves_reclaim_proo
     );
     guarded.rollback().await.unwrap();
     git(Path::new(&w.path), &["checkout", "--", "source.rs"]);
-    storage_cleanup::scan(&pool, 110).await.unwrap();
+    storage_cleanup::scan(&pool, now + 10).await.unwrap();
     let retired: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM storage_material WHERE run_id='retire-run' AND status='deleted'",
     )

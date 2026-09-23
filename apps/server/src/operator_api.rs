@@ -76,7 +76,7 @@ async fn inbox(State(pool): State<PgPool>) -> Result<Json<Value>> {
     let ids: Vec<i64> = sqlx::query_scalar(
         "SELECT r.id FROM requirement r WHERE
          (r.cancel_requested AND NOT r.cleanup_complete) OR
-         EXISTS(SELECT 1 FROM merge_operation m WHERE m.requirement_id=r.id AND m.state='blocked') OR
+         EXISTS(SELECT 1 FROM merge_operation m WHERE m.requirement_id=r.id AND m.state='blocked' AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.merge_key=m.action_key AND f.state<>'blocked')) OR
          (EXISTS(SELECT 1 FROM storage_attempt s WHERE s.requirement_id=r.id) AND
           EXISTS(SELECT 1 FROM storage_guard g WHERE g.blocked OR (g.scan_retry->>'todo')::boolean OR (g.measured->>'classification_todo')::bigint>0)) OR
          EXISTS(SELECT 1 FROM storage_material m JOIN storage_attempt a ON a.run_id=m.run_id
@@ -85,7 +85,8 @@ async fn inbox(State(pool): State<PgPool>) -> Result<Json<Value>> {
            WHERE a.requirement_id=r.id AND (e.cleanup_retry->>'todo')::boolean) OR
          (NOT r.cancel_requested AND (
            r.paused OR r.state='Failed' OR
-           EXISTS(SELECT 1 FROM recovery_failure f WHERE f.requirement_id=r.id AND f.decision='blocked') OR
+           EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=r.id AND v.state IN ('failed','unknown') AND v.next_attempt_at IS NULL AND NOT EXISTS(SELECT 1 FROM integration_validation newer WHERE newer.requirement_id=r.id AND (newer.created_at,newer.id)>(v.created_at,v.id)) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.integration_id=v.id AND f.state<>'blocked')) OR
+           EXISTS(SELECT 1 FROM recovery_failure f WHERE f.requirement_id=r.id AND f.decision='blocked') OR EXISTS(SELECT 1 FROM linked_failure f WHERE f.requirement_id=r.id AND f.state='blocked') OR
            EXISTS(SELECT 1 FROM runtime_question q WHERE q.requirement_id=r.id
              AND q.revision=r.revision AND q.resume_state IN ('waiting','pending')) OR
            (SELECT a.blocker IS NOT NULL FROM agent_run a WHERE a.requirement_id=r.id

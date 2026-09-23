@@ -17,6 +17,7 @@ pub(crate) async fn tick(
     root: &Path,
     now: i64,
 ) -> Result<()> {
+    reconcile_classified_failure(pool, client, root, now).await?;
     let Some((intent, sha, started)) = next_merged(pool, now).await? else {
         return Ok(());
     };
@@ -27,6 +28,47 @@ pub(crate) async fn tick(
     tx.commit().await?;
     if let Err(error) = accept(pool, client, root, &intent, &sha, started, now).await {
         acceptance_failure(pool, root, &intent, &*error, started, now).await?;
+    }
+    Ok(())
+}
+
+/// A prior binary may have retained a failed trusted invocation as unknown.
+/// Revisit only its immutable files; a missing binding must never run a new
+/// validation and replace the original failure identity.
+async fn reconcile_classified_failure(
+    pool: &PgPool,
+    client: &mut AppClient,
+    root: &Path,
+    now: i64,
+) -> Result<()> {
+    let row: Option<(Value, String)> = sqlx::query_as(
+        "SELECT intent,merged_sha FROM merge_operation WHERE state='blocked' AND blocker='post_merge acceptance needs original-item review: post_merge binding rejected: ExitFailed' AND acceptance IS NULL AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.merge_key=merge_operation.action_key) ORDER BY created_at LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?;
+    let Some((intent, sha)) = row else {
+        return Ok(());
+    };
+    let intent: Intent = serde_json::from_value(intent)?;
+    let directory = root
+        .join("validations")
+        .join(format!("post-merge-{}", intent.action_key()));
+    if !directory.join("binding.json").is_file() || !directory.join("result.json").is_file() {
+        return Ok(());
+    }
+    let mut tx = crate::run_store::lock(pool).await?;
+    if !store::allowed(&mut tx, &intent).await? {
+        return Ok(());
+    }
+    tx.commit().await?;
+    let plan = merge_validation::plan(pool, &intent).await?;
+    let (_, required) = store::validation(pool, &intent).await?;
+    let checkout = merge_validation::checkout(pool, client, root, &intent, &sha, now).await?;
+    let evidence =
+        merge_validation::collect(pool, &intent, checkout, directory, plan, required.clone())
+            .await?;
+    if evidence.candidate.sha == sha && crate::linked_repair::failed_code(&evidence, &required) {
+        crate::linked_failure_store::post_merge(pool, &intent, &evidence, &required).await?;
     }
     Ok(())
 }
@@ -69,7 +111,7 @@ async fn acceptance_failure(
         pool,
         intent,
         &format!(
-            "post_merge acceptance requires original-item recovery (M3-5 unavailable): {}",
+            "post_merge acceptance needs original-item review: {}",
             crate::operator_view::redact_text(&error.to_string())
         ),
     )
@@ -204,8 +246,12 @@ async fn execute_acceptance(
         return Ok(None);
     }
     let evidence =
-        merge_validation::execute(pool, intent, checkout, directory, plan, required.clone())
+        merge_validation::collect(pool, intent, checkout, directory, plan, required.clone())
             .await?;
+    if crate::linked_repair::failed_code(&evidence, &required) {
+        crate::linked_failure_store::post_merge(pool, intent, &evidence, &required).await?;
+        return Ok(None);
+    }
     Ok(Some((evidence, required)))
 }
 
@@ -265,6 +311,16 @@ async fn finish_in(
             .await?;
     if method.is_none() {
         sqlx::query("UPDATE merge_operation SET state='blocked',blocker='merged checkout accepted; actual merge method remains unconfirmed after lost response' WHERE action_key=$1").bind(intent.action_key()).execute(&mut **tx).await?;
+        return Ok(());
+    }
+    finish_current(tx, intent, evidence).await
+}
+async fn finish_current(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    intent: &Intent,
+    evidence: &ValidationEvidence,
+) -> Result<()> {
+    if crate::linked_repair_acceptance::finish(tx, intent, evidence).await? {
         return Ok(());
     }
     record_child(tx, intent, evidence).await?;

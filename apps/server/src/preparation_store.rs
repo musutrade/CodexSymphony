@@ -47,7 +47,8 @@ async fn permitted(
 ) -> Result<bool> {
     Ok(!paused(tx, requirement).await?
         || crate::runtime_resume::preparation_allowed(tx, launch).await?
-        || crate::validation_repair::preparation_allowed(tx, launch).await?)
+        || crate::validation_repair::preparation_allowed(tx, launch).await?
+        || crate::linked_repair_worker::preparation_allowed(tx, launch).await?)
 }
 
 async fn load_for_begin(

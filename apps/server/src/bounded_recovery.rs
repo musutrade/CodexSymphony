@@ -130,6 +130,12 @@ pub fn native_failure(raw: &str) -> &'static str {
         || raw.contains("error TS")
         || lower.contains("assertion `left == right` failed")
         || lower.contains("assertion failed:")
+        || raw.lines().any(|line| line.starts_with("AssertionError"))
+        || raw.lines().any(|line| {
+            line.starts_with("FAIL independent ")
+                && (line.contains(" acceptance contract:")
+                    || line.contains(" integration contract:"))
+        })
     {
         return "check_exit";
     }

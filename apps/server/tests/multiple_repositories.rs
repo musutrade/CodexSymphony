@@ -16,7 +16,7 @@ async fn fixture() -> (PgPool, Router) {
         .await
         .unwrap();
     sqlx::migrate!("../../migrations").run(&pool).await.unwrap();
-    sqlx::query("TRUNCATE business_request,business_event,requirement_revision,requirement,repository RESTART IDENTITY CASCADE").execute(&pool).await.unwrap();
+    sqlx::query("TRUNCATE github_repository,business_request,business_event,requirement_revision,requirement,repository RESTART IDENTITY CASCADE").execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO execution_control(id) VALUES(1) ON CONFLICT DO NOTHING")
         .execute(&pool)
         .await

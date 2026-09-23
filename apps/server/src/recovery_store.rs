@@ -111,7 +111,7 @@ pub(crate) async fn allowed(
     if !crate::group_queue_store::authorized(tx, id).await? {
         return Ok(false);
     }
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement r JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN repository p ON p.id=COALESCE((v.document->>'repository_id')::bigint,1) WHERE r.id=$1 AND r.revision=$2 AND r.state IN ('Running','Submitted') AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete AND c.incarnation=$3 AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>p.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run WHERE requirement_id=r.id AND NOT quiescent) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run a ON a.id=b.run_id WHERE a.requirement_id=r.id AND NOT b.resolved))")
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement r JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN repository p ON p.id=COALESCE((v.document->>'repository_id')::bigint,1) WHERE r.id=$1 AND r.revision=$2 AND r.state IN ('Running','Submitted') AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete AND c.incarnation=$3 AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>p.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run WHERE requirement_id=r.id AND NOT quiescent) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run a ON a.id=b.run_id WHERE a.requirement_id=r.id AND NOT b.resolved))")
         .bind(id).bind(revision).bind(incarnation).fetch_one(&mut **tx).await
 }
 
@@ -252,7 +252,7 @@ async fn repair_context(
     let balance = budget_store::balance(tx, id).await?;
     let (source, failure, ordinal, limit) = reservation;
     let contract: Value = sqlx::query_scalar(
-        "SELECT document FROM requirement_revision WHERE requirement_id=$1 AND revision=$2",
+        "SELECT document FROM execution_revision WHERE requirement_id=$1 AND revision=$2",
     )
     .bind(id)
     .bind(revision)
@@ -301,6 +301,8 @@ pub(crate) async fn transfer(tx: &mut Tx<'_>, intent: &budget_store::CallIntent)
 /// Preserve the original association before redirecting completion/first-call
 /// settlement to this successor. No new ordinal or resource hold is created.
 pub(crate) async fn link_resume(tx: &mut Tx<'_>, run: &str) -> Result<()> {
+    sqlx::query("INSERT INTO linked_run_input(run_id,failure_id,document) SELECT $1,i.failure_id,i.document FROM run_workspace w JOIN linked_run_input i ON i.run_id=w.restored_from WHERE w.run_id=$1 ON CONFLICT DO NOTHING")
+        .bind(run).execute(&mut **tx).await?;
     sqlx::query("INSERT INTO repair_run_history(requirement_id,ordinal,source_run,successor_run) SELECT p.requirement_id,p.ordinal,p.repair_run_id,$1 FROM repair_reservation p JOIN run_workspace w ON w.restored_from=p.repair_run_id WHERE w.run_id=$1 AND p.status='started' ON CONFLICT DO NOTHING")
         .bind(run).execute(&mut **tx).await?;
     sqlx::query("UPDATE repair_reservation p SET repair_run_id=$1 FROM run_workspace w WHERE w.run_id=$1 AND w.restored_from=p.repair_run_id AND p.status='started'")

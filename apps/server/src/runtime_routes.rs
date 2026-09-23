@@ -47,7 +47,7 @@ impl Deployment {
         crate::group_queue_store::materialize(pool).await?;
         // An occupied requirement always wins, including pause/CI/manual blocks.
         // Never scan past the queue head to find a configured repository.
-        let row: Option<(i64, i64, i64)> = sqlx::query_as("SELECT r.id,r.revision,r.repository_id::bigint FROM requirement r WHERE r.id=COALESCE((SELECT requirement_id FROM execution_control WHERE id=1),(SELECT requirement_id FROM execution_queue ORDER BY queued_at,queue_key,item_order LIMIT 1))")
+        let row: Option<(i64, i64, i64)> = sqlx::query_as("SELECT r.id,r.revision,COALESCE((v.document->>'repository_id')::bigint,r.repository_id::bigint) FROM requirement r JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=r.revision WHERE r.id=COALESCE((SELECT requirement_id FROM execution_control WHERE id=1),(SELECT requirement_id FROM execution_queue ORDER BY queued_at,queue_key,item_order LIMIT 1))")
             .fetch_optional(pool).await?;
         let Some((requirement, revision, repository)) = row else {
             return Ok(None);
@@ -79,7 +79,7 @@ impl Route {
     }
 
     async fn matches(&self, pool: &PgPool, requirement: i64, repository: i64) -> Result<bool> {
-        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement r JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN repository p ON p.id=r.repository_id WHERE r.id=$1 AND p.id=$2 AND p.version=$3 AND (v.document->>'repository_version')::bigint=$3 AND (p.document->>'github_repository_id')::bigint=$4 AND p.document->>'remote'=$5 AND p.document->>'base_branch'=$6 AND v.document->'repository'=p.document)")
+        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement r JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN repository p ON p.id=(v.document->>'repository_id')::bigint WHERE r.id=$1 AND p.id=$2 AND p.version=$3 AND (v.document->>'repository_version')::bigint=$3 AND (p.document->>'github_repository_id')::bigint=$4 AND p.document->>'remote'=$5 AND p.document->>'base_branch'=$6 AND v.document->'repository'=p.document)")
             .bind(requirement).bind(repository).bind(self.version).bind(self.github_repository_id).bind(&self.remote).bind(&self.base_branch).fetch_one(pool).await?)
     }
 }

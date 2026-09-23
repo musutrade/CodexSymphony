@@ -176,3 +176,10 @@ pub mod integration_process;
 mod integration_retry;
 mod integration_store;
 pub mod integration_worker;
+
+pub mod linked_failure_store;
+pub mod linked_integration;
+pub mod linked_repair;
+pub mod linked_repair_acceptance;
+pub mod linked_repair_source;
+pub mod linked_repair_worker;

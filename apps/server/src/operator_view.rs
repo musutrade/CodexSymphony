@@ -42,11 +42,7 @@ async fn environment(
 }
 
 async fn timeline(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Result<Value> {
-    let mut recoveries: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',f.event_key,'phase',f.phase,'decision',f.decision,'reason',f.reason,'log_ref',f.facts->>'log_ref','candidate_sha',f.facts->>'candidate_sha','attempts',COALESCE(t.attempts,0),'next_attempt_at',t.next_attempt_at) FROM recovery_failure f LEFT JOIN recovery_retry t USING(event_key) WHERE f.requirement_id=$1 ORDER BY f.created_at,f.event_key")
-        .bind(id).fetch_all(&mut **tx).await?;
-    let merges: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',action_key,'phase',CASE WHEN merged_sha IS NULL THEN 'merge' ELSE 'post_merge' END,'decision',state,'reason',COALESCE(blocker,'waiting for confirmed merge and applicable acceptance'),'log_ref','merge-operation:'||action_key,'candidate_sha',COALESCE(merged_sha,intent->>'head'),'attempts',jsonb_array_length(receipts),'next_attempt_at',next_attempt_at) FROM merge_operation WHERE requirement_id=$1 ORDER BY created_at,action_key")
-        .bind(id).fetch_all(&mut **tx).await?;
-    recoveries.extend(merges);
+    let recoveries = recovery_history(tx, id).await?;
     let runs:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'revision',revision,'state',state,'phase',phase,'blocker',blocker,'quiescent',quiescent,'created_at',created_at,'waiting',waiting::text) FROM agent_run WHERE requirement_id=$1 ORDER BY created_at,id")
         .bind(id).fetch_all(&mut **tx).await?;
     let validations:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'revision',revision,'source_run_id',source_run_id,'candidate_sha',candidate_sha,'stage',stage,'result',result,'failure',failure) FROM candidate_validation WHERE requirement_id=$1 ORDER BY revision,id")
@@ -62,6 +58,23 @@ async fn timeline(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Re
     Ok(
         json!({"runs":runs,"recoveries":recoveries,"validations":validations,"external":external,"questions":questions,"events":events,"materials":materials}),
     )
+}
+async fn recovery_history(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+) -> Result<Vec<Value>> {
+    let mut recoveries: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',f.event_key,'phase',f.phase,'decision',f.decision,'reason',f.reason,'log_ref',f.facts->>'log_ref','candidate_sha',f.facts->>'candidate_sha','attempts',COALESCE(t.attempts,0),'next_attempt_at',t.next_attempt_at) FROM recovery_failure f LEFT JOIN recovery_retry t USING(event_key) WHERE f.requirement_id=$1 ORDER BY f.created_at,f.event_key")
+        .bind(id).fetch_all(&mut **tx).await?;
+    let merges: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',action_key,'phase',CASE WHEN merged_sha IS NULL THEN 'merge' ELSE 'post_merge' END,'decision',state,'reason',COALESCE(blocker,'waiting for confirmed merge and applicable acceptance'),'log_ref','merge-operation:'||action_key,'candidate_sha',COALESCE(merged_sha,intent->>'head'),'attempts',jsonb_array_length(receipts),'next_attempt_at',next_attempt_at) FROM merge_operation WHERE requirement_id=$1 ORDER BY created_at,action_key")
+        .bind(id).fetch_all(&mut **tx).await?;
+    recoveries.extend(merges);
+    let linked: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',f.id,'phase','linked_repair','decision',f.state,'reason',COALESCE(f.blocker,'original-item authorized repair'),'log_ref','linked-failure:'||f.id,'candidate_sha',f.baseline,'original_merge',f.merge_key,'original_integration',f.integration_id,'repair_delivery',f.repair_delivery,'final_version',f.final_version,'attempts',COALESCE(p.ordinal,0)) FROM linked_failure f LEFT JOIN repair_reservation p ON p.linked_failure_id=f.id WHERE f.requirement_id=$1 ORDER BY f.created_at")
+        .bind(id).fetch_all(&mut **tx).await?;
+    recoveries.extend(linked);
+    let integrations: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('event_key',id,'phase','integration','decision',state,'reason',blocker,'log_ref','integration-validation:'||id,'candidate_sha',binding#>>'{versions,0,candidate,sha}','version_set',binding->'versions','attempts',1,'next_attempt_at',next_attempt_at) FROM integration_validation WHERE requirement_id=$1 ORDER BY created_at,id")
+        .bind(id).fetch_all(&mut **tx).await?;
+    recoveries.extend(integrations);
+    Ok(recoveries)
 }
 async fn metrics(pool: &PgPool, id: i64) -> Result<Value> {
     let mut result:Value=sqlx::query_scalar("SELECT jsonb_build_object('model_calls',count(*),'input',CASE WHEN count(*)=count(usage->>'input') THEN SUM((usage->>'input')::bigint) END,'cached',CASE WHEN count(*)=count(usage->>'cached') THEN SUM((usage->>'cached')::bigint) END,'output',CASE WHEN count(*)=count(usage->>'output') THEN SUM((usage->>'output')::bigint) END,'repair_count',(SELECT count(*) FROM repair_reservation WHERE requirement_id=$1),'human_seconds',(SELECT SUM((waiting->>'human_seconds')::bigint) FROM agent_run WHERE requirement_id=$1),'interventions',(SELECT count(*) FROM operator_intervention WHERE requirement_id=$1)) FROM model_call WHERE requirement_id=$1")

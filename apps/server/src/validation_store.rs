@@ -27,7 +27,7 @@ pub async fn create(
         return Ok(false);
     }
     let mut tx = run_store::lock(pool).await?;
-    let contract: Option<Value> = sqlx::query_scalar("SELECT v.document->'contract' FROM agent_run a JOIN requirement_revision v ON v.requirement_id=a.requirement_id AND v.revision=a.revision JOIN workspace_snapshot s ON s.run_id=a.id WHERE a.id=$1 AND a.requirement_id=$2 AND a.revision=$3 AND a.state='Succeeded' AND a.quiescent AND s.candidate AND s.manifest->>'head'=$4")
+    let contract: Option<Value> = sqlx::query_scalar("SELECT v.document->'contract' FROM agent_run a JOIN execution_revision v ON v.requirement_id=a.requirement_id AND v.revision=a.revision JOIN workspace_snapshot s ON s.run_id=a.id WHERE a.id=$1 AND a.requirement_id=$2 AND a.revision=$3 AND a.state='Succeeded' AND a.quiescent AND s.candidate AND s.manifest->>'head'=$4")
         .bind(source_run).bind(requirement).bind(revision).bind(&candidate.sha).fetch_optional(&mut *tx).await?;
     let Some(contract) = contract else {
         return Ok(false);
@@ -61,7 +61,7 @@ fn decode(error: serde_json::Error) -> sqlx::Error {
 
 pub async fn begin(pool: &PgPool, id: &str) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
-    let result = sqlx::query("UPDATE candidate_validation v SET stage='validation' WHERE v.id=$1 AND v.stage='declaration' AND v.result='pending' AND (NOT EXISTS(SELECT 1 FROM repair_authorization auth WHERE auth.requirement_id=v.requirement_id AND auth.policy='bounded_v1') OR EXISTS(SELECT 1 FROM requirement r JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision rev ON rev.requirement_id=r.id AND rev.revision=r.revision JOIN repository repo ON repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) WHERE r.id=v.requirement_id AND r.revision=v.revision AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1)))")
+    let result = sqlx::query("UPDATE candidate_validation v SET stage='validation' WHERE v.id=$1 AND v.stage='declaration' AND v.result='pending' AND (NOT EXISTS(SELECT 1 FROM repair_authorization auth WHERE auth.requirement_id=v.requirement_id AND auth.policy='bounded_v1') OR EXISTS(SELECT 1 FROM requirement r JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision rev ON rev.requirement_id=r.id AND rev.revision=r.revision JOIN repository repo ON repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) WHERE r.id=v.requirement_id AND r.revision=v.revision AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1)))")
         .bind(id).execute(&mut *tx).await?;
     tx.commit().await?;
     Ok(result.rows_affected() == 1)

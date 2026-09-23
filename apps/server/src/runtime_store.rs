@@ -17,7 +17,7 @@ pub(crate) fn require(condition: bool, message: &str) -> Result<()> {
 
 /// Called while holding the same advisory lock as pause, revocation and Broker.
 pub(crate) async fn allowed(tx: &mut Tx<'_>, key: &RunKey) -> Result<bool> {
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND r.state='Running' AND r.revision=a.revision AND NOT a.stop_requested AND NOT a.quiescent AND a.blocker IS NULL AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>p.revoked_through_version AND p.id=COALESCE((v.document->>'repository_id')::bigint,1) AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM runtime_session s WHERE s.run_id=a.id AND s.end_kind IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run old ON old.id=b.run_id WHERE old.requirement_id=r.id AND NOT b.resolved))")
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND r.state='Running' AND r.revision=a.revision AND NOT a.stop_requested AND NOT a.quiescent AND a.blocker IS NULL AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>p.revoked_through_version AND p.id=COALESCE((v.document->>'repository_id')::bigint,1) AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM runtime_session s WHERE s.run_id=a.id AND s.end_kind IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run old ON old.id=b.run_id WHERE old.requirement_id=r.id AND NOT b.resolved))")
         .bind(&key.run_id).bind(&key.request_id).bind(&key.incarnation).fetch_one(&mut **tx).await
 }
 
@@ -239,7 +239,7 @@ pub async fn stop(pool: &PgPool, key: &RunKey, reason: &str) -> Result<()> {
     run_store::block(pool, &key.run_id, reason).await
 }
 pub async fn input(pool: &PgPool, key: &RunKey) -> Result<String> {
-    let document:Value=sqlx::query_scalar("SELECT v.document FROM requirement_revision v JOIN agent_run a ON a.requirement_id=v.requirement_id AND a.revision=v.revision WHERE a.id=$1")
+    let document:Value=sqlx::query_scalar("SELECT COALESCE(i.document,v.document) FROM requirement_revision v JOIN agent_run a ON a.requirement_id=v.requirement_id AND a.revision=v.revision LEFT JOIN linked_run_input i ON i.run_id=a.id WHERE a.id=$1")
         .bind(&key.run_id).fetch_one(pool).await?;
     // Answers belong to the reviewed business revision. A subsequent pause or
     // storage recovery changes the Run again without invalidating those answers.
