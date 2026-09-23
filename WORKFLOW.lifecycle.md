@@ -38,7 +38,9 @@ hooks:
     printf '\n.symphony-handoff.json\n.agent-cargo/\n.agent-tmp/\n' >> .git/info/exclude
   before_run: |
     set -eu
-    export PATH=/home/gem/.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin:$PATH
+    codex_release=$(sed -n 's/^codex-cli \([0-9][0-9.]*\)$/\1/p' codex-version.lock)
+    test -n "$codex_release"
+    export PATH="/home/gem/.codex/packages/standalone/releases/${codex_release}-x86_64-unknown-linux-musl/bin:$PATH"
     test "$(codex --version)" = "$(cat codex-version.lock)"
     command -v cargo >/dev/null
     command -v node >/dev/null
@@ -121,6 +123,10 @@ unprovisioned environment; confirm the current fixture using the commands below.
 
 Use `python3 /opt/symphony-env/run.py COMMAND ...` to inject the supplied
 project database URLs; this wrapper executes the ordinary command directly.
+For the required full Rust suite, use `python3 /opt/symphony-env/workspace_tests.py`.
+It recreates only the disposable test fixture, checks its resource policy,
+sets a fresh short temporary directory and runs the same locked Cargo command
+with serial Rust test scheduling. Preserve its output and exit status.
 Run Cargo tests, including the real Runtime integration, in this same trusted
 development environment. No reviewed binary installation, source manifest,
 backend_tests.py or runtime_product_acceptance.py receipt is required.
@@ -153,7 +159,8 @@ Material UI specified in chapter 23. Avoid implementing later phases implicitly.
 
 Run the Issue's acceptance commands and the checks relevant to changed code.
 Once a root Cargo workspace exists, Rust changes require cargo fmt --all -- --check,
-cargo test --workspace --locked, and cargo clippy --workspace --all-targets --locked
+the full `cargo test --workspace --locked` through the prepared fixture entry,
+and cargo clippy --workspace --all-targets --locked
 -- -D warnings, unless a reviewed repository policy defines a more precise scope.
 Frontend changes use the checked-in package scripts and lockfile. Do not fabricate
 commands, passing results, coverage, or evidence for absent code and infrastructure.

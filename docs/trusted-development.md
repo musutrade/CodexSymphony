@@ -14,7 +14,7 @@
 
 部署可以使用专用账号、虚拟机或单个预配置环境边界。当前主机复用已有环境级文件系统边界，隐藏控制器/GitHub/Gate 状态；内部不再叠加 Codex 命令沙箱或测试沙箱。这是部署选择，不是要求每个项目开发执行适配器。
 
-原 `execution_readiness`、`product_preparation_acceptance`、`runtime_product_acceptance`、`backend_tests` 等逐测试宿主入口退役。真实 Runtime 用 `cargo test --workspace --locked --test runtime_real` 验证，完整后端使用 `cargo test --workspace --locked`。本仓库的 `run.py` 仅注入测试数据库配置并直接执行命令。模型协议测试使用本地脚本化 provider，不产生外部模型调用。
+原 `execution_readiness`、`product_preparation_acceptance`、`runtime_product_acceptance`、`backend_tests` 等逐测试宿主入口退役。真实 Runtime 用 `cargo test --workspace --locked --test runtime_real` 验证；完整后端统一运行 `python3 /opt/symphony-env/workspace_tests.py`，由它核对锁定 Codex 版本、重建一次性 test 数据库、检查资源限额并串行执行 `cargo test --workspace --locked`。通用 `run.py` 仍只注入数据库配置并直接执行命令。模型协议测试使用本地脚本化 provider，不产生外部模型调用。
 
 项目接入需列出实际依赖和测试命令，开工前跑相关 smoke；不要因新增测试而新增宿主执行协议。普通环境失败与代码失败继续区分，历史重试、预算、工作区和失败证据不清零。旧文档和已关闭 Issue 的验收结果保留历史事实，不再定义当前执行要求。
 

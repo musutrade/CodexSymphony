@@ -7,6 +7,13 @@ WORKSPACES=BASE.parent/'workspaces'
 TEMPLATE=BASE/'environment-template'
 IMAGE='sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777'
 
+def fixture_policy():
+    return json.loads((TEMPLATE/'fixture-policy.json').read_text())
+
+def memory_bytes(role):
+    setting=fixture_policy()[role+'_memory']
+    return int(setting[:-1])*(1024**3 if setting.endswith('g') else 1024**2)
+
 def run(*args):
     result=subprocess.run(args,check=True,capture_output=True,text=True,timeout=90)
     return result.stdout.strip()
@@ -67,13 +74,15 @@ def main(workspace):
         shutil.copytree(TEMPLATE/'arc-admin',provision/'arc-admin')
     (provision/'requirements.toml').write_text('# Trusted development: no managed command network policy.\n')
     broker_changed=False
-    for name in ['broker.py','preflight.py','client/verify.py','client/run.py']:
+    for name in ['broker.py','fixture-policy.json','preflight.py','client/verify.py','client/run.py',
+                 'client/workspace_tests.py']:
         destination=provision/name
         destination.parent.mkdir(parents=True,exist_ok=True)
         content=adapt((TEMPLATE/name).read_text())
         if not destination.exists() or destination.read_text()!=content:
             pending=destination.with_suffix('.new');pending.write_text(content);pending.replace(destination)
             broker_changed=True
+    policy=fixture_policy()
     known={}
     names=run('docker','ps','-a','--format','{{.Names}}').splitlines()
     for role,last in [('test','2'),('dev','3')]:
@@ -81,7 +90,9 @@ def main(workspace):
         if name not in names:
             args=['docker','run','-d','--restart','unless-stopped','--name',name,'--label','codexsymphony.fixture='+label+'-'+role,
                   '--network',network,'--ip',subnet+'.'+last,'--user','postgres','--cap-drop','ALL',
-                  '--security-opt','no-new-privileges','--memory','512m','--cpus','1',
+                  '--security-opt','no-new-privileges','--memory',policy[role+'_memory'],
+                  '--memory-swap',policy[role+'_memory_swap'],
+                  '--cpus',policy['cpus'],
                   '-e','POSTGRES_USER='+user,'-e','POSTGRES_PASSWORD='+user,'-e','POSTGRES_DB='+user]
             if role=='test': args+=['--tmpfs','/var/lib/postgresql/data:uid=70,gid=70,mode=0700']
             else:
@@ -93,6 +104,13 @@ def main(workspace):
         state=json.loads(run('docker','inspect',name))[0]
         assert state['Image']==IMAGE and state['Config']['Labels'].get('codexsymphony.fixture')==label+'-'+role
         assert state['NetworkSettings']['Networks'][network]['IPAMConfig']['IPv4Address']==subnet+'.'+last
+        requested=memory_bytes(role)
+        if state['HostConfig']['Memory']!=requested:
+            run('docker','update','--memory',policy[role+'_memory'],
+                '--memory-swap',policy[role+'_memory_swap'],name)
+            state=json.loads(run('docker','inspect',name))[0]
+            if state['HostConfig']['Memory']!=requested:
+                raise RuntimeError('Fixture memory limit was not applied: '+name)
         known[role]=state['Id']
         if not state['State']['Running']:run('docker','start',name)
         wait_ready(name,user)
