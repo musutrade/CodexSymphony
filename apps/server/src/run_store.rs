@@ -157,7 +157,7 @@ pub(crate) async fn claim_allowed(tx: &mut Tx<'_>, incarnation: &str) -> Result<
 }
 
 async fn authorized(tx: &mut Tx<'_>, id: i64, revision: i64) -> Result<bool> {
-    let allowed: Option<bool> = sqlx::query_scalar("SELECT NOT (r.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > r.revoked_through_version FROM requirement_revision v CROSS JOIN repository r WHERE v.requirement_id=$1 AND v.revision=$2 AND r.id=COALESCE((v.document->>'repository_id')::bigint,1)")
+    let allowed: Option<bool> = sqlx::query_scalar("SELECT NOT (r.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > r.revoked_through_version FROM execution_revision v CROSS JOIN repository r WHERE v.requirement_id=$1 AND v.revision=$2 AND r.id=COALESCE((v.document->>'repository_id')::bigint,1)")
         .bind(id).bind(revision).fetch_optional(&mut **tx).await?;
     Ok(allowed == Some(true))
 }
@@ -168,11 +168,13 @@ pub(crate) async fn insert_run(
     revision: i64,
     launch: &Launch,
 ) -> Result<()> {
-    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,model) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'Created',(SELECT document#>>'{repository,model}' FROM requirement_revision WHERE requirement_id=$2 AND revision=$3))")
+    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,model) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'Created',(SELECT document#>>'{repository,model}' FROM execution_revision WHERE requirement_id=$2 AND revision=$3))")
         .bind(&launch.key.run_id).bind(id).bind(revision).bind(&launch.key.incarnation)
         .bind(&launch.key.request_id).bind(&launch.workspace).bind(&launch.workspace_identity)
         .bind(sqlx::types::Json(launch))
         .execute(&mut **tx).await?;
+    sqlx::query("INSERT INTO linked_run_input(run_id,failure_id,document) SELECT $1,id,document FROM linked_failure WHERE requirement_id=$2 AND revision=$3 AND state='reserved' ORDER BY created_at DESC,id DESC LIMIT 1 ON CONFLICT DO NOTHING")
+        .bind(&launch.key.run_id).bind(id).bind(revision).execute(&mut **tx).await?;
     Ok(())
 }
 
@@ -210,7 +212,7 @@ pub async fn actions_allowed(pool: &PgPool, key: &RunKey) -> Result<bool> {
 }
 
 pub(crate) async fn actions_allowed_in(tx: &mut Tx<'_>, key: &RunKey) -> Result<bool> {
-    let result: Option<bool> = sqlx::query_scalar("SELECT c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT a.stop_requested AND NOT a.quiescent AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > p.revoked_through_version FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND p.id=COALESCE((v.document->>'repository_id')::bigint,1)")
+    let result: Option<bool> = sqlx::query_scalar("SELECT c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT a.stop_requested AND NOT a.quiescent AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint > p.revoked_through_version FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND p.id=COALESCE((v.document->>'repository_id')::bigint,1)")
         .bind(&key.run_id).bind(&key.request_id).bind(&key.incarnation).fetch_optional(&mut **tx).await?;
     Ok(result == Some(true))
 }

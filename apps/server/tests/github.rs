@@ -1488,3 +1488,38 @@ async fn exact_commit_fetch_rejects_malformed_identity_and_keeps_credentials_out
     assert!(!repository.exists());
     assert!(!f.root.join(".gitconfig").exists());
 }
+
+#[tokio::test]
+async fn terminal_pr_history_does_not_starve_active_delivery_or_skip_cancel_cleanup() {
+    let pool = database().await;
+    let p = action_policy();
+    github_store::configure(&pool, &p, 1).await.unwrap();
+    github_store::link(&pool, 99, 1, 1).await.unwrap();
+    for (state, cancel, cleanup, expected) in [
+        ("Running", false, false, 1),
+        ("Submitted", false, false, 1),
+        ("Done", false, false, 0),
+        ("Cancelled", true, false, 1),
+        ("Cancelled", true, true, 0),
+        ("Failed", false, false, 1),
+    ] {
+        sqlx::query(
+            "UPDATE requirement SET state=$1,cancel_requested=$2,cleanup_complete=$3 WHERE id=1",
+        )
+        .bind(state)
+        .bind(cancel)
+        .bind(cleanup)
+        .execute(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            github_store::due_prs(&pool, github_service::now())
+                .await
+                .unwrap()
+                .len(),
+            expected
+        );
+        assert_eq!(count(&pool, "SELECT count(*) FROM github_pr").await, 1);
+    }
+    pool.close().await;
+}

@@ -30,6 +30,11 @@ pub async fn tick(
     plan: &Plan,
 ) -> Result<bool> {
     if let Some(saved) = current(pool).await? {
+        let repairing: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM linked_failure WHERE integration_id=$1 AND (state IN ('reserved','merged','complete') OR (state='observed' AND baseline IS NOT NULL)))")
+            .bind(&saved.id).fetch_one(pool).await?;
+        if repairing {
+            return Ok(false);
+        }
         advance(pool, root, supervisor, incarnation, saved).await?;
         return Ok(true);
     }

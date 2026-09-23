@@ -37,6 +37,15 @@ fn git(path: &Path, args: &[&str]) {
 async fn fixture(mode: &str, two: bool) -> Fixture {
     let (pool, _, _) = groups::fixture().await;
     let (root, repo, mut plan) = source::fixture();
+    if mode == "linked" {
+        std::fs::write(
+            &plan.entry,
+            "#!/bin/sh\necho 'AssertionError: integration source invariant'\nexit 1\n",
+        )
+        .unwrap();
+        plan.entry_sha256 =
+            codexsymphony_server::validation::sha256(std::fs::read(&plan.entry).unwrap());
+    }
     if mode == "infrastructure" {
         std::fs::write(&plan.entry, "#!/bin/sh\nif [ ! -f \"$(dirname \"$0\")/service-ready\" ]; then echo service unavailable; exit 1; fi\ncat source\n").unwrap();
         plan.entry_sha256 =
@@ -896,4 +905,154 @@ async fn install_storage(f: &Fixture) {
     codexsymphony_server::storage_store::install(&f.pool, &config)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn native_integration_failure_persists_once_without_changing_kind_or_releasing_owner() {
+    let f = fixture("linked", true).await;
+    complete(&f, "failed").await;
+    let (id, original): (String, Value) = sqlx::query_as("SELECT id,evidence FROM linked_failure")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    tick(&f).await;
+    tick(&f).await;
+    let (count, evidence): (i64, Value) = sqlx::query_as(
+        "SELECT (SELECT count(*) FROM linked_failure),evidence FROM linked_failure WHERE id=$1",
+    )
+    .bind(id)
+    .fetch_one(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(count, 1);
+    assert_eq!(evidence, original);
+    assert_eq!(counts(&f).await, (0, 0, 0));
+    let (kind,owner):(String,Option<i64>)=sqlx::query_as("SELECT i.input#>>'{child,kind}',c.requirement_id FROM group_execution_item i JOIN execution_control c ON c.requirement_id=i.requirement_id").fetch_one(&f.pool).await.unwrap();
+    assert_eq!(kind, "validation_only");
+    assert!(owner.is_some());
+}
+
+// Adapter-boundary test: the merged candidate is supplied locally here. Real
+// GitHub merge/PR evidence is separately required by the GH-88 B05/B06 runbook.
+#[tokio::test]
+async fn serial_repair_versions_rerun_all_checks_and_preserve_failed_combinations() {
+    let f = fixture("linked", true).await;
+    install_storage(&f).await;
+    complete(&f, "failed").await;
+    let original: Value =
+        sqlx::query_scalar("SELECT result FROM integration_validation ORDER BY created_at LIMIT 1")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    let mut expected: Value = sqlx::query_scalar("SELECT binding FROM integration_validation")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    for repository in [1_i64, 2] {
+        let (failed, job): (String, Value) = sqlx::query_as(
+            "SELECT id,job FROM integration_validation ORDER BY created_at DESC,id DESC LIMIT 1",
+        )
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+        let index = job["binding"]["versions"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .position(|v| v["repository_id"] == repository)
+            .unwrap();
+        let checkout = Path::new(job["checkouts"][index].as_str().unwrap());
+        std::fs::write(
+            checkout.join("source"),
+            format!("repaired repository {repository}"),
+        )
+        .unwrap();
+        git(
+            checkout,
+            &[
+                "-c",
+                "user.name=repair fixture",
+                "-c",
+                "user.email=fixture@example.com",
+                "commit",
+                "-am",
+                "local adapter candidate",
+            ],
+        );
+        let candidate = validation_runner::candidate(checkout).unwrap();
+        expected["versions"][index]["candidate"] = json!(candidate);
+        sqlx::query("UPDATE linked_failure SET state='merged',repository_id=$2,final_version=$3 WHERE integration_id=$1").bind(&failed).bind(repository).bind(json!({"candidate":candidate})).execute(&f.pool).await.unwrap();
+        complete(&f, "failed").await;
+        let (latest,binding):(String,Value)=sqlx::query_as("SELECT id,binding FROM integration_validation ORDER BY created_at DESC,id DESC LIMIT 1").fetch_one(&f.pool).await.unwrap();
+        assert_ne!(latest, failed);
+        for i in 0..2 {
+            assert_eq!(
+                binding["versions"][i]["candidate"],
+                expected["versions"][i]["candidate"]
+            );
+        }
+        let original_saved: Value = sqlx::query_scalar(
+            "SELECT result FROM integration_validation ORDER BY created_at LIMIT 1",
+        )
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+        assert_eq!(original_saved, original);
+        assert_eq!(counts(&f).await, (0, 0, 0));
+    }
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM integration_validation")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 3);
+}
+
+#[tokio::test]
+async fn integration_supervisor_growth_uses_its_preallocated_hot_budget() {
+    let f = fixture("linked", true).await;
+    install_storage(&f).await;
+    let mut tx = f.pool.begin().await.unwrap();
+    sqlx::query("UPDATE storage_guard SET blocked=true")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    assert!(
+        !codexsymphony_server::storage_service::reserve_integration(&mut tx, "blocked-validation")
+            .await
+            .unwrap()
+    );
+    tx.rollback().await.unwrap();
+    complete(&f, "failed").await;
+    let id: String = sqlx::query_scalar("SELECT id FROM integration_validation")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    let allocated: i64 =
+        sqlx::query_scalar("SELECT allocated FROM storage_allocation WHERE request_id=$1")
+            .bind(format!("{id}-hot"))
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(allocated, 1 << 20);
+    let directory = f.root.join(&id);
+    for size in [4096, 131072] {
+        std::fs::write(directory.join("growth.log"), vec![b'x'; size]).unwrap();
+        codexsymphony_server::storage_cleanup::scan(&f.pool, 100)
+            .await
+            .unwrap();
+        let blocked: bool = sqlx::query_scalar("SELECT blocked FROM storage_guard")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+        assert!(!blocked);
+    }
+    let allocations: Vec<String> = sqlx::query_scalar(
+        "SELECT category FROM storage_allocation WHERE run_id=$1 ORDER BY category",
+    )
+    .bind(format!("{id}-repo-1"))
+    .fetch_all(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(allocations, vec!["workspace"]);
+    assert_eq!(counts(&f).await, (0, 0, 0));
 }

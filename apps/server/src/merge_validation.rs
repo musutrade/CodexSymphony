@@ -119,6 +119,20 @@ pub(crate) async fn execute(
     plan: Plan,
     required: Vec<String>,
 ) -> Result<ValidationEvidence> {
+    let evidence = collect(pool, intent, checkout, directory, plan, required.clone()).await?;
+    validation::verify(&evidence, &evidence.candidate, &evidence.trusted, &required)
+        .map_err(|error| format!("validation failed: {error:?}"))?;
+    Ok(evidence)
+}
+
+pub(crate) async fn collect(
+    pool: &PgPool,
+    intent: &Intent,
+    checkout: PathBuf,
+    directory: PathBuf,
+    plan: Plan,
+    _required: Vec<String>,
+) -> Result<ValidationEvidence> {
     let stop = StopOnDrop(Arc::new(AtomicBool::new(false)));
     let flag = stop.0.clone();
     let mut task = tokio::task::spawn_blocking(move || {
@@ -136,8 +150,6 @@ pub(crate) async fn execute(
             trusted,
             steps,
         };
-        validation::verify(&evidence, &evidence.candidate, &evidence.trusted, &required)
-            .map_err(|error| format!("post_merge validation failed: {error:?}"))?;
         Ok(evidence)
     });
     loop {

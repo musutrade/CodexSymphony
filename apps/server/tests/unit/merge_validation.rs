@@ -49,6 +49,17 @@ async fn checkout_reuse_checks_head_and_invalid_fetch_never_certifies_source() {
             .unwrap(),
         path
     );
+    let error = execute(
+        &pool,
+        &intent,
+        path.clone(),
+        root.join("missing-required-check"),
+        plan(&pool, &intent).await.unwrap(),
+        vec!["missing-required-check".into()],
+    )
+    .await
+    .unwrap_err();
+    assert!(error.to_string().contains("validation failed"));
     // A missing/invalid remote object must remain an error; never use the parent HEAD.
     assert!(
         checkout(&pool, &mut client, &root, &intent, "invalid-object", 100)

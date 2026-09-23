@@ -57,7 +57,7 @@ async fn fixture() -> PgPool {
       INSERT INTO requirement_budget(requirement_id,limits) VALUES(1,'{\"tokens\":100,\"turns\":10,\"model_seconds\":100}');
       INSERT INTO budget_authorization(requirement_id,version,request_id,actor,reason,delta,limits) SELECT 1,1,'initial','local-user','review',limits,limits FROM requirement_budget;
       INSERT INTO execution_control(id,requirement_id,incarnation,recovery_complete) VALUES(1,1,'boot',true) ON CONFLICT(id) DO UPDATE SET requirement_id=1,incarnation='boot',recovery_complete=true,paused=false;
-      UPDATE storage_guard SET blocked=false,error=NULL;")
+      UPDATE storage_guard SET blocked=false,error=NULL,policy_version=NULL;")
         .execute(&pool).await.unwrap();
     new_run(&pool, "first", 1).await;
     pool

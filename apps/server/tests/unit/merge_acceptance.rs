@@ -43,3 +43,207 @@ async fn pause_at_acceptance_start_never_marks_execution_started() {
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[tokio::test]
+async fn retained_blocked_merge_can_record_one_original_failure() {
+    let (pool, root, intent, mut remote) = fixture::fixture().await;
+    crate::merge_worker::tick(&pool, &mut remote, 100)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE merge_operation SET state='blocked',merged_sha=$1,blocker='post_merge acceptance needs original-item review: post_merge binding rejected: ExitFailed'")
+        .bind(&intent.head)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let plan = merge_validation::plan(&pool, &intent).await.unwrap();
+    let mut evidence = fixture::evidence(&root, &root.join("repo"), &plan);
+    evidence.steps[0].exit_code = Some(1);
+    evidence.steps[0].output =
+        "FAIL independent source acceptance contract: marker must be ready".into();
+    evidence.steps[0].output_sha256 = validation::sha256(&evidence.steps[0].output);
+    assert!(crate::linked_repair::failed_code(
+        &evidence,
+        &["test".into()]
+    ));
+    for _ in 0..2 {
+        crate::linked_failure_store::post_merge(&pool, &intent, &evidence, &["test".into()])
+            .await
+            .unwrap();
+    }
+    let (count, blocker): (i64, String) =
+        sqlx::query_as("SELECT (SELECT count(*) FROM linked_failure),blocker FROM merge_operation")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(count, 1);
+    assert_eq!(blocker, "original-item linked repair pending");
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn blocked_merge_replays_original_failed_invocation() {
+    let _serial = crate::linked_repair_worker::tests::SERIAL.lock().await;
+    let (pool, root, _, config, _) = crate::linked_repair_worker::tests::setup().await;
+    sqlx::query("DELETE FROM linked_failure")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE merge_operation SET state='blocked',acceptance=NULL,blocker='post_merge acceptance needs original-item review: post_merge binding rejected: ExitFailed'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let intent: Intent = serde_json::from_value(
+        sqlx::query_scalar::<_, Value>("SELECT intent FROM merge_operation")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let mut client = crate::merge_test_support::client::client(&root);
+    let checkout =
+        merge_validation::checkout(&pool, &mut client, &root, &intent, &intent.head, 100)
+            .await
+            .unwrap();
+    let plan = config.validation.as_ref().unwrap();
+    let candidate = crate::validation_runner::candidate(&checkout).unwrap();
+    let trusted = plan.identity().unwrap();
+    let directory = root
+        .join("validations")
+        .join(format!("post-merge-{}", intent.action_key()));
+    std::fs::create_dir_all(&directory).unwrap();
+    let output = "FAIL independent source acceptance contract: marker must be ready\n";
+    let step = crate::validation::StepEvidence {
+        id: "test".into(),
+        command: vec!["/gate-entry".into()],
+        exit_code: Some(1),
+        output: output.into(),
+        output_sha256: validation::sha256(output),
+        log_ref: directory.join("step-0.log").to_string_lossy().into(),
+        consumer: "handoff".into(),
+        code_failure: true,
+    };
+    std::fs::write(directory.join("step-0.log"), output).unwrap();
+    std::fs::write(
+        directory.join("binding.json"),
+        serde_json::to_vec(&json!({"candidate":candidate,"identity":trusted})).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        directory.join("result.json"),
+        serde_json::to_vec(&vec![step]).unwrap(),
+    )
+    .unwrap();
+    sqlx::query("UPDATE requirement SET paused=true")
+        .execute(&pool)
+        .await
+        .unwrap();
+    reconcile_classified_failure(&pool, &mut client, &root, 100)
+        .await
+        .unwrap();
+    assert!(
+        execute_acceptance(&pool, &mut client, &root, &intent, &intent.head, 100)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    sqlx::query("UPDATE requirement SET paused=false")
+        .execute(&pool)
+        .await
+        .unwrap();
+    reconcile_classified_failure(&pool, &mut client, &root, 100)
+        .await
+        .unwrap();
+    let (count, blocker): (i64, String) =
+        sqlx::query_as("SELECT (SELECT count(*) FROM linked_failure),blocker FROM merge_operation")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(count, 1);
+    assert_eq!(blocker, "original-item linked repair pending");
+    reconcile_classified_failure(&pool, &mut client, &root, 100)
+        .await
+        .unwrap();
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM linked_failure")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+    sqlx::query("UPDATE merge_operation SET state='merged',acceptance_started=false,blocker=NULL")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        execute_acceptance(&pool, &mut client, &root, &intent, &intent.head, 100)
+            .await
+            .unwrap()
+            .is_none()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM linked_failure")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        1
+    );
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn accepted_linked_merge_returns_to_original_integration_without_completion() {
+    let _serial = crate::linked_repair_worker::tests::SERIAL.lock().await;
+    let (pool, root, _, config, id) = crate::linked_repair_worker::tests::setup().await;
+    let intent: Intent = serde_json::from_value(
+        sqlx::query_scalar::<_, Value>("SELECT intent FROM merge_operation")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let evidence = merge_validation::collect(
+        &pool,
+        &intent,
+        root.join("repo"),
+        root.join("accepted-new-source"),
+        config.validation.unwrap(),
+        vec!["test".into()],
+    )
+    .await
+    .unwrap();
+    crate::merge_test_support::reviewed_group(&pool, json!({"child":{"kind":"validation_only"}}))
+        .await;
+    sqlx::query("UPDATE linked_failure SET state='reserved',repair_delivery=$2 WHERE id=$1")
+        .bind(&id)
+        .bind(&intent.delivery_key)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut tx = crate::run_store::lock(&pool).await.unwrap();
+    finish_current(&mut tx, &intent, &evidence).await.unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT state FROM requirement")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        "Running"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM group_completion")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT state FROM linked_failure WHERE id=$1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        "merged"
+    );
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}

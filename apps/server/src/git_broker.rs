@@ -19,6 +19,33 @@ pub struct GitBroker {
 }
 
 impl GitBroker {
+    pub fn changed_paths(
+        &self,
+        workspace: &Workspace,
+        baseline: &str,
+        head: &str,
+    ) -> Result<Vec<String>> {
+        valid_oid(baseline)?;
+        valid_oid(head)?;
+        let bytes = self.git(
+            Some(workspace),
+            &[
+                "diff",
+                "--name-only",
+                "--no-renames",
+                "-z",
+                baseline,
+                head,
+                "--",
+            ],
+            b"",
+        )?;
+        bytes
+            .split(|b| *b == 0)
+            .filter(|s| !s.is_empty())
+            .map(|s| String::from_utf8(s.to_vec()).map_err(Into::into))
+            .collect()
+    }
     pub fn contains_commit(&self, baseline: &str, ancestor: &str) -> bool {
         if valid_oid(baseline).is_err() || valid_oid(ancestor).is_err() {
             return false;

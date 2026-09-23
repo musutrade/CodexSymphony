@@ -1,0 +1,702 @@
+{
+  "schema": "gh88-manual-acceptance/v1",
+  "readback": {
+    "path": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/audit/manual-takeover/readback-20260923T050122.json",
+    "sha256": "c9f1fe4db0bbbf3c9a3cec861c1ee1797700604eccb7e6896070967c1b2e5b86"
+  },
+  "group_readback": {
+    "path": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/audit/manual-takeover/final-group-review.json",
+    "sha256": "558607c95c215124448ac476409ccd2e173d228a998978baf21c974b18673b50"
+  },
+  "final_fixture_source": {
+    "source_sha": "9a34fc3bd83972ad9abb66f1690805d7bbba4326",
+    "source_tree": "7251e8108999d4cd61e89d235187c38587bb0cf0",
+    "binary_sha256": "9b3d95e539466506dececf20a70dfbfb69d5ee81923c20e0a6ec604c211417a0"
+  },
+  "b05_source_tree": "4d2f710f1ac5b9e696d1fb9ae7bcf12f7967b5ad",
+  "requirements": [
+    {
+      "id": 1,
+      "state": "Done",
+      "revision": 1,
+      "version": 7,
+      "paused": false,
+      "cancel_requested": false,
+      "cleanup_complete": false
+    },
+    {
+      "id": 2,
+      "state": "Cancelled",
+      "revision": 1,
+      "version": 4,
+      "paused": false,
+      "cancel_requested": true,
+      "cleanup_complete": true
+    },
+    {
+      "id": 3,
+      "state": "Cancelled",
+      "revision": 1,
+      "version": 2,
+      "paused": false,
+      "cancel_requested": true,
+      "cleanup_complete": true
+    },
+    {
+      "id": 4,
+      "state": "Cancelled",
+      "revision": 1,
+      "version": 2,
+      "paused": false,
+      "cancel_requested": true,
+      "cleanup_complete": true
+    },
+    {
+      "id": 5,
+      "state": "Done",
+      "revision": 1,
+      "version": 4,
+      "paused": false,
+      "cancel_requested": false,
+      "cleanup_complete": false
+    },
+    {
+      "id": 6,
+      "state": "Done",
+      "revision": 1,
+      "version": 7,
+      "paused": false,
+      "cancel_requested": false,
+      "cleanup_complete": false
+    },
+    {
+      "id": 7,
+      "state": "Done",
+      "revision": 1,
+      "version": 11,
+      "paused": false,
+      "cancel_requested": false,
+      "cleanup_complete": false
+    }
+  ],
+  "items": [
+    {
+      "requirement_id": 1,
+      "authorization_id": 1,
+      "child_id": "B05-C1",
+      "kind": "code_change"
+    },
+    {
+      "requirement_id": 2,
+      "authorization_id": 2,
+      "child_id": "B06-C1",
+      "kind": "code_change"
+    },
+    {
+      "requirement_id": 3,
+      "authorization_id": 2,
+      "child_id": "B06-C2",
+      "kind": "code_change"
+    },
+    {
+      "requirement_id": 4,
+      "authorization_id": 2,
+      "child_id": "B06-I",
+      "kind": "validation_only"
+    },
+    {
+      "requirement_id": 5,
+      "authorization_id": 3,
+      "child_id": "B06-R2-C1",
+      "kind": "code_change"
+    },
+    {
+      "requirement_id": 6,
+      "authorization_id": 3,
+      "child_id": "B06-R2-C2",
+      "kind": "code_change"
+    },
+    {
+      "requirement_id": 7,
+      "authorization_id": 3,
+      "child_id": "B06-R2-I",
+      "kind": "validation_only"
+    }
+  ],
+  "parent_execution": {
+    "completed": 3,
+    "items": [
+      {
+        "child_id": "B06-R2-C1",
+        "complete": true,
+        "depends_on": [],
+        "kind": "code_change",
+        "order": 1,
+        "owner": false,
+        "repository_id": 1,
+        "requirement_id": 5,
+        "state": "Done",
+        "waiting_reason": "confirmed_merge_and_acceptance"
+      },
+      {
+        "child_id": "B06-R2-C2",
+        "complete": true,
+        "depends_on": [
+          "B06-R2-C1"
+        ],
+        "kind": "code_change",
+        "order": 2,
+        "owner": false,
+        "repository_id": 2,
+        "requirement_id": 6,
+        "state": "Done",
+        "waiting_reason": "confirmed_merge_and_acceptance"
+      },
+      {
+        "child_id": "B06-R2-I",
+        "complete": true,
+        "depends_on": [
+          "B06-R2-C1",
+          "B06-R2-C2"
+        ],
+        "kind": "validation_only",
+        "order": 3,
+        "owner": false,
+        "repository_id": 1,
+        "requirement_id": 7,
+        "state": "Done",
+        "waiting_reason": "exact_version_validation_passed"
+      }
+    ],
+    "owner": null,
+    "parent_state": "Done",
+    "paused": false,
+    "total": 3
+  },
+  "repairs": [
+    {
+      "requirement_id": 1,
+      "ordinal": 1,
+      "linked_failure_id": "post-merge:2638386ff50a4b9a8bcb2e998555d602e5a7c61804e1161626df3ff1ee5705c3",
+      "source_validation_id": null,
+      "repair_run_id": "b5ff47c9-d7f8-49ea-a1de-653b7e0a069d",
+      "status": "succeeded",
+      "resources": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "resources_transferred": true
+    },
+    {
+      "requirement_id": 7,
+      "ordinal": 1,
+      "linked_failure_id": "integration:integration-9b345d6d-f89b-414f-b3fe-9553769fb432",
+      "source_validation_id": null,
+      "repair_run_id": "2f76dfbe-e438-4b08-863a-479e3a76634e",
+      "status": "succeeded",
+      "resources": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "resources_transferred": true
+    },
+    {
+      "requirement_id": 7,
+      "ordinal": 2,
+      "linked_failure_id": "integration:integration-48d5669e-cb10-44f1-b615-8590703fa008",
+      "source_validation_id": null,
+      "repair_run_id": "f5a4f264-891e-4ae7-82e9-f7a1867c8dc1",
+      "status": "succeeded",
+      "resources": {
+        "turns": 1,
+        "tokens": 100000,
+        "model_seconds": 900
+      },
+      "resources_transferred": true
+    }
+  ],
+  "merges": [
+    {
+      "action_key": "2638386ff50a4b9a8bcb2e998555d602e5a7c61804e1161626df3ff1ee5705c3",
+      "requirement_id": 1,
+      "state": "blocked",
+      "head": "01cc0376564bf8c559d9234b803c4e77b28b70f1",
+      "base": "6b6e2fb0e0f3f0bc2b56553b886290edfed6f36d",
+      "merged_sha": "416e143067abdffe82055fe32ac5a7ae536be149",
+      "blocker": "original-item linked repair pending"
+    },
+    {
+      "action_key": "1df007f9d1237b2c0a3b311033bb585157b026b3038946bb9787d05fa7d3ff71",
+      "requirement_id": 1,
+      "state": "complete",
+      "head": "343fba8443f3dc587a06b7d5001d1adb1694bbcf",
+      "base": "416e143067abdffe82055fe32ac5a7ae536be149",
+      "merged_sha": "2fe3b96ff733aa7ec84006196c703ea99d3989be",
+      "blocker": null
+    },
+    {
+      "action_key": "0c7944d2fee421120fd0febd44109cdb779380da5f99904fc96d2cbf71c78c3a",
+      "requirement_id": 2,
+      "state": "invalidated",
+      "head": "b955bf1687029b8de5d3a97e969966fd7768a25a",
+      "base": "2fe3b96ff733aa7ec84006196c703ea99d3989be",
+      "merged_sha": null,
+      "blocker": "PR identity changed"
+    },
+    {
+      "action_key": "1020207b5c100b9e9c2f6f62d891d50c479b019830a91f4cec5e10e8f7037edd",
+      "requirement_id": 5,
+      "state": "complete",
+      "head": "e51d2e5b657230c8540333eed430e32b8dcfca58",
+      "base": "2fe3b96ff733aa7ec84006196c703ea99d3989be",
+      "merged_sha": "7adb08c989a9d85f85f8250b07e6d4496bd5404a",
+      "blocker": null
+    },
+    {
+      "action_key": "368e08c818d538149f47a1c7af54470fa532a25abbc41937404f335dd1a6467f",
+      "requirement_id": 6,
+      "state": "complete",
+      "head": "ce7af31b6bbd294cbde309ab7e98d835612b0d73",
+      "base": "ff43f5a82f71c9479aba784a1babecefb30bcf4a",
+      "merged_sha": "a873effc313fa7f751e79edc88946879102f73c8",
+      "blocker": null
+    },
+    {
+      "action_key": "c9d90b1e90fef2008f28523632c68fbe3ade522187248de292268ed800265ae3",
+      "requirement_id": 7,
+      "state": "complete",
+      "head": "a21e4baf4e35e82adfbbfd2aebf726bbb3647d81",
+      "base": "7adb08c989a9d85f85f8250b07e6d4496bd5404a",
+      "merged_sha": "d8e16fd828e568e0dcf2f0de23ecd3afb904e138",
+      "blocker": null
+    },
+    {
+      "action_key": "41fab9e78a417952766fd93fbbd7a4c95bb3dea2934a705a4a5e75f85fcb2e01",
+      "requirement_id": 7,
+      "state": "complete",
+      "head": "5c936055be388e67645656d68a1f92ee4d371a26",
+      "base": "a873effc313fa7f751e79edc88946879102f73c8",
+      "merged_sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+      "blocker": null
+    }
+  ],
+  "linked_failures": [
+    {
+      "id": "post-merge:2638386ff50a4b9a8bcb2e998555d602e5a7c61804e1161626df3ff1ee5705c3",
+      "requirement_id": 1,
+      "repository_id": 1,
+      "state": "complete",
+      "baseline": "416e143067abdffe82055fe32ac5a7ae536be149",
+      "final_version": {
+        "pr": 8,
+        "evidence": {
+          "steps": [
+            {
+              "id": "merged-source-cargo-tests",
+              "output": "   Compiling a01-disposable v0.1.0 (/home/gem/.local/share/codexsymphony/gh88-product-acceptance/execution/workspaces/runs/merge-1df007f9d1237b2c0a3b311033bb585157b026b3038946bb9787d05fa7d3ff71-2fe3b96ff733aa7ec84006196c703ea99d3989be)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s\n     Running unittests src/lib.rs (/home/gem/.local/share/codexsymphony/gh88-product-acceptance/validation-runs/4b70b9d38d77420685207f006a71191b/target/debug/deps/a01_disposable-7368dee50524c500)\n\nrunning 1 test\ntest tests::automatic_merge_marker_returns_86 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n     Running tests/a01.rs (/home/gem/.local/share/codexsymphony/gh88-product-acceptance/validation-runs/4b70b9d38d77420685207f006a71191b/target/debug/deps/a01-1de89e19e1e7e050)\n\nrunning 1 test\ntest a01_marker ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n     Running tests/gh86_successor.rs (/home/gem/.local/share/codexsymphony/gh88-product-acceptance/validation-runs/4b70b9d38d77420685207f006a71191b/target/debug/deps/gh86_successor-34fd6e0f93081be1)\n\nrunning 1 test\ntest automatic_merge_marker_returns_86 ... ok\n\ntest result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests a01_disposable\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\nPASS independent committed contract gh88-b05.json\n",
+              "command": [
+                "/gate-entry",
+                "merged-test"
+              ],
+              "log_ref": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/execution/validations/post-merge-1df007f9d1237b2c0a3b311033bb585157b026b3038946bb9787d05fa7d3ff71/step-0.log",
+              "consumer": "handoff",
+              "exit_code": 0,
+              "code_failure": true,
+              "output_sha256": "bd93b563ac9ac1ca95e83037f6c162ca104ce83fb313c99884041887d36e0df4"
+            }
+          ],
+          "trusted": {
+            "tool": "trusted-development-process",
+            "tool_version": "1",
+            "config_sha256": "f09d6fb398bad5eccad158734af4ebbe12891ae6c313a86b119e2ee94ae71dd0",
+            "command_sha256": "2202ca4268d828d9fb72515adeb6aa1b01d2529164e9deb1fc975169d1c6e834",
+            "protected_entry": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/post-merge-entry.py",
+            "protected_entry_sha256": "4dcf21e355bbe3289491f4e8f2b641625b4e3a9d6d823754206b2749fbf1d91d"
+          },
+          "candidate": {
+            "sha": "2fe3b96ff733aa7ec84006196c703ea99d3989be",
+            "tree": "6919f746cf25b041b4f7f98d85d8664856469293",
+            "immutable": true
+          },
+          "entry_after": "4dcf21e355bbe3289491f4e8f2b641625b4e3a9d6d823754206b2749fbf1d91d",
+          "entry_before": "4dcf21e355bbe3289491f4e8f2b641625b4e3a9d6d823754206b2749fbf1d91d",
+          "source_after": "6919f746cf25b041b4f7f98d85d8664856469293",
+          "source_before": "6919f746cf25b041b4f7f98d85d8664856469293"
+        },
+        "candidate": {
+          "sha": "2fe3b96ff733aa7ec84006196c703ea99d3989be",
+          "tree": "6919f746cf25b041b4f7f98d85d8664856469293",
+          "immutable": true
+        },
+        "merge_key": "1df007f9d1237b2c0a3b311033bb585157b026b3038946bb9787d05fa7d3ff71"
+      },
+      "repair_delivery": "783f94bbf94fa38fc2a5a60696261bfce0e52516ec5e7c6ec1cf710731962eb2",
+      "revalidation_id": null
+    },
+    {
+      "id": "integration:integration-9b345d6d-f89b-414f-b3fe-9553769fb432",
+      "requirement_id": 7,
+      "repository_id": 1,
+      "state": "complete",
+      "baseline": "7adb08c989a9d85f85f8250b07e6d4496bd5404a",
+      "final_version": {
+        "binding": {
+          "trusted": {
+            "tool": "trusted-development-process",
+            "tool_version": "1",
+            "config_sha256": "61c8de54e4b9a47d00ba46361c10e0c4b5123bd5a047af85bd7b3f97c8e12129",
+            "command_sha256": "d42a04961519f41887f79a035ddd77e772f453341a359a73a997f1ccfca38805",
+            "protected_entry": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/post-merge-entry.py",
+            "protected_entry_sha256": "4dcf21e355bbe3289491f4e8f2b641625b4e3a9d6d823754206b2749fbf1d91d"
+          },
+          "required": [
+            "merged-source-cargo-tests"
+          ],
+          "revision": 1,
+          "versions": [
+            {
+              "artifacts": [
+                "merge-operation:1020207b5c100b9e9c2f6f62d891d50c479b019830a91f4cec5e10e8f7037edd:acceptance",
+                "linked-failure:integration:integration-9b345d6d-f89b-414f-b3fe-9553769fb432"
+              ],
+              "candidate": {
+                "sha": "d8e16fd828e568e0dcf2f0de23ecd3afb904e138",
+                "tree": "56a4bb451f1b3170c5e9139a55f9a9b3f2a597b6",
+                "immutable": true
+              },
+              "repository_id": 1,
+              "repository_version": 2,
+              "github_repository_id": 1360824360
+            },
+            {
+              "artifacts": [
+                "merge-operation:368e08c818d538149f47a1c7af54470fa532a25abbc41937404f335dd1a6467f:acceptance",
+                "linked-failure:integration:integration-48d5669e-cb10-44f1-b615-8590703fa008"
+              ],
+              "candidate": {
+                "sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+                "tree": "b1d68e0cdbc63a1b0e11cbe96d6f7d6789b40d96",
+                "immutable": true
+              },
+              "repository_id": 2,
+              "repository_version": 2,
+              "github_repository_id": 1377749969
+            }
+          ],
+          "requirement": 7,
+          "input_sha256": "1a152343e33f675fed79d99f89d0b3c165fd09d540f58b9d2382479a84604e55",
+          "authorization": 3
+        },
+        "validation_id": "integration-9c652a2f-aa67-4153-a322-f1fd15e3918c"
+      },
+      "repair_delivery": "20b1d2783f701dcd824debf9a42f6f4066a08b9405231f97471f504871b6c9aa",
+      "revalidation_id": "integration-48d5669e-cb10-44f1-b615-8590703fa008"
+    },
+    {
+      "id": "integration:integration-48d5669e-cb10-44f1-b615-8590703fa008",
+      "requirement_id": 7,
+      "repository_id": 2,
+      "state": "complete",
+      "baseline": "a873effc313fa7f751e79edc88946879102f73c8",
+      "final_version": {
+        "binding": {
+          "trusted": {
+            "tool": "trusted-development-process",
+            "tool_version": "1",
+            "config_sha256": "61c8de54e4b9a47d00ba46361c10e0c4b5123bd5a047af85bd7b3f97c8e12129",
+            "command_sha256": "d42a04961519f41887f79a035ddd77e772f453341a359a73a997f1ccfca38805",
+            "protected_entry": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/post-merge-entry.py",
+            "protected_entry_sha256": "4dcf21e355bbe3289491f4e8f2b641625b4e3a9d6d823754206b2749fbf1d91d"
+          },
+          "required": [
+            "merged-source-cargo-tests"
+          ],
+          "revision": 1,
+          "versions": [
+            {
+              "artifacts": [
+                "merge-operation:1020207b5c100b9e9c2f6f62d891d50c479b019830a91f4cec5e10e8f7037edd:acceptance",
+                "linked-failure:integration:integration-9b345d6d-f89b-414f-b3fe-9553769fb432"
+              ],
+              "candidate": {
+                "sha": "d8e16fd828e568e0dcf2f0de23ecd3afb904e138",
+                "tree": "56a4bb451f1b3170c5e9139a55f9a9b3f2a597b6",
+                "immutable": true
+              },
+              "repository_id": 1,
+              "repository_version": 2,
+              "github_repository_id": 1360824360
+            },
+            {
+              "artifacts": [
+                "merge-operation:368e08c818d538149f47a1c7af54470fa532a25abbc41937404f335dd1a6467f:acceptance",
+                "linked-failure:integration:integration-48d5669e-cb10-44f1-b615-8590703fa008"
+              ],
+              "candidate": {
+                "sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+                "tree": "b1d68e0cdbc63a1b0e11cbe96d6f7d6789b40d96",
+                "immutable": true
+              },
+              "repository_id": 2,
+              "repository_version": 2,
+              "github_repository_id": 1377749969
+            }
+          ],
+          "requirement": 7,
+          "input_sha256": "1a152343e33f675fed79d99f89d0b3c165fd09d540f58b9d2382479a84604e55",
+          "authorization": 3
+        },
+        "validation_id": "integration-9c652a2f-aa67-4153-a322-f1fd15e3918c"
+      },
+      "repair_delivery": "4a278124cfc1441593af329cb66be23467dfcd8ce92777d32871985955ce3c1c",
+      "revalidation_id": "integration-9c652a2f-aa67-4153-a322-f1fd15e3918c"
+    }
+  ],
+  "integrations": [
+    {
+      "id": "integration-d53b602c-6911-44c6-8597-a10e152bf165",
+      "state": "interrupted",
+      "quiescent": true,
+      "requirement_id": 7,
+      "authorization_id": 3,
+      "versions": [
+        {
+          "artifacts": [
+            "merge-operation:1020207b5c100b9e9c2f6f62d891d50c479b019830a91f4cec5e10e8f7037edd:acceptance"
+          ],
+          "candidate": {
+            "sha": "7adb08c989a9d85f85f8250b07e6d4496bd5404a",
+            "tree": "dd60b98216b1c1022437582a1d45b5eb26850dcd",
+            "immutable": true
+          },
+          "repository_id": 1,
+          "repository_version": 2,
+          "github_repository_id": 1360824360
+        },
+        {
+          "artifacts": [
+            "merge-operation:368e08c818d538149f47a1c7af54470fa532a25abbc41937404f335dd1a6467f:acceptance"
+          ],
+          "candidate": {
+            "sha": "a873effc313fa7f751e79edc88946879102f73c8",
+            "tree": "cdc6de5baee623e29287566449b0b752bc5b895e",
+            "immutable": true
+          },
+          "repository_id": 2,
+          "repository_version": 2,
+          "github_repository_id": 1377749969
+        }
+      ],
+      "binding_sha256": null,
+      "steps": []
+    },
+    {
+      "id": "integration-9b345d6d-f89b-414f-b3fe-9553769fb432",
+      "state": "failed",
+      "quiescent": true,
+      "requirement_id": 7,
+      "authorization_id": 3,
+      "versions": [
+        {
+          "artifacts": [
+            "merge-operation:1020207b5c100b9e9c2f6f62d891d50c479b019830a91f4cec5e10e8f7037edd:acceptance"
+          ],
+          "candidate": {
+            "sha": "7adb08c989a9d85f85f8250b07e6d4496bd5404a",
+            "tree": "dd60b98216b1c1022437582a1d45b5eb26850dcd",
+            "immutable": true
+          },
+          "repository_id": 1,
+          "repository_version": 2,
+          "github_repository_id": 1360824360
+        },
+        {
+          "artifacts": [
+            "merge-operation:368e08c818d538149f47a1c7af54470fa532a25abbc41937404f335dd1a6467f:acceptance"
+          ],
+          "candidate": {
+            "sha": "a873effc313fa7f751e79edc88946879102f73c8",
+            "tree": "cdc6de5baee623e29287566449b0b752bc5b895e",
+            "immutable": true
+          },
+          "repository_id": 2,
+          "repository_version": 2,
+          "github_repository_id": 1377749969
+        }
+      ],
+      "binding_sha256": "3f1e55cad6e89c4f73a014da0cb6894b736994266b593252782603444ba42ea6",
+      "steps": [
+        {
+          "id": "merged-source-cargo-tests",
+          "exit_code": 1,
+          "output_sha256": "ff659cddd1489d8bfbcfa76b61bbec7ae93ddd350db1f91bfd1c71c428aef7bc",
+          "log_ref": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/execution/integration-9b345d6d-f89b-414f-b3fe-9553769fb432/checks/step-0.log"
+        }
+      ]
+    },
+    {
+      "id": "integration-48d5669e-cb10-44f1-b615-8590703fa008",
+      "state": "failed",
+      "quiescent": true,
+      "requirement_id": 7,
+      "authorization_id": 3,
+      "versions": [
+        {
+          "artifacts": [
+            "merge-operation:1020207b5c100b9e9c2f6f62d891d50c479b019830a91f4cec5e10e8f7037edd:acceptance",
+            "linked-failure:integration:integration-9b345d6d-f89b-414f-b3fe-9553769fb432"
+          ],
+          "candidate": {
+            "sha": "d8e16fd828e568e0dcf2f0de23ecd3afb904e138",
+            "tree": "56a4bb451f1b3170c5e9139a55f9a9b3f2a597b6",
+            "immutable": true
+          },
+          "repository_id": 1,
+          "repository_version": 2,
+          "github_repository_id": 1360824360
+        },
+        {
+          "artifacts": [
+            "merge-operation:368e08c818d538149f47a1c7af54470fa532a25abbc41937404f335dd1a6467f:acceptance"
+          ],
+          "candidate": {
+            "sha": "a873effc313fa7f751e79edc88946879102f73c8",
+            "tree": "cdc6de5baee623e29287566449b0b752bc5b895e",
+            "immutable": true
+          },
+          "repository_id": 2,
+          "repository_version": 2,
+          "github_repository_id": 1377749969
+        }
+      ],
+      "binding_sha256": "bcbf88798332d8a304e6d1255783fcc3f8dc2155eb0dad0dcd98ee1e5227759a",
+      "steps": [
+        {
+          "id": "merged-source-cargo-tests",
+          "exit_code": 1,
+          "output_sha256": "0e47e27b903903e7f59f71e7422fe6a6b48ab3adbaf2cff755d6df57af251307",
+          "log_ref": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/execution/integration-48d5669e-cb10-44f1-b615-8590703fa008/checks/step-0.log"
+        }
+      ]
+    },
+    {
+      "id": "integration-9c652a2f-aa67-4153-a322-f1fd15e3918c",
+      "state": "passed",
+      "quiescent": true,
+      "requirement_id": 7,
+      "authorization_id": 3,
+      "versions": [
+        {
+          "artifacts": [
+            "merge-operation:1020207b5c100b9e9c2f6f62d891d50c479b019830a91f4cec5e10e8f7037edd:acceptance",
+            "linked-failure:integration:integration-9b345d6d-f89b-414f-b3fe-9553769fb432"
+          ],
+          "candidate": {
+            "sha": "d8e16fd828e568e0dcf2f0de23ecd3afb904e138",
+            "tree": "56a4bb451f1b3170c5e9139a55f9a9b3f2a597b6",
+            "immutable": true
+          },
+          "repository_id": 1,
+          "repository_version": 2,
+          "github_repository_id": 1360824360
+        },
+        {
+          "artifacts": [
+            "merge-operation:368e08c818d538149f47a1c7af54470fa532a25abbc41937404f335dd1a6467f:acceptance",
+            "linked-failure:integration:integration-48d5669e-cb10-44f1-b615-8590703fa008"
+          ],
+          "candidate": {
+            "sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+            "tree": "b1d68e0cdbc63a1b0e11cbe96d6f7d6789b40d96",
+            "immutable": true
+          },
+          "repository_id": 2,
+          "repository_version": 2,
+          "github_repository_id": 1377749969
+        }
+      ],
+      "binding_sha256": "92441967605955ed36bf462c8eb300b7aaaec584e7b96d9117cbbf41c2c444bf",
+      "steps": [
+        {
+          "id": "merged-source-cargo-tests",
+          "exit_code": 0,
+          "output_sha256": "983bb4524c9539b4d55be4fc67f6dd11cc4d2f791b178f35ad74e1a03a66beb8",
+          "log_ref": "/home/gem/.local/share/codexsymphony/gh88-product-acceptance/execution/integration-9c652a2f-aa67-4153-a322-f1fd15e3918c/checks/step-0.log"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "requirement_id": 1,
+      "limits": {
+        "turns": 6,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "exhausted": false
+    },
+    {
+      "requirement_id": 2,
+      "limits": {
+        "turns": 6,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "exhausted": false
+    },
+    {
+      "requirement_id": 3,
+      "limits": {
+        "turns": 6,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "exhausted": false
+    },
+    {
+      "requirement_id": 4,
+      "limits": {
+        "turns": 6,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "exhausted": false
+    },
+    {
+      "requirement_id": 5,
+      "limits": {
+        "turns": 6,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "exhausted": false
+    },
+    {
+      "requirement_id": 6,
+      "limits": {
+        "turns": 6,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "exhausted": false
+    },
+    {
+      "requirement_id": 7,
+      "limits": {
+        "turns": 6,
+        "tokens": 400000,
+        "model_seconds": 3600
+      },
+      "exhausted": false
+    }
+  ],
+  "interventions": [
+    "Old stale-baseline B06 cancelled through product API; preserved separately.",
+    "Manual deployments, service restarts, and ordinary storage_recheck calls; not zero-intervention acceptance.",
+    "Isolated requirement storage capacity raised from 1 GiB to 2 GiB under versioned policy; global 8 GiB, model budgets, shared repair limit 2, original allocations retained.",
+    "Original GH-88 Symphony runtime budget and failed attempts were not reset."
+  ]
+}

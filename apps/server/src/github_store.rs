@@ -18,7 +18,7 @@ pub async fn link(
     number: u64,
     requirement: i64,
 ) -> Result<bool, sqlx::Error> {
-    let changed = sqlx::query("INSERT INTO github_pr(repository_id,number,requirement_id) SELECT $1,$2,r.id FROM requirement r JOIN requirement_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN github_repository g ON (v.document->'repository'->>'github_repository_id')::bigint=g.repository_id WHERE r.id=$3 AND g.repository_id=$1 ON CONFLICT DO NOTHING")
+    let changed = sqlx::query("INSERT INTO github_pr(repository_id,number,requirement_id) SELECT $1,$2,r.id FROM requirement r JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN github_repository g ON (v.document->'repository'->>'github_repository_id')::bigint=g.repository_id WHERE r.id=$3 AND g.repository_id=$1 ON CONFLICT DO NOTHING")
         .bind(repository as i64).bind(number as i64).bind(requirement).execute(pool).await?;
     Ok(changed.rows_affected() == 1)
 }
@@ -27,7 +27,7 @@ pub async fn claim_ready(
     requirement: i64,
     revision: i64,
 ) -> Result<bool, sqlx::Error> {
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement_revision v JOIN repository r ON r.id=COALESCE((v.document->>'repository_id')::bigint,1) JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint WHERE v.requirement_id=$1 AND v.revision=$2 AND g.repository_version=r.version AND (v.document->>'repository_version')::bigint=r.version AND NOT g.stale AND (NOT (g.policy->'delivery' IS NOT NULL AND g.policy->'delivery'<>'null'::jsonb) OR g.checked_at<=extract(epoch FROM now())::bigint) AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy)")
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM execution_revision v JOIN repository r ON r.id=COALESCE((v.document->>'repository_id')::bigint,1) JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint WHERE v.requirement_id=$1 AND v.revision=$2 AND g.repository_version=r.version AND (v.document->>'repository_version')::bigint=r.version AND NOT g.stale AND (NOT (g.policy->'delivery' IS NOT NULL AND g.policy->'delivery'<>'null'::jsonb) OR g.checked_at<=extract(epoch FROM now())::bigint) AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy)")
         .bind(requirement).bind(revision).fetch_one(&mut **tx).await
 }
 pub async fn save_capability(pool: &PgPool, capability: &Capability) -> Result<(), sqlx::Error> {
@@ -95,6 +95,9 @@ pub async fn due_repositories(
         .bind(now).fetch_all(pool).await
 }
 pub async fn due_prs(pool: &PgPool, now: i64) -> Result<Vec<(Value, i64, i32)>, sqlx::Error> {
-    sqlx::query_as("SELECT g.policy,p.number,p.failures FROM github_pr p JOIN github_repository g USING(repository_id) WHERE p.next_attempt_at<=$1 ORDER BY p.repository_id,p.number")
+    // Finished requirements retain their last observation. Repeatedly polling
+    // their PRs can expire the active delivery's capability before it may write.
+    // Cancellation stays observable until cleanup has reconciled every PR.
+    sqlx::query_as("SELECT g.policy,p.number,p.failures FROM github_pr p JOIN github_repository g USING(repository_id) JOIN requirement r ON r.id=p.requirement_id WHERE p.next_attempt_at<=$1 AND r.state<>'Done' AND NOT (r.cancel_requested AND r.cleanup_complete) ORDER BY p.repository_id,p.number")
         .bind(now).fetch_all(pool).await
 }

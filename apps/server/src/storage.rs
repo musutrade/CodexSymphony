@@ -78,23 +78,39 @@ pub async fn permit(pool: &PgPool, root: &Path) -> bool {
     if FAILED.load(Ordering::SeqCst) {
         return false;
     }
-    if check(root).is_err()
-        || persistence(pool).await.is_err()
-        || !crate::storage_service::capacity(pool)
-            .await
-            .inspect_err(|error| {
-                let diagnostic = crate::operator_view::redact_text(&error.to_string());
-                tracing::warn!("storage capacity check failed; originals retained: {diagnostic}")
-            })
-            .unwrap_or(false)
-    {
+    if check(root).is_err() {
         latch(pool).await;
         return false;
+    }
+    match database_ready(pool).await {
+        Ok(true) => {}
+        // Rolled-back lock acquisition denies this action; it is not proof of
+        // lost persistence. Recovery itself holds these same control rows.
+        Err(error) if lock_contention(error.as_ref()) => return false,
+        _ => {
+            latch(pool).await;
+            return false;
+        }
     }
     sqlx::query_scalar::<_, bool>("SELECT NOT blocked FROM storage_guard WHERE id=1")
         .fetch_one(pool)
         .await
         .unwrap_or(false)
+}
+
+async fn database_ready(pool: &PgPool) -> Result<bool, Box<dyn std::error::Error + Send + Sync>> {
+    persistence(pool).await?;
+    crate::storage_service::capacity(pool)
+        .await
+        .inspect_err(|error| {
+            let diagnostic = crate::operator_view::redact_text(&error.to_string());
+            tracing::warn!("storage capacity check failed; originals retained: {diagnostic}");
+        })
+}
+
+fn lock_contention(error: &(dyn std::error::Error + 'static)) -> bool {
+    matches!(error.downcast_ref::<sqlx::Error>(), Some(sqlx::Error::Database(database))
+        if database.code().as_deref() == Some("55P03"))
 }
 
 /// Explicit operator recovery, after stop and preservation reconciliation.

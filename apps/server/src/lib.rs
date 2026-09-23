@@ -70,6 +70,7 @@ pub mod runtime_service;
 pub mod runtime_store;
 pub mod runtime_tools;
 pub mod runtime_transport;
+pub mod runtime_unstarted;
 pub mod security;
 pub mod storage;
 pub mod storage_archive;
@@ -176,3 +177,10 @@ pub mod integration_process;
 mod integration_retry;
 mod integration_store;
 pub mod integration_worker;
+
+pub mod linked_failure_store;
+pub mod linked_integration;
+pub mod linked_repair;
+pub mod linked_repair_acceptance;
+pub mod linked_repair_source;
+pub mod linked_repair_worker;

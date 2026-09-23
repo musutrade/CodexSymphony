@@ -18,6 +18,7 @@ pub async fn protection(
           EXISTS(SELECT 1 FROM agent_run a WHERE a.requirement_id=s.requirement_id AND NOT a.quiescent) OR EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=s.requirement_id AND NOT v.quiescent),
           EXISTS(SELECT 1 FROM candidate_validation v WHERE v.requirement_id=s.requirement_id AND (v.result='pending' OR (v.result='succeeded' AND v.stage<>'done'))) OR
           EXISTS(SELECT 1 FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id WHERE v.source_run_id=s.run_id AND p.status IN ('reserved','started')) OR
+          EXISTS(SELECT 1 FROM linked_failure f WHERE (f.requirement_id=s.requirement_id OR f.source_run=s.run_id) AND f.state NOT IN ('complete','cancelled')) OR
           EXISTS(SELECT 1 FROM delivery d WHERE d.requirement_id=s.requirement_id AND NOT d.released) OR
           EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=s.requirement_id AND v.state NOT IN ('passed','cancelled','interrupted')) OR
           EXISTS(SELECT 1 FROM merge_operation m WHERE m.requirement_id=s.requirement_id AND m.state NOT IN ('complete','cancelled','invalidated')) OR

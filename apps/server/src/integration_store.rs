@@ -81,9 +81,26 @@ async fn finish_allowed(tx: &mut Tx<'_>, id: &str, job: &Job, outcome: &Outcome)
         .as_ref()
         .is_some_and(|e| crate::integration::verify(&job.binding, &job.binding.versions, e));
     if !passed {
-        sqlx::query("UPDATE integration_validation SET state='failed',blocker='integration validation failed; retain current owner; authorized code repair awaits M3-5' WHERE id=$1").bind(id).execute(&mut **tx).await?;
+        if let Some(evidence) = &outcome.evidence
+            && crate::linked_repair::failed_code(evidence, &job.binding.required)
+        {
+            crate::linked_failure_store::record(
+                tx,
+                &format!("integration:{id}"),
+                job.binding.requirement,
+                job.binding.revision,
+                None,
+                Some(id),
+                evidence,
+                &job.binding.required,
+            )
+            .await?;
+        }
+        sqlx::query("UPDATE integration_validation SET state='failed',blocker='integration validation failed; preserve original owner and classified recovery evidence' WHERE id=$1").bind(id).execute(&mut **tx).await?;
         return Ok(());
     }
+    sqlx::query("UPDATE linked_failure SET state='complete',final_version=jsonb_build_object('binding',$2::jsonb,'validation_id',$3::text) WHERE requirement_id=$1 AND state='merged'")
+        .bind(job.binding.requirement).bind(json!(job.binding)).bind(id).execute(&mut **tx).await?;
     complete(tx, id, job, outcome).await?;
     parent(tx, id, job, outcome).await?;
     sqlx::query(

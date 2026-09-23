@@ -124,6 +124,45 @@ impl Verifier for FixtureVerifier {
 }
 
 #[tokio::test]
+async fn cancelled_children_leave_queue_only_after_cleanup_without_satisfying_dependencies() {
+    let (pool, _, _) = fixture().await;
+    bootstrap(&pool).await;
+    let mut document = sample();
+    document["children"].as_array_mut().unwrap().truncate(2);
+    let mut reviewed = review();
+    reviewed["items"].as_array_mut().unwrap().truncate(2);
+    reviewed["full_chain_acs"] = json!([]);
+    reviewed["coverage"][0]["child_id"] = json!("C2");
+    authorized_review(&pool, "cancelled-group", document.clone(), reviewed.clone()).await;
+    authorized_review(&pool, "independent-group", document, reviewed).await;
+    queue::materialize(&pool).await.unwrap();
+    let (root, broker, base) = broker();
+    delivery_control::cancel(&pool, 1).await.unwrap();
+    assert_eq!(count(&pool, "execution_queue").await, 4);
+    assert!(plan(&pool, &broker, &base).await.is_none());
+    delivery_control::settle(&pool).await.unwrap();
+    assert_eq!(count(&pool, "execution_queue").await, 3);
+    // Child 2 still depends on cancelled child 1, so no successor can start.
+    assert!(plan(&pool, &broker, &base).await.is_none());
+    assert_eq!(count(&pool, "group_completion").await, 0);
+    delivery_control::cancel(&pool, 2).await.unwrap();
+    delivery_control::settle(&pool).await.unwrap();
+    run_store::begin_incarnation(&pool, "after-cancel")
+        .await
+        .unwrap();
+    sqlx::query("UPDATE execution_control SET recovery_complete=true")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (_, workspace) = plan(&pool, &broker, &base).await.unwrap();
+    assert_eq!(workspace.requirement, 3);
+    assert_eq!(count(&pool, "group_completion").await, 0);
+    assert_eq!(count(&pool, "requirement").await, 4);
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
 async fn global_claim_restart_budget_and_completion_protocol() {
     let (pool, url, _) = fixture().await;
     bootstrap(&pool).await;
@@ -924,6 +963,77 @@ async fn interrupted_workspace_operation_is_visible_without_releasing_owner() {
     assert_eq!(owner(&pool).await, Some(1));
     assert!(!delivery_control::resume(&pool, Some(1)).await.unwrap());
     assert!(plan(&pool, &broker, &base).await.is_none());
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn storage_recovery_retires_only_proven_unstarted_runtime_reservations() {
+    let (pool, _, _) = fixture().await;
+    bootstrap(&pool).await;
+    authorized(&pool, "unstarted-storage").await;
+    queue::materialize(&pool).await.unwrap();
+    let (root, broker, base) = broker();
+    let (launch, _) = plan(&pool, &broker, &base).await.unwrap();
+    prepared(&pool, &launch, 1).await;
+    assert!(run_store::reserve_prepared(&pool, &launch).await.unwrap());
+    let id = &launch.key.run_id;
+    let retire = || codexsymphony_server::runtime_unstarted::retire(&pool, &root);
+    retire().await.unwrap();
+    assert_eq!(count(&pool, "run_event").await, 0);
+    sqlx::query("UPDATE storage_guard SET blocked=true,error='injected storage failure'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    // An opened Runtime session means spawning may already have happened.
+    sqlx::query("INSERT INTO runtime_session(run_id,created_at,last_progress) VALUES($1,1,1)")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    retire().await.unwrap();
+    assert_eq!(count(&pool, "run_event").await, 0);
+    sqlx::query("DELETE FROM runtime_session WHERE run_id=$1")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    // A launch journal also prevents inferring that no process was dispatched.
+    let directory = codexsymphony_server::process::run_directory(&root, id).unwrap();
+    std::fs::create_dir_all(&directory).unwrap();
+    retire().await.unwrap();
+    assert_eq!(count(&pool, "run_event").await, 0);
+    std::fs::remove_dir(&directory).unwrap();
+    // Unknown internal launch origins keep the existing stop-proof barrier.
+    sqlx::query("UPDATE initial_run SET launch='{}'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    retire().await.unwrap();
+    assert_eq!(count(&pool, "run_event").await, 0);
+    sqlx::query("UPDATE initial_run SET launch=$1")
+        .bind(json!(launch))
+        .execute(&pool)
+        .await
+        .unwrap();
+    retire().await.unwrap();
+    retire().await.unwrap();
+    let facts: (String, bool, bool) =
+        sqlx::query_as("SELECT state,quiescent,stop_requested FROM agent_run WHERE id=$1")
+            .bind(id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(facts, ("Interrupted".into(), true, true));
+    assert_eq!(count(&pool, "run_event").await, 1);
+    assert_eq!(owner(&pool).await, Some(1));
+    assert_eq!(count(&pool, "group_completion").await, 0);
+    assert!(!directory.exists());
+    assert!(
+        codexsymphony_server::storage::recover(&pool, &root)
+            .await
+            .unwrap()
+    );
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
 }
