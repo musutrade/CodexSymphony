@@ -49,6 +49,7 @@ impl Coordinator {
 /// Called only after acquiring the process-lifetime instance lock. The HTTP
 /// service remains responsive while old execution facts are reconciled.
 pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bool, sqlx::Error> {
+    crate::runtime_unstarted::retire(pool, root).await?;
     if !crate::storage::permit(pool, root).await {
         // No heartbeat renewal on persistence failure. Supervisors stop all
         // descendants from memory even if this process cannot write stop files.

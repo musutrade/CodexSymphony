@@ -95,6 +95,9 @@ pub async fn due_repositories(
         .bind(now).fetch_all(pool).await
 }
 pub async fn due_prs(pool: &PgPool, now: i64) -> Result<Vec<(Value, i64, i32)>, sqlx::Error> {
-    sqlx::query_as("SELECT g.policy,p.number,p.failures FROM github_pr p JOIN github_repository g USING(repository_id) WHERE p.next_attempt_at<=$1 ORDER BY p.repository_id,p.number")
+    // Finished requirements retain their last observation. Repeatedly polling
+    // their PRs can expire the active delivery's capability before it may write.
+    // Cancellation stays observable until cleanup has reconciled every PR.
+    sqlx::query_as("SELECT g.policy,p.number,p.failures FROM github_pr p JOIN github_repository g USING(repository_id) JOIN requirement r ON r.id=p.requirement_id WHERE p.next_attempt_at<=$1 AND r.state<>'Done' AND NOT (r.cancel_requested AND r.cleanup_complete) ORDER BY p.repository_id,p.number")
         .bind(now).fetch_all(pool).await
 }
