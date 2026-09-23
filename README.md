@@ -24,6 +24,7 @@ M2 受控集成已通过；真实公网、实体手机 Bark 和离机备份的�
 | [综合方案 V10.4](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
 | [日常 V1 契约](docs/daily-use-v1.md) | 已确认的多入口、父子队列、手机接续与自动交付要求 |
 | [架构边界](docs/architecture-boundaries.md) | 三个真相分离，Harness-Gate 只提供验证证据 |
+| [解耦改造需求](docs/extension-requirements.md) / [核心扩展协议](docs/extension-protocol.md) | 待实施草案；hooks、可选交付、按子需求选择模型，文档合并不启动队列 |
 | [演进目录](docs/roadmap-specs/README.md) | 后期候选及启用条件，不构成当前开发/验收要求 |
 | [本次范围收缩记录](docs/scope-reduction-2026-09-14.md) | 变更理由与迁移映射，不另定义行为 |
 | [运行复盘](docs/symphony-harness-gate-retrospective-2026-09-13.md) | 历史事故依据，不覆盖当前规格 |
