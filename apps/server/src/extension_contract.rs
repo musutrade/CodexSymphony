@@ -681,8 +681,7 @@ pub fn parse_hook_result(
     if bytes.len() > MAX_RESULT_BYTES {
         return Err(ProtocolError::InvalidResult("result too large"));
     }
-    let object: serde_json::Value = serde_json::from_slice(bytes)
-        .map_err(|_| ProtocolError::InvalidResult("malformed result"))?;
+    let object: serde_json::Value = serde_json::from_slice(bytes).map_err(malformed_result)?;
     let fields = object
         .as_object()
         .ok_or(ProtocolError::InvalidResult("malformed result"))?;
@@ -694,8 +693,7 @@ pub fn parse_hook_result(
         Some("failed") if fields.contains_key("error") && !fields.contains_key("artifacts") => {}
         _ => return Err(ProtocolError::InvalidResult("inconsistent result status")),
     }
-    let result: HookResult = serde_json::from_value(object)
-        .map_err(|_| ProtocolError::InvalidResult("malformed result"))?;
+    let result: HookResult = serde_json::from_value(object).map_err(malformed_result)?;
     expected.matches_result(&result.identity)?;
     match &result.outcome {
         HookOutcome::Success { artifacts } => {
@@ -713,6 +711,10 @@ pub fn parse_hook_result(
         }
     }
     Ok(result)
+}
+
+fn malformed_result(_: serde_json::Error) -> ProtocolError {
+    ProtocolError::InvalidResult("malformed result")
 }
 
 fn known_result_field(key: &str) -> bool {
