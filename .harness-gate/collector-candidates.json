@@ -20,9 +20,9 @@
     },
     "http_contract": {
       "directory": "http-contract",
-      "version": "0.1.0-rc.4",
-      "package": "harness-gate-http-json-contract-collector-0.1.0-rc.4.tgz",
-      "sha256": "19819290079919bf48a629cc1f075b55876df55645d3a36c2001e702ba07eb93",
+      "version": "0.1.0-rc.5",
+      "package": "harness-gate-http-json-contract-collector-0.1.0-rc.5.tgz",
+      "sha256": "9146390200174a1f932be5fffb12d21444b1c7d7f26dbf14dcb48c5cfadb3b7a",
       "command": "harness-gate-http-contract-collector",
       "npm_package": "@harness-gate/http-json-contract-collector"
     }
