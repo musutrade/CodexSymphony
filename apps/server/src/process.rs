@@ -72,7 +72,11 @@ pub fn spawn_with_transport(
     launch: &Launch,
     config: Option<&str>,
 ) -> io::Result<Child> {
-    fs::create_dir(directory)?;
+    if directory.join("hook.json").exists() {
+        fs::create_dir_all(directory)?;
+    } else {
+        fs::create_dir(directory)?;
+    }
     durable_write(&directory.join("launch.json"), launch)?;
     durable_write(&directory.join("storage-heartbeat.json"), &launch.key)?;
     if let Some(config) = config {
@@ -154,15 +158,127 @@ fn prepare(directory: &Path) -> io::Result<(InstanceLock, Launch, Receipt)> {
 pub fn supervise(directory: &Path) -> io::Result<()> {
     let (_lock, launch, receipt) = prepare(directory)?;
     if await_permission(directory, &launch)? {
-        // The supervisor is single threaded; every orphan is adopted here,
-        // including descendants that call setsid or change process groups.
-        let mut command = Command::new(&launch.program);
-        command.args(&launch.args).current_dir(&launch.workspace);
-        configure_runtime(&mut command, directory, &launch)?;
-        let _child = command.spawn()?;
-        drain(directory)?;
+        if directory.join("hook.json").exists() {
+            supervise_hook(directory, &launch)?;
+        } else {
+            supervise_runtime(directory, &launch)?;
+        }
     }
     durable_write(&directory.join("quiescent.json"), &receipt)
+}
+
+fn supervise_runtime(directory: &Path, launch: &Launch) -> io::Result<()> {
+    // The subreaper adopts even descendants that change process groups.
+    let mut command = Command::new(&launch.program);
+    command.args(&launch.args).current_dir(&launch.workspace);
+    configure_runtime(&mut command, directory, launch)?;
+    let _child = command.spawn()?;
+    drain(directory)
+}
+
+fn supervise_hook(directory: &Path, launch: &Launch) -> io::Result<()> {
+    let mut command = Command::new(&launch.program);
+    command.args(&launch.args).current_dir(&launch.workspace);
+    hook_environment(&mut command, directory);
+    command.stdin(Stdio::from(File::open(directory.join("input.json"))?));
+    command.stdout(Stdio::piped()).stderr(Stdio::piped());
+    let output = hook_output(directory)?;
+    let mut child = match command.spawn() {
+        Ok(child) => child,
+        Err(error) => {
+            durable_write(&directory.join("spawn-error.json"), &error.to_string())?;
+            return Ok(());
+        }
+    };
+    let capture = capture_hook(&mut child, output)?;
+    drain_hook(directory, child.id(), &capture)?;
+    if capture.finish()? {
+        durable_write(&directory.join("truncated.json"), &true)?;
+    }
+    Ok(())
+}
+
+fn hook_output(directory: &Path) -> io::Result<(u64, File, File)> {
+    Ok((
+        read(&directory.join("hook-limit.json"))?,
+        File::create(directory.join("stdout.json"))?,
+        File::create(directory.join("stderr.log"))?,
+    ))
+}
+
+fn capture_hook(
+    child: &mut Child,
+    (limit, stdout, stderr): (u64, File, File),
+) -> io::Result<crate::storage_output::Capture> {
+    let mut capture = crate::storage_output::Capture::default();
+    capture.stream(
+        child
+            .stdout
+            .take()
+            .ok_or_else(|| io::Error::other("hook stdout unavailable"))?,
+        stdout,
+        limit,
+    );
+    capture.stream(
+        child
+            .stderr
+            .take()
+            .ok_or_else(|| io::Error::other("hook stderr unavailable"))?,
+        stderr,
+        limit,
+    );
+    Ok(capture)
+}
+
+fn hook_environment(command: &mut Command, directory: &Path) {
+    command.env_clear();
+    for name in [
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "TZ",
+        "NO_COLOR",
+        "TEST_DATABASE_URL",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "NO_PROXY",
+        "SSL_CERT_FILE",
+        "SSL_CERT_DIR",
+    ] {
+        if let Some(value) = std::env::var_os(name) {
+            command.env(name, value);
+        }
+    }
+    command.env("HOME", directory);
+}
+
+fn drain_hook(
+    directory: &Path,
+    primary: u32,
+    capture: &crate::storage_output::Capture,
+) -> io::Result<()> {
+    let mut primary_status = None;
+    loop {
+        let mut status = 0;
+        let pid = unsafe { waitpid(-1, &mut status, 1) };
+        if pid == primary as i32 {
+            primary_status = Some(status);
+        }
+        if pid < 0 {
+            let error = io::Error::last_os_error();
+            match error.raw_os_error() {
+                Some(10) => break, // ECHILD proves every descendant stopped.
+                Some(4) => {}      // EINTR
+                _ => return Err(error),
+            }
+        }
+        if directory.join("stop.json").exists() || !storage_alive(directory) || capture.stopped() {
+            stop_children()?;
+        }
+        thread::sleep(Duration::from_millis(20));
+    }
+    durable_write(&directory.join("exit.json"), &primary_status)
 }
 
 /// Only deployment tool/network settings cross into Runtime. Unknown names,

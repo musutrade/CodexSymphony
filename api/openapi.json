@@ -3108,6 +3108,21 @@
           }
         }
       },
+      "HookConfig": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "event", "roles", "argv", "script_identity", "timeout_seconds", "output_limit_bytes"],
+        "properties": {
+          "name": {"type": "string"},
+          "event": {"type": "string", "enum": ["after_create", "before_run", "after_run", "before_remove"]},
+          "roles": {"type": "array", "items": {"type": "string", "enum": ["coding", "repair", "validation"]}},
+          "argv": {"type": "array", "items": {"type": "string"}},
+          "script_identity": {"type": "string"},
+          "timeout_seconds": {"type": "integer"},
+          "output_limit_bytes": {"type": "integer"},
+          "replay": {"type": "string", "enum": ["never", "idempotent", "reconcile"]}
+        }
+      },
       "Repository": {
         "type": "object",
         "additionalProperties": false,
@@ -3177,6 +3192,10 @@
           "model": {
             "type": "string",
             "nullable": true
+          },
+          "hooks": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/HookConfig"}
           }
         }
       },

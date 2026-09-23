@@ -12,10 +12,11 @@ use crate::{
     storage_store::{self as store, Deployment, Result, Tx},
 };
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use sqlx::PgPool;
 use std::path::{Path, PathBuf};
 
-#[derive(sqlx::FromRow)]
+#[derive(Clone, sqlx::FromRow)]
 struct Material {
     id: String,
     run_id: String,
@@ -124,8 +125,24 @@ async fn cleanup(pool: &PgPool, config: &Deployment, id: &str, now: i64) -> Resu
     let Some(item) = prepare_attempt(pool, config, id, now).await? else {
         return Ok(());
     };
-    prepare_delete(pool, config, item, now).await?;
-    delete(pool, config, id, now).await
+    prepare_delete(pool, config, item.clone(), now).await?;
+    let resource_id = format!(
+        "{}-{:x}",
+        item.id,
+        Sha256::digest(serde_json::to_vec(&item.directory_identity)?)
+    );
+    if !crate::project_hooks::before_remove(
+        pool,
+        &config.execution.path,
+        &item.run_id,
+        &resource_id,
+        Path::new(&item.path),
+    )
+    .await?
+    {
+        return Err("before_remove failed or outcome unknown; retain original material".into());
+    }
+    delete(pool, config, id, now, &item).await
 }
 async fn prepare_attempt(
     pool: &PgPool,
@@ -201,6 +218,8 @@ async fn material_protection(
     }
     protection.consumer |= sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM storage_material WHERE status<>'deleted' AND archive->>'path'=$1)")
         .bind(&item.path).fetch_one(&mut **tx).await?;
+    protection.active |= sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM project_hook_invocation i JOIN project_hook_run h ON h.run_id=i.run_id WHERE (i.run_id=$1 OR h.workspace=$2 OR starts_with(i.output_dir,$2||'/')) AND i.status IN ('intent','running','unknown') AND NOT i.stop_confirmed)")
+        .bind(&item.run_id).bind(&item.path).fetch_one(&mut **tx).await?;
     protection.unreconciled |= preparation_pending(item);
     Ok(protection)
 }
@@ -488,11 +507,17 @@ async fn finish_archive(
     Ok(())
 }
 
-async fn delete(pool: &PgPool, config: &Deployment, id: &str, now: i64) -> Result<()> {
+async fn delete(
+    pool: &PgPool,
+    config: &Deployment,
+    id: &str,
+    now: i64,
+    expected: &Material,
+) -> Result<()> {
     let mut tx = run_store::lock(pool).await?;
     let item = load(&mut tx, id).await?;
-    let protection =
-        storage_consumers::protection(&mut tx, config, &item.run_id, "rebuildable").await?;
+    require_unchanged(&item, expected)?;
+    let protection = material_protection(&mut tx, config, &item).await?;
     if protection.reason().is_some() {
         return Err("active material consumer".into());
     }
@@ -507,6 +532,17 @@ async fn delete(pool: &PgPool, config: &Deployment, id: &str, now: i64) -> Resul
     sqlx::query("UPDATE storage_material SET status='deleted',actual_bytes=0,deleted_at=$2,deletion_reason='parent material retired after verified deletion' WHERE starts_with(path,$1) AND status<>'deleted'")
         .bind(format!("{}/",item.path)).bind(now).execute(&mut *tx).await?;
     tx.commit().await?;
+    Ok(())
+}
+
+fn require_unchanged(item: &Material, expected: &Material) -> Result<()> {
+    if item.path != expected.path
+        || item.run_id != expected.run_id
+        || item.directory_identity != expected.directory_identity
+        || item.status != "deleting"
+    {
+        return Err("material identity changed after before_remove; retain original".into());
+    }
     Ok(())
 }
 

@@ -1,0 +1,8 @@
+{
+  "hooks": [
+    {"name":"create-check","event":"after_create","roles":["coding"],"argv":["/opt/codexsymphony/project-hooks/project_hook.py"],"script_identity":"sha256:7c219e3b31c7378fbd71099b70c6a805deb15e9d9993196afa97b389bec174df","timeout_seconds":30,"output_limit_bytes":8192,"replay":"never"},
+    {"name":"git-preparation","event":"before_run","roles":["coding","repair","validation"],"argv":["/opt/codexsymphony/project-hooks/project_hook.py"],"script_identity":"sha256:7c219e3b31c7378fbd71099b70c6a805deb15e9d9993196afa97b389bec174df","timeout_seconds":30,"output_limit_bytes":8192,"replay":"never"},
+    {"name":"workspace-summary","event":"after_run","roles":["coding","repair","validation"],"argv":["/opt/codexsymphony/project-hooks/project_hook.py"],"script_identity":"sha256:7c219e3b31c7378fbd71099b70c6a805deb15e9d9993196afa97b389bec174df","timeout_seconds":30,"output_limit_bytes":8192,"replay":"never"},
+    {"name":"remove-check","event":"before_remove","roles":["coding","repair","validation"],"argv":["/opt/codexsymphony/project-hooks/project_hook.py"],"script_identity":"sha256:7c219e3b31c7378fbd71099b70c6a805deb15e9d9993196afa97b389bec174df","timeout_seconds":30,"output_limit_bytes":8192,"replay":"never"}
+  ]
+}

@@ -62,6 +62,11 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
     if !recover_validation(pool, root, incarnation).await? {
         return Ok(false);
     }
+    crate::project_hooks::after_run(pool, root)
+        .await
+        .map_err(|error| {
+            sqlx::Error::Protocol(format!("project hook preservation check: {error}"))
+        })?;
     crate::runtime_store::finalize(pool).await?;
     crate::delivery_control::settle(pool).await?;
     run_store::finish_recovery(pool, incarnation).await

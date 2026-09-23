@@ -35,10 +35,10 @@ pub struct Policy {
     pub model_work_seconds: i64,
     pub gate_recovery_policy: String,
 }
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct Repository {
     pub model: Option<String>,
+    pub hooks: Vec<crate::extension_contract::HookConfig>,
     pub project: String,
     pub remote: String,
     pub github_repository_id: i64,
@@ -46,6 +46,40 @@ pub struct Repository {
     pub policy: Policy,
     pub revoked: bool,
     pub reason: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RepositoryWire {
+    model: Option<String>,
+    hooks: Option<Vec<crate::extension_contract::HookConfig>>,
+    project: String,
+    remote: String,
+    github_repository_id: i64,
+    base_branch: String,
+    policy: Policy,
+    revoked: bool,
+    reason: String,
+}
+
+impl<'de> Deserialize<'de> for Repository {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let wire = RepositoryWire::deserialize(deserializer)?;
+        Ok(Self {
+            model: wire.model,
+            hooks: wire.hooks.unwrap_or_default(),
+            project: wire.project,
+            remote: wire.remote,
+            github_repository_id: wire.github_repository_id,
+            base_branch: wire.base_branch,
+            policy: wire.policy,
+            revoked: wire.revoked,
+            reason: wire.reason,
+        })
+    }
 }
 
 pub fn require(valid: bool, message: &'static str) -> Result<(), &'static str> {
@@ -84,7 +118,35 @@ pub fn validate_repository(repo: &Repository) -> Result<(), &'static str> {
         repo.model.as_ref().is_none_or(|model| identifier(model)),
         "invalid model identity",
     )?;
+    validate_repository_hooks(&repo.hooks)?;
     validate_policy(&repo.policy)
+}
+
+fn validate_repository_hooks(
+    hooks: &[crate::extension_contract::HookConfig],
+) -> Result<(), &'static str> {
+    for hook in hooks {
+        require(hook.validate().is_ok(), "invalid project hook")?;
+        require(
+            hook.argv[0].starts_with('/')
+                && hook
+                    .script_identity
+                    .strip_prefix("sha256:")
+                    .is_some_and(|digest| {
+                        digest.len() == 64 && digest.bytes().all(|b| b.is_ascii_hexdigit())
+                    })
+                && hook.timeout_seconds <= 600
+                && hook.output_limit_bytes <= 1_048_576,
+            "invalid project hook limits or script identity",
+        )?;
+    }
+    for (index, hook) in hooks.iter().enumerate() {
+        require(
+            !hooks[..index].iter().any(|old| old.name == hook.name),
+            "duplicate project hook",
+        )?;
+    }
+    Ok(())
 }
 fn validate_policy(policy: &Policy) -> Result<(), &'static str> {
     require(

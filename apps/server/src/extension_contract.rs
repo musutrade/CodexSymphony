@@ -132,7 +132,7 @@ impl<'de> Deserialize<'de> for HookConfig {
 }
 
 impl HookConfig {
-    fn validate(&self) -> Result<(), ProtocolError> {
+    pub(crate) fn validate(&self) -> Result<(), ProtocolError> {
         if !nonempty(&self.name) || !nonempty(&self.script_identity) {
             return Err(ProtocolError::InvalidConfig("invalid hook"));
         }
@@ -171,7 +171,7 @@ impl ExtensionConfig {
                 effort: None,
             },
             delivery: DeliveryMode::GithubPr,
-            hooks: Vec::new(),
+            hooks: repo.hooks.clone(),
             decision: None,
         }
     }
