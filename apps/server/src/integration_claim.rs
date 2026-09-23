@@ -208,6 +208,10 @@ pub(crate) async fn persist(tx: &mut Tx<'_>, id: &str, job: &Job, launch: &Launc
 async fn register_storage(tx: &mut Tx<'_>, id: &str, binding: &Binding) -> Result<()> {
     if crate::storage_store::deployment(tx).await?.is_some() {
         crate::storage_inventory::attempt(tx, id, binding.requirement, binding.revision).await?;
+        require(
+            crate::storage_service::reserve_integration(tx, id).await?,
+            "integration supervisor storage budget exhausted",
+        )?;
     }
     Ok(())
 }

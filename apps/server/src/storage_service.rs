@@ -55,10 +55,10 @@ async fn reserve_categories(
     config: &Deployment,
 ) -> Result<bool> {
     let measured = storage_measure::measure(tx, config).await?;
-    for category in CATEGORIES
-        .into_iter()
-        .filter(|category| *category != Category::Cold)
-    {
+    for category in CATEGORIES.into_iter().filter(|category| {
+        *category != Category::Cold
+            && (workspace.phase != "integration" || *category == Category::Workspace)
+    }) {
         let amount = config.policy.categories[&category].reserve_bytes;
         if !store::reserve(
             tx,
@@ -75,6 +75,27 @@ async fn reserve_categories(
         }
     }
     Ok(true)
+}
+/// Integration checkouts do not spawn Runtime producers. Their supervisor has
+/// one separate hot allocation, reserved before its directory can be discovered.
+pub async fn reserve_integration(tx: &mut store::Tx<'_>, run: &str) -> Result<bool> {
+    let Some(config) = store::deployment(tx).await? else {
+        return Ok(true);
+    };
+    if !ready_for_work(tx).await? {
+        return Ok(false);
+    }
+    let measured = storage_measure::measure(tx, &config).await?;
+    store::reserve(
+        tx,
+        &format!("{run}-hot"),
+        run,
+        Category::Hot,
+        config.policy.categories[&Category::Hot].reserve_bytes,
+        measured.usage(Category::Hot),
+        &config.policy,
+    )
+    .await
 }
 
 pub async fn validation(pool: &PgPool, run: &str) -> Result<bool> {
@@ -112,6 +133,14 @@ async fn reserve_validation(
     run: &str,
     measured: &storage_measure::Measurement,
 ) -> Result<bool> {
+    let integration: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM integration_validation WHERE id=$1)")
+            .bind(run)
+            .fetch_one(&mut **tx)
+            .await?;
+    if integration {
+        return reserve_integration(tx, run).await;
+    }
     if !ready_for_work(tx).await? {
         return Ok(false);
     }

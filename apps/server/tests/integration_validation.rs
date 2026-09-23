@@ -937,6 +937,7 @@ async fn native_integration_failure_persists_once_without_changing_kind_or_relea
 #[tokio::test]
 async fn serial_repair_versions_rerun_all_checks_and_preserve_failed_combinations() {
     let f = fixture("linked", true).await;
+    install_storage(&f).await;
     complete(&f, "failed").await;
     let original: Value =
         sqlx::query_scalar("SELECT result FROM integration_validation ORDER BY created_at LIMIT 1")
@@ -1004,4 +1005,43 @@ async fn serial_repair_versions_rerun_all_checks_and_preserve_failed_combination
         .await
         .unwrap();
     assert_eq!(count, 3);
+}
+
+#[tokio::test]
+async fn integration_supervisor_growth_uses_its_preallocated_hot_budget() {
+    let f = fixture("linked", true).await;
+    install_storage(&f).await;
+    complete(&f, "failed").await;
+    let id: String = sqlx::query_scalar("SELECT id FROM integration_validation")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    let allocated: i64 =
+        sqlx::query_scalar("SELECT allocated FROM storage_allocation WHERE request_id=$1")
+            .bind(format!("{id}-hot"))
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(allocated, 1 << 20);
+    let directory = f.root.join(&id);
+    for size in [4096, 131072] {
+        std::fs::write(directory.join("growth.log"), vec![b'x'; size]).unwrap();
+        codexsymphony_server::storage_cleanup::scan(&f.pool, 100)
+            .await
+            .unwrap();
+        let blocked: bool = sqlx::query_scalar("SELECT blocked FROM storage_guard")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+        assert!(!blocked);
+    }
+    let allocations: Vec<String> = sqlx::query_scalar(
+        "SELECT category FROM storage_allocation WHERE run_id=$1 ORDER BY category",
+    )
+    .bind(format!("{id}-repo-1"))
+    .fetch_all(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(allocations, vec!["workspace"]);
+    assert_eq!(counts(&f).await, (0, 0, 0));
 }
