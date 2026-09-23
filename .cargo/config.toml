@@ -1,0 +1,17 @@
+# Cargo build configuration for faster compilation
+
+[build]
+# Incremental compilation for faster rebuilds
+incremental = true
+
+[profile.dev]
+# Faster linking
+split-debuginfo = "unpacked"
+
+[target.x86_64-unknown-linux-gnu]
+# Use LLD linker for much faster linking (2-5x speedup)
+linker = "clang"
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+[net]
+git-fetch-with-cli = true
