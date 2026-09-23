@@ -15,7 +15,7 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     # weakening the inner command's filesystem, PID or network isolation.
     args = ['/usr/local/libexec/codexsymphony/bwrap', '--die-with-parent', '--new-session', '--unshare-user', '--unshare-pid',
             '--ro-bind', '/usr', '/usr', '--ro-bind', '/etc', '/etc', '--tmpfs', '/etc/codex',
-            '--ro-bind', str(HOME / '.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin'), '/opt/codex',
+            '--ro-bind', str(HOME / '.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin'), '/opt/codex',
             '--symlink', 'usr/bin', '/bin', '--symlink', 'usr/lib', '/lib', '--symlink', 'usr/lib64', '/lib64',
             '--proc', '/proc', '--dev', '/dev', '--tmpfs', '/run', '--bind', str(temporary), '/tmp',
             '--dir', str(HOME), '--bind', str(cargo), str(HOME / '.cargo'),

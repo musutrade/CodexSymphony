@@ -20,6 +20,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+// The in-memory emergency latch represents one controller process, even when
+// integration fixtures use separate database schemas.
+static GUARD_TEST: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 struct Tree(PathBuf);
 impl Tree {
     fn new() -> Self {
@@ -457,6 +461,99 @@ async fn active_runtime_socket_keeps_originals_and_accounts_actual_bytes() {
 }
 
 #[tokio::test]
+async fn incomplete_capacity_check_does_not_stop_runs_or_require_recovery() {
+    let _serial = GUARD_TEST.lock().await;
+    use codexsymphony_server::storage;
+    let pool = fixture().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    store::install(&pool, &config).await.unwrap();
+    run(&pool, "healthy-run").await;
+    sqlx::query("UPDATE agent_run SET state='Running',quiescent=false")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut locked = pool.begin().await.unwrap();
+    sqlx::query("SELECT pg_advisory_xact_lock(13002)")
+        .execute(&mut *locked)
+        .await
+        .unwrap();
+    assert!(!storage::permit(&pool, &config.execution.path).await);
+    assert!(
+        storage::allowed(&pool).await,
+        "heartbeats remain eligible during inventory contention"
+    );
+    assert!(
+        !sqlx::query_scalar::<_, bool>(
+            "SELECT stop_requested FROM agent_run WHERE id='healthy-run'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+    );
+    locked.rollback().await.unwrap();
+    assert!(storage::permit(&pool, &config.execution.path).await);
+}
+
+#[tokio::test]
+async fn expired_records_and_task_quotas_do_not_block_other_requirements() {
+    let _serial = GUARD_TEST.lock().await;
+    use codexsymphony_server::storage;
+    let pool = fixture().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    store::install(&pool, &config).await.unwrap();
+    let first = run(&pool, "limited-run").await;
+    assert!(
+        storage_service::admit_workspace(&pool, &first)
+            .await
+            .unwrap()
+    );
+    sqlx::query("UPDATE storage_attempt SET expires_at=1 WHERE run_id='limited-run'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        !storage_service::validation(&pool, "limited-run")
+            .await
+            .unwrap()
+    );
+    sqlx::raw_sql("INSERT INTO requirement(version,state,contract,revision) VALUES(1,'Cancelled','{}',1); INSERT INTO requirement_revision SELECT 2,1,document FROM requirement_revision WHERE requirement_id=1")
+        .execute(&pool).await.unwrap();
+    let mut second = run(&pool, "other-run").await;
+    second.requirement = 2;
+    sqlx::query("UPDATE agent_run SET requirement_id=2 WHERE id='other-run'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        storage_service::admit_workspace(&pool, &second)
+            .await
+            .unwrap()
+    );
+    sqlx::query("UPDATE storage_attempt SET expires_at=extract(epoch FROM now())::bigint+10000")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE storage_allocation SET allocated=$1 WHERE request_id='limited-run-hot'")
+        .bind(config.policy.run_bytes as i64 + 1)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        !storage_service::validation(&pool, "limited-run")
+            .await
+            .unwrap()
+    );
+    assert!(
+        storage_service::validation(&pool, "other-run")
+            .await
+            .unwrap()
+    );
+    assert!(storage::permit(&pool, &config.execution.path).await);
+}
+
+#[tokio::test]
 async fn measurement_rejects_missing_roots_and_inventory_overflow() {
     let pool = fixture().await;
     let tree = Tree::new();
@@ -495,6 +592,7 @@ async fn measurement_rejects_missing_roots_and_inventory_overflow() {
 
 #[tokio::test]
 async fn persisted_retention_archive_retries_and_cumulative_admission() {
+    let _serial = GUARD_TEST.lock().await;
     let pool = fixture().await;
     let tree = Tree::new();
     let config = deployment(&tree);
@@ -1187,9 +1285,11 @@ async fn policy_and_control(pool: &PgPool, config: &Deployment) {
         .fetch_one(pool)
         .await
         .unwrap();
-    assert!(blocked);
+    assert!(!blocked, "an incomplete inventory must not latch storage");
+    assert!(codexsymphony_server::storage::allowed(pool).await);
     assert!(displaced_cold.is_dir());
     fs::rename(&displaced_cold, &config.cold.path).unwrap();
+    assert!(codexsymphony_server::storage::permit(pool, &config.execution.path).await);
     assert!(
         codexsymphony_server::storage::recover(pool, &config.execution.path)
             .await
@@ -1199,22 +1299,28 @@ async fn policy_and_control(pool: &PgPool, config: &Deployment) {
         .execute(pool)
         .await
         .unwrap();
-    assert!(!storage_service::capacity(pool).await.unwrap());
+    assert!(storage_service::capacity(pool).await.unwrap());
+    assert!(
+        !storage_service::validation(pool, "failed-run")
+            .await
+            .unwrap()
+    );
+    assert!(codexsymphony_server::storage::allowed(pool).await);
     let version: i64 = sqlx::query_scalar("SELECT version FROM requirement WHERE id=1")
         .fetch_one(pool)
         .await
         .unwrap();
-    let rejected = Command {
+    let recheck = Command {
         version,
-        request_id: "storage-still-full".into(),
+        request_id: "storage-records-scoped".into(),
         action: Action::StorageRecheck,
     };
-    assert!(operator_control::execute(pool, 1, &rejected).await.is_err());
+    assert!(operator_control::execute(pool, 1, &recheck).await.is_ok());
     let after: i64 = sqlx::query_scalar("SELECT version FROM requirement WHERE id=1")
         .fetch_one(pool)
         .await
         .unwrap();
-    assert_eq!(version, after);
+    assert!(after > version);
     let mut lower = config.clone();
     lower.policy.version = "lower-new-admission".into();
     lower.policy.run_bytes = 1;
@@ -1254,6 +1360,29 @@ async fn policy_and_control(pool: &PgPool, config: &Deployment) {
         total,
         sqlx::query_scalar::<_, i64>("SELECT SUM(allocated)::bigint FROM storage_allocation")
             .fetch_one(pool)
+            .await
+            .unwrap()
+    );
+    // Only confirmed shared capacity exhaustion closes the global guard.
+    let mut full = lower.clone();
+    full.policy.version = "shared-capacity-exhausted".into();
+    full.policy.global_bytes = full.policy.control_bytes + 1;
+    store::install(pool, &full).await.unwrap();
+    assert!(!codexsymphony_server::storage::permit(pool, &config.execution.path).await);
+    assert!(
+        sqlx::query_scalar::<_, bool>("SELECT blocked FROM storage_guard")
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    );
+    assert!(
+        !codexsymphony_server::storage::recover(pool, &config.execution.path)
+            .await
+            .unwrap()
+    );
+    store::install(pool, &lower).await.unwrap();
+    assert!(
+        codexsymphony_server::storage::recover(pool, &config.execution.path)
             .await
             .unwrap()
     );
@@ -1343,15 +1472,31 @@ async fn actual_overrun(pool: &PgPool, config: &Deployment) {
     )
     .await
     .unwrap();
+    sqlx::query("UPDATE agent_run SET state='Running',quiescent=false WHERE id='overflow-run'")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
     storage_cleanup::reconcile(&mut tx, config).await.unwrap();
     tx.commit().await.unwrap();
     assert!(
-        sqlx::query_scalar::<_, bool>("SELECT blocked FROM storage_guard")
+        !sqlx::query_scalar::<_, bool>("SELECT blocked FROM storage_guard")
             .fetch_one(pool)
             .await
             .unwrap()
     );
+    assert!(
+        sqlx::query_scalar::<_, bool>(
+            "SELECT stop_requested FROM agent_run WHERE id='overflow-run'"
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    );
     assert!(path.join("unique").exists());
+    sqlx::query("UPDATE agent_run SET state='Failed',quiescent=true WHERE id='overflow-run'")
+        .execute(pool)
+        .await
+        .unwrap();
     assert!(
         sqlx::query_scalar::<_, i64>(
             "SELECT allocated FROM storage_allocation WHERE request_id='overflow-run-hot'"

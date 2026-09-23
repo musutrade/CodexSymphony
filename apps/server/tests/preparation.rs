@@ -238,7 +238,7 @@ async fn persisted_attempts_resume_phase_and_preserve_pause() {
 }
 
 #[tokio::test]
-async fn storage_failure_latches_without_deleting_originals_or_unpausing() {
+async fn task_storage_failure_preserves_originals_without_global_latch() {
     let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     let directory = root();
@@ -250,17 +250,15 @@ async fn storage_failure_latches_without_deleting_originals_or_unpausing() {
         .await
         .unwrap_err();
     assert_eq!(error.raw_os_error(), Some(28));
-    let mut github_writes = 0;
-    if storage::permit(&pool, &directory).await {
-        github_writes += 1;
-    }
-    assert_eq!(github_writes, 0);
+    // The caller receives the original failure and cannot claim this evidence
+    // was committed. Unrelated actions are not permanently disabled.
+    assert!(storage::permit(&pool, &directory).await);
     fs::remove_file(directory.join("delivery.tmp")).unwrap();
     assert!(storage::recover(&pool, &directory).await.unwrap());
     assert!(!storage::permit(&pool, &directory.join("missing-volume")).await);
     assert!(
-        !storage::permit(&pool, &directory).await,
-        "recovery must be explicit"
+        storage::permit(&pool, &directory).await,
+        "a missing task directory must not latch healthy storage"
     );
     run_store::pause(&pool, None).await.unwrap();
     assert!(storage::recover(&pool, &directory).await.unwrap());
@@ -290,8 +288,8 @@ async fn storage_failure_latches_without_deleting_originals_or_unpausing() {
         .await
         .unwrap();
     assert!(
-        !storage::permit(&pool, &directory).await,
-        "stalled persistence refuses new actions within a fixed timeout"
+        storage::permit(&pool, &directory).await,
+        "admission must not perform a synthetic write against the locked guard"
     );
     locked.rollback().await.unwrap();
     assert!(storage::recover(&pool, &directory).await.unwrap());
@@ -507,6 +505,54 @@ async fn preparation_service_persists_real_adapter_errors_and_admits_only_succes
     );
 }
 
+#[tokio::test]
+async fn evidence_commit_failure_refuses_claim_without_latching_other_work() {
+    use codexsymphony_server::preparation_service::{self, Request};
+    let _serial = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    let directory = root();
+    let (broker, workspace, launch) = broker_fixture(&directory);
+    let adapter = directory.join("fixture.py");
+    fs::write(
+        &adapter,
+        format!("print({:?})", json!(evidence()).to_string()),
+    )
+    .unwrap();
+    sqlx::raw_sql("CREATE FUNCTION fail_evidence_commit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected evidence commit failure'; END $$; CREATE CONSTRAINT TRIGGER fail_evidence_commit AFTER UPDATE ON preparation_record DEFERRABLE INITIALLY DEFERRED FOR EACH ROW WHEN (NEW.ready) EXECUTE FUNCTION fail_evidence_commit();")
+        .execute(&pool).await.unwrap();
+    let error = preparation_service::prepare(
+        &pool,
+        Request {
+            launch: &launch,
+            requirement: 1,
+            revision: 1,
+            phase: "preparation",
+            now: codexsymphony_server::github_service::now(),
+            adapter: &adapter,
+            control_directory: &directory,
+            broker: &broker,
+            workspace: &workspace,
+            config: json!({"deployment_identity":"deployment", "launcher":[launch.program]}),
+        },
+    )
+    .await
+    .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("injected evidence commit failure")
+    );
+    assert!(
+        !sqlx::query_scalar::<_, bool>("SELECT ready FROM preparation_record WHERE run_id=$1")
+            .bind(&launch.key.run_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+    );
+    assert!(!run_store::reserve_prepared(&pool, &launch).await.unwrap());
+    assert!(storage::permit(&pool, &directory).await);
+}
+
 #[test]
 fn deadline_completion_and_identity_mismatch_require_reconciliation() {
     let mut retry = Retry::new("preparation", 0);
@@ -525,7 +571,7 @@ fn deadline_completion_and_identity_mismatch_require_reconciliation() {
 }
 
 #[tokio::test]
-async fn service_rejects_wrong_broker_and_bounds_output_and_latches_storage_failure() {
+async fn service_rejects_wrong_broker_and_bounds_output_and_scopes_storage_failure() {
     use codexsymphony_server::preparation_service::{self, Request};
     let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
@@ -621,7 +667,7 @@ async fn service_rejects_wrong_broker_and_bounds_output_and_latches_storage_fail
             .await
             .unwrap()
     );
-    assert!(!storage::permit(&pool, &directory).await);
+    assert!(storage::permit(&pool, &directory).await);
     assert!(
         !preparation_service::prepare(&pool, prepare(&workspace, config))
             .await

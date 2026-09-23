@@ -593,7 +593,7 @@ for line in sys.stdin:
  if m=='initialize':
   print('separate stderr diagnostic',file=sys.stderr,flush=True)
   send({'method':'fixture/queued','params':{'threadId':'unrelated'}})
-  send({'id':r['id'],'result':{'userAgent':'fixture/0.154.0 (test)'}})
+  send({'id':r['id'],'result':{'userAgent':'fixture/0.156.1 (test)'}})
  elif m=='thread/start':send({'id':r['id'],'result':{'cwd':os.getcwd(),'thread':{'id':'thread','cwd':os.getcwd()}}})
  elif m=='turn/start':
   Path('received-input').write_text(json.dumps(p['input']))
@@ -1189,7 +1189,8 @@ async fn configured_controller(
         }
     })
     .await;
-    // A missing archive mount must close admission without killing the scanner.
+    // An incomplete archive scan retains its retry diagnostic without globally
+    // stopping execution or killing the scanner.
     let cold = root.with_extension("cold");
     let displaced = root.with_extension("displaced-cold");
     std::fs::rename(&cold, &displaced).unwrap();
@@ -1199,14 +1200,17 @@ async fn configured_controller(
         .unwrap();
     tokio::time::timeout(Duration::from_secs(10), async {
         loop {
-            let error: Option<String> = sqlx::query_scalar("SELECT error FROM storage_guard")
-                .fetch_one(pool)
-                .await
-                .unwrap();
-            if error.as_deref().is_some_and(|error| {
-                error.starts_with(
-                    "storage scan failed; preserve registered originals and reconcile:",
-                )
+            let (blocked, retry): (bool, Option<Value>) =
+                sqlx::query_as("SELECT blocked,scan_retry FROM storage_guard")
+                    .fetch_one(pool)
+                    .await
+                    .unwrap();
+            assert!(!blocked, "background scan failure must not latch all tasks");
+            if retry.as_ref().is_some_and(|retry| {
+                retry["last_failure"]["code"] == "cleanup_failed"
+                    && retry["last_failure"]["detail"]
+                        .as_str()
+                        .is_some_and(|s| !s.is_empty())
             }) {
                 break;
             }
@@ -1276,7 +1280,7 @@ async fn failed_protocol_sessions(git: &GitBroker) {
     let premature = client_code().replace("send({'id':77,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'call','tool':'report_blocker','arguments':{'reason':'fixture stop','requires_permission':False}}})", "send({'id':'q','method':'item/tool/requestUserInput','params':{'threadId':'thread','turnId':'turn','itemId':'q','isBlocking':True,'questions':[{'id':'choice','question':'Still answerable?'}]}})\n  send({'method':'turn/completed','params':{'threadId':'thread','turn':{'id':'turn','status':'interrupted'}}})");
     for code in [
         client_code().replace(
-            "'result':{'userAgent':'fixture/0.154.0 (test)'}",
+            "'result':{'userAgent':'fixture/0.156.1 (test)'}",
             "'error':{'code':-1,'message':'fixture rejection'}",
         ),
         client_code().replace(

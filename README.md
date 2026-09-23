@@ -67,7 +67,7 @@
 
 ## 开发环境与本仓库门禁
 
-- `codex-version.lock` 固定 Codex 0.154.0；协议生成与兼容性检查绑定该版本。
+- `codex-version.lock` 固定 Codex 0.156.1；协议生成与兼容性检查绑定该版本。
 - `harness-gate-version.lock` 固定 Core 0.4.5 与 Rust collector rc.6。独立源码／前端／合约插件见 `.harness-gate/collector-candidates.json`。
 - 本仓库从开发阶段启用 Harness-Gate，CRAP ≤10，覆盖率 ≥80%；不改变未来平台对受管仓库的分期。
 - [CI 范围与过期任务](docs/remote-gate.md#ci-范围与过期任务2026-09)：普通文档可复用同策略完整基线，过期 PR 检查自动停止；手动触发仍跑完整门禁。

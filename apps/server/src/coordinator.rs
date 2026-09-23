@@ -49,7 +49,7 @@ impl Coordinator {
 /// Called only after acquiring the process-lifetime instance lock. The HTTP
 /// service remains responsive while old execution facts are reconciled.
 pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bool, sqlx::Error> {
-    if !crate::storage::permit(pool, root).await {
+    if !crate::storage::allowed(pool).await {
         // No heartbeat renewal on persistence failure. Supervisors stop all
         // descendants from memory even if this process cannot write stop files.
         // Still consume stop receipts once persistence returns; otherwise the
@@ -92,7 +92,7 @@ async fn reconcile_run(
     if run.incarnation != incarnation || run.stop_requested {
         return recover_run(pool, root, run).await;
     }
-    if crate::storage::permit(pool, Path::new(&run.workspace)).await {
+    if crate::storage::allowed(pool).await {
         renew_storage(pool, root, &run).await?;
     }
     observe(pool, root, run).await

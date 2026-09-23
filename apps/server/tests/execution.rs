@@ -167,6 +167,22 @@ async fn storage_watchdog(pool: &PgPool, root: &Path) {
         directory: directory.clone(),
     };
     wait_file(&Path::new(&launch.workspace).join("original")).await;
+    // A locked maintenance row must not withhold the actual Run heartbeat.
+    let heartbeat = directory.join("storage-heartbeat.json");
+    let before = fs::metadata(&heartbeat).unwrap().modified().unwrap();
+    let mut locked = pool.begin().await.unwrap();
+    sqlx::query("SELECT id FROM storage_guard FOR UPDATE")
+        .execute(&mut *locked)
+        .await
+        .unwrap();
+    assert!(
+        !coordinator::recover(pool, root, "storage-watchdog")
+            .await
+            .unwrap()
+    );
+    assert!(fs::metadata(&heartbeat).unwrap().modified().unwrap() > before);
+    assert!(!directory.join("quiescent.json").exists());
+    locked.rollback().await.unwrap();
     storage::latch(pool).await;
     assert!(!run_store::actions_allowed(pool, &launch.key).await.unwrap());
     assert!(!storage::recover(pool, root).await.unwrap());

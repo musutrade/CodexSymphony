@@ -26,7 +26,7 @@ pub async fn admit_workspace(pool: &PgPool, workspace: &Workspace) -> Result<boo
     let mut tx = run_store::lock(pool).await?;
     if !reserve_workspace(&mut tx, workspace).await? {
         tx.rollback().await?;
-        block(pool,"storage allocation budget exhausted; retain originals and reclaim/export or adjust policy").await?;
+        tracing::warn!(run = %workspace.key.run_id, "storage reservation unavailable; task deferred");
         return Ok(false);
     }
     tx.commit().await?;
@@ -44,7 +44,7 @@ pub async fn reserve_workspace(tx: &mut store::Tx<'_>, workspace: &Workspace) ->
         return Ok(true);
     };
     storage_inventory::register_workspace(tx, workspace).await?;
-    if !ready_for_work(tx).await? {
+    if !ready_for_work(tx, &workspace.key.run_id).await? {
         return Ok(false);
     }
     reserve_categories(tx, workspace, &config).await
@@ -85,11 +85,10 @@ pub async fn validation(pool: &PgPool, run: &str) -> Result<bool> {
     let (config, measured) = validation_usage(&mut tx).await?;
     if !reserve_validation(&mut tx, &config, run, &measured).await? {
         tx.rollback().await?;
-        block(
-            pool,
-            "validation storage reservation unavailable; preserve candidate",
-        )
-        .await?;
+        tracing::warn!(
+            run,
+            "validation storage reservation unavailable; preserve candidate"
+        );
         return Ok(false);
     }
     tx.commit().await?;
@@ -112,7 +111,7 @@ async fn reserve_validation(
     run: &str,
     measured: &storage_measure::Measurement,
 ) -> Result<bool> {
-    if !ready_for_work(tx).await? {
+    if !ready_for_work(tx, run).await? {
         return Ok(false);
     }
     for category in [Category::Workspace, Category::Hot] {
@@ -133,11 +132,11 @@ async fn reserve_validation(
     Ok(true)
 }
 
-async fn ready_for_work(tx: &mut store::Tx<'_>) -> Result<bool> {
+async fn ready_for_work(tx: &mut store::Tx<'_>, run: &str) -> Result<bool> {
     let blocked: bool = sqlx::query_scalar("SELECT blocked FROM storage_guard WHERE id=1")
         .fetch_one(&mut **tx)
         .await?;
-    Ok(!blocked && capacity_in(tx).await?)
+    Ok(!blocked && capacity_in(tx).await? && task_capacity_in(tx, run).await?)
 }
 
 pub async fn capacity(pool: &PgPool) -> Result<bool> {
@@ -158,17 +157,15 @@ pub async fn capacity_in(tx: &mut store::Tx<'_>) -> Result<bool> {
         sqlx::query_scalar("SELECT COALESCE(SUM(outstanding),0)::bigint FROM storage_allocation")
             .fetch_one(&mut **tx)
             .await?;
-    let mut fits = measured
+    let fits = measured
         .actual
         .checked_add(outstanding as u64)
         .and_then(|total| total.checked_add(config.policy.control_bytes))
         .is_some_and(|total| total <= config.policy.global_bytes);
-    fits &= (outstanding as u64)
-        .checked_add(config.policy.control_bytes)
-        .is_some_and(|total| total <= measured.available);
-    fits &= categories_fit(tx, &config, &measured).await?;
-    fits &= records_current(tx, crate::runtime_client::now()).await?;
-    fits &= cumulative_fit(tx, &config).await?;
+    let fits = fits
+        && (outstanding as u64)
+            .checked_add(config.policy.control_bytes)
+            .is_some_and(|total| total <= measured.available);
     sqlx::query("UPDATE storage_guard SET measured=$1,measured_at=$2 WHERE id=1")
         .bind(json!(measured))
         .bind(crate::runtime_client::now())
@@ -186,43 +183,19 @@ async fn reconciled_usage(
     let measured = storage_measure::measure(tx, config).await?;
     Ok(measured)
 }
-async fn categories_fit(
-    tx: &mut store::Tx<'_>,
-    config: &Deployment,
-    measured: &storage_measure::Measurement,
-) -> Result<bool> {
-    let mut fits = true;
-    for category in CATEGORIES {
-        let reserved: i64 = sqlx::query_scalar(
-            "SELECT COALESCE(SUM(outstanding),0)::bigint FROM storage_allocation WHERE category=$1",
-        )
-        .bind(store::name(&category)?)
-        .fetch_one(&mut **tx)
-        .await?;
-        fits &= measured.categories[&category]
-            .checked_add(reserved as u64)
-            .is_some_and(|total| total <= config.policy.categories[&category].bytes);
-    }
-    Ok(fits)
+/// Retention and cumulative quotas belong to the affected requirement. Shared
+/// category budgets are enforced when reserving the relevant category.
+async fn task_capacity_in(tx: &mut store::Tx<'_>, run: &str) -> Result<bool> {
+    let Some(config) = store::deployment(tx).await? else {
+        return Ok(true);
+    };
+    Ok(sqlx::query_scalar("SELECT NOT EXISTS(SELECT 1 FROM storage_allocation WHERE run_id=$1 GROUP BY run_id HAVING SUM(allocated)>$2) AND NOT EXISTS(SELECT 1 FROM storage_allocation l JOIN storage_attempt a ON a.run_id=l.run_id WHERE a.requirement_id=(SELECT requirement_id FROM storage_attempt WHERE run_id=$1) GROUP BY a.requirement_id HAVING SUM(l.allocated)>$3) AND NOT EXISTS(SELECT 1 FROM storage_attempt WHERE requirement_id=(SELECT requirement_id FROM storage_attempt WHERE run_id=$1) AND expires_at<=$4)")
+        .bind(run).bind(config.policy.run_bytes as i64)
+        .bind(config.policy.requirement_bytes as i64)
+        .bind(crate::runtime_client::now()).fetch_one(&mut **tx).await?)
 }
 
-async fn cumulative_fit(tx: &mut store::Tx<'_>, config: &Deployment) -> Result<bool> {
-    Ok(sqlx::query_scalar("SELECT NOT EXISTS(SELECT 1 FROM storage_allocation GROUP BY run_id HAVING SUM(allocated)>$1) AND NOT EXISTS(SELECT 1 FROM storage_allocation l JOIN storage_attempt a ON a.run_id=l.run_id GROUP BY a.requirement_id HAVING SUM(l.allocated)>$2)")
-        .bind(config.policy.run_bytes as i64).bind(config.policy.requirement_bytes as i64).fetch_one(&mut **tx).await?)
-}
-async fn records_current(tx: &mut store::Tx<'_>, now: i64) -> Result<bool> {
-    let overdue: bool =
-        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM storage_attempt WHERE expires_at<=$1)")
-            .bind(now)
-            .fetch_one(&mut **tx)
-            .await?;
-    if overdue {
-        sqlx::query("UPDATE storage_guard SET blocked=true,error='decision record retention expired; export or explicitly extend storage policy; originals retained' WHERE id=1")
-            .execute(&mut **tx).await?;
-    }
-    Ok(!overdue)
-}
-
+/// Explicit confirmed shared outage; never call for a task or scan error.
 pub async fn block(pool: &PgPool, reason: &str) -> Result<()> {
     let mut tx = run_store::lock(pool).await?;
     sqlx::query("UPDATE storage_guard SET blocked=true,error=$1 WHERE id=1")
@@ -308,13 +281,6 @@ async fn worker(pool: PgPool, mut listener: sqlx::postgres::PgListener) {
                 .take(1024)
                 .collect();
             tracing::warn!("storage scan failed; originals retained: {}", detail);
-            let _ = block(
-                &pool,
-                &format!(
-                    "storage scan failed; preserve registered originals and reconcile: {detail}"
-                ),
-            )
-            .await;
         }
         let delay = next_scan_delay(&pool, crate::runtime_client::now())
             .await

@@ -532,8 +532,15 @@ pub async fn reconcile(tx: &mut Tx<'_>, config: &Deployment) -> Result<()> {
         let actual = attributed_usage(tx, &request, &run, &category).await?;
         let protection = storage_consumers::protection(tx, config, &run, "rebuildable").await?;
         if !store::reconcile(tx, &request, actual as u64, protection.reason().is_none()).await? {
-            sqlx::query("UPDATE storage_guard SET blocked=true,error='Run storage allocation exceeded; retain originals' WHERE id=1")
-                .execute(&mut **tx).await?;
+            tracing::warn!(
+                run,
+                request,
+                "Run storage allocation exceeded; retain originals and stop affected Run"
+            );
+            sqlx::query("UPDATE agent_run SET stop_requested=true WHERE id=$1 AND NOT quiescent")
+                .bind(&run)
+                .execute(&mut **tx)
+                .await?;
         }
     }
     Ok(())

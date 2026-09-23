@@ -47,7 +47,7 @@ App 需安装到本仓库，具有 Checks 读写、Actions 只读、Contents 只
 ## 独立 Symphony 服务
 
 `python3 tools/install_symphony_development.py` 准备独立服务、环境和稳定台账路径，
-不复制 Harness-Gate 的历史台账，也不自动启动调度。当前版本固定 Codex 0.154.0。
+不复制 Harness-Gate 的历史台账，也不自动启动调度。当前版本固定 Codex 0.156.1。
 `tools/symphony/trusted_environment.py` 只负责部署级开发环境边界，省略 GitHub 凭据、签名密钥和控制面状态的挂载。
 环境内 Codex 使用 danger-full-access；普通 Git、构建、数据库、浏览器和真实 Runtime 测试直接运行。
 不要求嵌套命令沙箱、静态网络白名单或逐测试宿主入口。正式 Gate 继续使用独立执行和签名服务。

@@ -38,7 +38,7 @@ hooks:
     printf '\n.symphony-handoff.json\n.agent-cargo/\n.agent-tmp/\n' >> .git/info/exclude
   before_run: |
     set -eu
-    export PATH=/home/gem/.codex/packages/standalone/releases/0.154.0-x86_64-unknown-linux-musl/bin:$PATH
+    export PATH=/home/gem/.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin:$PATH
     test "$(codex --version)" = "$(cat codex-version.lock)"
     command -v cargo >/dev/null
     command -v node >/dev/null
