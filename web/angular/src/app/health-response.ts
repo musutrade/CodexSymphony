@@ -1,4 +1,4 @@
-// harness-contract-sha256: ab67ff1e2be4ef65946679de6ae32a357303612b9422ed1c3c27ea21c1c29fd7
+// harness-contract-sha256: 7df9a589ad74dada51b07782f42bbb9f504da1984d4fd0e09aa9520a18328db9
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -10,6 +10,16 @@ export interface GetRepositoryResponse {
     repository: {
       base_branch: string;
       github_repository_id: number;
+      hooks?: {
+        argv: string[];
+        event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+        name: string;
+        output_limit_bytes: number;
+        replay?: 'idempotent' | 'never' | 'reconcile';
+        roles: ('coding' | 'repair' | 'validation')[];
+        script_identity: string;
+        timeout_seconds: number;
+      }[];
       model?: string | null;
       policy: {
         allowed_checks: string[];
@@ -34,6 +44,16 @@ export type ConfigureRepositoryResponse =
       repository: {
         base_branch: string;
         github_repository_id: number;
+        hooks?: {
+          argv: string[];
+          event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+          name: string;
+          output_limit_bytes: number;
+          replay?: 'idempotent' | 'never' | 'reconcile';
+          roles: ('coding' | 'repair' | 'validation')[];
+          script_identity: string;
+          timeout_seconds: number;
+        }[];
         model?: string | null;
         policy: {
           allowed_checks: string[];
@@ -55,6 +75,16 @@ export interface ConfigureRepositoryRequest {
   repository: {
     base_branch: string;
     github_repository_id: number;
+    hooks?: {
+      argv: string[];
+      event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+      name: string;
+      output_limit_bytes: number;
+      replay?: 'idempotent' | 'never' | 'reconcile';
+      roles: ('coding' | 'repair' | 'validation')[];
+      script_identity: string;
+      timeout_seconds: number;
+    }[];
     model?: string | null;
     policy: {
       allowed_checks: string[];
@@ -73,7 +103,13 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
+  requirements: {
+    id: number;
+    revision: number;
+    state: string;
+    title: string;
+    version: number;
+  }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -113,6 +149,16 @@ export type CreateRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -190,6 +236,16 @@ export type GetRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -250,6 +306,16 @@ export type UpdateRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -327,6 +393,16 @@ export type ReadyRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -392,6 +468,16 @@ export type WithdrawRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -593,6 +679,16 @@ export interface MultiGetRepositoryResponse {
     repository: {
       base_branch: string;
       github_repository_id: number;
+      hooks?: {
+        argv: string[];
+        event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+        name: string;
+        output_limit_bytes: number;
+        replay?: 'idempotent' | 'never' | 'reconcile';
+        roles: ('coding' | 'repair' | 'validation')[];
+        script_identity: string;
+        timeout_seconds: number;
+      }[];
       model?: string | null;
       policy: {
         allowed_checks: string[];
@@ -618,6 +714,16 @@ export type MultiConfigureRepositoryResponse =
       repository: {
         base_branch: string;
         github_repository_id: number;
+        hooks?: {
+          argv: string[];
+          event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+          name: string;
+          output_limit_bytes: number;
+          replay?: 'idempotent' | 'never' | 'reconcile';
+          roles: ('coding' | 'repair' | 'validation')[];
+          script_identity: string;
+          timeout_seconds: number;
+        }[];
         model?: string | null;
         policy: {
           allowed_checks: string[];
@@ -639,6 +745,16 @@ export interface MultiConfigureRepositoryRequest {
   repository: {
     base_branch: string;
     github_repository_id: number;
+    hooks?: {
+      argv: string[];
+      event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+      name: string;
+      output_limit_bytes: number;
+      replay?: 'idempotent' | 'never' | 'reconcile';
+      roles: ('coding' | 'repair' | 'validation')[];
+      script_identity: string;
+      timeout_seconds: number;
+    }[];
     model?: string | null;
     policy: {
       allowed_checks: string[];
@@ -706,6 +822,16 @@ export type MultiCreateRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -786,6 +912,16 @@ export type MultiGetRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -848,6 +984,16 @@ export type MultiUpdateRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -928,6 +1074,16 @@ export type MultiReadyRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -995,6 +1151,16 @@ export type MultiWithdrawRequirementResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -1276,6 +1442,16 @@ export type GetGroupReviewResponse =
             repository: {
               base_branch: string;
               github_repository_id: number;
+              hooks?: {
+                argv: string[];
+                event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+                name: string;
+                output_limit_bytes: number;
+                replay?: 'idempotent' | 'never' | 'reconcile';
+                roles: ('coding' | 'repair' | 'validation')[];
+                script_identity: string;
+                timeout_seconds: number;
+              }[];
               model?: string | null;
               policy: {
                 allowed_checks: string[];
@@ -1412,6 +1588,16 @@ export type GetGroupReviewResponse =
           repository: {
             base_branch: string;
             github_repository_id: number;
+            hooks?: {
+              argv: string[];
+              event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+              name: string;
+              output_limit_bytes: number;
+              replay?: 'idempotent' | 'never' | 'reconcile';
+              roles: ('coding' | 'repair' | 'validation')[];
+              script_identity: string;
+              timeout_seconds: number;
+            }[];
             model?: string | null;
             policy: {
               allowed_checks: string[];
@@ -1476,6 +1662,16 @@ export type GetGroupReviewResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
@@ -1570,6 +1766,16 @@ export type SaveGroupReviewResponse =
             repository: {
               base_branch: string;
               github_repository_id: number;
+              hooks?: {
+                argv: string[];
+                event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+                name: string;
+                output_limit_bytes: number;
+                replay?: 'idempotent' | 'never' | 'reconcile';
+                roles: ('coding' | 'repair' | 'validation')[];
+                script_identity: string;
+                timeout_seconds: number;
+              }[];
               model?: string | null;
               policy: {
                 allowed_checks: string[];
@@ -1706,6 +1912,16 @@ export type SaveGroupReviewResponse =
           repository: {
             base_branch: string;
             github_repository_id: number;
+            hooks?: {
+              argv: string[];
+              event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+              name: string;
+              output_limit_bytes: number;
+              replay?: 'idempotent' | 'never' | 'reconcile';
+              roles: ('coding' | 'repair' | 'validation')[];
+              script_identity: string;
+              timeout_seconds: number;
+            }[];
             model?: string | null;
             policy: {
               allowed_checks: string[];
@@ -1770,6 +1986,16 @@ export type SaveGroupReviewResponse =
         repository: {
           base_branch: string;
           github_repository_id: number;
+          hooks?: {
+            argv: string[];
+            event: 'after_create' | 'after_run' | 'before_remove' | 'before_run';
+            name: string;
+            output_limit_bytes: number;
+            replay?: 'idempotent' | 'never' | 'reconcile';
+            roles: ('coding' | 'repair' | 'validation')[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
           model?: string | null;
           policy: {
             allowed_checks: string[];
