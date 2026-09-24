@@ -1,0 +1,24 @@
+[
+  {
+    "status": "fulfilled",
+    "value": {
+      "number": 111,
+      "status": 200,
+      "merged": true,
+      "merged_at": "2026-09-23T14:33:45Z",
+      "merge_commit_sha": "5cbfad910c7fab923ae9503f4b9388d7bcfc5a85",
+      "base": "main"
+    }
+  },
+  {
+    "status": "fulfilled",
+    "value": {
+      "number": 113,
+      "status": 200,
+      "merged": true,
+      "merged_at": "2026-09-24T02:23:33Z",
+      "merge_commit_sha": "9f93384f8597aae109034da6cbacb11708cc1edb",
+      "base": "main"
+    }
+  }
+]

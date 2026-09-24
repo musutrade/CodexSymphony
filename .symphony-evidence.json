@@ -2,36 +2,84 @@
   "schema": "symphony-evidence/v1",
   "files": [
     {
-      "path": "artifacts/gh115/database-smoke.log",
-      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      "path": "artifacts/gh118/baseline-tests.log.gz",
+      "sha256": "1ffeabbc14345e7c6f8137dac011e7521e148ada85a4f65782eb651476e4c239"
     },
     {
-      "path": "artifacts/gh115/fixture-dev.json",
-      "sha256": "b6fa46393ce16ed8f90d52034f76e5f225d786def28df4906948ef883143c6a0"
+      "path": "artifacts/gh118/clippy-initial.log",
+      "sha256": "4d56abdb7c800be394161c95fc026e9550a9d839fbb89a8af85f6d8d9f6155a9"
     },
     {
-      "path": "artifacts/gh115/fixture-test.json",
-      "sha256": "d6c651050153a237ebbc80a6834b00965fdf7084d90a578e15f68c6f5aca7432"
+      "path": "artifacts/gh118/clippy-refactor.log",
+      "sha256": "428d92e18c1d2c3a43abc340b30ed9322c75e9ac51042f686613dcc32da35905"
     },
     {
-      "path": "artifacts/gh115/gate-config.log",
-      "sha256": "ebda2eaf40242b698480abaf9bdac1673cb418e1ff0e0d196238bfde074dd8be"
+      "path": "artifacts/gh118/clippy.log",
+      "sha256": "abb9777586dd52596cd3168fe3fdb110df1a79fbcded04574efd51c2b86a495f"
     },
     {
-      "path": "artifacts/gh115/local-gate-first.json",
-      "sha256": "f712d139d441e95cb4471dd478c9d24eb042731297a4917dd72bad46a2827eb5"
+      "path": "artifacts/gh118/contract-tests.log.gz",
+      "sha256": "07863d0eab86e87a28cd42b98a06dadc510a141f3c3223d7043dfe88506379ef"
     },
     {
-      "path": "artifacts/gh115/npm-ci.log",
+      "path": "artifacts/gh118/coverage-diagnostic.log.gz",
+      "sha256": "4b19cd318cf2ab4de7969ae204d53d8e112ce105cd92c893f3d78e1701d3d756"
+    },
+    {
+      "path": "artifacts/gh118/document-checks.log",
+      "sha256": "2773cf74e8f8490eeef605c5fa1b7c988c27c1eaf711f95f390fcd3ba41a269b"
+    },
+    {
+      "path": "artifacts/gh118/fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh118/gate-config.log",
+      "sha256": "985aa8e6a6f7fef77f66e5f6115f5802afeb0dca897c33d73516aa1a3f83e813"
+    },
+    {
+      "path": "artifacts/gh118/host-log-access.txt",
+      "sha256": "53610608ba9524c7852eecfc86709ae4eebcd3206c1da375ba5b253475da8b20"
+    },
+    {
+      "path": "artifacts/gh118/local-gate-capture-failure.json",
+      "sha256": "6a8769c54005387d85a8c05c09a2388ecd38045c6e8bef9360e33d32b1f6fe28"
+    },
+    {
+      "path": "artifacts/gh118/local-gate-initial.json",
+      "sha256": "593ba7d0065e53a31514a605236d70a1168ee10891f746c6dece7ea4c5fa6433"
+    },
+    {
+      "path": "artifacts/gh118/local-gate-quality-failure.json",
+      "sha256": "b3564c3220c041754613baed375d5a3ac4e5e43753f6f285425bdb9afb160b14"
+    },
+    {
+      "path": "artifacts/gh118/npm-ci.log",
       "sha256": "9ae21d1653870ebd976731a23dedaf7edb06fd7bb91386ce5356e8b9a0ece36c"
     },
     {
-      "path": "artifacts/gh115/summary.md",
-      "sha256": "15afc938caea6c133898b3763e900254f499aabbcaf5cfba773d84aaa23f987e"
+      "path": "artifacts/gh118/preflight.json",
+      "sha256": "dcfba3110f6b114a62f4007fb86289d6790149a2c384eccfcb3f6df8d0c33585"
     },
     {
-      "path": "artifacts/gh115/tests.log",
-      "sha256": "cf8762cd843396deeb76baefc8203d4a8a7793828f2e2e0d9e902971586e6847"
+      "path": "artifacts/gh118/prerequisites.json",
+      "sha256": "0dc28dfc409fde9f20a895f46645b3b1e1996b5085a0e562f333e44b72e34c3d"
+    },
+    {
+      "path": "artifacts/gh118/source.json",
+      "sha256": "0796f549b1c776980a1bd963be91e64c5f4801a08f2cade3f7d51fb9d80d8288"
+    },
+    {
+      "path": "artifacts/gh118/summary.md",
+      "sha256": "7d6a9d8c9b73229a742f0a57e8a9b08d1aa7ae00325dd8a42827ce9012011ded"
+    },
+    {
+      "path": "artifacts/gh118/tests-refactor.log.gz",
+      "sha256": "6967ed070e20d08007915164998e0da47a375e9bb0ee8430428a23730d353262"
+    },
+    {
+      "path": "artifacts/gh118/tests.log.gz",
+      "sha256": "9feb560851570199e7592b8451ecf79942e570bfb5d352f1c83272beaab18ddc"
     }
   ]
 }

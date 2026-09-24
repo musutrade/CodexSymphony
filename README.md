@@ -70,3 +70,5 @@ Product Runtime deployments require a finite [storage lifecycle policy](docs/sto
 A13 原件恢复进展、剩余缺口及当前就绪状态见 [证据恢复索引](docs/quality/gh25/evidence-recovery.md)。
 
 环境清单、漂移检查和发布前完整验证见 [环境与发布约束](docs/environment-and-publication.md)。
+
+受控交付本轮按 #118 → #119 → #120 → #121 → #105 → #122 串行；[方案及授权快照](docs/product-controlled-delivery-plan.md)、[统一扩展协议与实际调用点](docs/extension-protocol.md)区分现有实现和待接入能力。项目环境、验证、凭据与交付由受审扩展提供，缓存可选；Rust、GitHub App 和 Harness-Gate 不是受管项目的通用前提。本仓库自己的门禁不变。

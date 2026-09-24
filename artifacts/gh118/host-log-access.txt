@@ -1,0 +1,16 @@
+Host run: run-3a4a088bba8f
+local_gate status returned cargo llvm-cov exit 101 inside backend capture.
+The returned diagnostics contain outer backend-capture and Gate traceback output,
+not the nested Cargo stdout/stderr. The source of the exit is unconfirmed.
+
+Read-only namespace check:
+ls: cannot access '/home/gem/.local/share/codexsymphony/publication/GH-118': No such file or directory
+ls: cannot access '/home/gem/.local/share/codexsymphony/gate-host/runs/run-3a4a088bba8f': No such file or directory
+
+The installed rust-source/0.1.0-rc.5/capture.py lines 57-58 open:
+  probes/backend/capture.stdout
+  probes/backend/capture.stderr
+and execute Cargo with stdout/stderr redirected there.
+No access to host credentials, journal or signing keys was attempted.
+A local llvm-cov reproduction is diagnostic only; its namespace and source checkout
+are not the independent host capture namespace/source copy.

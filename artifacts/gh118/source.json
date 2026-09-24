@@ -1,0 +1,45 @@
+{
+  "baseline": "761f09a7c2021b1a157ca9d6a1d4309068e1b54a",
+  "files": [
+    {
+      "path": "Personal_AI_Software_Factory_综合方案.md",
+      "sha256": "bf4e953fa69d347120b1a214bd00b68960d31c3dc8ca2aaea974dcee773e8ffc"
+    },
+    {
+      "path": "README.md",
+      "sha256": "470ec20c0837db2bed6b458980a774940a3fef1500f8dd5db01ef8a510a4f2ef"
+    },
+    {
+      "path": "apps/server/src/controlled_contract.rs",
+      "sha256": "684a71344233fcd2dc82e23f0dc556c4ab32dbc94b8de9be67297c34b165db8d"
+    },
+    {
+      "path": "apps/server/src/lib.rs",
+      "sha256": "4c35226e08b12e80835f7377f1ab35cf95388142f4da95dd4520c3177ca1a162"
+    },
+    {
+      "path": "apps/server/tests/controlled_contract.rs",
+      "sha256": "27f42767927fb1fb09fd8a3257fdc37e4428585c24e012a614e4d0e8ae6f21f9"
+    },
+    {
+      "path": "docs/architecture-boundaries.md",
+      "sha256": "2a16d208d70182b96ca8af8e5182c98aa28b23db2797de22908b5a9fdccc336a"
+    },
+    {
+      "path": "docs/extension-protocol.md",
+      "sha256": "6a1170779ffb26841b4fbbd4f8d59e588c2aab8fbdc798414df775dacc3221e6"
+    },
+    {
+      "path": "docs/extension-requirements.md",
+      "sha256": "41d074230252d6ddedf5e446378ac375c56c6368c64897c67c3a74d00e47f04b"
+    },
+    {
+      "path": "docs/product-controlled-delivery-issue-map.md",
+      "sha256": "dc37e062e2a0cb9891b8f641a619f2912061d10bde86d329441a3a9a0b7ad0ce"
+    },
+    {
+      "path": "docs/product-controlled-delivery-plan.md",
+      "sha256": "35bfdf42f3b272e95a02fce60a6f8dd61bc5eeed55663c82e3563c1f8e6c4768"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # CodexSymphony Architecture Boundaries
 
-Status: **Normative responsibility boundaries** · updated 2026-09-23
+Status: **Normative responsibility boundaries** · updated 2026-09-24
 
 This document defines responsibility, not implementation scope. Current behavior and acceptance live in the [main specification](../Personal_AI_Software_Factory_综合方案.md). Deferred framework designs have no current normative force.
 
@@ -79,6 +79,27 @@ recovery, real CI checks and external-action authorization remain in force.
 
 The core owns authorization, scheduling, budgets, process quiescence, preservation, independent acceptance and reconciliation. Project hooks supply preparation and auxiliary cleanup; execution adapters supply Agent interactions; delivery adapters supply observed delivery facts; optional decision adapters supply advice. Platform PostgreSQL is not a mandatory dependency of managed projects.
 
-The [extension requirements](extension-requirements.md) own staged scope and acceptance; the [extension protocol](extension-protocol.md) owns interface and lifecycle semantics. They are pending implementation, not a claim that local delivery, generic hooks or task model selection exist today. Existing frozen tasks retain their policy; merging documentation does not start the paused queue.
+The [extension requirements](extension-requirements.md) own staged scope and acceptance; the [extension protocol](extension-protocol.md) owns interface and lifecycle semantics. The original types and four lifecycle hooks were delivered by #103/#104; environment/validation/delivery integration and task model selection remain staged work. Existing frozen tasks retain their policy; merging documentation does not start the paused queue.
 
 The extension work does not require a plugin marketplace, a service per adapter, or moving authoritative preservation into best-effort scripts. The development controller's WORKFLOW.lifecycle.md hooks are separate from the Rust product interfaces described here.
+
+## 9. Controlled delivery contract (GH-118)
+
+The [unified extension protocol](extension-protocol.md#p9-受控环境验证与交付) is the
+single source for operation names, versions and environment/validation/delivery
+result semantics. The core freezes authorization and candidate identity, supervises
+calls, checks provenance/completeness, preserves evidence and reconciles unknown
+side effects. Reviewed extensions implement environment probes, complete validation,
+credential provision and delivery. Core configuration holds capability/scope/config
+references, not vendor authentication fields or mandatory PR/CI facts.
+
+Rust, a project database, GitHub App, Harness-Gate and build/dependency caches are
+not universal project requirements. This repository retains its own required Gate.
+Candidate execution receives no delivery secrets; credentialed extensions execute
+only reviewed implementation, never Agent-modifiable scripts. Agent declarations
+cannot approve acceptance. Four lifecycle hooks retain their existing semantics.
+
+Submitted and Done describe applicable delivery and business acceptance independently
+of hosting provider and execution stages. Local delivery has no invented PR/CI/merge
+facts. P10 maps existing call sites and planned integration: GH-118 provides contracts
+and compatibility checks, not the later adapters or production deployment.
