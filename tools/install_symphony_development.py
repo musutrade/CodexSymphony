@@ -27,6 +27,18 @@ def routed_workflow(workflow, previous=None):
         labels=b'  required_labels:\n    - symphony-ready\n    - symphony-environment-acceptance\n'
     return workflow[:expected.start()]+labels+workflow[expected.end():]
 
+def archive_workflow(active, previous, replacement):
+    """Keep each replaced workflow byte-for-byte outside the executable template."""
+    if previous is None or previous == replacement:
+        return
+    archive=active.parent/'workflow-archive'/f'{hashlib.sha256(previous).hexdigest()}.md'
+    archive.parent.mkdir(parents=True,exist_ok=True)
+    if archive.exists():
+        if archive.read_bytes()!=previous:
+            raise ValueError('workflow archive differs; refusing to overwrite history')
+    else:
+        archive.write_bytes(previous)
+
 def environment_sources():
     directory=ROOT/'tools/symphony/environment'
     sources={path.relative_to(directory):path.read_bytes() for path in directory.rglob('*') if path.is_file() and '__pycache__' not in path.parts}
@@ -92,7 +104,9 @@ def main():
     check_preservation_controller(state)
     check_publication_controller(state)
     active=state/'WORKFLOW.lifecycle.md'
-    routed=routed_workflow(workflow,active.read_bytes() if active.exists() else None)
+    previous=active.read_bytes() if active.exists() else None
+    routed=routed_workflow(workflow,previous)
+    archive_workflow(active,previous,routed)
     revision=hashlib.sha256(workflow+wrapper+reviewed_gate+provision+deployment_check+b''.join(sources[key] for key in sorted(sources))).hexdigest()[:16]
     release=state/'releases'/revision;release.mkdir(parents=True,exist_ok=True)
     for name,data in [('WORKFLOW.lifecycle.md',workflow),('trusted_environment.py',wrapper),('reviewed_gate.py',reviewed_gate)]:
@@ -131,11 +145,6 @@ def main():
         path=state/'environment-template'/name;path.parent.mkdir(parents=True,exist_ok=True)
         path.write_bytes(data)
         if name==Path('client/bin/psql'):path.chmod(0o755)
-    if active.exists():
-        previous = active.read_bytes()
-        match = re.search(rb'\n## (?:GH-[0-9]+ operator recovery:|Operator recovery:|Operator deployment completed|Supported release completed)', previous)
-        if match and previous[match.start():] not in routed:
-            routed += previous[match.start():]
     managed={str(state/name):hashlib.sha256((state/name).read_bytes()).hexdigest() for name in ['reviewed_gate.py','provision_issue_environment.py','environment_contract.py','environment.lock.json','check_deployment.py']}
     managed.update({str(release/name):hashlib.sha256((release/name).read_bytes()).hexdigest() for name in ['trusted_environment.py','reviewed_gate.py','environment_contract.py','environment.lock.json']})
     managed.update({str(state/'environment-template'/name):hashlib.sha256((state/'environment-template'/name).read_bytes()).hexdigest() for name in sources})
