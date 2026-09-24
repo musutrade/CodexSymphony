@@ -8,6 +8,8 @@ import re
 import shutil
 import subprocess
 import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent/'symphony'))
+from check_deployment import check_commands, effective_command
 
 ROOT=Path(__file__).resolve().parents[1]
 HOME=Path.home()
@@ -58,6 +60,22 @@ def check_publication_controller(state):
     if receipt.get('binary_sha256')!=hashlib.sha256(binary.read_bytes()).hexdigest() or receipt.get('patch_sha256')!=hashlib.sha256(patch.read_bytes()).hexdigest():
         raise ValueError('Publication guard controller receipt mismatch')
 
+def record_deployment(state,active):
+    expected=f'/home/gem/.local/bin/mise exec -- /home/gem/symphony/elixir/bin/symphony --i-understand-that-this-will-be-running-without-the-usual-guardrails {active} --port 4011 --logs-root {state}/logs'
+    check_commands({'symphony-codexsymphony.service':expected})
+    remote=effective_command('codexsymphony-remote-gate.service')
+    import shlex
+    arguments=shlex.split(remote)
+    remote_config=Path(arguments[arguments.index('--config')+1])
+    config=json.loads(remote_config.read_text())
+    if Path(config['gate_approval']).read_bytes() != (BASE/'gate-host/approval.json').read_bytes():
+        raise ValueError('Remote CI must use the same Gate approval as local publication before installation')
+    files=[HOME/'symphony/elixir/bin/symphony',active,state/'codex-trusted',BASE/'publication/guard',remote_config]
+    (state/'deployment.json').write_text(json.dumps({'commands':{'symphony-codexsymphony.service':expected,
+        'codexsymphony-remote-gate.service':remote},'remote_config':str(remote_config),
+        'files':{str(path):hashlib.sha256(path.read_bytes()).hexdigest() for path in files}},indent=2)+'\n')
+
+
 def main():
     os.umask(0o077)
     state=BASE/'symphony';state.mkdir(parents=True,exist_ok=True)
@@ -65,6 +83,7 @@ def main():
     wrapper=(ROOT/'tools/symphony/trusted_environment.py').read_bytes()
     reviewed_gate=(ROOT/'tools/symphony/reviewed_gate.py').read_bytes()
     provision=(ROOT/'tools/symphony/provision_issue_environment.py').read_bytes()
+    deployment_check=(ROOT/'tools/symphony/check_deployment.py').read_bytes()
     sources=environment_sources()
     shared={'environment_contract.py':(ROOT/'tools/environment_contract.py').read_bytes(),
             'environment.lock.json':(ROOT/'environment.lock.json').read_bytes()}
@@ -74,7 +93,7 @@ def main():
     check_publication_controller(state)
     active=state/'WORKFLOW.lifecycle.md'
     routed=routed_workflow(workflow,active.read_bytes() if active.exists() else None)
-    revision=hashlib.sha256(workflow+wrapper+reviewed_gate+provision+b''.join(sources[key] for key in sorted(sources))).hexdigest()[:16]
+    revision=hashlib.sha256(workflow+wrapper+reviewed_gate+provision+deployment_check+b''.join(sources[key] for key in sorted(sources))).hexdigest()[:16]
     release=state/'releases'/revision;release.mkdir(parents=True,exist_ok=True)
     for name,data in [('WORKFLOW.lifecycle.md',workflow),('trusted_environment.py',wrapper),('reviewed_gate.py',reviewed_gate)]:
         path=release/name
@@ -86,6 +105,7 @@ def main():
     (state/'reviewed_gate.py').write_bytes(reviewed_gate)
     # Stable journal path is retained across workflow releases.
     (state/'provision_issue_environment.py').write_bytes(provision)
+    (state/'check_deployment.py').write_bytes(deployment_check)
     (state/'preserve_workspace.py').write_bytes((ROOT/'tools/symphony/preserve_workspace.py').read_bytes())
     # Retire superseded executable entrypoints while retaining their artifacts.
     retired=state/'retired-execution-entries'/revision
@@ -116,7 +136,7 @@ def main():
         match = re.search(rb'\n## (?:GH-[0-9]+ operator recovery:|Operator recovery:|Operator deployment completed|Supported release completed)', previous)
         if match and previous[match.start():] not in routed:
             routed += previous[match.start():]
-    managed={str(state/name):hashlib.sha256((state/name).read_bytes()).hexdigest() for name in ['reviewed_gate.py','provision_issue_environment.py','environment_contract.py','environment.lock.json']}
+    managed={str(state/name):hashlib.sha256((state/name).read_bytes()).hexdigest() for name in ['reviewed_gate.py','provision_issue_environment.py','environment_contract.py','environment.lock.json','check_deployment.py']}
     managed.update({str(release/name):hashlib.sha256((release/name).read_bytes()).hexdigest() for name in ['trusted_environment.py','reviewed_gate.py','environment_contract.py','environment.lock.json']})
     managed.update({str(state/'environment-template'/name):hashlib.sha256((state/'environment-template'/name).read_bytes()).hexdigest() for name in sources})
     for directory in [state,release]: (directory/'installed-files.json').write_text(json.dumps(managed,indent=2)+'\n')
@@ -144,6 +164,7 @@ Environment=HTTPS_PROXY=http://192.168.0.26:10809
 Environment=ALL_PROXY=http://192.168.0.26:10809
 Environment=NO_PROXY=127.0.0.1,localhost,::1
 Environment=NO_COLOR=1
+ExecStartPre=/usr/bin/python3 {state}/check_deployment.py
 ExecStart=/home/gem/.local/bin/mise exec -- /home/gem/symphony/elixir/bin/symphony --i-understand-that-this-will-be-running-without-the-usual-guardrails {active} --port 4011 --logs-root {state}/logs
 Restart=on-failure
 RestartSec=15
@@ -156,6 +177,7 @@ WantedBy=default.target
 ''')
     subprocess.run([sys.executable,str(ROOT/'tools/install_publication_gate.py')],check=True)
     subprocess.run(['systemctl','--user','daemon-reload'],check=True)
+    record_deployment(state,active)
     subprocess.run([sys.executable, str(ROOT/'tools/install_symphony_cleanup.py')], check=True)
     subprocess.run([sys.executable, str(ROOT/'tools/install_symphony_operator.py')], check=True)
     print('Prepared Symphony release '+revision+'; scheduling has not been started.')

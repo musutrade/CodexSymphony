@@ -78,7 +78,9 @@ def tool_path(value):
 
 
 def test_environment(value):
-    return dict(value['test_environment'])
+    # Probe workspaces may omit rust-toolchain.toml. Never fall back to the
+    # mutable rustup default when a collector changes cwd or copies sources.
+    return dict(value['test_environment'], RUSTUP_TOOLCHAIN=value['tools']['rust'])
 
 
 def database_args(value, role='test'):
@@ -123,10 +125,10 @@ def fingerprint(repository, environment=None):
         actual[name] = {'version': result, 'sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest()}
         if actual[name]['sha256'] != value['tool_sha256'][name]:
             raise ValueError('environment drift: '+name+' binary SHA-256 differs from manifest')
-    for name, expected in value['test_environment'].items():
+    for name, expected in test_environment(value).items():
         if env.get(name) != expected:
             raise ValueError(f'environment drift: {name}: expected {expected}, actual {env.get(name)}')
-    identity = {'contract': digest(value), 'tools': actual, 'postgres': value['postgres'], 'test_environment': value['test_environment']}
+    identity = {'contract': digest(value), 'tools': actual, 'postgres': value['postgres'], 'test_environment': test_environment(value)}
     return {'schema': 'codexsymphony-environment-fingerprint/v1', 'fingerprint': digest(identity), **identity}
 
 

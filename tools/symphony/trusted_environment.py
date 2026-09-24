@@ -44,7 +44,6 @@ def resolver_mount(resolver=Path('/etc/resolv.conf')):
 
 
 def command(argv, state_home=None):
-    from reviewed_gate import gate_bin
     cwd=Path.cwd().resolve()
     if not cwd.is_relative_to(WORKSPACES) or cwd==WORKSPACES:
         raise ValueError('Codex must run in an assigned project workspace')
@@ -68,6 +67,10 @@ def command(argv, state_home=None):
           '--ro-bind',str(HOME/'.codex/skills'),str(HOME/'.codex/skills'),
           '--ro-bind',str(HOME/'.local/share/harness-gate'),str(HOME/'.local/share/harness-gate')]
     provision=BASE/'symphony'/(cwd.name.lower().replace('-', '')+'-environment')
+    requirements=provision/'requirements.toml'
+    expected_requirements=(BASE/'symphony/environment-template/requirements.toml').read_bytes()
+    if not requirements.is_file() or requirements.read_bytes()!=expected_requirements:
+        raise ValueError('publication policy drift: managed Codex requirements missing or changed')
     if (provision/'requirements.toml').is_file():
         args+=['--ro-bind',str(provision/'requirements.toml'),'/etc/codex/requirements.toml',
                '--ro-bind',str(provision/'arc-admin'),str(HOME/'arc-admin'),
@@ -76,7 +79,7 @@ def command(argv, state_home=None):
         args+=['--symlink','/opt/'+cwd.name.lower().replace('-', '')+'-env','/opt/symphony-env']
     env={'HOME':str(HOME),'CODEX_HOME':str(auth),'CARGO_HOME':str(HOME/'.cargo'),
          'RUSTUP_HOME':str(HOME/'.rustup'),'CARGO_TARGET_DIR':str(cwd/'target'),
-         'PATH':'/opt/codex:'+gate_bin(cwd)+':/home/gem/.local/share/harness-gate/versions/rust-collector-v0.1.0-rc.7/bin:/home/gem/.cargo/bin:/usr/local/bin:/usr/bin:/bin',
+         'PATH':contract.tool_path(policy).replace(str(codex), '/opt/codex', 1),
          'LANG':'C.UTF-8','TZ':'UTC','NO_COLOR':'1','HTTP_PROXY':'http://192.168.0.26:10809',
          'HTTPS_PROXY':'http://192.168.0.26:10809','ALL_PROXY':'http://192.168.0.26:10809','NO_PROXY':'127.0.0.1,localhost,::1'}
     if (provision/'requirements.toml').is_file():

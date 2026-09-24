@@ -7,6 +7,9 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent/'symphony'))
+from check_deployment import check_commands
 
 ROOT=Path(__file__).resolve().parents[1]
 HOME=Path.home()/'.local/share/codexsymphony/remote-gate'
@@ -40,7 +43,7 @@ def main():
     for name,digest in approval['trusted_files'].items():
         if sha(ROOT/name)!=digest:raise ValueError('gate host input changed: '+name)
     names=['.github/workflows/quality.yml','WORKFLOW.lifecycle.md','web/angular/package.json','web/angular/package-lock.json']
-    names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/symphony/trusted_environment.py','tools/symphony/reviewed_gate.py']
+    names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/symphony/trusted_environment.py','tools/symphony/reviewed_gate.py','tools/symphony/check_deployment.py']
     names += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tools/remote-gate').glob('*.py'))]
     protected={name:sha(ROOT/name) for name in names}
     identity={'protected_files':protected,'gate_approval':str(gate.resolve()),
@@ -80,6 +83,7 @@ UMask=0077
 WantedBy=default.target
 ''')
     subprocess.run(['systemctl','--user','daemon-reload'],check=True)
+    check_commands({'codexsymphony-remote-gate.service':f'/usr/bin/python3 {release}/host.py --config {path}'})
     print(json.dumps({'release':str(release),'config':str(path),'service':str(service),'started':False}))
 
 if __name__=='__main__':main()

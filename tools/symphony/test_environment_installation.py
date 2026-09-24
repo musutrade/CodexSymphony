@@ -17,8 +17,15 @@ def module(name,path):
 install=module('install',ROOT/'tools/install_symphony_development.py')
 provision=module('provision',Path(__file__).with_name('provision_issue_environment.py'))
 environment=module('environment',Path(__file__).with_name('trusted_environment.py'))
+deployment=module('deployment',Path(__file__).with_name('check_deployment.py'))
 
 class EnvironmentInstallationTests(unittest.TestCase):
+    def test_effective_service_override_rejects_stale_deployment(self):
+        with patch.object(deployment.subprocess,'check_output',return_value='{ path=/usr/bin/python3 ; argv[]=/usr/bin/python3 /old/host.py --config /old.json ; ignore_errors=no ; }\n'):
+            with self.assertRaisesRegex(ValueError,'deployment drift'):
+                deployment.check_commands({'gate.service':'/usr/bin/python3 /new/host.py --config /new.json'})
+            deployment.check_commands({'gate.service':'/usr/bin/python3 /old/host.py --config /old.json'})
+
     def test_locked_codex_uses_workspace_lock_and_rejects_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
             root=Path(directory);workspace=root/'workspace';workspace.mkdir()
@@ -49,12 +56,12 @@ class EnvironmentInstallationTests(unittest.TestCase):
             (source/'environment.lock.json').write_bytes((ROOT/'environment.lock.json').read_bytes())
             (source/'tools/environment_contract.py').write_bytes((ROOT/'tools/environment_contract.py').read_bytes())
             (source/'WORKFLOW.lifecycle.md').write_bytes((ROOT/'WORKFLOW.lifecycle.md').read_bytes())
-            for name in ('trusted_environment.py','reviewed_gate.py','provision_issue_environment.py','preserve_workspace.py'):
+            for name in ('trusted_environment.py','reviewed_gate.py','provision_issue_environment.py','preserve_workspace.py','check_deployment.py'):
                 (source/'tools/symphony'/name).write_bytes((ROOT/'tools/symphony'/name).read_bytes())
             (home/'.config/symphony').mkdir(parents=True)
             (home/'.config/symphony/codexsymphony.env').write_text('')
             (home/'.config/systemd/user').mkdir(parents=True)
-            with patch.object(install,'HOME',home), patch.object(install,'BASE',home/'state'), patch.object(install,'ROOT',source), patch.object(install,'environment_sources',return_value={}), patch.object(install,'check_environment_resources'), patch.object(install,'check_preservation_controller'), patch.object(install,'check_publication_controller'), patch.object(install.subprocess,'run'):
+            with patch.object(install,'HOME',home), patch.object(install,'BASE',home/'state'), patch.object(install,'ROOT',source), patch.object(install,'environment_sources',return_value={}), patch.object(install,'check_environment_resources'), patch.object(install,'check_preservation_controller'), patch.object(install,'check_publication_controller'), patch.object(install,'record_deployment'), patch.object(install.subprocess,'run'):
                 install.main()
                 original=(state/'codex-trusted').read_text()
                 helper=(source/'tools/symphony/reviewed_gate.py').read_bytes()
@@ -62,7 +69,7 @@ class EnvironmentInstallationTests(unittest.TestCase):
                 releases=list((state/'releases').iterdir())
                 self.assertEqual(len(releases),1)
                 self.assertEqual((releases[0]/'reviewed_gate.py').read_bytes(),helper)
-                self.assertIn(b'reviewed_gate.py)',(state/'WORKFLOW.lifecycle.md').read_bytes())
+                self.assertIn(b'check_deployment.py',(state/'WORKFLOW.lifecycle.md').read_bytes())
                 (source/'tools/symphony/reviewed_gate.py').write_bytes(helper+b'\n# reviewed update\n')
                 install.main()
                 self.assertNotEqual((state/'codex-trusted').read_text(),original)

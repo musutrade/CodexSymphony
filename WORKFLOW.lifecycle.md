@@ -39,14 +39,9 @@ hooks:
     printf '\n.symphony-handoff.json\n.agent-cargo/\n.agent-tmp/\n' >> .git/info/exclude
   before_run: |
     set -eu
-    codex_release=$(sed -n 's/^codex-cli \([0-9][0-9.]*\)$/\1/p' codex-version.lock)
-    test -n "$codex_release"
-    export PATH="/home/gem/.codex/packages/standalone/releases/${codex_release}-x86_64-unknown-linux-musl/bin:$PATH"
-    test "$(codex --version)" = "$(cat codex-version.lock)"
+    /usr/bin/python3 /home/gem/.local/share/codexsymphony/symphony/check_deployment.py
     eval "$(python3 /home/gem/.local/share/codexsymphony/symphony/environment_contract.py shell)"
     python3 /home/gem/.local/share/codexsymphony/symphony/environment_contract.py check
-    reviewed_gate_bin=$(python3 /home/gem/.local/share/codexsymphony/symphony/reviewed_gate.py)
-    export PATH="$reviewed_gate_bin:$PATH"
     python3 tools/gate.py config check
     mkdir -p target
     test -w target
@@ -70,6 +65,7 @@ codex:
     --config 'model="gpt-6-astra"'
     --config 'model_reasoning_effort="low"'
     --config 'features.goals=false'
+    --config 'features.apps=false'
     --config 'tool_output_token_limit=2000'
     app-server
   approval_policy: never

@@ -77,7 +77,7 @@ def main(workspace):
         p=provision/'client/e2e.py'
         p.write_text(p.read_text().replace("env['BIND_ADDRESS']='127.0.0.1:3081'", "env['BIND_ADDRESS']='127.0.0.1:3081';env['WEB_ORIGIN']='http://127.0.0.1:4300'"))
         shutil.copytree(TEMPLATE/'arc-admin',provision/'arc-admin')
-    (provision/'requirements.toml').write_text('# Trusted development: no managed command network policy.\n')
+    (provision/'requirements.toml').write_bytes((TEMPLATE/'requirements.toml').read_bytes())
     broker_changed=False
     managed=json.loads((TEMPLATE/'managed-files.json').read_text())
     for name in managed:

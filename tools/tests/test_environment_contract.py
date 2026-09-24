@@ -2,6 +2,8 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+import os
+import subprocess
 
 ROOT=Path(__file__).resolve().parents[2]
 spec=importlib.util.spec_from_file_location('contract',ROOT/'tools/environment_contract.py')
@@ -9,6 +11,13 @@ contract=importlib.util.module_from_spec(spec);spec.loader.exec_module(contract)
 
 
 class ContractTests(unittest.TestCase):
+    def test_temporary_probe_uses_declared_rust_even_outside_repository(self):
+        policy=contract.load(ROOT)
+        env=dict(os.environ,PATH=contract.tool_path(policy),**contract.test_environment(policy))
+        with tempfile.TemporaryDirectory() as directory:
+            selected=subprocess.check_output(['rustup','show','active-toolchain'],cwd=directory,env=env,text=True)
+            self.assertTrue(selected.startswith(policy['tools']['rust']+'-'),selected)
+
     def test_checked_in_projections_match(self):
         contract.check_files(ROOT,contract.load(ROOT))
 
