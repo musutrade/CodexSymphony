@@ -1,0 +1,17 @@
+
+> codexsymphony-web@0.0.0 test
+> ng test --watch=false
+
+❯ Building...
+✔ Building...
+Application bundle generation complete. [5.418 seconds] - 2026-09-24T12:25:34.308Z
+
+
+ RUN  v4.1.11 /home/gem/.local/share/codexsymphony/workspaces/GH-119/web/angular
+
+
+ Test Files  13 passed (13)
+      Tests  47 passed (47)
+   Start at  12:25:34
+   Duration  6.59s (transform 2.24s, setup 8.05s, import 9.34s, tests 10.80s, environment 18.52s)
+

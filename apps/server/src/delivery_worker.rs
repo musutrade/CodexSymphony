@@ -96,6 +96,8 @@ async fn publish(
     if !crate::storage::permit(pool, root).await {
         return Ok(());
     }
+    crate::environment_service::admit(pool, job.requirement_id, job.revision, "delivery", None)
+        .await?;
     let Some(attempt) = store::begin(pool, job, operation, now).await? else {
         return Ok(());
     };

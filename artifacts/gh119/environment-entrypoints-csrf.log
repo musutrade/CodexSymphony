@@ -1,0 +1,9 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.09s
+     Running tests/environment.rs (target/debug/deps/environment-a56153a43192d95f)
+
+running 1 test
+test immutable_review_admission_startup_recovery_ci_and_budget_continuity ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 7.04s
+

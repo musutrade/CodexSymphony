@@ -42,6 +42,52 @@ pub struct EnvironmentBinding {
     pub role: String,
 }
 
+/// P9 resource-level checks precede a Requirement/AgentRun. They cannot stand
+/// in for task authorization or manufacture business/execution records.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ResourceCall {
+    pub protocol_version: u32,
+    pub invocation_id: String,
+    pub attempt: u32,
+    pub resource_id: String,
+    pub controlled_config_digest: String,
+    pub environment: EnvironmentBinding,
+    pub extension_id: String,
+    pub implementation_digest: String,
+    pub deadline_unix_ms: i64,
+}
+
+impl ResourceCall {
+    pub fn validate(
+        &self,
+        config: &ControlledConfig,
+        approved: &[Registration],
+    ) -> Result<(), ProtocolError> {
+        if self.protocol_version != PROTOCOL_VERSION {
+            return Err(ProtocolError::UnsupportedVersion(self.protocol_version));
+        }
+        labels(&[&self.invocation_id, &self.resource_id])?;
+        if self.attempt == 0 || self.deadline_unix_ms <= 0 {
+            return Err(ProtocolError::InvalidConfig(
+                "invalid resource attempt/deadline",
+            ));
+        }
+        if self.controlled_config_digest != config.freeze(approved)?
+            || self.environment != config.environment
+        {
+            return Err(ProtocolError::IdentityMismatch("resource environment"));
+        }
+        config.require(&self.extension_id, &Operation::EnvironmentCheck)?;
+        if !config.extensions.iter().any(|r| {
+            r.id == self.extension_id && r.implementation_digest == self.implementation_digest
+        }) {
+            return Err(ProtocolError::IdentityMismatch("resource implementation"));
+        }
+        Ok(())
+    }
+}
+
 /// Opt-in companion to the existing frozen v1 configuration. Absence means legacy,
 /// never an inferred environment or an automatic upgrade of an in-flight Run.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

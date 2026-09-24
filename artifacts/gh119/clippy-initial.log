@@ -1,0 +1,71 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+error: large size difference between variants
+  --> apps/server/src/business.rs:62:1
+   |
+62 | / enum Command {
+63 | |     Repository(RepositoryRequest),
+   | |     ----------------------------- the largest variant contains at least 608 bytes
+64 | |     Create(DraftRequest),
+65 | |     Edit { id: i64, input: DraftRequest },
+   | |     ------------------------------------- the second-largest variant contains at least 176 bytes
+66 | |     Ready { id: i64, input: ControlRequest },
+67 | |     Withdraw { id: i64, input: ControlRequest },
+68 | | }
+   | |_^ the entire enum is at least 608 bytes
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#large_enum_variant
+   = note: `-D clippy::large-enum-variant` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
+help: consider boxing the large fields or introducing indirection in some other way to reduce the total size of the enum
+   |
+63 -     Repository(RepositoryRequest),
+63 +     Repository(Box<RepositoryRequest>),
+   |
+
+error: the borrowed expression implements the required traits
+  --> apps/server/src/environment_cache.rs:40:41
+   |
+40 |     let metadata = fs::symlink_metadata(&directory)?;
+   |                                         ^^^^^^^^^^ help: change this to: `directory`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_borrows_for_generic_args
+   = note: `-D clippy::needless-borrows-for-generic-args` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrows_for_generic_args)]`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> apps/server/src/environment_cache.rs:48:24
+   |
+48 |     let actual = bytes(&directory, !cache.writable)?;
+   |                        ^^^^^^^^^^ help: change this to: `directory`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_borrow
+   = note: `-D clippy::needless-borrow` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> apps/server/src/environment_cache.rs:61:11
+   |
+61 |     bytes(&path, true)?;
+   |           ^^^^^ help: change this to: `path`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_borrow
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> apps/server/src/environment_cache.rs:68:16
+   |
+68 |     seed_files(&path, &path, &mut actual)?;
+   |                ^^^^^ help: change this to: `path`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_borrow
+
+error: this expression creates a reference which is immediately dereferenced by the compiler
+  --> apps/server/src/environment_cache.rs:68:23
+   |
+68 |     seed_files(&path, &path, &mut actual)?;
+   |                       ^^^^^ help: change this to: `path`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_borrow
+
+error: could not compile `codexsymphony-server` (lib) due to 6 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `codexsymphony-server` (lib test) due to 6 previous errors

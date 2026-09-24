@@ -181,6 +181,15 @@ async fn crashes_before_send_after_remote_and_during_commit() {
     store::receipt(&pool, attempt, &json!({"late":true}))
         .await
         .unwrap();
+    assert!(
+        sqlx::query_scalar::<_, bool>(
+            "SELECT finished_at>=created_at FROM delivery_attempt WHERE id=$1"
+        )
+        .bind(attempt)
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+    );
     // Simulate crash after PR acceptance, then a deferred DB commit failure.
     remote.pr = Some(pr(&saved.identity()));
     sqlx::raw_sql("CREATE FUNCTION fail_delivery_commit() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected commit failure'; END $$; CREATE CONSTRAINT TRIGGER fail_delivery_commit AFTER INSERT ON delivery_observation DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION fail_delivery_commit();").execute(&pool).await.unwrap();

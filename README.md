@@ -14,7 +14,7 @@ M2 受控集成已通过；真实公网、实体手机 Bark 和离机备份的�
 | 手机与通知 | [手机接续与隔夜回答](docs/mobile-continuation.md)、[Bark 行动通知](docs/bark-notifications.md) |
 | 备份、升级与恢复 | [日常恢复](docs/daily-recovery.md)、[工作保全](docs/workspaces.md)、[存储生命周期](docs/storage-lifecycle.md) |
 | 执行与交付 | [执行控制](docs/execution-control.md)、[累计预算](docs/budgets.md)、[PR 交接](docs/delivery.md)、[GitHub 观察](docs/github-observation.md) |
-| 环境与操作 | [环境预检](docs/preparation.md)、[操作与待办](docs/operations.md) |
+| 环境与操作 | [环境预检](docs/preparation.md)、[每仓库环境与可选缓存](docs/repository-environments.md)、[操作与待办](docs/operations.md) |
 | 历史 0a 验收 | [单仓 A01–A12](docs/single-repository-acceptance.md)、[多仓 A13](docs/multiple-repositories.md)、[原件恢复缺口](docs/quality/gh25/evidence-recovery.md) |
 
 ## 从这里开始

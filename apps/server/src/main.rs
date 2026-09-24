@@ -25,6 +25,12 @@ fn main() -> Result<(), StartupError> {
 
 #[tokio::main]
 async fn serve() -> Result<(), StartupError> {
+    if std::env::args().nth(1).as_deref() == Some("--environment-check") {
+        return codexsymphony_server::environment_cli::run(
+            &std::env::args().skip(2).collect::<Vec<_>>(),
+        )
+        .await;
+    }
     if std::env::args().nth(1).as_deref() == Some("auth") {
         return codexsymphony_server::auth_admin::run(
             &std::env::args().skip(2).collect::<Vec<_>>(),
@@ -51,6 +57,7 @@ async fn run_service(config: Config) -> Result<(), StartupError> {
     let _instance =
         process::InstanceLock::acquire(std::path::Path::new("/tmp/codexsymphony-controller.lock"))?;
     let pool = prepare_database(&config.database_url).await?;
+    codexsymphony_server::environment_service::startup(&pool).await?;
     codexsymphony_server::generation_store::recover(&pool)
         .await
         .map_err(|_| std::io::Error::other("generation recovery failed"))?;

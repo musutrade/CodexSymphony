@@ -1,0 +1,43 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 32.28s
+     Running tests/environment.rs (target/debug/deps/environment-a56153a43192d95f)
+
+running 8 tests
+test cache_permissions_capacity_seed_identity_and_symlinks_are_checked ... ok
+test forged_missing_or_failed_evidence_never_passes ... ok
+test immutable_review_admission_startup_recovery_ci_and_budget_continuity ... FAILED
+test installed_new_binary_does_not_approve_an_old_running_process ... ok
+test real_two_project_admission_detects_drift_and_preserves_isolation ... .
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+✔ value (1.135957ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 89.978972
+ok
+test resource_envelopes_and_host_profiles_cannot_relabel_approval ... ok
+test reviewed_identity_role_and_scope_reject_unsupported_changes ... ok
+test timeout_stops_descendants_and_unreconciled_intent_blocks_another_probe ... ok
+
+failures:
+
+---- immutable_review_admission_startup_recovery_ci_and_budget_continuity stdout ----
+
+thread 'immutable_review_admission_startup_recovery_ci_and_budget_continuity' (141151) panicked at apps/server/tests/support/environment_preparation.rs:87:50:
+called `Option::unwrap()` on a `None` value
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    immutable_review_admission_startup_recovery_ci_and_budget_continuity
+
+test result: FAILED. 7 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 32.31s
+
+error: test failed, to rerun pass `-p codexsymphony-server --test environment`

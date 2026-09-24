@@ -29,6 +29,7 @@ impl Write for FailAfter {
 
 fn legacy() -> Repository {
     Repository {
+        environment: None,
         model: Some("reviewed-model".into()),
         hooks: Vec::new(),
         project: "example".into(),

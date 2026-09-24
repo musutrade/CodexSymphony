@@ -1,0 +1,1 @@
+{'file': 'apps/server/src/environment_service.rs', 'sha256': '71e1351dca6a8b1b9b168f8d9aeafb877edd6dae704ae106c3a1ddb0cafb9e7a', 'name': 'run', 'line': 179, 'complexity': 2, 'status': 'diagnostic_only', 'covered': 0, 'total': 8, 'regions_covered': 0, 'regions_total': 18, 'crap': {'numerator': 6, 'denominator': 1}}

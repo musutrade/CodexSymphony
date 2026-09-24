@@ -1,0 +1,104 @@
+[
+  {
+    "directory": "/tmp/cs-5ns3xfhk/environment-8ed3ee86-a6b5-4539-a57b-c74e0bef4ec5/evidence/f5b78f5c-bf76-4fba-9238-6d2ad62ee426",
+    "report": {
+      "request": {
+        "resource": {
+          "protocol_version": 1,
+          "invocation_id": "f5b78f5c-bf76-4fba-9238-6d2ad62ee426",
+          "attempt": 1,
+          "resource_id": "python",
+          "controlled_config_digest": "499c5bc6124cb3bf5f9f42181b7d9e51fca608dd1dfe60c01285d2436b4108b6",
+          "environment": {
+            "repository_revision": "python@1",
+            "contract_digest": "b958670c27b148e893a7cbf3d853d7b82fee7f09c8dab25dff15596c64b543cf",
+            "host_profile_ref": "python",
+            "role": "test"
+          },
+          "extension_id": "python",
+          "implementation_digest": "aa9e30e4d58b17721fa1648d2a1d2cd16458d618880cb586e2c834dd2deb8c2b",
+          "deadline_unix_ms": 1790268977874
+        },
+        "call": null,
+        "invocation_id": "f5b78f5c-bf76-4fba-9238-6d2ad62ee426",
+        "stage": "enable",
+        "role": "test",
+        "plan_digest": "86015c024cdeb769b7554eb4e145ab22642f17cc713bbfef65538e264665dc74",
+        "host_profile": "python",
+        "resource_root": "/tmp/cs-5ns3xfhk/environment-8ed3ee86-a6b5-4539-a57b-c74e0bef4ec5/python",
+        "workspace": null,
+        "required_checks": [
+          "environment"
+        ]
+      },
+      "elapsed_ms": 16753,
+      "response": null,
+      "actual_digest": null,
+      "differences": [],
+      "error": "environment timeout; descendants stopped",
+      "evidence": "/tmp/cs-5ns3xfhk/environment-8ed3ee86-a6b5-4539-a57b-c74e0bef4ec5/evidence/f5b78f5c-bf76-4fba-9238-6d2ad62ee426"
+    },
+    "file_mtime": {
+      "hook-limit.json": 1790268976.725089,
+      "identity.json": 1790268984.977903,
+      "start.json": 1790268986.1018777,
+      "supervisor.lock": 1790268983.1879435,
+      "stderr.log": 1790268987.2338521,
+      "stdout.json": 1790268987.3128505,
+      "input.json": 1790268972.8741758,
+      "quiescent.json": 1790268990.3987808,
+      "hook.json": 1790268974.506139,
+      "exit.json": 1790268987.3548493,
+      "storage-heartbeat.json": 1790268990.963768,
+      "launch.json": 1790268979.3980289,
+      "launched": 1790268983.1879435,
+      "report.json": 1790268991.2587614,
+      "stop.json": 1790268988.1018326
+    }
+  },
+  {
+    "directory": "/tmp/cs-5ns3xfhk/environment-77b13de5-8339-4a68-9e76-5a75c128a9c1/evidence/1775cf7d-f757-4a5a-8628-6e3062630c9d",
+    "report": {
+      "request": {
+        "resource": {
+          "protocol_version": 1,
+          "invocation_id": "1775cf7d-f757-4a5a-8628-6e3062630c9d",
+          "attempt": 1,
+          "resource_id": "timeout",
+          "controlled_config_digest": "84a731016969ff14fd3cecad24f66302e2657ffd65f23ad36b135f401d5d06dd",
+          "environment": {
+            "repository_revision": "timeout@1",
+            "contract_digest": "377ee108d8247e70772c501767692c93f1cbff54e568e4c5b92943c42a7c467b",
+            "host_profile_ref": "timeout",
+            "role": "test"
+          },
+          "extension_id": "timeout",
+          "implementation_digest": "1d4b919ce054320f1ada8d613baa5d059733a3c8a7a1b8841a8d3f8d8549c054",
+          "deadline_unix_ms": 1790268998333
+        },
+        "call": null,
+        "invocation_id": "1775cf7d-f757-4a5a-8628-6e3062630c9d",
+        "stage": "preparation",
+        "role": "test",
+        "plan_digest": "6b31abb87ae6196ec1c059a3fa6140df330bb7e2537c5e7facb325651ffeaf69",
+        "host_profile": "timeout",
+        "resource_root": "/tmp/cs-5ns3xfhk/environment-77b13de5-8339-4a68-9e76-5a75c128a9c1/timeout",
+        "workspace": null,
+        "required_checks": [
+          "environment"
+        ]
+      },
+      "elapsed_ms": 2754,
+      "response": null,
+      "actual_digest": null,
+      "differences": [],
+      "error": "environment deadline exhausted before launch",
+      "evidence": "/tmp/cs-5ns3xfhk/environment-77b13de5-8339-4a68-9e76-5a75c128a9c1/evidence/1775cf7d-f757-4a5a-8628-6e3062630c9d"
+    },
+    "file_mtime": {
+      "not-started.json": 1790269001.7965238,
+      "input.json": 1790268997.3336244,
+      "report.json": 1790269004.5514617
+    }
+  }
+]

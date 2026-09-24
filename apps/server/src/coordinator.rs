@@ -67,9 +67,20 @@ pub async fn recover(pool: &PgPool, root: &Path, incarnation: &str) -> Result<bo
         .map_err(|error| {
             sqlx::Error::Protocol(format!("project hook preservation check: {error}"))
         })?;
+    finalize_recovered_environment(pool).await?;
+    run_store::finish_recovery(pool, incarnation).await
+}
+
+async fn finalize_recovered_environment(pool: &PgPool) -> Result<(), sqlx::Error> {
     crate::runtime_store::finalize(pool).await?;
     crate::delivery_control::settle(pool).await?;
-    run_store::finish_recovery(pool, incarnation).await
+    crate::environment_service::recovery(pool)
+        .await
+        .map_err(|error| {
+            let message = error.to_string();
+            sqlx::Error::Protocol(message)
+        })?;
+    Ok(())
 }
 
 async fn observe_storage_stop(
@@ -205,6 +216,13 @@ pub async fn start_runtime(
     if !run_store::reserved_launch(pool, launch).await? {
         return Err("Run not reserved".into());
     }
+    crate::environment_service::run(
+        pool,
+        &launch.key.run_id,
+        "launch",
+        Path::new(&launch.workspace),
+    )
+    .await?;
     let directory = process::run_directory(root, &launch.key.run_id)?;
     let child = process::spawn_with_transport(supervisor, &directory, launch, Some(config))?;
     finish_launch(pool, &directory, launch, child).await

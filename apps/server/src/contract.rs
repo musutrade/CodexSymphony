@@ -35,8 +35,9 @@ pub struct Policy {
     pub model_work_seconds: i64,
     pub gate_recovery_policy: String,
 }
-#[derive(Clone, Debug, Serialize, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Repository {
+    pub environment: Option<crate::environment::Plan>,
     pub model: Option<String>,
     pub hooks: Vec<crate::extension_contract::HookConfig>,
     pub project: String,
@@ -48,9 +49,50 @@ pub struct Repository {
     pub reason: String,
 }
 
+impl Serialize for Repository {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut value = serializer
+            .serialize_struct("Repository", 9 + usize::from(self.environment.is_some()))?;
+        if let Some(plan) = &self.environment {
+            let text = serde_json::to_string(plan).map_err(serde::ser::Error::custom)?;
+            value.serialize_field("environment", &text)?;
+        }
+        self.serialize_identity(&mut value)?;
+        self.serialize_policy(&mut value)?;
+        value.end()
+    }
+}
+
+impl Repository {
+    fn serialize_policy<S: serde::ser::SerializeStruct>(
+        &self,
+        value: &mut S,
+    ) -> Result<(), S::Error> {
+        value.serialize_field("base_branch", &self.base_branch)?;
+        value.serialize_field("policy", &self.policy)?;
+        value.serialize_field("revoked", &self.revoked)?;
+        value.serialize_field("reason", &self.reason)?;
+        Ok(())
+    }
+
+    fn serialize_identity<S: serde::ser::SerializeStruct>(
+        &self,
+        value: &mut S,
+    ) -> Result<(), S::Error> {
+        value.serialize_field("model", &self.model)?;
+        value.serialize_field("hooks", &self.hooks)?;
+        value.serialize_field("project", &self.project)?;
+        value.serialize_field("remote", &self.remote)?;
+        value.serialize_field("github_repository_id", &self.github_repository_id)?;
+        Ok(())
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RepositoryWire {
+    environment: Option<String>,
     model: Option<String>,
     hooks: Option<Vec<crate::extension_contract::HookConfig>>,
     project: String,
@@ -69,6 +111,11 @@ impl<'de> Deserialize<'de> for Repository {
     {
         let wire = RepositoryWire::deserialize(deserializer)?;
         Ok(Self {
+            environment: wire
+                .environment
+                .map(|text| serde_json::from_str(&text))
+                .transpose()
+                .map_err(serde::de::Error::custom)?,
             model: wire.model,
             hooks: wire.hooks.unwrap_or_default(),
             project: wire.project,

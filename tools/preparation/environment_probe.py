@@ -27,11 +27,12 @@ def run(command, env=None):
                           timeout=10, check=True).stdout.strip()
 
 
-def tools(lock=None):
+def tools(lock=None, project_verified=False):
     lock = lock or {"core_version": CORE_VERSION, "core_sha256": CORE_SHA256,
                     "codex_version": CODEX_VERSION}
     identities = []
-    for path in (os.environ["PATH"], str(Path.home() / ".cargo/bin") + ":" + os.environ["PATH"]):
+    paths = () if project_verified else (os.environ["PATH"], str(Path.home() / ".cargo/bin") + ":" + os.environ["PATH"])
+    for path in paths:
         executable = shutil.which("harness-gate", path=path)
         if executable is None:
             raise FileNotFoundError("harness-gate")
@@ -103,7 +104,7 @@ def failure(error, code):
 
 def sample(config):
     result = {"uid": os.getuid(), "cwd": str(Path.cwd()), "failures": [], "model_calls": 0}
-    checks = [("tools", lambda: tools(config.get("tool_lock")), "preparation_capability_mismatch")]
+    checks = [("tools", lambda: tools(config.get("tool_lock"), config.get("environment_extension_verified", False)), "preparation_capability_mismatch")]
     for index, item in enumerate(config["dependencies"]):
         checks.append((f"dependency_{index}", lambda item=item: dependency(item), "preparation_capability_mismatch"))
     for index, path in enumerate(config["writable_paths"]):

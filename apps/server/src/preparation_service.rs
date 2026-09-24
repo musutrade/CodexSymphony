@@ -34,10 +34,13 @@ pub struct Request<'a> {
 }
 
 pub async fn prepare(pool: &PgPool, request: Request<'_>) -> Result<bool> {
+    let started = Instant::now();
     let Some(expected) = admit(pool, &request).await? else {
         return Ok(false);
     };
-    let started = Instant::now();
+    if !environment_ready(pool, &request, started).await? {
+        return Ok(false);
+    }
     let (directory, output_limit) = preparation_directory(pool, &request).await?;
     let Some(config) = project_config(pool, &request).await? else {
         return Ok(false);
@@ -47,6 +50,35 @@ pub async fn prepare(pool: &PgPool, request: Request<'_>) -> Result<bool> {
         .now
         .saturating_add(started.elapsed().as_secs() as i64);
     finish_preparation(pool, &request, &expected, result, &directory, now).await
+}
+
+async fn environment_ready(pool: &PgPool, request: &Request<'_>, started: Instant) -> Result<bool> {
+    if let Err(error) = crate::environment_service::admit(
+        pool,
+        request.requirement,
+        request.revision,
+        request.phase,
+        Some(Path::new(&request.launch.workspace)),
+    )
+    .await
+    {
+        let failure = Failure::new(
+            "environment_mismatch",
+            &error.to_string(),
+            "environment_observation",
+        );
+        preparation_store::failed_probe(
+            pool,
+            request.launch,
+            failure,
+            request
+                .now
+                .saturating_add(started.elapsed().as_secs() as i64),
+        )
+        .await?;
+        return Ok(false);
+    }
+    Ok(true)
 }
 
 async fn admit(pool: &PgPool, request: &Request<'_>) -> Result<Option<String>> {
@@ -78,6 +110,16 @@ async fn project_config(pool: &PgPool, request: &Request<'_>) -> Result<Option<V
     config["workspace"] = Value::String(request.launch.workspace.clone());
     config["tool_lock"] = serde_json::json!({"core_version":CORE_VERSION,
         "core_sha256":CORE_SHA256, "codex_version":CODEX_VERSION});
+    config["environment_extension_verified"] = Value::Bool(false);
+    if crate::environment_service::plan(pool, request.requirement, request.revision)
+        .await?
+        .is_some()
+    {
+        // Environment admission already ran using the immutable reviewed plan.
+        // The legacy adapter still checks the Agent, cwd and writable paths.
+        config["environment_extension_verified"] = Value::Bool(true);
+        config["dependencies"] = serde_json::json!([]);
+    }
     // The legacy probe records a mismatched Broker as a scoped failure. Do
     // not freeze that invalid identity into a hook Run before the check.
     if (request.workspace.requirement, request.workspace.revision)
@@ -86,6 +128,14 @@ async fn project_config(pool: &PgPool, request: &Request<'_>) -> Result<Option<V
     {
         return Ok(Some(config));
     }
+    prepare_project_hooks(pool, request, config).await
+}
+
+async fn prepare_project_hooks(
+    pool: &PgPool,
+    request: &Request<'_>,
+    mut config: Value,
+) -> Result<Option<Value>> {
     let role = match request.phase {
         "code_repair" | "linked_code_repair" => crate::extension_contract::HookRole::Repair,
         _ => crate::extension_contract::HookRole::Coding,

@@ -1126,6 +1126,112 @@
                             "denominator",
                             "numerator"
                           ]
+                        },
+                        "environment_samples": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "stage": {
+                                "type": "string"
+                              },
+                              "elapsed_ms": {
+                                "type": "integer"
+                              },
+                              "source": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "stage",
+                              "elapsed_ms",
+                              "source"
+                            ]
+                          }
+                        },
+                        "cache_hit_rate": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "unknown",
+                                "not_applicable"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ]
+                        },
+                        "build_test_coverage_subphases": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "unknown",
+                                "not_applicable"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ]
+                        },
+                        "stage_samples": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "phase": {
+                                "type": "string"
+                              },
+                              "seconds": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "complete": {
+                                "type": "boolean"
+                              },
+                              "source": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "phase",
+                              "seconds",
+                              "complete",
+                              "source"
+                            ]
+                          }
+                        },
+                        "ci_wait": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "known",
+                                "unknown",
+                                "not_applicable"
+                              ]
+                            },
+                            "seconds": {
+                              "type": "integer"
+                            },
+                            "source": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "status"
+                          ]
                         }
                       },
                       "required": [
@@ -1420,6 +1526,29 @@
                           "candidate_sha",
                           "attempts",
                           "next_attempt_at"
+                        ]
+                      }
+                    },
+                    "environments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "stage": {
+                            "type": "string"
+                          },
+                          "observed_at": {
+                            "type": "string"
+                          },
+                          "report": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "stage",
+                          "observed_at",
+                          "report"
                         ]
                       }
                     }
@@ -3111,16 +3240,62 @@
       "HookConfig": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "event", "roles", "argv", "script_identity", "timeout_seconds", "output_limit_bytes"],
+        "required": [
+          "name",
+          "event",
+          "roles",
+          "argv",
+          "script_identity",
+          "timeout_seconds",
+          "output_limit_bytes"
+        ],
         "properties": {
-          "name": {"type": "string"},
-          "event": {"type": "string", "enum": ["after_create", "before_run", "after_run", "before_remove"]},
-          "roles": {"type": "array", "items": {"type": "string", "enum": ["coding", "repair", "validation"]}},
-          "argv": {"type": "array", "items": {"type": "string"}},
-          "script_identity": {"type": "string"},
-          "timeout_seconds": {"type": "integer"},
-          "output_limit_bytes": {"type": "integer"},
-          "replay": {"type": "string", "enum": ["never", "idempotent", "reconcile"]}
+          "name": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "after_create",
+              "before_run",
+              "after_run",
+              "before_remove"
+            ]
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "coding",
+                "repair",
+                "validation"
+              ]
+            }
+          },
+          "argv": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "script_identity": {
+            "type": "string"
+          },
+          "timeout_seconds": {
+            "type": "integer"
+          },
+          "output_limit_bytes": {
+            "type": "integer"
+          },
+          "replay": {
+            "type": "string",
+            "enum": [
+              "never",
+              "idempotent",
+              "reconcile"
+            ]
+          }
         }
       },
       "Repository": {
@@ -3195,7 +3370,14 @@
           },
           "hooks": {
             "type": "array",
-            "items": {"$ref": "#/components/schemas/HookConfig"}
+            "items": {
+              "$ref": "#/components/schemas/HookConfig"
+            }
+          },
+          "environment": {
+            "type": "string",
+            "nullable": true,
+            "description": "Strict environment::Plan serialized as JSON text; approved host identity required."
           }
         }
       },

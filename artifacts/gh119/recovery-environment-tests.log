@@ -1,0 +1,40 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 33.25s
+     Running tests/environment.rs (target/debug/deps/environment-a56153a43192d95f)
+
+running 8 tests
+test cache_permissions_capacity_seed_identity_and_symlinks_are_checked ... ok
+test forged_missing_or_failed_evidence_never_passes ... ok
+test immutable_review_admission_startup_recovery_ci_and_budget_continuity ... ok
+test installed_new_binary_does_not_approve_an_old_running_process ... ok
+test real_two_project_admission_detects_drift_and_preserves_isolation ... .
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+✔ value (1.145944ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.218865
+ok
+test resource_envelopes_and_host_profiles_cannot_relabel_approval ... ok
+test reviewed_identity_role_and_scope_reject_unsupported_changes ... ok
+test timeout_stops_descendants_and_unreconciled_intent_blocks_another_probe ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.73s
+
+     Running tests/execution.rs (target/debug/deps/execution-fb83f43bc5b1466e)
+
+running 2 tests
+test execution_acceptance ... Error: Os { code: 17, kind: AlreadyExists, message: "File exists" }
+ok
+test os_identity_and_lock_boundaries ... Error: "Run directory required"
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 37.54s
+
