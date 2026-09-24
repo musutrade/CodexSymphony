@@ -17,6 +17,7 @@ pub mod budget_store;
 pub mod business;
 pub mod config;
 pub mod contract;
+pub mod controlled_contract;
 pub mod coordinator;
 pub mod delivery;
 pub mod delivery_control;

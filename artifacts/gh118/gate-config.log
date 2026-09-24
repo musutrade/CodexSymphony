@@ -1,0 +1,6 @@
+Configuration valid: /home/gem/.local/share/codexsymphony/workspaces/GH-118/.harness-gate/flow.toml
+Schema version: 2
+Components: backend, frontend
+Profiles: ci, full, hook
+Verification steps: 8
+Quality configuration valid: .harness-gate/quality.toml (v1)
