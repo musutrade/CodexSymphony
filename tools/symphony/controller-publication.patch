@@ -1,0 +1,369 @@
+diff --git a/README.md b/README.md
+index 53c5e32..41aecd3 100644
+--- a/README.md
++++ b/README.md
+@@ -91,3 +91,12 @@ cleanup. Default `false` retains the existing best-effort behavior. Use a truste
+ hook that durably copies declared evidence outside the workspace and verifies its
+ checksums before success. Failure retains the workspace; repair the cause and
+ retry cleanup. Startup/reload uses the same policy.
++
++### Local validation before GitHub publication
++
++A GitHub workflow may configure `tracker.provider.publication_guard` with an
++absolute host executable. This advertises `local_gate` (start/status) and requires
++a complete host validation receipt before agent ref or PR publication. The guard
++receives the controller-assigned issue and GitHub-resolved commit tree. Direct
++contents writes, force updates and alternate publication routes are rejected.
++The guard does not replace protected CI checks or alter lifecycle budgets.
+diff --git a/SPEC.md b/SPEC.md
+index 35f4d44..ce14985 100644
+--- a/SPEC.md
++++ b/SPEC.md
+@@ -2372,3 +2372,13 @@ retain cumulative usage, delivery identity and required-check policy, require
+ host authentication, and be durable and idempotent. A write failure must suspend
+ new dispatch. External requests do not authorize arbitrary agent-supplied host
+ commands or implicit release of another product execution owner.
++
++### Optional GitHub publication admission
++
++When a GitHub provider configures `publication_guard`, agent REST writes that
++publish a branch or PR require a complete local validation receipt. The host
++resolves the immutable candidate commit tree from GitHub, then asks the configured
++guard to compare it with the current assigned workspace and environment. Local
++validation runs independently and reports start/status through `local_gate`.
++Failure, stale results, unavailable guard, or alternate mutation endpoints reject
++publication; protected remote checks continue independently.
+diff --git a/elixir/README.md b/elixir/README.md
+index a2e79d4..d40162d 100644
+--- a/elixir/README.md
++++ b/elixir/README.md
+@@ -465,3 +465,8 @@ cleanup. Default `false` retains the existing best-effort behavior. Use a truste
+ hook that durably copies declared evidence outside the workspace and verifies its
+ checksums before success. Failure retains the workspace; repair the cause and
+ retry cleanup. Startup/reload uses the same policy.
++
++The optional GitHub provider `publication_guard` executable enforces local Gate
++receipts at the credentialed tool boundary. Its `start`, `status`, and `check`
++commands receive `--issue`; `check` also receives the remotely resolved `--tree`.
++Missing tools, nonzero exits and non-PASS receipts reject publication.
+diff --git a/elixir/WORKFLOW.md b/elixir/WORKFLOW.md
+index f837f24..2069d1f 100644
+--- a/elixir/WORKFLOW.md
++++ b/elixir/WORKFLOW.md
+@@ -380,3 +380,8 @@ cleanup. Default `false` retains the existing best-effort behavior. Use a truste
+ hook that durably copies declared evidence outside the workspace and verifies its
+ checksums before success. Failure retains the workspace; repair the cause and
+ retry cleanup. Startup/reload uses the same policy.
++
++GitHub provider deployments may set `tracker.provider.publication_guard` to a
++host-owned absolute executable. Use `local_gate` start/status and obtain complete
++PASS before publishing. Ref/PR publication must match the verified source tree
++and environment; edits invalidate the receipt.
+diff --git a/elixir/lib/symphony_elixir/github/agent_tool.ex b/elixir/lib/symphony_elixir/github/agent_tool.ex
+index 9b42aa7..68b7c80 100644
+--- a/elixir/lib/symphony_elixir/github/agent_tool.ex
++++ b/elixir/lib/symphony_elixir/github/agent_tool.ex
+@@ -4,6 +4,7 @@ defmodule SymphonyElixir.GitHub.AgentTool do
+   """
+ 
+   alias SymphonyElixir.GitHub.Client
++  alias SymphonyElixir.GitHub.PublicationGuard
+ 
+   @github_api_tool "github_api"
+   @allowed_methods ["GET", "POST", "PATCH", "PUT", "DELETE"]
+@@ -39,6 +40,7 @@ defmodule SymphonyElixir.GitHub.AgentTool do
+   def execute(tool, arguments, opts) do
+     case tool do
+       @github_api_tool -> execute_github_api(arguments, opts)
++      "local_gate" -> execute_local_gate(arguments, opts)
+       other -> unsupported_tool_response(other)
+     end
+   end
+@@ -51,7 +53,28 @@ defmodule SymphonyElixir.GitHub.AgentTool do
+         "description" => @github_api_description,
+         "inputSchema" => @github_api_input_schema
+       }
+-    ]
++    ] ++ local_gate_specs()
++  end
++
++  defp local_gate_specs do
++    if PublicationGuard.enabled?([]) do
++      [
++        %{
++          "name" => "local_gate",
++          "description" => "Start or inspect complete local validation before publication.",
++          "inputSchema" => %{"type" => "object", "additionalProperties" => false, "required" => ["action"], "properties" => %{"action" => %{"type" => "string", "enum" => ["start", "status"]}}}
++        }
++      ]
++    else
++      []
++    end
++  end
++
++  defp execute_local_gate(arguments, opts) do
++    case PublicationGuard.local_gate(arguments, opts) do
++      {:ok, result} -> rest_response(200, result)
++      {:error, reason} -> failure_response(tool_error_payload(reason))
++    end
+   end
+ 
+   defp execute_github_api(arguments, opts) do
+@@ -59,6 +82,7 @@ defmodule SymphonyElixir.GitHub.AgentTool do
+     client_opts = Keyword.take(opts, [:tracker_settings])
+ 
+     with {:ok, method, path, params, body} <- normalize_arguments(arguments),
++         :ok <- PublicationGuard.authorize(method, path, params, body, opts),
+          {:ok, %{status: status, body: response_body}} <-
+            github_client.(method, path, params, body, client_opts),
+          true <- is_integer(status) do
+diff --git a/elixir/lib/symphony_elixir/github/publication_guard.ex b/elixir/lib/symphony_elixir/github/publication_guard.ex
+new file mode 100644
+index 0000000..5e9618e
+--- /dev/null
++++ b/elixir/lib/symphony_elixir/github/publication_guard.ex
+@@ -0,0 +1,138 @@
++defmodule SymphonyElixir.GitHub.PublicationGuard do
++  @moduledoc "Host validation required before an agent can publish a Git ref or PR."
++  alias SymphonyElixir.Config
++  alias SymphonyElixir.GitHub.Client
++
++  @spec enabled?(keyword()) :: boolean()
++  def enabled?(opts) do
++    is_binary(provider(opts)["publication_guard"])
++  end
++
++  @spec local_gate(term(), keyword()) :: {:ok, map()} | {:error, term()}
++  def local_gate(%{"action" => action} = args, opts) when action in ["start", "status"] do
++    if map_size(args) == 1 and enabled?(opts),
++      do: command(action, [], opts),
++      else: {:error, :invalid_local_gate_request}
++  end
++
++  def local_gate(_, _), do: {:error, :invalid_local_gate_request}
++
++  @spec authorize(String.t(), String.t(), map(), term(), keyword()) :: :ok | {:error, term()}
++  def authorize(method, path, params, body, opts) do
++    if enabled?(opts), do: protected_request(method, path, params, body, opts), else: :ok
++  end
++
++  defp protected_request(method, path, params, body, opts) do
++    prefix = "/repos/" <> provider(opts)["repo"] <> "/"
++
++    if String.starts_with?(path, prefix) and
++         not String.contains?(path, ["%", "?", "#", "..", "\\"]) do
++      route = String.replace_prefix(path, prefix, "")
++      authorize_route(method, route, params, body, prefix, opts)
++    else
++      {:error, :publication_repository_or_path_rejected}
++    end
++  end
++
++  defp authorize_route("GET", _route, _params, _body, _prefix, _opts), do: :ok
++
++  defp authorize_route("POST", route, params, _body, _prefix, _opts)
++       when route in ["git/blobs", "git/trees", "git/commits"] and map_size(params) == 0,
++       do: :ok
++
++  defp authorize_route("POST", "git/refs", params, %{"ref" => ref, "sha" => sha} = body, prefix, opts)
++       when map_size(params) == 0 and map_size(body) == 2 do
++    if ref == "refs/heads/symphony/" <> issue(opts),
++      do: validate_commit(prefix, sha, opts),
++      else: {:error, :publication_ref_rejected}
++  end
++
++  defp authorize_route("PATCH", "git/refs/heads/symphony/" <> identifier, params, %{"sha" => sha, "force" => false} = body, prefix, opts)
++       when map_size(params) == 0 and map_size(body) == 2 do
++    if identifier == issue(opts),
++      do: validate_commit(prefix, sha, opts),
++      else: {:error, :publication_ref_rejected}
++  end
++
++  defp authorize_route("POST", "pulls", params, %{"head" => branch, "base" => "main"}, prefix, opts)
++       when map_size(params) == 0 do
++    if branch == "symphony/" <> issue(opts),
++      do: validate_branch(prefix, branch, opts),
++      else: {:error, :publication_pr_identity_rejected}
++  end
++
++  defp authorize_route("PATCH", "pulls/" <> number = route, params, body, prefix, opts)
++       when map_size(params) == 0 and is_map(body) do
++    with true <- Regex.match?(~r/^[1-9][0-9]*$/, number),
++         true <- Enum.all?(Map.keys(body), &(&1 in ["title", "body"])),
++         {:ok, pr} <- get(prefix <> route, opts),
++         true <- get_in(pr, ["head", "ref"]) == "symphony/" <> issue(opts),
++         true <- get_in(pr, ["head", "repo", "full_name"]) == provider(opts)["repo"] do
++      validate_commit(prefix, get_in(pr, ["head", "sha"]), opts)
++    else
++      _ -> {:error, :publication_pr_identity_rejected}
++    end
++  end
++
++  defp authorize_route(_, _, _, _, _, _), do: {:error, :publication_mutation_rejected}
++
++  defp validate_branch(prefix, branch, opts) do
++    with {:ok, ref} <- get(prefix <> "git/ref/heads/" <> branch, opts) do
++      validate_commit(prefix, get_in(ref, ["object", "sha"]), opts)
++    end
++  end
++
++  defp validate_commit(prefix, sha, opts) when is_binary(sha) do
++    if Regex.match?(~r/^[0-9a-f]{40}$/, sha) do
++      with {:ok, commit} <- get(prefix <> "git/commits/" <> sha, opts),
++           tree when is_binary(tree) <- get_in(commit, ["tree", "sha"]),
++           {:ok, %{"status" => "PASS"}} <- command("check", ["--tree", tree], opts) do
++        :ok
++      else
++        error -> {:error, {:publication_validation_required, error}}
++      end
++    else
++      {:error, :publication_invalid_commit}
++    end
++  end
++
++  defp validate_commit(_, _, _), do: {:error, :publication_invalid_commit}
++
++  defp get(path, opts) do
++    client = Keyword.get(opts, :github_client, &Client.request/5)
++
++    case client.("GET", path, %{}, nil, Keyword.take(opts, [:tracker_settings])) do
++      {:ok, %{status: 200, body: body}} -> {:ok, body}
++      _ -> {:error, :publication_identity_lookup_failed}
++    end
++  end
++
++  defp command(operation, args, opts) do
++    executable = provider(opts)["publication_guard"]
++    runner = Keyword.get(opts, :publication_runner, &System.cmd/3)
++
++    with true <- is_binary(executable) and Path.type(executable) == :absolute,
++         {output, 0} <- runner.(executable, [operation, "--issue", issue(opts)] ++ args, stderr_to_stdout: true),
++         {:ok, result} <- Jason.decode(output) do
++      {:ok, result}
++    else
++      result -> {:error, {:publication_guard_rejected, result}}
++    end
++  rescue
++    error -> {:error, {:publication_guard_unavailable, Exception.message(error)}}
++  end
++
++  defp issue(opts) do
++    case Keyword.get(opts, :issue) do
++      %{identifier: identifier} when is_binary(identifier) -> identifier
++      _ -> "unassigned"
++    end
++  end
++
++  defp provider(opts) do
++    case Keyword.get(opts, :tracker_settings) do
++      %{provider: provider} -> provider
++      _ -> Config.settings!().tracker.provider
++    end
++  end
++end
+diff --git a/elixir/test/symphony_elixir/publication_guard_test.exs b/elixir/test/symphony_elixir/publication_guard_test.exs
+new file mode 100644
+index 0000000..f6acf26
+--- /dev/null
++++ b/elixir/test/symphony_elixir/publication_guard_test.exs
+@@ -0,0 +1,100 @@
++defmodule SymphonyElixir.PublicationGuardTest do
++  use ExUnit.Case, async: true
++  alias SymphonyElixir.GitHub.AgentTool
++  alias SymphonyElixir.GitHub.PublicationGuard, as: Guard
++
++  defp options do
++    [tracker_settings: %{provider: %{"repo" => "org/project", "publication_guard" => "/host/guard"}}, issue: %{identifier: "GH-17"}]
++  end
++
++  test "ref publication resolves remote tree and requires host PASS" do
++    owner = self()
++    sha = String.duplicate("a", 40)
++    tree = String.duplicate("b", 40)
++
++    client = fn "GET", "/repos/org/project/git/commits/" <> ^sha, %{}, nil, _ ->
++      {:ok, %{status: 200, body: %{"tree" => %{"sha" => tree}}}}
++    end
++
++    runner = fn "/host/guard", args, _ ->
++      send(owner, {:validated, args})
++      {~s({"status":"PASS"}), 0}
++    end
++
++    opts = options() ++ [github_client: client, publication_runner: runner]
++    assert :ok = Guard.authorize("PATCH", "/repos/org/project/git/refs/heads/symphony/GH-17", %{}, %{"sha" => sha, "force" => false}, opts)
++    assert_received {:validated, ["check", "--issue", "GH-17", "--tree", ^tree]}
++    failed = Keyword.put(opts, :publication_runner, fn _, _, _ -> {~s({"status":"FAIL"}), 1} end)
++    assert {:error, _} = Guard.authorize("PATCH", "/repos/org/project/git/refs/heads/symphony/GH-17", %{}, %{"sha" => sha, "force" => false}, failed)
++  end
++
++  test "alternate publication routes and force are rejected before network writes" do
++    opts = options() ++ [github_client: fn _, _, _, _, _ -> flunk("write reached GitHub") end]
++
++    for {path, body} <- [
++          {"/repos/org/project/contents/file", %{}},
++          {"/repos/org/project/git/refs/heads/main", %{"sha" => String.duplicate("a", 40), "force" => false}},
++          {"/repos/org/project/git/refs/heads/symphony/GH-17", %{"sha" => String.duplicate("a", 40), "force" => true}},
++          {"/repos/org/other/git/refs", %{}},
++          {"/repos/org/project/git/%72efs", %{}}
++        ] do
++      result = AgentTool.execute("github_api", %{"method" => "PATCH", "path" => path, "body" => body}, opts)
++      refute result["success"]
++    end
++  end
++
++  test "local validation uses assigned issue and cannot accept an agent command" do
++    runner = fn "/host/guard", ["start", "--issue", "GH-17"], _ -> {~s({"status":"RUNNING"}), 0} end
++    opts = options() ++ [publication_runner: runner]
++    assert {:ok, %{"status" => "RUNNING"}} = Guard.local_gate(%{"action" => "start"}, opts)
++    assert {:error, _} = Guard.local_gate(%{"action" => "start", "command" => "other"}, opts)
++  end
++
++  test "missing guard executable fails closed" do
++    opts = options() |> Keyword.put(:tracker_settings, %{provider: %{"repo" => "org/project", "publication_guard" => "/nonexistent/guard"}})
++    assert {:error, _} = Guard.local_gate(%{"action" => "start"}, opts)
++  end
++
++  test "new refs and PRs validate remotely resolved source, while reads and unreferenced objects remain available" do
++    sha = String.duplicate("a", 40)
++    tree = String.duplicate("b", 40)
++
++    client = fn "GET", path, %{}, nil, _ ->
++      result =
++        cond do
++          String.contains?(path, "git/commits/") -> %{"tree" => %{"sha" => tree}}
++          String.contains?(path, "git/ref/") -> %{"object" => %{"sha" => sha}}
++          true -> %{"head" => %{"ref" => "symphony/GH-17", "sha" => sha, "repo" => %{"full_name" => "org/project"}}}
++        end
++
++      {:ok, %{status: 200, body: result}}
++    end
++
++    opts = options() ++ [github_client: client, publication_runner: fn _, _, _ -> {~s({"status":"PASS"}), 0} end]
++
++    for {method, route, body} <- [
++          {"POST", "git/refs", %{"ref" => "refs/heads/symphony/GH-17", "sha" => sha}},
++          {"POST", "pulls", %{"head" => "symphony/GH-17", "base" => "main"}},
++          {"PATCH", "pulls/1", %{"title" => "validated title"}},
++          {"POST", "git/blobs", %{"content" => "source"}},
++          {"GET", "pulls/1", nil}
++        ] do
++      assert :ok = Guard.authorize(method, "/repos/org/project/" <> route, %{}, body, opts)
++    end
++
++    rejected = Keyword.put(opts, :github_client, fn _, _, _, _, _ -> {:ok, %{status: 404, body: %{}}} end)
++    assert {:error, _} = Guard.authorize("POST", "/repos/org/project/pulls", %{}, %{"head" => "symphony/GH-17", "base" => "main"}, rejected)
++    assert {:error, _} = Guard.authorize("PATCH", "/repos/org/project/pulls/1", %{}, %{"title" => "new"}, rejected)
++    assert {:error, _} = Guard.authorize("POST", "/repos/org/project/git/refs", %{}, %{"ref" => "refs/heads/symphony/GH-17", "sha" => nil}, opts)
++    assert {:error, _} = Guard.authorize("POST", "/repos/org/project/git/refs", %{}, %{"ref" => "refs/heads/symphony/GH-17", "sha" => "bad"}, opts)
++  end
++
++  test "local gate tool handles malformed requests, host status, and missing issue without trusting arguments" do
++    opts = options() ++ [publication_runner: fn _, _, _ -> {~s({"status":"RUNNING"}), 0} end]
++    assert AgentTool.execute("local_gate", %{"action" => "start"}, opts)["success"]
++    refute AgentTool.execute("local_gate", %{"action" => "other"}, opts)["success"]
++    refute AgentTool.execute("local_gate", nil, opts)["success"]
++    missing_issue = opts |> Keyword.delete(:issue) |> Keyword.put(:publication_runner, fn _, ["status", "--issue", "unassigned"], _ -> {"unassigned rejected", 1} end)
++    refute AgentTool.execute("local_gate", %{"action" => "status"}, missing_issue)["success"]
++  end
++end

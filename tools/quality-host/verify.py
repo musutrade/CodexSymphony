@@ -19,7 +19,7 @@ def verify(run, repository, root, profile="ci"):
     if (run/'test-capture.json').exists():
         environment['HARNESS_GATE_TEST_RECEIPT']=str(run/'test-capture.json')
     baseline=Path(load(run/'requests.json')['frontend-api']['parameters']['receipt']['baseline']['path'])
-    container,url=database(run)
+    container,url=database(run,repository=repository)
     try:
         environment['TEST_DATABASE_URL']=url
         args=command(['python3',root/'tools/gate.py','verify','--profile',profile,'--all'],run=run,repository=repository,plugins=PLUGIN_ROOT,readonly=[run,baseline],writable=writable,

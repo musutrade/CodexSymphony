@@ -6,6 +6,10 @@ The environment omits GitHub credentials and the independent Gate service.
 """
 import os
 from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import environment_contract as contract
 import re
 import subprocess
 import sys
@@ -44,6 +48,7 @@ def command(argv, state_home=None):
     cwd=Path.cwd().resolve()
     if not cwd.is_relative_to(WORKSPACES) or cwd==WORKSPACES:
         raise ValueError('Codex must run in an assigned project workspace')
+    policy=contract.load(cwd)
     codex=locked_codex(cwd)
     cargo=cwd/'.agent-cargo';cargo.mkdir(exist_ok=True)
     temporary=cwd/'.agent-tmp';temporary.mkdir(exist_ok=True)
@@ -76,6 +81,10 @@ def command(argv, state_home=None):
          'HTTPS_PROXY':'http://192.168.0.26:10809','ALL_PROXY':'http://192.168.0.26:10809','NO_PROXY':'127.0.0.1,localhost,::1'}
     if (provision/'requirements.toml').is_file():
         env['npm_config_cache']=str(cwd/'.agent-env/npm-cache')
+    env.update(contract.test_environment(policy))
+    proof=contract.fingerprint(cwd,dict(env,PATH=contract.tool_path(policy)))
+    print(__import__('json').dumps({'environment_fingerprint':proof['fingerprint']}),file=sys.stderr)
+    (cwd/'.agent-env/environment.json').write_text(__import__('json').dumps(proof,indent=2)+'\n')
     args+=['--clearenv']
     for name,value in env.items():args+=['--setenv',name,value]
     return args+['--chdir',str(cwd),'--',*argv]

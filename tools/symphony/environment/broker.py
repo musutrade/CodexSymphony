@@ -1,18 +1,11 @@
 """Host-owned, fixed-policy lifecycle for the two GH-12 test fixtures only."""
 import json, os, re, subprocess, time
 from pathlib import Path
+import environment_contract as contract
 
 BASE=Path(__file__).parent
 SPOOL=Path('/home/gem/.local/share/codexsymphony/workspaces/GH-12/.agent-env/requests')
-IMAGE='sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777'
 NETWORK='codexsymphony-gh12-env'
-
-def fixture_policy():
-    return json.loads((BASE/'fixture-policy.json').read_text())
-
-def memory_bytes(role):
-    setting=fixture_policy()[role+'_memory']
-    return int(setting[:-1])*(1024**3 if setting.endswith('g') else 1024**2)
 
 def memory_events(name):
     lines=docker('exec',name,'cat','/sys/fs/cgroup/memory.events').splitlines()
@@ -26,7 +19,7 @@ def docker(*args):
 def info(role):
     value=json.loads(docker('inspect','codexsymphony-gh12-'+role))[0]
     expected=json.loads((BASE/'initial-containers.json').read_text())
-    assert value['Image']==IMAGE
+    assert value['Image']==contract.load()['postgres']['image_id']
     assert NETWORK in value['NetworkSettings']['Networks']
     assert value['Id']==expected[role] or value['Config']['Labels'].get('codexsymphony.fixture')=='GH-12-'+role
     return value
@@ -38,16 +31,15 @@ def perform(request):
     if request['action']=='recreate':
         docker('stop','--time','10',name);docker('rm',name)
         user='codexsymphony_'+role
-        policy=fixture_policy()
+        policy=contract.load()
         args=['run','-d','--restart','unless-stopped','--name',name,'--label','codexsymphony.fixture=GH-12-'+role,
               '--network',NETWORK,'--ip','172.30.212.'+('2' if role=='test' else '3'),
               '--user','postgres','--cap-drop','ALL','--security-opt','no-new-privileges',
-              '--memory',policy[role+'_memory'],'--memory-swap',policy[role+'_memory_swap'],
-              '--cpus',policy['cpus'],'-e','POSTGRES_USER='+user,
+              *contract.database_args(policy,role),'-e','POSTGRES_USER='+user,
               '-e','POSTGRES_PASSWORD='+user,'-e','POSTGRES_DB='+user]
         if role=='test': args+=['--tmpfs','/var/lib/postgresql/data:uid=70,gid=70,mode=0700']
         else: args+=['--mount','type=volume,source=codexsymphony-gh12-dev-data,target=/var/lib/postgresql/data']
-        docker(*args,IMAGE)
+        docker(*args,policy['postgres']['image'])
         for _ in range(60):
             try:
                 docker('exec',name,'psql','-U',user,'-d',user,'-Atc','SELECT 1')
@@ -61,12 +53,11 @@ def perform(request):
             time.sleep(.5)
         else: raise TimeoutError('Database did not become ready')
     after=info(role)
-    if after['HostConfig']['Memory']!=memory_bytes(role):
-        raise RuntimeError('Fixture memory policy mismatch: '+name)
+    checked=contract.check_database(after,contract.load(),role)
     return {'ok':True,'role':role,'before_id':before['Id'],'container_id':after['Id'],
         'running':after['State']['Running'],'image':after['Image'],
         'storage':'tmpfs' if role=='test' else 'named-volume',
-        'memory_limit_bytes':after['HostConfig']['Memory'],
+        'memory_limit_bytes':after['HostConfig']['Memory'],'environment':checked,
         'memory_events':memory_events(name)}
 
 def main():

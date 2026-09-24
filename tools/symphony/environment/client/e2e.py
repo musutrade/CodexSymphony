@@ -3,7 +3,7 @@ import os, signal, subprocess, sys, time, urllib.request
 from pathlib import Path
 
 subprocess.run(['cargo','build','--locked','-p','codexsymphony-server'],check=True)
-env=os.environ.copy();env['BIND_ADDRESS']='127.0.0.1:3081'
+env=os.environ.copy();env['BIND_ADDRESS']='127.0.0.1:3081';env['WEB_ORIGIN']='http://127.0.0.1:4300'
 log=Path('target/gh12-e2e-api.log').open('w')
 server=subprocess.Popen(['target/debug/codexsymphony-server'],env=env,stdout=log,stderr=subprocess.STDOUT)
 try:

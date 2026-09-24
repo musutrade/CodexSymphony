@@ -1,7 +1,10 @@
 name: codexsymphony-dev
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777
+    mem_limit: 2147483648
+    memswap_limit: 4294967296
+    cpus: 1.0
     environment:
       POSTGRES_USER: codexsymphony_test
       POSTGRES_PASSWORD: codexsymphony_test

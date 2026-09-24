@@ -4,6 +4,7 @@
 This is an administrator operation, never a step executed by an untrusted PR.
 A prior complete local gate acceptance is required. Old approvals are retained.
 """
+import argparse
 import hashlib
 import importlib.util
 import json
@@ -15,12 +16,20 @@ ROOT=Path(__file__).resolve().parents[1]
 HOME=Path.home()/'.local/share/codexsymphony/gate-host'
 
 def main():
-    previous=json.loads((HOME/'approval.json').read_text())
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--accepted-approval',type=Path,default=HOME/'approval.json')
+    args=parser.parse_args()
+    previous=json.loads(args.accepted_approval.read_text())
     source=ROOT/'tools/quality-host'
     files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(source.glob('*.py'))}
+    shared={'environment_contract.py':ROOT/'tools/environment_contract.py','environment.lock.json':ROOT/'environment.lock.json'}
+    files.update({name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in shared.items()})
     version=hashlib.sha256(json.dumps(files,sort_keys=True).encode()).hexdigest()[:16]
     target=HOME/'releases'/version
     if not target.exists(): shutil.copytree(source,target,ignore=shutil.ignore_patterns('__pycache__'))
+    for name,path in shared.items():
+        destination=target/name
+        if not destination.exists(): shutil.copyfile(path,destination)
     for name,digest in files.items():
         if hashlib.sha256((target/name).read_bytes()).hexdigest()!=digest: raise ValueError('installed host version differs')
     sys.path.insert(0,str(target))

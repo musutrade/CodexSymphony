@@ -34,3 +34,10 @@ GitHub operations use the injected authorized github_api tool; no GitHub secrets
 are provided to the shell. The final exact-commit Harness-Gate and Trusted
 Harness-Gate run in the independent verification service. Local tests do not
 replace these checks or modify their requiredness, thresholds or signing policy.
+
+The canonical environment is `environment.lock.json`. Installed host files,
+workspace projections, selected tools and database CPU/memory/swap must match.
+`local_gate` starts/inspects complete prepublication validation through the host.
+The GitHub tool refuses ref/PR publication without a matching complete PASS.
+Keep evidence and source finalized before starting validation; changes invalidate
+its receipt. Formal CI still verifies the published commit independently.

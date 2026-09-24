@@ -68,3 +68,5 @@ Product Runtime deployments require a finite [storage lifecycle policy](docs/sto
 开发控制器的有界重试、外部操作和受审计恢复见 [恢复运行说明](docs/symphony-operator-recovery.md)。
 当前开发起点见 [M2 收尾与 M3 开发基线](docs/development-baseline.md)；[2026-09-20 收尾记录](docs/quality/development-closeout/README.md)保留为历史快照。
 A13 原件恢复进展、剩余缺口及当前就绪状态见 [证据恢复索引](docs/quality/gh25/evidence-recovery.md)。
+
+环境清单、漂移检查和发布前完整验证见 [环境与发布约束](docs/environment-and-publication.md)。

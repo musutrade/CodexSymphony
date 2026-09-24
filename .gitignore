@@ -8,3 +8,7 @@
 __pycache__/
 /.env
 /.local-data/
+/.angular/
+/.agent-env/
+/.agent-cargo/
+/.agent-tmp/

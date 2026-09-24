@@ -40,19 +40,21 @@ class EnvironmentInstallationTests(unittest.TestCase):
             self.assertEqual(provision.memory_bytes('dev'),512*1024**2)
         sources=install.environment_sources()
         self.assertIn(Path('client/workspace_tests.py'),sources)
-        self.assertIn(Path('fixture-policy.json'),sources)
+        self.assertNotIn(Path('fixture-policy.json'),sources)
 
     def test_install_persists_reviewed_gate_and_versions_release_with_it(self):
         with tempfile.TemporaryDirectory() as directory:
             home=Path(directory); source=home/'source'; state=home/'state/symphony'
             (source/'tools/symphony').mkdir(parents=True)
+            (source/'environment.lock.json').write_bytes((ROOT/'environment.lock.json').read_bytes())
+            (source/'tools/environment_contract.py').write_bytes((ROOT/'tools/environment_contract.py').read_bytes())
             (source/'WORKFLOW.lifecycle.md').write_bytes((ROOT/'WORKFLOW.lifecycle.md').read_bytes())
             for name in ('trusted_environment.py','reviewed_gate.py','provision_issue_environment.py','preserve_workspace.py'):
                 (source/'tools/symphony'/name).write_bytes((ROOT/'tools/symphony'/name).read_bytes())
             (home/'.config/symphony').mkdir(parents=True)
             (home/'.config/symphony/codexsymphony.env').write_text('')
             (home/'.config/systemd/user').mkdir(parents=True)
-            with patch.object(install,'HOME',home), patch.object(install,'BASE',home/'state'), patch.object(install,'ROOT',source), patch.object(install,'environment_sources',return_value={}), patch.object(install,'check_environment_resources'), patch.object(install,'check_preservation_controller'), patch.object(install.subprocess,'run'):
+            with patch.object(install,'HOME',home), patch.object(install,'BASE',home/'state'), patch.object(install,'ROOT',source), patch.object(install,'environment_sources',return_value={}), patch.object(install,'check_environment_resources'), patch.object(install,'check_preservation_controller'), patch.object(install,'check_publication_controller'), patch.object(install.subprocess,'run'):
                 install.main()
                 original=(state/'codex-trusted').read_text()
                 helper=(source/'tools/symphony/reviewed_gate.py').read_bytes()
