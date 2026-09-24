@@ -1,6 +1,10 @@
 //! A10: controlled clocks, real PostgreSQL and real filesystem operations.
 use codexsymphony_server::{
     execution::{Launch, RunKey},
+    extension_contract::{
+        Capabilities, DeliveryMode, ExtensionConfig, HookConfig, HookEvent, HookRole, ModelConfig,
+        ReplayPolicy,
+    },
     process,
     storage_archive::{self, Package},
     storage_cleanup,
@@ -13,6 +17,7 @@ use codexsymphony_server::{
     workspace::Workspace,
 };
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use sqlx::{PgPool, postgres::PgPoolOptions};
 use std::{
     fs,
@@ -408,6 +413,208 @@ async fn material(
     .await
     .unwrap();
     tx.commit().await.unwrap();
+}
+
+async fn before_remove_hook(pool: &PgPool, run_id: &str, path: &Path, script: &Path, mode: &str) {
+    let hook = HookConfig {
+        name: "remove-check".into(),
+        event: HookEvent::BeforeRemove,
+        roles: vec![HookRole::Coding],
+        argv: vec![script.to_string_lossy().into_owned(), mode.into()],
+        script_identity: format!("sha256:{:x}", Sha256::digest(fs::read(script).unwrap())),
+        timeout_seconds: 10,
+        output_limit_bytes: 8192,
+        replay: ReplayPolicy::Never,
+    };
+    let mut capabilities = Capabilities::legacy_codex(None);
+    capabilities.hooks = vec![hook.clone()];
+    let frozen = ExtensionConfig {
+        protocol_version: 1,
+        agent: "codex".into(),
+        model: ModelConfig {
+            provider: "codex".into(),
+            model: None,
+            effort: None,
+        },
+        delivery: DeliveryMode::GithubPr,
+        hooks: vec![hook],
+        decision: None,
+    }
+    .freeze(&capabilities)
+    .unwrap();
+    sqlx::query("INSERT INTO project_hook_run(run_id,requirement_id,revision,resource_id,workspace,role,frozen) VALUES($1,1,1,$1,$2,'coding',$3)")
+        .bind(run_id).bind(path.to_string_lossy().as_ref()).bind(json!(frozen))
+        .execute(pool).await.unwrap();
+}
+
+#[tokio::test]
+async fn before_remove_failure_and_late_reference_both_retain_original() {
+    let _serial = GUARD_TEST.lock().await;
+    unsafe {
+        std::env::set_var(
+            "SYMPHONY_SUPERVISOR",
+            env!("CARGO_BIN_EXE_codexsymphony-server"),
+        );
+    }
+    let pool = fixture().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    store::install(&pool, &config).await.unwrap();
+    let script = tree.0.join("remove.py");
+    fs::write(&script, r##"#!/usr/bin/python3
+import json,pathlib,sys,time
+r=json.load(sys.stdin)
+if sys.argv[1]=='wait': time.sleep(2)
+if sys.argv[1]=='swap':
+    path=pathlib.Path(r['workspace'])
+    path.rename(path.with_name(path.name+'-old'))
+    path.mkdir()
+    (path/'replacement').write_text('new identity')
+base={key:r[key] for key in ('protocol_version','requirement_id','revision','run_id','resource_id','invocation_id','attempt','config_id')}
+if sys.argv[1]=='fail': print(json.dumps(dict(base,status='failed',error={'code':'blocked','message':'controlled failure'})))
+else: print(json.dumps(dict(base,status='success',artifacts=[])))
+"##).unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    run(&pool, "hook-failure").await;
+    let failed_path = config.execution.path.join("hook-failure-material");
+    fs::create_dir(&failed_path).unwrap();
+    fs::write(failed_path.join("original"), b"retain on failure").unwrap();
+    material(
+        &pool,
+        &config,
+        "hook-failure",
+        "hook-failure-material",
+        &failed_path,
+        Kind::Retrospective,
+    )
+    .await;
+    before_remove_hook(&pool, "hook-failure", &failed_path, &script, "fail").await;
+    storage_cleanup::scan(&pool, 110).await.unwrap();
+    assert!(failed_path.join("original").exists());
+    let hook_status: String = sqlx::query_scalar(
+        "SELECT status FROM project_hook_invocation WHERE run_id='hook-failure'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(hook_status, "failed");
+
+    run(&pool, "hook-success").await;
+    let success_path = config.execution.path.join("hook-success-material");
+    fs::create_dir(&success_path).unwrap();
+    fs::write(success_path.join("original"), b"delete after approval").unwrap();
+    material(
+        &pool,
+        &config,
+        "hook-success",
+        "hook-success-material",
+        &success_path,
+        Kind::Retrospective,
+    )
+    .await;
+    before_remove_hook(&pool, "hook-success", &success_path, &script, "ok").await;
+    storage_cleanup::scan(&pool, 120).await.unwrap();
+    let success_status: String =
+        sqlx::query_scalar("SELECT status FROM storage_material WHERE id='hook-success-material'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(success_status, "deleted");
+    assert!(!success_path.join("original").exists());
+
+    run(&pool, "hook-race").await;
+    let race_path = config.execution.path.join("hook-race-material");
+    fs::create_dir(&race_path).unwrap();
+    fs::write(race_path.join("original"), b"retain on late consumer").unwrap();
+    material(
+        &pool,
+        &config,
+        "hook-race",
+        "hook-race-material",
+        &race_path,
+        Kind::Retrospective,
+    )
+    .await;
+    before_remove_hook(&pool, "hook-race", &race_path, &script, "wait").await;
+    run(&pool, "hook-reference").await;
+    let reference = config.execution.path.join("hook-reference-material");
+    fs::create_dir(&reference).unwrap();
+    fs::write(reference.join("original"), b"other material").unwrap();
+    material(
+        &pool,
+        &config,
+        "hook-reference",
+        "hook-reference-material",
+        &reference,
+        Kind::Rebuildable,
+    )
+    .await;
+    sqlx::query("UPDATE storage_material SET expires_at=100000 WHERE id='hook-reference-material'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let copy = pool.clone();
+    let scanning = tokio::spawn(async move {
+        storage_cleanup::scan(&copy, 140).await.unwrap();
+    });
+    let mut running = false;
+    for _ in 0..150 {
+        let status: Option<String> = sqlx::query_scalar(
+            "SELECT status FROM project_hook_invocation WHERE run_id='hook-race'",
+        )
+        .fetch_optional(&pool)
+        .await
+        .unwrap();
+        if status.as_deref() == Some("running") {
+            running = true;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    }
+    assert!(running, "before_remove did not start");
+    sqlx::query("UPDATE storage_material SET archive=jsonb_build_object('path',$1::text) WHERE id='hook-reference-material'")
+        .bind(race_path.to_string_lossy().as_ref()).execute(&pool).await.unwrap();
+    scanning.await.unwrap();
+    assert!(race_path.join("original").exists());
+    let status: String =
+        sqlx::query_scalar("SELECT status FROM storage_material WHERE id='hook-race-material'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(status, "deleting");
+    sqlx::query("UPDATE storage_material SET archive=NULL WHERE id='hook-reference-material'")
+        .execute(&pool)
+        .await
+        .unwrap();
+
+    run(&pool, "hook-swap").await;
+    let swap_path = config.execution.path.join("hook-swap-material");
+    fs::create_dir(&swap_path).unwrap();
+    fs::write(swap_path.join("original"), b"original identity").unwrap();
+    material(
+        &pool,
+        &config,
+        "hook-swap",
+        "hook-swap-material",
+        &swap_path,
+        Kind::Retrospective,
+    )
+    .await;
+    before_remove_hook(&pool, "hook-swap", &swap_path, &script, "swap").await;
+    storage_cleanup::scan(&pool, 170).await.unwrap();
+    assert!(swap_path.join("replacement").exists());
+    assert!(
+        swap_path
+            .with_file_name("hook-swap-material-old")
+            .join("original")
+            .exists()
+    );
+    let status: String =
+        sqlx::query_scalar("SELECT status FROM storage_material WHERE id='hook-swap-material'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_ne!(status, "deleted");
 }
 
 #[tokio::test]

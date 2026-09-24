@@ -30,6 +30,7 @@ impl Write for FailAfter {
 fn legacy() -> Repository {
     Repository {
         model: Some("reviewed-model".into()),
+        hooks: Vec::new(),
         project: "example".into(),
         remote: "owner/repo".into(),
         github_repository_id: 42,

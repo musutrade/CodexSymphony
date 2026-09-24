@@ -60,6 +60,7 @@ pub mod preparation;
 pub mod preparation_service;
 pub mod preparation_store;
 pub mod process;
+pub mod project_hooks;
 pub mod run_store;
 pub mod runtime;
 pub mod runtime_api;

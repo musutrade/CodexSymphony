@@ -131,7 +131,8 @@ async fn runtime_pipeline(
             .await;
     }
     if let Some(plan) = &config.validation
-        && crate::validation_worker::tick(pool, root, broker, plan).await?
+        && crate::validation_worker::tick_with_hooks(pool, root, broker, plan, &config.preparation)
+            .await?
     {
         return Ok(());
     }
