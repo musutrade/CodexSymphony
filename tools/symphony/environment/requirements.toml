@@ -1,0 +1,7 @@
+# GitHub publication is delegated only to the controller's guarded github_api.
+# This read-only managed file also applies to nested Codex commands.
+[features]
+apps = false
+
+# No independent MCP connection is approved for this development controller.
+[mcp_servers]

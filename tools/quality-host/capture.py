@@ -4,6 +4,10 @@ import contextlib
 import json
 import os
 from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import environment_contract as contract
 import shutil
 import signal
 import subprocess
@@ -14,9 +18,10 @@ from isolation import command
 from timing import phase
 
 PLUGIN_ROOT = Path('/home/gem/.local/share/harness-gate')
-RUST = PLUGIN_ROOT / 'rust-source/0.1.0-rc.5'
-TS = PLUGIN_ROOT / 'typescript/0.1.0-rc.4/node_modules/@harness-gate/typescript-collector'
-HTTP = PLUGIN_ROOT / 'http-contract/0.1.0-rc.5/node_modules/@harness-gate/http-json-contract-collector'
+COLLECTORS=contract.load()['collectors']
+RUST = PLUGIN_ROOT / 'rust-source' / COLLECTORS['rust_source']
+TS = PLUGIN_ROOT / 'typescript' / COLLECTORS['typescript'] / 'node_modules/@harness-gate/typescript-collector'
+HTTP = PLUGIN_ROOT / 'http-contract' / COLLECTORS['http_contract'] / 'node_modules/@harness-gate/http-json-contract-collector'
 
 def sha(data): return hashlib.sha256(data).hexdigest()
 def write(path, data): path.write_text(json.dumps(data, indent=2) + '\n')
@@ -30,11 +35,14 @@ def node(plugin, operation, request):
     script = "const p=require(process.argv[1]);const q=JSON.parse(require('fs').readFileSync(0,'utf8'));console.log(JSON.stringify(" + operation + "));"
     return json.loads(subprocess.check_output(['node','-e',script,str(plugin / 'protocol.cjs')],input=json.dumps(request),text=True))
 
-def database(run, purpose=""):
+def database(run, purpose="", repository=None):
+    policy = contract.load(repository)
     name = 'codexsymphony-gate-' + run.name[-16:] + purpose
     subprocess.run(['docker','run','--detach','--name',name,'--publish','127.0.0.1::5432',
                     '--env','POSTGRES_DB=gate_test','--env','POSTGRES_USER=gate_test','--env','POSTGRES_PASSWORD=gate_test',
-                    '--tmpfs','/var/lib/postgresql/data','postgres:16-alpine'],check=True,capture_output=True)
+                    '--tmpfs','/var/lib/postgresql/data',*contract.database_args(policy),policy['postgres']['image']],check=True,capture_output=True)
+    inspection = json.loads(subprocess.check_output(['docker','inspect',name],text=True))[0]
+    write(run / ('database'+purpose+'.json'), contract.check_database(inspection,policy))
     for _ in range(60):
         # The entrypoint's temporary init server accepts Unix sockets before
         # the published TCP listener exists; wait for the latter.
@@ -150,14 +158,14 @@ def capture_http_session(run, repository, container, url, adapter, tls, variable
 
 def captures(run, repository, root, context, baseline):
     for directory in ('probes','target'): (run/directory).mkdir(exist_ok=True)
-    container,url=database(run)
+    container,url=database(run,repository=repository)
     try:
         args=command(['python3',RUST/'capture.py','--repository',repository,'--output',run/'probes/backend','--target-dir',run/'target','--source-root','apps/server/src','--input','Cargo.toml','--input','Cargo.lock','--input','apps','--input','migrations','--manifest','apps/server/Cargo.toml'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
         run_logged(run,'backend-capture',args)
         args=command(['node',repository/'web/angular/tools/probe-typescript-risk.cjs'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes'],environment={'HARNESS_GATE_TYPESCRIPT_PLUGIN':str(TS)})
         run_logged(run,'frontend-capture',args)
         # Contract fixtures must not inherit rows left by backend tests.
-        http_container,http_url=database(run,purpose='-http')
+        http_container,http_url=database(run,purpose='-http',repository=repository)
         try:
             observations,binary_hash=capture_http(run,repository,http_container,http_url)
         finally:

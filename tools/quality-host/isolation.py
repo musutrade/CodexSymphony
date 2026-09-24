@@ -1,13 +1,18 @@
 """Linux host isolation: expose only approved code, tools and per-run outputs."""
 import os
 from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import environment_contract as contract
 import subprocess
 
 HOME = Path('/home/gem')
 
 def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=(), environment=None, cwd=None):
     run = Path(run).resolve()
-    codex = HOME / '.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin'
+    policy = contract.load(repository)
+    codex = contract.codex_bin(policy)
     if not codex.is_dir():
         codex = Path('/opt/codex')
     if not (codex/'codex').is_file():
@@ -40,6 +45,7 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
            'LANG': 'C.UTF-8', 'TZ': 'UTC', 'CARGO_NET_OFFLINE': 'true',
            'CARGO_TARGET_DIR': str(run / 'target')}
     env.update(environment or {})
+    env.update(contract.test_environment(policy))
     args += ['--clearenv']
     for name, value in env.items(): args += ['--setenv', name, value]
     args += ['--chdir', str(cwd or repository), '--', *map(str, argv)]

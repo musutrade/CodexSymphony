@@ -5,9 +5,9 @@ import os
 from pathlib import Path
 import subprocess
 import time
-from capture import RUST, TS, HTTP, sha, write, run_logged
+from capture import RUST, TS, HTTP, sha, write, run_logged, contract
 
-CORE=Path('/home/gem/.local/share/harness-gate/versions/v0.4.7/bin/harness-gate')
+CORE=Path.home()/'.local/share/harness-gate/versions'/('v'+contract.load()['tools']['gate'])/'bin/harness-gate'
 
 def canonical(value): return json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False)
 

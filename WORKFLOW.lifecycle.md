@@ -5,6 +5,7 @@ tracker:
     repo: musutrade/CodexSymphony
     token: $GITHUB_TOKEN
     symphony_lifecycle: true
+    publication_guard: /home/gem/.local/share/codexsymphony/publication/guard
     lifecycle_base_branch: main
     lifecycle_check_app: github-actions
     lifecycle_poll_interval_ms: 60000
@@ -38,15 +39,9 @@ hooks:
     printf '\n.symphony-handoff.json\n.agent-cargo/\n.agent-tmp/\n' >> .git/info/exclude
   before_run: |
     set -eu
-    codex_release=$(sed -n 's/^codex-cli \([0-9][0-9.]*\)$/\1/p' codex-version.lock)
-    test -n "$codex_release"
-    export PATH="/home/gem/.codex/packages/standalone/releases/${codex_release}-x86_64-unknown-linux-musl/bin:$PATH"
-    test "$(codex --version)" = "$(cat codex-version.lock)"
-    command -v cargo >/dev/null
-    command -v node >/dev/null
-    command -v npm >/dev/null
-    reviewed_gate_bin=$(python3 /home/gem/.local/share/codexsymphony/symphony/reviewed_gate.py)
-    export PATH="$reviewed_gate_bin:$PATH"
+    /usr/bin/python3 /home/gem/.local/share/codexsymphony/symphony/check_deployment.py
+    eval "$(python3 /home/gem/.local/share/codexsymphony/symphony/environment_contract.py shell)"
+    python3 /home/gem/.local/share/codexsymphony/symphony/environment_contract.py check
     python3 tools/gate.py config check
     mkdir -p target
     test -w target
@@ -70,6 +65,7 @@ codex:
     --config 'model="gpt-6-astra"'
     --config 'model_reasoning_effort="low"'
     --config 'features.goals=false'
+    --config 'features.apps=false'
     --config 'tool_output_token_limit=2000'
     app-server
   approval_policy: never
@@ -170,8 +166,18 @@ Do not run the real GitHub/cloud/notification spikes by default. Tests with
 external side effects require task authorization and the designated test setup.
 Keep production secrets out of this repository. Do not change CI, required checks,
 this workflow or acceptance policy merely to make the current task pass.
-For this repository run `python3 tools/gate.py config check` and the applicable
-local checks before publishing the PR. The separately installed trusted host
+Before publishing, finish the evidence manifest and all source edits, then call
+`local_gate` with `{"action":"start"}`. This starts the same complete installed
+Gate used by CI without publishing a commit. Read `local_gate` with
+`{"action":"status"}` after a bounded wait (at least 60 seconds); ordinary local
+checks may be used while developing, but only this complete PASS permits delivery.
+A failed result includes the retained log directory; fix the source and start a
+new validation. Do not publish to discover quality failures. The host receipt
+binds the exact Git tree (including executable modes and deletions), environment
+fingerprint and approved Gate implementation. Any source/environment change
+invalidates it. The GitHub tool rejects unvalidated refs/PRs and alternate write
+paths such as the contents API. Do not edit source or evidence after PASS.
+For this repository run `python3 tools/gate.py config check` as a diagnostic. The separately installed trusted host
 runs `python3 tools/gate.py verify --profile ci --all` on the exact published
 commit; GitHub Actions waits for its App-authenticated result. Agent workspaces
 do not receive signing keys or reusable trusted runtime requests. CRAP <= 10 is
@@ -200,7 +206,7 @@ The controller creates symphony/GH-<number> from a fresh origin/main for new wor
 Keep that branch and preserve dirty work on retries. Publish validated workspace
 changes through `github_api`, executed by the Symphony host:
 
-1. Read the expected remote branch/base commit and tree. Establish the intended
+1. Confirm `local_gate` status is PASS for the current tree. Read the expected remote branch/base commit and tree. Establish the intended
    parent from the controller's baseline or the last confirmed publication on
    this same Issue. Unexpected remote movement requires reconciliation first.
 2. Use Git Data API blobs/trees/commits to represent the exact validated source:
@@ -234,7 +240,7 @@ identity and full remote SHA; never emit the example as a real declaration.
 ```
 
 Declare after applicable local acceptance is satisfied and the exact PR head is
-confirmed. Full host quality and CI acceptance remain pending until the
+confirmed. CI acceptance remains pending until the
 controller observes both required protected checks; do not claim them locally.
 End the turn immediately afterward with "submitted; CI pending". Do not poll CI,
 merge, close Issues or edit the host handoff journal. The controller handles

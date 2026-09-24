@@ -2,7 +2,12 @@
 """Run installed, approved local host capture and the complete isolated CI gate."""
 import argparse
 import json
+import os
 from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import environment_contract as contract
 import shutil
 import subprocess
 import sys
@@ -20,16 +25,20 @@ HOME=Path('/home/gem/.local/share/codexsymphony/gate-host')
 EXECUTION_VERSION=2
 
 def runtime_pins():
+    policy=contract.load()
+    pinned_path=contract.tool_path(policy)
     roots=[RUST,TS,HTTP,TS.parent.parent/'typescript',HTTP.parent.parent/'typescript']
     pins={str(p):sha(p.read_bytes()) for base in roots for p in sorted(base.rglob('*')) if p.is_file() and '__pycache__' not in p.parts}
     for name in ('harness-gate','harness-gate-rust-collector','node','python3','cargo-llvm-cov','/usr/local/libexec/codexsymphony/bwrap'):
         p=(CORE if name=='harness-gate' else
-           Path('/home/gem/.local/share/harness-gate/versions/rust-collector-v0.1.0-rc.7/bin/harness-gate-rust-collector') if name=='harness-gate-rust-collector' else
-           Path(shutil.which(name)).resolve())
+           Path.home()/'.local/share/harness-gate/versions'/('rust-collector-v'+policy['tools']['rust_collector'])/'bin/harness-gate-rust-collector' if name=='harness-gate-rust-collector' else
+           Path(shutil.which(name,path=pinned_path)).resolve())
         pins[str(p)]=sha(p.read_bytes())
-    codex=Path('/home/gem/.codex/packages/standalone/releases/0.156.1-x86_64-unknown-linux-musl/bin/codex').resolve()
+    codex=(contract.codex_bin(contract.load())/'codex').resolve()
     pins[str(codex)]=sha(codex.read_bytes())
     pins.update({str(p):sha(p.read_bytes()) for p in Path(__file__).parent.glob('*.py')})
+    manifest=Path(__file__).with_name(contract.NAME)
+    if manifest.exists(): pins[str(manifest)]=sha(manifest.read_bytes())
     return pins
 
 def check_pins(pins):
@@ -37,7 +46,7 @@ def check_pins(pins):
         if sha(Path(name).read_bytes())!=digest: raise ValueError('approved runtime changed: '+name)
 
 def trusted_files(repo):
-    names=['tools/gate.py','tools/gate_selftest.py','harness-gate-version.lock','web/angular/tools/probe-typescript-risk.cjs','tools/install_gate_plugins.py','.harness-gate/collector-candidates.json']
+    names=['environment.lock.json','tools/environment_contract.py','tools/gate.py','tools/gate_selftest.py','harness-gate-version.lock','web/angular/tools/probe-typescript-risk.cjs','tools/install_gate_plugins.py','.harness-gate/collector-candidates.json']
     names += [str(p.relative_to(repo)) for p in sorted((repo/'tools/quality-host').glob('*.py'))]
     return {name:sha((repo/name).read_bytes()) for name in names}
 
@@ -53,7 +62,7 @@ def snapshot(repo,run):
             # Preserve deletions relative to HEAD instead of silently restoring code.
             if (root/name).is_file(): (root/name).unlink()
             continue
-        target=root/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,target)
+        target=root/name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(p,target);shutil.copymode(p,target)
         files[name]=sha(p.read_bytes())
     write(run/'source-inputs.json',files)
     return root,files
@@ -77,6 +86,10 @@ def main():
     args=parser.parse_args();repo=args.repository.resolve(strict=True)
     if args.cache_max_bytes < 0 or args.cache_ttl_seconds <= 0:
         parser.error('cache capacity must be nonnegative and TTL positive')
+    policy=contract.load(repo)
+    contract.check_files(repo,policy)
+    os.environ.update(contract.test_environment(policy))
+    os.environ['PATH']=contract.tool_path(policy)
     HOME.mkdir(parents=True,exist_ok=True)
     if args.bootstrap and args.approval.exists(): raise ValueError('approval already exists; bootstrap cannot overwrite it')
     approval=None
@@ -91,6 +104,9 @@ def main():
     print('Retaining complete gate run: '+str(run),flush=True)
     with phase(run,'snapshot'):
         root,inputs=snapshot(repo,run)
+    environment = contract.fingerprint(repo)
+    write(run/'environment.json', environment)
+    print(json.dumps({'environment_fingerprint': environment['fingerprint']}), flush=True)
     preflight(run,repo)
     cache_key=None
     if approval and args.cache_max_bytes:

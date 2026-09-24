@@ -57,6 +57,7 @@ class AuthCaptureTests(unittest.TestCase):
     def test_tls_cookie_response_csrf_and_restricted_bootstrap(self):
         with tempfile.TemporaryDirectory() as directory, TLSCapture() as tls:
             root = Path(directory); repo = root/'repo'; repo.mkdir(); (repo/'api').mkdir()
+            (repo/'environment.lock.json').write_bytes((Path(__file__).resolve().parents[2]/'environment.lock.json').read_bytes())
             run = root/'run'; run.mkdir()
             secret = root/'control-plane-sentinel'; secret.write_text('must-not-read')
             binary = repo/'admin'

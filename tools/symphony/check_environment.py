@@ -1,45 +1,42 @@
 #!/usr/bin/env python3
-"""Validate the trusted development environment through app-server command/exec, without a model."""
-import json,select,subprocess,time
-from pathlib import Path
-root=Path('/home/gem/.local/share/codexsymphony/workspaces/isolation-preflight')
-base=Path('/home/gem/.local/share/codexsymphony/symphony')
-root.mkdir(parents=True,exist_ok=True)
-subprocess.run(['git','init','--quiet',root],check=True)
-script="""import errno,json,os
+"""Check host and actual development namespace against the same contract."""
+import argparse
+import importlib.util
+import json
+import os
 from pathlib import Path
 import subprocess
-core_version=subprocess.check_output(["harness-gate","--version"],text=True).strip()
-assert core_version=="harness-gate 0.4.5"
-assert 'CODEX_NETWORK_PROXY_ACTIVE' not in os.environ
-p=Path('.git/environment-acceptance-canary')
-p.write_text('probe');p.unlink()
-r={'git_writable':True,'app_key_visible':Path('/home/gem/.secrets/my-disposable-bot.2026-09-08.private-key.pem').exists(),'host_approval_visible':Path('/home/gem/.local/share/codexsymphony/gate-host/approval.json').exists()}
-assert r=={'git_writable':True,'app_key_visible':False,'host_approval_visible':False}
-r['core_version']=core_version
-print(json.dumps(r))
-"""
-with (base/'command-preflight.stderr').open('w') as err:
- p=subprocess.Popen([str(base/'codex-trusted'),'app-server'],cwd=root,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=err,text=True)
- try:
-  def call(identity,method,params):
-   p.stdin.write(json.dumps({'id':identity,'method':method,'params':params})+'\n');p.stdin.flush()
-   deadline=time.monotonic()+30
-   while time.monotonic()<deadline:
-    if select.select([p.stdout],[],[],1)[0]:
-     line=p.stdout.readline()
-     if not line:break
-     reply=json.loads(line)
-     if reply.get('id')==identity:
-      assert 'error' not in reply,reply.get('error')
-      return reply['result']
-   raise RuntimeError('RPC timeout: '+method)
-  call(1,'initialize',{'clientInfo':{'name':'codexsymphony-preflight','version':'1'},'capabilities':{'experimentalApi':True}})
-  result=call(2,'command/exec',{'command':['python3','-c',script],'cwd':str(root),'sandboxPolicy':{'type':'dangerFullAccess'},'timeoutMs':20000})
-  assert result['exitCode']==0,result
-  proof=json.loads(result['stdout']);print(json.dumps(proof))
-  (base/'command-preflight.json').write_text(json.dumps({'command_exec':'PASS','codex':'0.156.1','proof':proof},indent=2)+'\n')
- finally:
-  p.terminate()
-  try:p.wait(timeout=5)
-  except subprocess.TimeoutExpired:p.kill();p.wait()
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+import environment_contract as contract
+
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--workspace',type=Path,required=True)
+    args=parser.parse_args()
+    root=args.workspace.resolve(strict=True)
+    value=contract.load(root)
+    host=contract.fingerprint(root,dict(os.environ,PATH=contract.tool_path(value),**contract.test_environment(value)))
+    entry=Path.home()/'.local/share/codexsymphony/symphony/codex-trusted'
+    # Use the installed wrapper selected by the service; no model call.
+    script="import json,sys;sys.path.insert(0,'/opt/symphony-env');import environment_contract as c;from pathlib import Path;print(json.dumps(c.fingerprint(Path.cwd())))"
+    import shlex
+    wrapper=shlex.split(entry.read_text().splitlines()[1])[2]
+    sys.path.insert(0,str(Path(wrapper).parent))
+    spec=importlib.util.spec_from_file_location('installed_environment',wrapper)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    prior=Path.cwd()
+    try:
+        os.chdir(root)
+        command=module.command(['python3','-c',script])
+        actual=json.loads(subprocess.check_output(command,text=True))
+    finally:
+        os.chdir(prior)
+    if host['fingerprint']!=actual['fingerprint']:
+        raise ValueError('environment drift: host and Symphony namespace fingerprints differ')
+    print(json.dumps({'status':'PASS','host':host,'symphony':actual},indent=2))
+
+
+if __name__=='__main__':main()
