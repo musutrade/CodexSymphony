@@ -1,0 +1,6 @@
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.23s
+Traceback (most recent call last):
+  File "/opt/symphony-env/e2e.py", line 11, in <module>
+    if server.poll() is not None: raise RuntimeError('API exited; see target/gh119-e2e-api.log')
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: API exited; see target/gh119-e2e-api.log

@@ -1,4 +1,4 @@
-// harness-contract-sha256: 7df9a589ad74dada51b07782f42bbb9f504da1984d4fd0e09aa9520a18328db9
+// harness-contract-sha256: feb49ee0737abccd74864c3e43f01891669139a491636babddffe401eaef341f
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -9,6 +9,7 @@ export interface GetRepositoryResponse {
   repositories: {
     repository: {
       base_branch: string;
+      environment?: string | null;
       github_repository_id: number;
       hooks?: {
         argv: string[];
@@ -43,6 +44,7 @@ export type ConfigureRepositoryResponse =
   | {
       repository: {
         base_branch: string;
+        environment?: string | null;
         github_repository_id: number;
         hooks?: {
           argv: string[];
@@ -74,6 +76,7 @@ export type ConfigureRepositoryResponse =
 export interface ConfigureRepositoryRequest {
   repository: {
     base_branch: string;
+    environment?: string | null;
     github_repository_id: number;
     hooks?: {
       argv: string[];
@@ -148,6 +151,7 @@ export type CreateRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -235,6 +239,7 @@ export type GetRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -305,6 +310,7 @@ export type UpdateRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -392,6 +398,7 @@ export type ReadyRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -467,6 +474,7 @@ export type WithdrawRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -513,15 +521,12 @@ export interface ExecutionStatusResponse {
   requirement_id: number | null;
 }
 export type PauseExecutionResponse = { paused: true } | { error: string };
-export interface PauseExecutionRequest {
-  pause: true;
-}
+export interface PauseExecutionRequest { pause: true }
 export type PauseRequirementResponse = { paused: true } | { error: string };
-export interface PauseRequirementRequest {
-  pause: true;
-}
+export interface PauseRequirementRequest { pause: true }
 export type GetOperationsResponse =
   | {
+      environments?: { observed_at: string; report: string; stage: string }[];
       events: { created_at: string; kind: string; version: number }[];
       external: {
         head_sha: string;
@@ -539,7 +544,15 @@ export type GetOperationsResponse =
         status: string;
       }[];
       metrics: {
+        build_test_coverage_subphases?: { status: 'not_applicable' | 'unknown' };
+        cache_hit_rate?: { status: 'not_applicable' | 'unknown' };
         cached: number | null;
+        ci_wait?: {
+          seconds?: number;
+          source?: string;
+          status: 'known' | 'not_applicable' | 'unknown';
+        };
+        environment_samples?: { elapsed_ms: number; source: string; stage: string }[];
         human_seconds: number | null;
         input: number | null;
         interventions: number;
@@ -548,6 +561,12 @@ export type GetOperationsResponse =
         phases: { complete: boolean; phase: string; seconds: number }[];
         reasons: string[];
         repair_count: number;
+        stage_samples?: {
+          complete: boolean;
+          phase: string;
+          seconds: number | null;
+          source: string;
+        }[];
         to_pr_seconds: number | null;
         zero_intervention: { denominator: number; numerator: number; phase: string };
       };
@@ -657,9 +676,7 @@ export interface ControlOperationsRequest {
   version: number;
 }
 export type GetEvidenceResponse = { preview_only: boolean; text: string } | { error: string };
-export interface GetInboxResponse {
-  requirement_ids: number[];
-}
+export interface GetInboxResponse { requirement_ids: number[] }
 export type AnswerOperatorQuestionResponse = { saved: boolean } | { error: string };
 export interface AnswerOperatorQuestionRequest {
   answers: { id: string; text: string }[];
@@ -678,6 +695,7 @@ export interface MultiGetRepositoryResponse {
     id?: number;
     repository: {
       base_branch: string;
+      environment?: string | null;
       github_repository_id: number;
       hooks?: {
         argv: string[];
@@ -713,6 +731,7 @@ export type MultiConfigureRepositoryResponse =
       id?: number;
       repository: {
         base_branch: string;
+        environment?: string | null;
         github_repository_id: number;
         hooks?: {
           argv: string[];
@@ -744,6 +763,7 @@ export type MultiConfigureRepositoryResponse =
 export interface MultiConfigureRepositoryRequest {
   repository: {
     base_branch: string;
+    environment?: string | null;
     github_repository_id: number;
     hooks?: {
       argv: string[];
@@ -821,6 +841,7 @@ export type MultiCreateRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -911,6 +932,7 @@ export type MultiGetRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -983,6 +1005,7 @@ export type MultiUpdateRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -1073,6 +1096,7 @@ export type MultiReadyRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -1150,6 +1174,7 @@ export type MultiWithdrawRequirementResponse =
         };
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -1441,6 +1466,7 @@ export type GetGroupReviewResponse =
             id: number;
             repository: {
               base_branch: string;
+              environment?: string | null;
               github_repository_id: number;
               hooks?: {
                 argv: string[];
@@ -1587,6 +1613,7 @@ export type GetGroupReviewResponse =
           id: number;
           repository: {
             base_branch: string;
+            environment?: string | null;
             github_repository_id: number;
             hooks?: {
               argv: string[];
@@ -1661,6 +1688,7 @@ export type GetGroupReviewResponse =
         id: number;
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -1765,6 +1793,7 @@ export type SaveGroupReviewResponse =
             id: number;
             repository: {
               base_branch: string;
+              environment?: string | null;
               github_repository_id: number;
               hooks?: {
                 argv: string[];
@@ -1911,6 +1940,7 @@ export type SaveGroupReviewResponse =
           id: number;
           repository: {
             base_branch: string;
+            environment?: string | null;
             github_repository_id: number;
             hooks?: {
               argv: string[];
@@ -1985,6 +2015,7 @@ export type SaveGroupReviewResponse =
         id: number;
         repository: {
           base_branch: string;
+          environment?: string | null;
           github_repository_id: number;
           hooks?: {
             argv: string[];
@@ -2108,12 +2139,9 @@ export type AuthorizeGroupResponse =
       state: string;
     }
   | { error: string };
-export interface AuthorizeGroupRequest {
-  draft_revision: number;
-  request_id: string;
-  version: number;
-}
-export type EditGroupQueueResponse = { affected: string[]; version: number } | { error: string };
+export interface AuthorizeGroupRequest { draft_revision: number; request_id: string; version: number }
+export type EditGroupQueueResponse =
+  { affected: string[]; version: number } | { error: string };
 export interface EditGroupQueueRequest {
   change: {
     document?: {
@@ -2183,15 +2211,9 @@ export interface EditGroupQueueRequest {
   request_id: string;
   version: number;
 }
-export interface AuthCsrfResponse {
-  csrf_token: string;
-  username: string | null;
-}
+export interface AuthCsrfResponse { csrf_token: string; username: string | null }
 export type AuthLoginResponse =
   { csrf_token: string; username: string | null } | { message: string } | undefined;
-export interface AuthLoginRequest {
-  password: string;
-  username: string;
-}
+export interface AuthLoginRequest { password: string; username: string }
 export type AuthSessionResponse = { csrf_token: string; username: string | null } | undefined;
 export type AuthLogoutResponse = undefined;

@@ -1,0 +1,116 @@
+info: cargo-llvm-cov currently setting cfg(coverage); you can opt-out it by passing --no-cfg-coverage
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 37.23s
+     Running unittests src/lib.rs (target/llvm-cov-target/debug/deps/codexsymphony_server-6fc6cca0063c828b)
+
+running 18 tests
+test linked_integration::tests::updated_combo_gets_new_checkouts_and_full_independent_validation ... [master fd9dbe0] second source
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/gh119-cov/validation-runner-85d2fe15-8d6d-43a9-8870-7e9bc2c7e4eb/repo
+ * branch            fd9dbe05521eabec2b6280f1be473c5e36df4557 -> FETCH_HEAD
+[master 874fabe] repair
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/gh119-cov/validation-runner-f57fe59e-1e83-4ab1-984a-6fe6672a9b6a/repo
+ * branch            874fabe950fcb5c6f38a7fb0d7f949b0b3273e05 -> FETCH_HEAD
+ok
+test linked_repair_acceptance::tests::repair_acceptance_retains_original_failure_and_integration_never_becomes_done_from_merge ... ok
+test linked_repair_source::tests::current_target_is_frozen_without_reusing_failed_candidate_and_retries_are_finite ... [master a1e24c2] target advanced
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/gh119-cov/validation-runner-7f9941c8-6621-4679-8422-7ecbb7489c5e/repo
+ * branch            a1e24c2df43ba6c0b3dc24aae0f5d2e67a3f68be -> FETCH_HEAD
+ok
+test linked_repair_source::tests::github_target_requires_an_authenticated_exact_branch_sha ... ok
+test linked_repair_source::tests::reviewed_multi_repository_check_mapping_selects_one_repository_at_a_time ... ok
+test linked_repair_source::tests::source_transport_failure_and_pause_race_preserve_the_original_failure ... From /tmp/gh119-cov/validation-runner-c69f4b6d-b729-4d23-affa-f04dee3e100f/repo
+ * branch            8c2b4878ff4e2af5f39f962ae9bb05334b7d4091 -> FETCH_HEAD
+From /tmp/gh119-cov/validation-runner-c69f4b6d-b729-4d23-affa-f04dee3e100f/repo
+ * branch            8c2b4878ff4e2af5f39f962ae9bb05334b7d4091 -> FETCH_HEAD
+ok
+test linked_repair_worker::tests::committed_repair_diff_accepts_only_reviewed_paths_and_rejects_baseline_drift ... [ai/req-1-f842fa0a-a83b-44b5-b5e6-f4bce52f037b 81eeff2] repair diff
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[ai/req-1-e9a1437c-1526-4d79-b6f8-bd4375a0cf2f a89f48f] repair diff
+ 1 file changed, 1 insertion(+)
+ create mode 100644 outside
+ok
+test linked_repair_worker::tests::duplicate_reservation_pause_restart_bind_and_scope_remain_on_original_item ... ok
+test linked_repair_worker::tests::quota_counts_prior_repair_stages_and_keeps_original_failure ... ok
+test linked_repair_worker::tests::successful_preparation_binds_exact_reserved_repair_once ... ok
+test merge_acceptance::tests::accepted_linked_merge_returns_to_original_integration_without_completion ... ok
+test merge_acceptance::tests::blocked_merge_replays_original_failed_invocation ... ok
+test merge_acceptance::tests::pause_at_acceptance_start_never_marks_execution_started ... ok
+test merge_acceptance::tests::retained_blocked_merge_can_record_one_original_failure ... ok
+test merge_dispatch::tests::absent_fixed_and_external_policies_never_dispatch_and_invalid_dispatch_fails ... ok
+test merge_prevalidation::tests::authorization_is_rechecked_before_marking_test_merge_started ... ok
+test merge_validation::tests::checkout_reuse_checks_head_and_invalid_fetch_never_certifies_source ... ok
+test project_hooks::failure_classification_tests::error_classification_requires_matching_stop_receipts_before_timeout_or_cancel ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.77s
+
+     Running tests/environment.rs (target/llvm-cov-target/debug/deps/environment-a56153a43192d95f)
+
+running 8 tests
+test cache_permissions_capacity_seed_identity_and_symlinks_are_checked ... ok
+test forged_missing_or_failed_evidence_never_passes ... ok
+test immutable_review_admission_startup_recovery_ci_and_budget_continuity ... ok
+test installed_new_binary_does_not_approve_an_old_running_process ... ok
+test real_two_project_admission_detects_drift_and_preserves_isolation ... .
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+✔ value (1.144826ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 90.947103
+ok
+test resource_envelopes_and_host_profiles_cannot_relabel_approval ... ok
+test reviewed_identity_role_and_scope_reject_unsupported_changes ... ok
+test timeout_stops_descendants_and_unreconciled_intent_blocks_another_probe ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 37.18s
+
+     Running tests/preparation.rs (target/llvm-cov-target/debug/deps/preparation-8b9299acce8e841c)
+
+running 11 tests
+test connectivity_requires_identity_without_domain_enforcement ... ok
+test deadline_completion_and_identity_mismatch_require_reconciliation ... ok
+test evidence_commit_failure_refuses_claim_without_latching_other_work ... ok
+test fixed_retry_budget_and_pause_are_independent ... ok
+test malformed_reviewed_network_declaration_cannot_admit_a_run ... ok
+test persisted_attempts_resume_phase_and_preserve_pause ... ok
+test preparation_service_persists_real_adapter_errors_and_admits_only_success ... ok
+test reviewed_hook_failures_are_recorded_at_each_preparation_boundary ... ok
+test service_rejects_wrong_broker_and_bounds_output_and_scopes_storage_failure ... ok
+test stale_success_requires_new_authorization_and_cannot_be_overwritten ... ok
+test task_storage_failure_preserves_originals_without_global_latch ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.42s
+
+     Running tests/project_hooks.rs (target/llvm-cov-target/debug/deps/project_hooks-00fac8838c020b69)
+
+running 15 tests
+test absent_hooks_keep_default_path_and_validation_role_is_explicit ... ok
+test after_run_requires_quiescence_and_preserved_snapshot_but_auxiliary_failure_keeps_fact ... ok
+test cancellation_waits_for_supervisor_stop_receipt ... ok
+test idempotent_failure_replays_once_with_same_invocation_and_new_attempt ... ok
+test invalid_before_remove_resource_never_starts_reviewed_script ... ok
+test lost_supervisor_after_identity_preserves_unknown_side_effects ... ok
+test mismatched_stop_receipt_cannot_confirm_hook_quiescence ... ok
+test missing_supervisor_identity_fails_without_starting_the_hook ... ok
+test reviewed_hooks_run_once_and_loss_reconciles_without_replaying ... ok
+test reviewed_repository_rejects_unbounded_or_ambiguous_hooks ... ok
+test script_identity_spawn_and_output_limits_fail_closed ... ok
+test stopped_hook_reconciliation_preserves_each_recorded_outcome ... ok
+test supervisor_cannot_claim_quiescence_when_hook_output_cannot_be_opened ... ok
+test timeout_stops_detached_descendants_and_preserves_unknown_boundary ... ok
+test undeployed_hooks_and_corrupt_frozen_identity_fail_before_execution ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 57.86s
+
+
+    Finished report saved to target/gh119-targeted-coverage.json

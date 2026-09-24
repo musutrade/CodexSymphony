@@ -13,3 +13,10 @@ Integration tests require a dedicated TEST_DATABASE_URL and never infer a produc
 
 - `0029_linked_repair.sql`: original-item post-merge/integration repair provenance, shared reservations and immutable Run repository inputs. Explicit scope opt-in, migration compatibility and rollback limits: [linked repair](../docs/linked-repair.md).
 - `0030_cancelled_group_queue.sql`: exclude fully cleaned cancelled children from execution slots; retain their history and require real completion for dependent children.
+
+0032 adds append-only `environment_observation` for optional reviewed repository
+plans. Existing authorization, AgentRun and budget rows are untouched. Keep this
+table during rollback; tasks with a frozen environment plan require a compatible
+binary. See `docs/repository-environments.md` for upgrade/recovery conditions.
+The same migration observes validation and delivery transitions with nullable
+timestamps. Historical starts are not backfilled; unavailable durations stay unknown.

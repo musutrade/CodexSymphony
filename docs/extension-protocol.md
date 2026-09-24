@@ -170,12 +170,55 @@ GitHub before_publish/before_merge 位于适配器实际写操作边界，可使
 | 当前代码入口 | 当前行为 / 后续接入责任 |
 |---|---|
 | `extension_contract.rs`、`project_hooks.rs::register/event/after_run/before_remove` | 已实现 v1 冻结配置和四类 Hook；#118 保持格式/事件兼容，不令 after_run 承担验收 |
-| `preparation_service.rs`、`coordinator.rs::start_reserved/start_runtime` | 现有准备及启动；#119 在相同路径接入环境绑定及漂移核验，覆盖恢复/修复 |
+| `environment_service.rs`、`preparation_service.rs`、`coordinator.rs::start_runtime/recover` | #119 已接入可选冻结环境绑定；启用、服务启动、准备/恢复/修复及 Agent 启动前核验 |
 | `validation_runner.rs::execute_cancellable`、`validation.rs::verify`、`validation_store.rs` | 现有候选、检查步骤和可信身份；#120 承接 validate 的完整检查及结果来源，不用 Agent 自报 |
 | `delivery_worker.rs::tick/reconcile/publish`、`delivery_control.rs`、`github_delivery.rs` | 现有 GitHub outbox/对账；#121 接入受控交付操作及凭据边界，#105 实现 local_git |
 | `merge_prevalidation.rs`、`merge_dispatch.rs`、`merge_validation.rs`、`merge_acceptance.rs` | 当前 GitHub 合并前检查及合并后验收；#121 对应适配器写边界和 post_delivery_validate，不移入通用必填 PR/CI |
-| `controlled_contract.rs` | #118 新增纯类型、登记/版本/操作校验及结果结构检查；尚无运行调度或新 API/数据库迁移 |
+| `controlled_contract.rs`、`environment_probe.rs` | #118 通用类型与校验；#119 补齐资源级封装和受审环境探测监督、任务 Call/Evaluation、环境观测迁移，未实现 #120/#121 调度 |
 
 旧 Repository 继续通过 `ExtensionConfig::from_legacy_repository` 映射既有 Codex/GitHub 默认；未配置受控扩展不是新能力自动授权。已有冻结任务、累计预算、失败证据和在途交付意图均保留。未来评审显式选择并冻结新配置；替换实现/策略必须重新评审和验证。回退先暂停新领取、静止并保全、对账副作用；采用能读取已有记录的版本，未知能力拒绝新动作但保留材料，不能删记录来绕过恢复。#118 无数据迁移，回退代码不改变现有记录。
 
 #118 测试 `extension_contract` 与 `controlled_contract` 覆盖旧配置映射、未知版本/操作、未登记或被篡改扩展、无 GitHub/无 Rust/无缓存配置、缺项/重复/过期/错身份结果。它们是受控契约验证，不是无 GitHub 的产品闭环；#119–#122/#105 分别提供实际环境、可信执行边界、可替换验证、交付和真实任务证据。本仓库完整 Harness-Gate 要求不因产品协议可替换而改变。
+
+## P11 仓库环境执行接入（GH-119）
+
+Repository 的 `environment` 可选；缺省保留历史行为。值为 `environment::Plan`：
+HTTP/Repository 快照将 Plan 编码为 JSON 文本，读取时严格反序列化；宿主文件和
+探测协议使用原生对象。操作详情的 report 也使用既有观测 JSON 文本约定。
+`controlled` 复用 P9 ControlledConfig，另含 `host_profile_digest`、`extension_id`、
+既有 `lockfiles` 相对引用、`roles.dev/test`、`ci` 和可选 `cache`。
+role 包含 expected（精确观测值）、services（安装/配置摘要）、runtime（仅 runtime.*
+字段的批准可变值）、checks 和 dev/test 差异说明。环境内容摘要覆盖这些声明及
+宿主 profile 摘要；完整方案摘要还覆盖登记和绑定。评审存储方案而非重新读取默认值。
+
+宿主 Registry 的 profile 固定登记实现、可执行路径、资源目录、超时和 approved_plans。
+profile 身份覆盖登记、路径、资源根、超时及证据根，排除批准方案列表以避免循环摘要。
+项目只能选择批准值，不能安装/升级宿主。Registry 本身是受审宿主输入，不是工作区文件。
+产品登记的 scope_ref 为 `repository:<内部 ID>`，环境 repository_revision 为
+`repository:<内部 ID>@<仓库版本>`；任务从原评审快照核对两者，不能跨仓借用批准。
+资源级独立 CLI 不创建这些业务记录。证据根与项目资源根不能重叠。
+
+探测 stdin/stdout 的类型为 `environment_probe::Request/Response`。Request 包含
+P9 ResourceCall、调用时点、角色、完整方案摘要、资源根、适用工作目录和 required_checks；
+任务核验还包含通用 Call，绑定原 requirement/revision、冻结扩展配置、策略/参数摘要。
+该 Call 的 run_id 对应**实际探测监督器**的 RunKey；这是基础设施执行事实，不创建
+或冒充 AgentRun。没有任务的启用/启动/CLI 检查只使用资源级身份，不虚构任务身份。
+
+Response 回显整个 Request，返回 actual、逐项 CheckResult；任务调用必须同时返回
+与通用 Call 精确匹配的 Evaluation。资源级结果不具有任务验收权限。
+`actual` 证据引用解析为调用目录的 `actual.json`：UTF-8、无附加换行的确定性 JSON，
+核心重新序列化核验 SHA-256、落盘并保存 actual_digest。环境扩展的声明不能替代
+登记实现摘要、捕获通道、退出状态及完整静止回执。输入限 64 KiB、各输出流限 1 MiB，
+超时最大 600 秒；超限或失去静止证明拒绝准入，未知意图阻止新的环境执行。
+准备阶段进一步取原准备台账剩余期限；已证明没有启动的调用保留 not-started 回执，
+不能把真正缺少进程静止证明的调用标作未执行。
+
+每个声明服务必须观测 installed、process、config、effective_config、syntax_valid、
+semantic_valid；前两者匹配安装摘要，中间两者匹配批准配置摘要，后两者必须为 true。
+因此更新了磁盘配置但运行中服务仍使用旧配置不能通过。工具、镜像、资源及调度值
+由项目受审实现探测，核心比较 expected/actual；不内置 Rust/数据库/容器要求。
+
+缓存缺省关闭；启用的 identity、scope、capacity_bytes、writable 和可选 seed
+进入冻结方案。scope 绑定独立宿主资源根，平台校验容量/权限，种子只接受受信预置、
+只读且内容匹配清单的版本。不可获得的统计为 unknown，不适用由批准方案决定；
+缓存和统计都不能生成测试/覆盖率验收结果。操作与迁移见[环境接入说明](repository-environments.md)。

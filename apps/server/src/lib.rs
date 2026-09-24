@@ -181,6 +181,12 @@ mod integration_retry;
 mod integration_store;
 pub mod integration_worker;
 
+pub mod environment;
+pub mod environment_cache;
+pub mod environment_cli;
+pub mod environment_host;
+pub mod environment_probe;
+pub mod environment_service;
 pub mod linked_failure_store;
 pub mod linked_integration;
 pub mod linked_repair;

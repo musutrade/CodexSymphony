@@ -21,6 +21,14 @@ pub struct Request<'a> {
 }
 
 pub async fn validate(pool: &PgPool, r: Request<'_>) -> Result<bool> {
+    crate::environment_service::admit(
+        pool,
+        r.requirement,
+        r.revision,
+        "validation",
+        Some(r.checkout),
+    )
+    .await?;
     let trusted = r.plan.identity()?;
     let required: Vec<String> = r.plan.steps.iter().map(step_id).collect();
     create(pool, &r, &trusted).await?;

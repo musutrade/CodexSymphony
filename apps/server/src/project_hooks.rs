@@ -448,24 +448,28 @@ fn classify_result(
         Ok((true, value)) => ("success", None, Some(value)),
         Ok((false, value)) => ("failed", None, Some(value)),
         Err(error) => {
-            let stopped = verified_stop(directory);
-            let status = if !stopped && directory.join("identity.json").exists() {
-                "unknown"
-            } else if directory.join("timeout.json").exists() && stopped {
-                "timeout"
-            } else if directory.join("cancelled.json").exists() && stopped {
-                "cancelled"
-            } else if stopped {
-                "unknown"
-            } else {
-                "failed"
-            };
+            let status = failure_status(directory);
             (
                 status,
                 Some(crate::operator_view::redact_text(&error.to_string())),
                 None,
             )
         }
+    }
+}
+
+fn failure_status(directory: &Path) -> &'static str {
+    let stopped = verified_stop(directory);
+    if !stopped && directory.join("identity.json").exists() {
+        "unknown"
+    } else if directory.join("timeout.json").exists() && stopped {
+        "timeout"
+    } else if directory.join("cancelled.json").exists() && stopped {
+        "cancelled"
+    } else if stopped {
+        "unknown"
+    } else {
+        "failed"
     }
 }
 
@@ -824,3 +828,7 @@ async fn record_reconciled(
         .bind(id).bind(status).bind(stopped).bind(diagnostic).execute(pool).await?;
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/project_hooks.rs"]
+mod failure_classification_tests;

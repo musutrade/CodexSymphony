@@ -2,84 +2,348 @@
   "schema": "symphony-evidence/v1",
   "files": [
     {
-      "path": "artifacts/gh118/baseline-tests.log.gz",
-      "sha256": "1ffeabbc14345e7c6f8137dac011e7521e148ada85a4f65782eb651476e4c239"
+      "path": "artifacts/gh119/admission-mapping.json",
+      "sha256": "1c8dff0b0a3ca73548b1ac10fced67c9dc93818276f74fa18bcb2bc5bdb9868f"
     },
     {
-      "path": "artifacts/gh118/clippy-initial.log",
-      "sha256": "4d56abdb7c800be394161c95fc026e9550a9d839fbb89a8af85f6d8d9f6155a9"
+      "path": "artifacts/gh119/baseline-tests.log.gz",
+      "sha256": "0924111daa4757e89a6079251c64db1b377198cfecce572a6b6c7cc8030e010b"
     },
     {
-      "path": "artifacts/gh118/clippy-refactor.log",
-      "sha256": "428d92e18c1d2c3a43abc340b30ed9322c75e9ac51042f686613dcc32da35905"
+      "path": "artifacts/gh119/check.log",
+      "sha256": "644370f9b99022aa7dab2da561c7db4d8ed770d2e39735f0537d6c8cf648fdc2"
     },
     {
-      "path": "artifacts/gh118/clippy.log",
-      "sha256": "abb9777586dd52596cd3168fe3fdb110df1a79fbcded04574efd51c2b86a495f"
+      "path": "artifacts/gh119/clippy-anchor.log",
+      "sha256": "58e7ff762da7deb5c8253722d28f79de7f1f254c4495aa09053b9bbd1efe320a"
     },
     {
-      "path": "artifacts/gh118/contract-tests.log.gz",
-      "sha256": "07863d0eab86e87a28cd42b98a06dadc510a141f3c3223d7043dfe88506379ef"
+      "path": "artifacts/gh119/clippy-compatibility.log",
+      "sha256": "b53620e7b64f1de372dc5bc5dd90d053c6623b916bfcdb5c4b2289e0f7229e2c"
     },
     {
-      "path": "artifacts/gh118/coverage-diagnostic.log.gz",
-      "sha256": "4b19cd318cf2ab4de7969ae204d53d8e112ce105cd92c893f3d78e1701d3d756"
+      "path": "artifacts/gh119/clippy-final.log",
+      "sha256": "732186322402325172940531d8d6d7cfac85dc902585b2bef6715ad6839dacfd"
     },
     {
-      "path": "artifacts/gh118/document-checks.log",
-      "sha256": "2773cf74e8f8490eeef605c5fa1b7c988c27c1eaf711f95f390fcd3ba41a269b"
+      "path": "artifacts/gh119/clippy-initial.log",
+      "sha256": "53ba612b08af360913934cc3ba43b90d1308cc13be74836c147f106b25e8a43b"
     },
     {
-      "path": "artifacts/gh118/fmt.log",
+      "path": "artifacts/gh119/clippy-mapping-final.log",
+      "sha256": "b6935142900aa3d03f51c809bbaa75001af519acbe1f0d5aec4a265079ae7b4e"
+    },
+    {
+      "path": "artifacts/gh119/clippy-mapping.log",
+      "sha256": "511e028b322da7868f08a49a4e69e3cfb2104627820035d74a7b882b92244c6e"
+    },
+    {
+      "path": "artifacts/gh119/clippy-quality.log",
+      "sha256": "2158beb0627467105e46f235f04ce17d3d051f9742fda90b4b174d26c77b601f"
+    },
+    {
+      "path": "artifacts/gh119/clippy-refactor-final.log",
+      "sha256": "d8c1409094f40f2074fb2931cc6b27ff01a57136b446914b64d32570df86f5ad"
+    },
+    {
+      "path": "artifacts/gh119/clippy-refactor.log",
+      "sha256": "f3a048f620178cf7db111e43076665c0fe38c555c5fd996826c67eaa67a580a2"
+    },
+    {
+      "path": "artifacts/gh119/clippy-resume-final.log",
+      "sha256": "440ae74edd8fb547b39b0fa5b2d44dad308e1505bffdd1488213287445e8c859"
+    },
+    {
+      "path": "artifacts/gh119/clippy-resume.log",
+      "sha256": "7cfdbb8f71681c9207b899e81863027a4b5a49cfd30e634cfe26fcefacd78a7b"
+    },
+    {
+      "path": "artifacts/gh119/clippy-unit-layout.log",
+      "sha256": "ceb5d4cea597c561bf48942c9cd30b40e97e861c21ea167cf29c2be4108694ae"
+    },
+    {
+      "path": "artifacts/gh119/clippy.log",
+      "sha256": "a25df22b9ffdb697e714c722880059ddd08d5527730a788aba40e91028f6114d"
+    },
+    {
+      "path": "artifacts/gh119/complexity-diagnostic.json.gz",
+      "sha256": "537e988f4a0f0c65d6b9f3f71a8a23243cf03b2cb0dc04490134385b1144eaa5"
+    },
+    {
+      "path": "artifacts/gh119/coverage-admission-summary.log",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-      "path": "artifacts/gh118/gate-config.log",
-      "sha256": "985aa8e6a6f7fef77f66e5f6115f5802afeb0dca897c33d73516aa1a3f83e813"
+      "path": "artifacts/gh119/coverage-admission.log",
+      "sha256": "06f50418914962f5ff7dd73204446916e0f758b4d449870d80855f6fbaf2d4ce"
     },
     {
-      "path": "artifacts/gh118/host-log-access.txt",
-      "sha256": "53610608ba9524c7852eecfc86709ae4eebcd3206c1da375ba5b253475da8b20"
+      "path": "artifacts/gh119/coverage-diagnostic.log.gz",
+      "sha256": "b8453351c04479a66973fe3ad91611e0eaba52ef2cab0b28dfdb1f52221f15c5"
     },
     {
-      "path": "artifacts/gh118/local-gate-capture-failure.json",
-      "sha256": "6a8769c54005387d85a8c05c09a2388ecd38045c6e8bef9360e33d32b1f6fe28"
+      "path": "artifacts/gh119/coverage-targeted-final-summary.log",
+      "sha256": "46eeeee67a8975e8a97726fe735541f98771cc6fc759cda9aabec9481fc0a6e5"
     },
     {
-      "path": "artifacts/gh118/local-gate-initial.json",
-      "sha256": "593ba7d0065e53a31514a605236d70a1168ee10891f746c6dece7ea4c5fa6433"
+      "path": "artifacts/gh119/coverage-targeted-final.log",
+      "sha256": "28c5acd906d5d347a81783d5b68675971eab8e177f15e484f2de5e6bbf49700d"
     },
     {
-      "path": "artifacts/gh118/local-gate-quality-failure.json",
-      "sha256": "b3564c3220c041754613baed375d5a3ac4e5e43753f6f285425bdb9afb160b14"
+      "path": "artifacts/gh119/coverage-targeted-summary.log",
+      "sha256": "fcb46cbcc80ad2d80e9d959a56edfe4b55963fa6f75325fb714347a38877b7b4"
     },
     {
-      "path": "artifacts/gh118/npm-ci.log",
-      "sha256": "9ae21d1653870ebd976731a23dedaf7edb06fd7bb91386ce5356e8b9a0ece36c"
+      "path": "artifacts/gh119/coverage-targeted.log",
+      "sha256": "8c4faf27b09c3dba35101dd37a60603078ab39779b1ac286a62d3f63d10a9093"
     },
     {
-      "path": "artifacts/gh118/preflight.json",
-      "sha256": "dcfba3110f6b114a62f4007fb86289d6790149a2c384eccfcb3f6df8d0c33585"
+      "path": "artifacts/gh119/database-smoke.log",
+      "sha256": "ad0fadf63cc7cd779ce475e345bf4063565b63a3c2efef1eebc89790aaa6acba"
     },
     {
-      "path": "artifacts/gh118/prerequisites.json",
-      "sha256": "0dc28dfc409fde9f20a895f46645b3b1e1996b5085a0e562f333e44b72e34c3d"
+      "path": "artifacts/gh119/environment-contract-tests.log",
+      "sha256": "abd9c59dac7b2b4a1876fcf0777c2c286b1d4c25f98efebf52fccf27ee36e548"
     },
     {
-      "path": "artifacts/gh118/source.json",
-      "sha256": "0796f549b1c776980a1bd963be91e64c5f4801a08f2cade3f7d51fb9d80d8288"
+      "path": "artifacts/gh119/environment-coverage-tests.log",
+      "sha256": "b44422540510ea597b66f39fccc5502588f837e787824031f0a0de72548d1bb4"
     },
     {
-      "path": "artifacts/gh118/summary.md",
-      "sha256": "7d6a9d8c9b73229a742f0a57e8a9b08d1aa7ae00325dd8a42827ce9012011ded"
+      "path": "artifacts/gh119/environment-entrypoints-csrf.log",
+      "sha256": "1c1183bd75a8db828adc8fd562d511087d1c0b9d5cb21e7efd8feeae1a985685"
     },
     {
-      "path": "artifacts/gh118/tests-refactor.log.gz",
-      "sha256": "6967ed070e20d08007915164998e0da47a375e9bb0ee8430428a23730d353262"
+      "path": "artifacts/gh119/environment-entrypoints-final.log",
+      "sha256": "20930be85f2580e6b74cbcb04f64dd7a5921a220318cc5f637387c4ef0cb9033"
     },
     {
-      "path": "artifacts/gh118/tests.log.gz",
-      "sha256": "9feb560851570199e7592b8451ecf79942e570bfb5d352f1c83272beaab18ddc"
+      "path": "artifacts/gh119/environment-entrypoints.log",
+      "sha256": "fa926464ca318dacaec052fd5c6d4e54e303d34a723350c4e94676299bbf740b"
+    },
+    {
+      "path": "artifacts/gh119/environment-tests-expanded.log",
+      "sha256": "ff5b59bb07f48a846b905d5272cc13a87bc17d975870f8c08b50187bed26fdbc"
+    },
+    {
+      "path": "artifacts/gh119/environment-tests.log",
+      "sha256": "ac3e9529d275b0279edcd7d2132ea4f2abac82fa5d48cbdfedbc4bf8d8f12a56"
+    },
+    {
+      "path": "artifacts/gh119/fmt-anchor.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-compatibility.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-mapping.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-quality.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-refactor.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-resume-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-resume.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt-unit-layout.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/frontend-build.log",
+      "sha256": "0a9c48c38756bf937a498d46cea21fa6534c52cdfb845e7692d7e7a4f9e3327c"
+    },
+    {
+      "path": "artifacts/gh119/frontend-e2e-startup.log",
+      "sha256": "0b4632caa359749b0e5183f808525648a21d57e98c0ba39c5ec057f18ff8bd4e"
+    },
+    {
+      "path": "artifacts/gh119/frontend-e2e.log",
+      "sha256": "dceef518e4e55be00ba1f1067e3631021e4bdc76b656961dbd0902cccd9719ef"
+    },
+    {
+      "path": "artifacts/gh119/frontend-https-e2e.log.gz",
+      "sha256": "b56a4fbba698567a7b23e8ebf086e2326c8c7b42c2bfabddc2fe02aa1967ec2f"
+    },
+    {
+      "path": "artifacts/gh119/frontend-https-refactor.log.gz",
+      "sha256": "393368a33fec89c506364908371f5d739aa2c8122bdc15fc4efc73164f20dfb9"
+    },
+    {
+      "path": "artifacts/gh119/frontend-lint.log",
+      "sha256": "b8e85c9119350c4d1fc9258f24919b7d6613994ccc102cba6450a7564779e9c2"
+    },
+    {
+      "path": "artifacts/gh119/frontend-tests.log",
+      "sha256": "912f5c2e54344008a24f9091fe1e31030b9790a9c8a31c3d063635a2cead6050"
+    },
+    {
+      "path": "artifacts/gh119/gate-config-resume.log",
+      "sha256": "6d661afcef290ac782c9cb517d0e06de36582fe55a49c3753174af7b07d35c4e"
+    },
+    {
+      "path": "artifacts/gh119/gate-config.log",
+      "sha256": "6d661afcef290ac782c9cb517d0e06de36582fe55a49c3753174af7b07d35c4e"
+    },
+    {
+      "path": "artifacts/gh119/inspect_coverage.py",
+      "sha256": "b16f962e9e9534d0356924770695496ef26e65c068fcd720823d7c8e148ba614"
+    },
+    {
+      "path": "artifacts/gh119/local-gate-anchor-failure.json",
+      "sha256": "bc295197269a9dd39c8a088e338ca74e5d14f7eaad260d65c77ac8732a21693d"
+    },
+    {
+      "path": "artifacts/gh119/local-gate-coordinator-anchor.json",
+      "sha256": "ec3f5c84fe37cde1c0437f9e9f8c7a9dfa26660156a9f24865810729fb148e1c"
+    },
+    {
+      "path": "artifacts/gh119/local-gate-initial.json",
+      "sha256": "4a4c9d47948ff6916bb6499f5af110955ac94b4df8384e3aad7ab714cce699b1"
+    },
+    {
+      "path": "artifacts/gh119/local-gate-quality-failure.json",
+      "sha256": "0c62b6c32b76b422231463cb4dfcc33da184d6daaadf3e6620d1f73d27c92dea"
+    },
+    {
+      "path": "artifacts/gh119/local-gate-resume-failure.json",
+      "sha256": "42fc0555762bf1436df50b7cdf49df4f8c79b838e85cc5e19537013a891d1d8a"
+    },
+    {
+      "path": "artifacts/gh119/mapping-diagnostic.json.gz",
+      "sha256": "50ed1e74c93ddf85d626784c3077154c67c3d913615177de39ef765e2bd0fec0"
+    },
+    {
+      "path": "artifacts/gh119/npm-ci.log",
+      "sha256": "949b8144ee254db26c4e64d5502876c801b432b1cd5ddd5fd550b953fc53d13f"
+    },
+    {
+      "path": "artifacts/gh119/preparation-python-resume.log",
+      "sha256": "921b60a7fd52e978fbb551cacd29df2d6708879400278e1fcc70fceeb0c6f8e0"
+    },
+    {
+      "path": "artifacts/gh119/preparation-python-tests.log",
+      "sha256": "921b60a7fd52e978fbb551cacd29df2d6708879400278e1fcc70fceeb0c6f8e0"
+    },
+    {
+      "path": "artifacts/gh119/prerequisite.json",
+      "sha256": "2bf83eff4a2646b5800c36f46956119bbbb56e48d7db059820c169e08056d6ce"
+    },
+    {
+      "path": "artifacts/gh119/recovery-environment-tests.log",
+      "sha256": "d43a877c6af26832debc2d4a958048f9661ac8e7501c97d360a35e7ffac23a65"
+    },
+    {
+      "path": "artifacts/gh119/refactor-check.log",
+      "sha256": "0b1609a454c67a7657766779f2e6c35aa6e0d8f9ac7d9e185bfdef003e3a4316"
+    },
+    {
+      "path": "artifacts/gh119/remote-reconciliation.json",
+      "sha256": "317f27212cb1771f9f3ff2fcea50723924d55e8b6eead584145137b04d80d976"
+    },
+    {
+      "path": "artifacts/gh119/resume-timeout-diagnostic.json",
+      "sha256": "c165a414de4f2850b8a916da444405eb077208132d994ddadc62a2868ca70e4d"
+    },
+    {
+      "path": "artifacts/gh119/serde-inventory-diagnostic.json",
+      "sha256": "796c4c14e96a550c0a864f3ea98bceabdd5dec430e60f965354d02a6da03fcd0"
+    },
+    {
+      "path": "artifacts/gh119/source.json",
+      "sha256": "dc72971e41c2fa1e797e376ce552620778a7b02bf371ffc9113f4e75fcde9ed0"
+    },
+    {
+      "path": "artifacts/gh119/summary.md",
+      "sha256": "fd6a65d63494a613b2655ef4949f8f30c668246cfd4637076dabb2a76addaf76"
+    },
+    {
+      "path": "artifacts/gh119/targeted-mapping-final.json",
+      "sha256": "47ccb10e5516b94efddc8d7f401746398fa3dd32328704e003877bd157c0df76"
+    },
+    {
+      "path": "artifacts/gh119/targeted-mapping.json",
+      "sha256": "9284c41ed00b79e0b3bade61d89a637a93bc71d8940d5e6f8c5297022f21d9a2"
+    },
+    {
+      "path": "artifacts/gh119/type-format.log",
+      "sha256": "2efc4d8f0eb8c1b03d34bf6676f1a5192fffdc5428ab4a5e340357ed0b71f000"
+    },
+    {
+      "path": "artifacts/gh119/type-generation.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/type-lint-fix.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "artifacts/gh119/workspace-acceptance.log.gz",
+      "sha256": "e8cdf2d763d2f7cdd4c134da80de5aea2942b5daf10076c5f01f3cc524626083"
+    },
+    {
+      "path": "artifacts/gh119/workspace-anchor.log.gz",
+      "sha256": "1038a41a48aeb42c85f5d952b26df63dc09b6154d6a8bdf3afa1a72fe2033d02"
+    },
+    {
+      "path": "artifacts/gh119/workspace-complete.log.gz",
+      "sha256": "c78623c1eb9f1888e69bd4a60084696ae4d37352281fa78cb864c4d880ed667b"
+    },
+    {
+      "path": "artifacts/gh119/workspace-final.log.gz",
+      "sha256": "7a23405d8861aaf63dc96f1f6fc07879aa755d566d24a8dada841ee5fa7af9f4"
+    },
+    {
+      "path": "artifacts/gh119/workspace-mapping.log.gz",
+      "sha256": "52eb37d1cc4f50f7e32a26c1667417891c6967d169980969e8a03af9ee1b27b7"
+    },
+    {
+      "path": "artifacts/gh119/workspace-quality.log",
+      "sha256": "c4637c43b72267be82d6ac484740ca7f149e1fd8f6c69f4e2deedd2e06bde17d"
+    },
+    {
+      "path": "artifacts/gh119/workspace-refactor.log.gz",
+      "sha256": "48e087ef970f8c4916a9ceb8d4c008003b8d0334a8939157fb695136ac9b6b03"
+    },
+    {
+      "path": "artifacts/gh119/workspace-resume-final.log",
+      "sha256": "e1cdace4fee05c29008b998c9f15342d7a0d8d06116faff7434b1b30a3bdf069"
+    },
+    {
+      "path": "artifacts/gh119/workspace-resume.log",
+      "sha256": "f620f8e1e920b45521e2a74e36cb40edaa33b72fd142038b5985cf6dac1eff70"
+    },
+    {
+      "path": "artifacts/gh119/workspace-tests-final.log.gz",
+      "sha256": "1faad0cfe4989dbf2885f9e8ea725cb876eae1a5cad2c314b3f823970caac2dd"
+    },
+    {
+      "path": "artifacts/gh119/workspace-tests.log.gz",
+      "sha256": "3d4a82d1db790ddcbbf6b4b65f11687247dcdcff38328f016cdbb8de2f28de62"
+    },
+    {
+      "path": "artifacts/gh119/workspace-unit-layout.log",
+      "sha256": "36d305d0654fde2527634b49b4bb6adecbf5ecb660cbcdc7424a34f456229ea3"
     }
   ]
 }

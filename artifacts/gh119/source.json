@@ -1,0 +1,170 @@
+{
+  "base": "549a8c137f7fb982306aa174195ea9e9cc3384bb",
+  "branch": "symphony/GH-119",
+  "source_files": [
+    {
+      "path": ".harness-gate/collector-candidates.json",
+      "sha256": "c473ea9c520716f725066c5739eca060b747294fc7b8730a5636b9b370b6d634"
+    },
+    {
+      "path": ".harness-gate/packs/backend/capabilities.json",
+      "sha256": "715614dc50c3a048559082b53cb4117e993d36397a4127d41591de5d670a879c"
+    },
+    {
+      "path": ".harness-gate/quality.toml",
+      "sha256": "a292068f8109c69da596ce1ae19eae01956814b12b64b8fa0999c96ab12254ba"
+    },
+    {
+      "path": "README.md",
+      "sha256": "62f0395aad8ad76a6c6aa067a02d6e861d3b197073e019938e0fe8c0e5a89cef"
+    },
+    {
+      "path": "api/openapi.json",
+      "sha256": "feb49ee0737abccd74864c3e43f01891669139a491636babddffe401eaef341f"
+    },
+    {
+      "path": "apps/server/src/business.rs",
+      "sha256": "4bef50216032a14fc40a1a8107704266b0de427e89a3a78d382eb3c12400e965"
+    },
+    {
+      "path": "apps/server/src/contract.rs",
+      "sha256": "68afa6defe1b5652e12e27ad5fbedcdca2bc7d5538649b478cf461edb7701d75"
+    },
+    {
+      "path": "apps/server/src/controlled_contract.rs",
+      "sha256": "b6d27e3fa555344a01e4e1431cf93b7b329ea8f0dbcf8e58a31e222aaca1b580"
+    },
+    {
+      "path": "apps/server/src/coordinator.rs",
+      "sha256": "4e858a52b3b64e233b43ae9c4ffb780009a519958866733331593e8ad60b0bfb"
+    },
+    {
+      "path": "apps/server/src/delivery_worker.rs",
+      "sha256": "7d869f6548276ef304edca57c265c9f8d2f45d756d104e7c0d215b395255fa1d"
+    },
+    {
+      "path": "apps/server/src/environment.rs",
+      "sha256": "ffff529c71bf8424060104bf227196f0b415caffcc371830fc2b872e405a83a9"
+    },
+    {
+      "path": "apps/server/src/environment_cache.rs",
+      "sha256": "8fd8a7c040239efbf89623f00da55448909ff24e4f5e883443e47b75532b7525"
+    },
+    {
+      "path": "apps/server/src/environment_cli.rs",
+      "sha256": "a5c575fd4f63ce47bf9eda9c0f0f2be1238207f3ce4c7acd3ccfc5d63dff4cce"
+    },
+    {
+      "path": "apps/server/src/environment_host.rs",
+      "sha256": "409c41345e713747dc79dbe3ebcc65e35824e56a5a845b010935af08329850b0"
+    },
+    {
+      "path": "apps/server/src/environment_probe.rs",
+      "sha256": "d8519cc6f984a43695dac9f24a8a32afa5d6f21d2f87145ded1d1759deff10d9"
+    },
+    {
+      "path": "apps/server/src/environment_service.rs",
+      "sha256": "71e1351dca6a8b1b9b168f8d9aeafb877edd6dae704ae106c3a1ddb0cafb9e7a"
+    },
+    {
+      "path": "apps/server/src/lib.rs",
+      "sha256": "98d06bc970646cf5ce415ebfb4e7d31f935c283172fcaf80085f7c325e52b48d"
+    },
+    {
+      "path": "apps/server/src/main.rs",
+      "sha256": "7770070335843f60e2325a063e157918f79eca86614bf6b6d0be56def4bd6664"
+    },
+    {
+      "path": "apps/server/src/operator_view.rs",
+      "sha256": "941d25d9946d4b1b768c745e8d4cf1a965a3eb93694852a29c4ea9060843a12b"
+    },
+    {
+      "path": "apps/server/src/preparation_service.rs",
+      "sha256": "dada05e465d62e62703b384ef7c0f6806701f48283c64c03afcfa4905b8a5d22"
+    },
+    {
+      "path": "apps/server/src/project_hooks.rs",
+      "sha256": "0d11da9324731117b459a45cd684393689b7f4938ef653ca806e1259bcd47382"
+    },
+    {
+      "path": "apps/server/src/validation_service.rs",
+      "sha256": "a52bd752eb0af3d63d90992e3deafeb6ae912edfd088b80957801f98f6cb9ed9"
+    },
+    {
+      "path": "apps/server/tests/delivery.rs",
+      "sha256": "0593455ac22f1ba82bfd420a325ed7d4b2a53d24a491361ebeeafdf01ff74411"
+    },
+    {
+      "path": "apps/server/tests/environment.rs",
+      "sha256": "7be6ca488ef90fca1eff3c14718c0817061c4ecaf345bb89fbbfc6e5376ffd5d"
+    },
+    {
+      "path": "apps/server/tests/extension_contract.rs",
+      "sha256": "d43de54848209cdc7846bd4d05c7fe1810ef214511225c83d4557baf0748f6b2"
+    },
+    {
+      "path": "apps/server/tests/fixtures/environment/probe.py",
+      "sha256": "aa9e30e4d58b17721fa1648d2a1d2cd16458d618880cb586e2c834dd2deb8c2b"
+    },
+    {
+      "path": "apps/server/tests/fixtures/environment/service.py",
+      "sha256": "2b9bc1bf0ac25699bb5b6547a3603807cafda93500fa384b72fd63cf7bc40375"
+    },
+    {
+      "path": "apps/server/tests/support/environment_preparation.rs",
+      "sha256": "5ee87c7d0046beb9d38784d5e46171f6abe8f44fa6f59f053ec391a829808cd4"
+    },
+    {
+      "path": "apps/server/tests/unit/environment_probe.rs",
+      "sha256": "06fff50cbcb7e44df8da10598a92f826c80cee1fa4fe271073baee324d502836"
+    },
+    {
+      "path": "apps/server/tests/unit/project_hooks.rs",
+      "sha256": "78a82720b4c52d204d0937af9af9c289a2f3f7f26f40dfbab68efeddf47a0297"
+    },
+    {
+      "path": "apps/server/tests/validation_store.rs",
+      "sha256": "1382c2765017d6e41d5007cd84d8b62250393e8db0036f85f30651fc1d52aab7"
+    },
+    {
+      "path": "docs/extension-protocol.md",
+      "sha256": "c6bb77700f5c9f36c41274048c63eeeed74a3c33073ef96f2ebd18f69e452429"
+    },
+    {
+      "path": "docs/repository-environments.md",
+      "sha256": "a683e18cc9a6a57debf617de4f9c7add17af43c2df12ef1f0e0df2b9a5cfef80"
+    },
+    {
+      "path": "environment.lock.json",
+      "sha256": "1f84fb20cf81d6285eb97b1aae737afdc538e05579ef519aa7dc7e4d53367972"
+    },
+    {
+      "path": "migrations/0032_environment_observation.sql",
+      "sha256": "d1d6b852329d36873f78e5fca35c36718e617fc14b80494258d826b63aa1e3b5"
+    },
+    {
+      "path": "migrations/README.md",
+      "sha256": "8c58b36868639fc87ecdb9c89439242714ecc4c207fd844736fc5627dbc40b10"
+    },
+    {
+      "path": "tools/gate-plugins/README.md",
+      "sha256": "5dd5f9124f7813a7683c1871599c5a54161735c1539631bf2df1b3a1c7d3fd49"
+    },
+    {
+      "path": "tools/gate-plugins/packages/harness-gate-rust-source-0.1.0-rc.7.tar.gz",
+      "sha256": "fbf0eadf0dce967785c0075a54f33ab71d67f0f32d7c78df32eea62699303cc7"
+    },
+    {
+      "path": "tools/preparation/environment_probe.py",
+      "sha256": "04fbb2c5a2272fa6f9dbde528db73f1ae6563c740f63d003cd2c4b26bcf7d096"
+    },
+    {
+      "path": "tools/symphony/test_trusted_preparation.py",
+      "sha256": "2ec2463aff0f97c0f2ea1aaf45f118d6f12bc748f44b3713046ad43336013eaf"
+    },
+    {
+      "path": "web/angular/src/app/health-response.ts",
+      "sha256": "260d39ccdf570f5a20e270acdcc8f0abada94a19ba02661f22ee7954dcf5cb1a"
+    }
+  ]
+}

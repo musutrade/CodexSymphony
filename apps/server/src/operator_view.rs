@@ -55,8 +55,10 @@ async fn timeline(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Re
         .bind(format!("requirement:{id}")).fetch_all(&mut **tx).await?;
     let materials:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('run_id',e.run_id,'channel',e.channel,'kept_bytes',e.kept_bytes,'discarded_bytes',e.discarded_bytes,'status',CASE WHEN e.expired_at IS NOT NULL THEN 'expired; retrospective available' WHEN e.truncated THEN 'truncated' ELSE 'available' END) FROM runtime_evidence e JOIN agent_run a ON a.id=e.run_id WHERE a.requirement_id=$1 ORDER BY e.run_id,e.channel")
         .bind(id).fetch_all(&mut **tx).await?;
+    let environments: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('stage',stage,'observed_at',observed_at,'report',report::text) FROM environment_observation WHERE requirement_id=$1 ORDER BY id")
+        .bind(id).fetch_all(&mut **tx).await?;
     Ok(
-        json!({"runs":runs,"recoveries":recoveries,"validations":validations,"external":external,"questions":questions,"events":events,"materials":materials}),
+        json!({"runs":runs,"recoveries":recoveries,"validations":validations,"external":external,"questions":questions,"events":events,"materials":materials,"environments":environments}),
     )
 }
 async fn recovery_history(
@@ -90,7 +92,34 @@ async fn metrics(pool: &PgPool, id: i64) -> Result<Value> {
     result["phases"]=json!(sqlx::query_scalar::<_,Value>("SELECT jsonb_build_object('phase',phase,'seconds',extract(epoch FROM COALESCE(finished_at,now())-started_at)::bigint,'complete',finished_at IS NOT NULL) FROM operator_phase WHERE requirement_id=$1 ORDER BY id").bind(id).fetch_all(pool).await?);
     result["to_pr_seconds"]=json!(sqlx::query_scalar::<_,Option<i64>>("SELECT extract(epoch FROM MIN(t.created_at)-r.created_at)::bigint FROM requirement r LEFT JOIN delivery d ON d.requirement_id=r.id AND d.pr_number IS NOT NULL LEFT JOIN delivery_attempt t ON t.action_key=d.action_key AND t.operation='create' AND t.result IS NOT NULL WHERE r.id=$1 GROUP BY r.created_at").bind(id).fetch_one(pool).await?);
     result["zero_intervention"] = zero_intervention(pool).await?;
+    result["environment_samples"] = json!(sqlx::query_scalar::<_,Value>("SELECT jsonb_build_object('stage',stage,'elapsed_ms',report->'elapsed_ms','source','environment_observation') FROM environment_observation WHERE requirement_id=$1 ORDER BY id").bind(id).fetch_all(pool).await?);
+    result["stage_samples"] = stage_samples(pool, id).await?;
+    result["build_test_coverage_subphases"] = json!({"status":"unknown"});
+    result["cache_hit_rate"] = cache_metric(pool, id).await?;
+    result["ci_wait"] = ci_metric(pool, id).await?;
     Ok(result)
+}
+
+async fn ci_metric(pool: &PgPool, id: i64) -> Result<Value> {
+    let seconds: i64 = sqlx::query_scalar("SELECT COALESCE(sum((waiting->>'ci_seconds')::bigint),0)::bigint FROM agent_run WHERE requirement_id=$1")
+        .bind(id).fetch_one(pool).await?;
+    if seconds > 0 {
+        return Ok(json!({"status":"known","seconds":seconds,"source":"agent_run.waiting"}));
+    }
+    let configured: Option<Option<bool>> = sqlx::query_scalar("SELECT ((document#>>'{repository,environment}')::jsonb->>'ci')::boolean FROM execution_revision WHERE requirement_id=$1 ORDER BY revision DESC LIMIT 1")
+        .bind(id).fetch_optional(pool).await?;
+    Ok(json!({"status":if configured.flatten()==Some(false) {"not_applicable"} else {"unknown"}}))
+}
+
+async fn stage_samples(pool: &PgPool, id: i64) -> Result<Value> {
+    let samples: Vec<Value> = sqlx::query_scalar("SELECT jsonb_build_object('phase',phase,'seconds',seconds,'complete',complete,'source',source) FROM (SELECT 'preparation'::text AS phase,p.checked_at-(SELECT min(h.recorded_at) FROM preparation_history h WHERE h.run_id=p.run_id AND h.event->>'attempt_started'='true') AS seconds,p.ready AND p.checked_at IS NOT NULL AS complete,'preparation_history'::text AS source FROM preparation_record p WHERE p.requirement_id=$1 UNION ALL SELECT 'validation',extract(epoch FROM COALESCE(v.finished_at,now())-v.started_at)::bigint,v.finished_at IS NOT NULL,'candidate_validation' FROM candidate_validation v WHERE v.requirement_id=$1 UNION ALL SELECT 'publish',extract(epoch FROM COALESCE(a.finished_at,now())-a.created_at)::bigint,a.finished_at IS NOT NULL,'delivery_attempt' FROM delivery_attempt a JOIN delivery d ON d.action_key=a.action_key WHERE d.requirement_id=$1 AND a.operation IN ('push','create')) samples")
+        .bind(id).fetch_all(pool).await?;
+    Ok(json!(samples))
+}
+async fn cache_metric(pool: &PgPool, id: i64) -> Result<Value> {
+    let configured: Option<Option<bool>> = sqlx::query_scalar("SELECT CASE WHEN document#>>'{repository,environment}' IS NULL THEN NULL ELSE COALESCE((document#>>'{repository,environment}')::jsonb->'cache','null'::jsonb)<>'null'::jsonb END FROM execution_revision WHERE requirement_id=$1 ORDER BY revision DESC LIMIT 1")
+        .bind(id).fetch_optional(pool).await?;
+    Ok(json!({"status":if configured.flatten()==Some(false) {"not_applicable"} else {"unknown"}}))
 }
 async fn zero_intervention(pool: &PgPool) -> Result<Value> {
     sqlx::query_scalar("WITH samples AS (SELECT r.id FROM requirement r WHERE r.state='Submitted' AND EXISTS(SELECT 1 FROM business_event e WHERE e.object_id='requirement:'||r.id AND e.kind='reviewed_ready' AND e.created_at>(SELECT started_at FROM operator_measurement_epoch WHERE id=1))) SELECT jsonb_build_object('phase','reviewed_to_submitted','denominator',count(*),'numerator',count(*) FILTER(WHERE NOT EXISTS(SELECT 1 FROM operator_intervention i WHERE i.requirement_id=s.id))) FROM samples s").fetch_one(pool).await

@@ -1,0 +1,73 @@
+{
+  "baseline": "549a8c137f7fb982306aa174195ea9e9cc3384bb",
+  "observed_main": "4e8d9be7862cee593eda21b6aa1da6661dc939aa",
+  "observed_main_parent": "549a8c137f7fb982306aa174195ea9e9cc3384bb",
+  "issue_branch_exists": false,
+  "upstream_changes": [
+    {
+      "mode": "100644",
+      "path": "\"Personal_AI_Software_Factory_\\347\\273\\274\\345\\220\\210\\346\\226\\271\\346\\241\\210.md\"",
+      "sha": "83a9995638fc65f6287828d8389fc9d2a62434ec",
+      "size": 162,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/83a9995638fc65f6287828d8389fc9d2a62434ec"
+    },
+    {
+      "mode": "100644",
+      "path": ".harness-gate/collector-candidates.json",
+      "sha": "d1221fd29620ce418406b240cfeef6fef31c4980",
+      "size": 1188,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/d1221fd29620ce418406b240cfeef6fef31c4980"
+    },
+    {
+      "mode": "100644",
+      "path": ".harness-gate/packs/backend/capabilities.json",
+      "sha": "29956aadc95c658ee0651a0abcb0f3820ad3e50a",
+      "size": 1454,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/29956aadc95c658ee0651a0abcb0f3820ad3e50a"
+    },
+    {
+      "mode": "100644",
+      "path": ".harness-gate/quality.toml",
+      "sha": "a9e66e09a2e33cd17ef870bd6d02324ec179cc2b",
+      "size": 11000,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/a9e66e09a2e33cd17ef870bd6d02324ec179cc2b"
+    },
+    {
+      "mode": "100644",
+      "path": "Personal_AI_Software_Factory_综合方案.md",
+      "sha": "6658efc9ff21c16659ebd3b282e36d5465f7f96b",
+      "size": 53364,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/6658efc9ff21c16659ebd3b282e36d5465f7f96b"
+    },
+    {
+      "mode": "100644",
+      "path": "environment.lock.json",
+      "sha": "065fd1000b45f852d83190251210d9e9eb79dd6c",
+      "size": 2732,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/065fd1000b45f852d83190251210d9e9eb79dd6c"
+    },
+    {
+      "mode": "100644",
+      "path": "tools/gate-plugins/README.md",
+      "sha": "e9446f0f20b3b6d02a7f1789a719f61c3ddde9b1",
+      "size": 3132,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/e9446f0f20b3b6d02a7f1789a719f61c3ddde9b1"
+    },
+    {
+      "mode": "100644",
+      "path": "tools/gate-plugins/packages/harness-gate-rust-source-0.1.0-rc.7.tar.gz",
+      "sha": "055c2784cd7418bd4a7bfa9ef42c369bcd13cfd2",
+      "size": 967392,
+      "type": "blob",
+      "url": "https://api.github.com/repos/musutrade/CodexSymphony/git/blobs/055c2784cd7418bd4a7bfa9ef42c369bcd13cfd2"
+    }
+  ],
+  "reconciliation": "PR #124 is a direct child of the controller baseline. All six Gate/runtime files match the current workspace blob identities. The actual Chinese specification file is unchanged (6658efc9ff21c16659ebd3b282e36d5465f7f96b); quoted-path listing caused it to appear in the diagnostic comparison. Main additionally contains a distinct literal quoted/escaped filename; GH-119 does not alter that unrelated file. Publication retains the controller baseline as parent; normal PR merge preserves main-only files."
+}

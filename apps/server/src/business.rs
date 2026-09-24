@@ -60,7 +60,7 @@ struct ControlRequest {
 #[derive(Serialize)]
 #[serde(tag = "operation")]
 enum Command {
-    Repository(RepositoryRequest),
+    Repository(Box<RepositoryRequest>),
     Create(DraftRequest),
     Edit { id: i64, input: DraftRequest },
     Ready { id: i64, input: ControlRequest },
@@ -138,7 +138,29 @@ async fn configure(
     State(pool): State<PgPool>,
     input: std::result::Result<Json<RepositoryRequest>, axum::extract::rejection::JsonRejection>,
 ) -> Result<Json<Value>> {
-    execute(&pool, Command::Repository(decode(input)?)).await
+    let input = decode(input)?;
+    contract::require(
+        input.repository.revoked
+            || input.repository.environment.as_ref().is_none_or(|plan| {
+                plan.matches_repository(
+                    input.repository_id.unwrap_or(1),
+                    input.version.saturating_add(1),
+                )
+            }),
+        "environment must bind this repository ID and next version",
+    )?;
+    if !input.repository.revoked {
+        crate::environment_service::enable(input.repository.environment.as_ref())
+            .await
+            .map_err(|error| {
+                tracing::warn!("environment enable blocked: {}", error);
+                ApiError(
+                    StatusCode::CONFLICT,
+                    "environment enable blocked; inspect environment report",
+                )
+            })?;
+    }
+    execute(&pool, Command::Repository(Box::new(input))).await
 }
 async fn create(
     State(pool): State<PgPool>,

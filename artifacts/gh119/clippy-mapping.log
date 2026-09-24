@@ -1,0 +1,25 @@
+    Checking codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+error: this `if` statement can be collapsed
+   --> apps/server/src/environment_probe.rs:148:5
+    |
+148 | /     if let Some(context) = context {
+149 | |         if let Some(deadline) = context.deadline_unix_ms {
+150 | |             resource.deadline_unix_ms = resource.deadline_unix_ms.min(deadline);
+151 | |         }
+152 | |     }
+    | |_____^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#collapsible_if
+    = note: `-D clippy::collapsible-if` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::collapsible_if)]`
+help: collapse nested if block
+    |
+148 ~     if let Some(context) = context
+149 ~         && let Some(deadline) = context.deadline_unix_ms {
+150 |             resource.deadline_unix_ms = resource.deadline_unix_ms.min(deadline);
+151 ~         }
+    |
+
+error: could not compile `codexsymphony-server` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `codexsymphony-server` (lib test) due to 1 previous error

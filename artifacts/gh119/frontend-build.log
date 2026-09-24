@@ -1,0 +1,31 @@
+
+> codexsymphony-web@0.0.0 build
+> ng build
+
+❯ Building...
+✔ Building...
+Initial chunk files | Names            |  Raw size | Estimated transfer size
+chunk-DX_HfXxv.js   | -                | 360.03 kB |                93.10 kB
+chunk-BaJrCNkI.js   | -                |  88.87 kB |                19.84 kB
+main-VHUEJBH5.js    | main             |  87.73 kB |                16.04 kB
+styles-ADX5DM2D.css | styles           |  15.48 kB |                 2.96 kB
+
+                    | Initial total    | 552.11 kB |               131.94 kB
+
+Lazy chunk files    | Names            |  Raw size | Estimated transfer size
+chunk-DM6-lOcP.js   | requirements     | 116.23 kB |                26.67 kB
+chunk-DwCMbWgC.js   | group-review     |  29.68 kB |                 8.66 kB
+chunk-M2Zjej6H.js   | operations       |  19.36 kB |                 6.20 kB
+chunk-HTQSwwil.js   | drafts           |  15.70 kB |                 5.06 kB
+chunk-1YQeTWqu.js   | requirement-list |   2.45 kB |                 1.21 kB
+chunk-DZhedSE8.js   | -                | 705 bytes |               705 bytes
+chunk-CUUDWZGO.js   | -                | 217 bytes |               217 bytes
+chunk-vraeItVY.js   | login            | 114 bytes |               114 bytes
+
+Application bundle generation complete. [6.692 seconds] - 2026-09-24T12:25:48.990Z
+
+▲ [WARNING] bundle initial exceeded maximum budget. Budget 500.00 kB was not met by 52.11 kB with a total of 552.11 kB.
+
+
+Output location: /home/gem/.local/share/codexsymphony/workspaces/GH-119/web/angular/dist/codexsymphony-web
+

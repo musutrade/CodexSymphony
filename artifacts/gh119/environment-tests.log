@@ -1,0 +1,26 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 31.32s
+     Running tests/environment.rs (target/debug/deps/environment-a56153a43192d95f)
+
+running 4 tests
+test forged_missing_or_failed_evidence_never_passes ... ok
+test installed_new_binary_does_not_approve_an_old_running_process ... ok
+test real_two_project_admission_detects_drift_and_preserves_isolation ... .
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+✔ value (1.102713ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 79.332763
+ok
+test reviewed_identity_role_and_scope_reject_unsupported_changes ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.69s
+

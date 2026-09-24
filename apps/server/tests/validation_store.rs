@@ -141,6 +141,7 @@ async fn durable_exact_evidence_and_read_only_api() {
             .unwrap()
     );
     assert!(store::begin(&pool, "v1").await.unwrap());
+    assert!(sqlx::query_scalar::<_,bool>("SELECT started_at IS NOT NULL AND finished_at IS NULL FROM candidate_validation WHERE id='v1'").fetch_one(&pool).await.unwrap());
     assert!(!store::begin(&pool, "v1").await.unwrap());
     assert!(
         !store::record_step(&pool, "v1", &s, "invalid")
@@ -178,6 +179,14 @@ async fn durable_exact_evidence_and_read_only_api() {
             &records,
             &["test".into()]
         )
+        .await
+        .unwrap()
+    );
+    assert!(
+        sqlx::query_scalar::<_, bool>(
+            "SELECT finished_at>=started_at FROM candidate_validation WHERE id='v1'"
+        )
+        .fetch_one(&pool)
         .await
         .unwrap()
     );

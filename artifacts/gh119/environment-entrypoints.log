@@ -1,0 +1,24 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-119/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 31.52s
+     Running tests/environment.rs (target/debug/deps/environment-a56153a43192d95f)
+
+running 1 test
+test immutable_review_admission_startup_recovery_ci_and_budget_continuity ... FAILED
+
+failures:
+
+---- immutable_review_admission_startup_recovery_ci_and_budget_continuity stdout ----
+
+thread 'immutable_review_admission_startup_recovery_ci_and_budget_continuity' (141786) panicked at apps/server/tests/support/auth.rs:84:13:
+assertion `left == right` failed
+  left: 403
+ right: 200
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    immutable_review_admission_startup_recovery_ci_and_budget_continuity
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 7 filtered out; finished in 5.77s
+
+error: test failed, to rerun pass `-p codexsymphony-server --test environment`
