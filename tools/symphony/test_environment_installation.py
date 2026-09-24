@@ -61,8 +61,28 @@ class EnvironmentInstallationTests(unittest.TestCase):
             (home/'.config/symphony').mkdir(parents=True)
             (home/'.config/symphony/codexsymphony.env').write_text('')
             (home/'.config/systemd/user').mkdir(parents=True)
-            with patch.object(install,'HOME',home), patch.object(install,'BASE',home/'state'), patch.object(install,'ROOT',source), patch.object(install,'environment_sources',return_value={}), patch.object(install,'check_environment_resources'), patch.object(install,'check_preservation_controller'), patch.object(install,'check_publication_controller'), patch.object(install,'record_deployment'), patch.object(install.subprocess,'run'):
+            with patch.object(install,'HOME',home), patch.object(install,'BASE',home/'state'), patch.object(install,'ROOT',source), patch.object(install,'environment_sources',side_effect=lambda: {}), patch.object(install,'check_environment_resources'), patch.object(install,'check_preservation_controller'), patch.object(install,'check_publication_controller'), patch.object(install,'record_deployment'), patch.object(install.subprocess,'run'):
                 install.main()
+                active=state/'WORKFLOW.lifecycle.md'
+                canonical=active.read_bytes().replace(b'    - symphony-environment-acceptance\n',b'    - operator-selected\n')
+                self.assertFalse((state/'workflow-archive').exists())
+                histories=[
+                    b'\n{% if issue.identifier == "GH-24" %}\n## GH-24 operator recovery: historical\nold instructions\n{% endif %}\n'
+                    b'{% if issue.identifier == "GH-25" %}\n## GH-25 operator recovery: historical\nother instructions\n{% endif %}\n',
+                    b'\n## GH-24 operator recovery: truncated\nold instructions\n{% endif %}\n',
+                ]
+                archives={}
+                for history in histories:
+                    previous=canonical+history
+                    active.write_bytes(previous)
+                    install.main()
+                    self.assertEqual(active.read_bytes(),canonical)
+                    archive=state/'workflow-archive'/f'{hashlib.sha256(previous).hexdigest()}.md'
+                    self.assertEqual(archive.read_bytes(),previous)
+                    archives[archive.name]=previous
+                    install.main()
+                    self.assertEqual(active.read_bytes(),canonical)
+                    self.assertEqual({p.name:p.read_bytes() for p in archive.parent.iterdir()},archives)
                 original=(state/'codex-trusted').read_text()
                 helper=(source/'tools/symphony/reviewed_gate.py').read_bytes()
                 self.assertEqual((state/'reviewed_gate.py').read_bytes(),helper)
@@ -75,6 +95,19 @@ class EnvironmentInstallationTests(unittest.TestCase):
                 self.assertNotEqual((state/'codex-trusted').read_text(),original)
                 self.assertEqual((releases[0]/'reviewed_gate.py').read_bytes(),helper)
                 self.assertEqual((state/'reviewed_gate.py').read_bytes(),helper+b'\n# reviewed update\n')
+
+    def test_archive_failure_preserves_active_workflow(self):
+        with tempfile.TemporaryDirectory() as directory:
+            active=Path(directory)/'WORKFLOW.lifecycle.md'
+            previous=b'historical workflow'
+            active.write_bytes(previous)
+            archive=active.parent/'workflow-archive'/f'{hashlib.sha256(previous).hexdigest()}.md'
+            archive.parent.mkdir()
+            archive.write_bytes(b'corrupted audit record')
+            with self.assertRaisesRegex(ValueError,'refusing to overwrite history'):
+                install.archive_workflow(active,previous,b'canonical workflow')
+            self.assertEqual(active.read_bytes(),previous)
+            self.assertEqual(archive.read_bytes(),b'corrupted audit record')
 
     def test_required_preservation_cannot_install_against_unverified_controller(self):
         with tempfile.TemporaryDirectory() as directory:

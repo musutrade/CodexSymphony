@@ -1,0 +1,37 @@
+{
+  "schema": "symphony-evidence/v1",
+  "files": [
+    {
+      "path": "artifacts/gh115/database-smoke.log",
+      "sha256": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+    },
+    {
+      "path": "artifacts/gh115/fixture-dev.json",
+      "sha256": "b6fa46393ce16ed8f90d52034f76e5f225d786def28df4906948ef883143c6a0"
+    },
+    {
+      "path": "artifacts/gh115/fixture-test.json",
+      "sha256": "d6c651050153a237ebbc80a6834b00965fdf7084d90a578e15f68c6f5aca7432"
+    },
+    {
+      "path": "artifacts/gh115/gate-config.log",
+      "sha256": "ebda2eaf40242b698480abaf9bdac1673cb418e1ff0e0d196238bfde074dd8be"
+    },
+    {
+      "path": "artifacts/gh115/local-gate-first.json",
+      "sha256": "f712d139d441e95cb4471dd478c9d24eb042731297a4917dd72bad46a2827eb5"
+    },
+    {
+      "path": "artifacts/gh115/npm-ci.log",
+      "sha256": "9ae21d1653870ebd976731a23dedaf7edb06fd7bb91386ce5356e8b9a0ece36c"
+    },
+    {
+      "path": "artifacts/gh115/summary.md",
+      "sha256": "15afc938caea6c133898b3763e900254f499aabbcaf5cfba773d84aaa23f987e"
+    },
+    {
+      "path": "artifacts/gh115/tests.log",
+      "sha256": "cf8762cd843396deeb76baefc8203d4a8a7793828f2e2e0d9e902971586e6847"
+    }
+  ]
+}
