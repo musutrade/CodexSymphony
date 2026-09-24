@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SUITES = [('tools/remote-gate', 'test_*.py'), ('tools/quality-host', 'test_*.py'), ('tools/publication','test_*.py')]
 SUITES += [('tools/tests','test_environment_contract.py'), ('tools/symphony','test_environment_installation.py')]
 SUITES += [('tools/tests', name) for name in (
-    'test_artifact_packaging.py', 'test_gate_install.py', 'test_http_readiness.py',
+    'test_artifact_packaging.py', 'test_gate_install.py', 'test_http_readiness.py', 'test_sccache.py',
 )]
 
 

@@ -29,7 +29,7 @@ def runtime_pins():
     pinned_path=contract.tool_path(policy)
     roots=[RUST,TS,HTTP,TS.parent.parent/'typescript',HTTP.parent.parent/'typescript']
     pins={str(p):sha(p.read_bytes()) for base in roots for p in sorted(base.rglob('*')) if p.is_file() and '__pycache__' not in p.parts}
-    for name in ('harness-gate','harness-gate-rust-collector','node','python3','cargo-llvm-cov','/usr/local/libexec/codexsymphony/bwrap'):
+    for name in ('harness-gate','harness-gate-rust-collector','node','python3','cargo-llvm-cov','sccache','/usr/local/libexec/codexsymphony/bwrap'):
         p=(CORE if name=='harness-gate' else
            Path.home()/'.local/share/harness-gate/versions'/('rust-collector-v'+policy['tools']['rust_collector'])/'bin/harness-gate-rust-collector' if name=='harness-gate-rust-collector' else
            Path(shutil.which(name,path=pinned_path)).resolve())
@@ -107,13 +107,13 @@ def main():
     environment = contract.fingerprint(repo)
     write(run/'environment.json', environment)
     print(json.dumps({'environment_fingerprint': environment['fingerprint']}), flush=True)
-    preflight(run,repo)
     cache_key=None
     if approval and args.cache_max_bytes:
         with phase(run,'cache-restore'):
             cache_key=build_cache.cache_key(repo,approval)
             restored=build_cache.restore(HOME/'build-cache',cache_key,run/'target',args.cache_max_bytes,args.cache_ttl_seconds)
             write(run/'cache-restore.json',restored)
+    preflight(run,repo)
     revision=subprocess.check_output(['git','-C',repo,'rev-parse','HEAD'],text=True).strip()
     if args.bootstrap:
         base=run/'baseline.json';shutil.copyfile(repo/'api/baseline.json',base)
@@ -138,6 +138,7 @@ def main():
     with phase(run,'verify'):
         code=verify(run,repo,root,args.profile)
         if code: raise SystemExit(code)
+    write(run/'sccache-stats.json',[load(path) for path in sorted((run/'tmp').glob('sccache-*.json'))])
     current=subprocess.check_output(['git','-C',repo,'ls-files','-z','--cached','--others','--exclude-standard']).decode().split('\0')
     current={name:sha((repo/name).read_bytes()) for name in current if name and (repo/name).is_file()}
     if current!=inputs: raise ValueError('source inventory changed during verification')

@@ -51,6 +51,7 @@ def command(argv, state_home=None):
     codex=locked_codex(cwd)
     cargo=cwd/'.agent-cargo';cargo.mkdir(exist_ok=True)
     temporary=cwd/'.agent-tmp';temporary.mkdir(exist_ok=True)
+    cache=cwd/'target/sccache';cache.mkdir(parents=True,exist_ok=True)
     auth=BASE/'codex-home'
     args=['/usr/local/libexec/codexsymphony/bwrap','--die-with-parent','--new-session','--unshare-user','--unshare-pid',
           '--ro-bind','/usr','/usr','--ro-bind','/etc','/etc','--tmpfs','/etc/codex',
@@ -66,6 +67,7 @@ def command(argv, state_home=None):
           '--ro-bind',str(HOME/'.agents/skills'),str(HOME/'.agents/skills'),
           '--ro-bind',str(HOME/'.codex/skills'),str(HOME/'.codex/skills'),
           '--ro-bind',str(HOME/'.local/share/harness-gate'),str(HOME/'.local/share/harness-gate')]
+    args+=['--bind',str(cache),policy['test_environment']['SCCACHE_DIR']]
     provision=BASE/'symphony'/(cwd.name.lower().replace('-', '')+'-environment')
     requirements=provision/'requirements.toml'
     expected_requirements=(BASE/'symphony/environment-template/requirements.toml').read_bytes()

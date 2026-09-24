@@ -41,6 +41,8 @@ class PrivateCache(unittest.TestCase):
             root = Path(temporary)
             source = root / 'source'; source.mkdir()
             (source / 'library.rlib').write_bytes(b'compiled')
+            (source / 'sccache').mkdir()
+            (source / 'sccache/content-key').write_bytes(b'compiler result')
             (source / 'old.profraw').write_bytes(b'old counter')
             (source / 'incremental').mkdir()
             (source / 'incremental/large').write_bytes(b'not retained')
@@ -50,6 +52,8 @@ class PrivateCache(unittest.TestCase):
             self.assertTrue(cache.restore(root / 'cache', key, root / 'pr')['hit'])
             self.assertFalse((root / 'pr/old.profraw').exists())
             self.assertFalse((root / 'pr/incremental').exists())
+            (root / 'pr/sccache/content-key').write_bytes(b'private compiler mutation')
+            self.assertEqual((root / 'cache' / key / 'target/sccache/content-key').read_bytes(),b'compiler result')
             (root / 'pr/library.rlib').write_bytes(b'PR mutation')
             self.assertEqual((root / 'cache' / key / 'target/library.rlib').read_bytes(), b'compiled')
             self.assertNotEqual((root / 'pr/library.rlib').stat().st_ino,

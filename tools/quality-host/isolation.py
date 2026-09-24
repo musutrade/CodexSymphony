@@ -6,6 +6,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import environment_contract as contract
 import subprocess
+import uuid
 
 HOME = Path('/home/gem')
 
@@ -21,6 +22,8 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     cargo.mkdir(exist_ok=True)
     temporary = run / 'tmp'
     temporary.mkdir(exist_ok=True)
+    cache = run / 'target/sccache'
+    cache.mkdir(parents=True, exist_ok=True)
     # Dedicated AppArmor transition permits nested user namespaces without
     # weakening the inner command's filesystem, PID or network isolation.
     args = ['/usr/local/libexec/codexsymphony/bwrap', '--die-with-parent', '--new-session', '--unshare-user', '--unshare-pid',
@@ -40,6 +43,8 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
         args += ['--bind', str(path), str(path)]
     for source, target in mounts:
         args += ['--ro-bind', str(source), str(target)]
+    # A private copy of a reviewed seed; project code cannot write the seed.
+    args += ['--bind', str(cache), policy['test_environment']['SCCACHE_DIR']]
     env = {'HOME': str(HOME), 'CARGO_HOME': str(HOME / '.cargo'), 'RUSTUP_HOME': str(HOME / '.rustup'),
            'PATH': '/opt/codex:' + str(HOME / '.cargo/bin') + ':/usr/local/bin:/usr/bin:/bin',
            'LANG': 'C.UTF-8', 'TZ': 'UTC', 'CARGO_NET_OFFLINE': 'true',
@@ -49,4 +54,17 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     args += ['--clearenv']
     for name, value in env.items(): args += ['--setenv', name, value]
     args += ['--chdir', str(cwd or repository), '--', *map(str, argv)]
-    return args
+    # Read stats before the PID namespace tears down its private cache daemon.
+    # Compilation stays in this namespace, never in a host credential process.
+    index = args.index('--', args.index('--chdir'))
+    execution = args[index+1:]
+    stats = '/tmp/sccache-' + uuid.uuid4().hex + '.json'
+    wrapper = ('import os,subprocess,sys\nfrom pathlib import Path\n'
+               'try:\n code=subprocess.call(sys.argv[1:])\n'
+               'finally:\n'
+               ' if Path(os.environ["SCCACHE_SERVER_UDS"]).exists():\n'
+               '  result=subprocess.run([os.environ["RUSTC_WRAPPER"],"--show-stats","--stats-format","json"],capture_output=True,timeout=10)\n'
+               f'  if result.returncode==0: Path({stats!r}).write_bytes(result.stdout)\n'
+               '  subprocess.run([os.environ["RUSTC_WRAPPER"],"--stop-server"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10)\n'
+               'sys.exit(code)\n')
+    return args[:index+1] + ['python3', '-c', wrapper, *execution]
