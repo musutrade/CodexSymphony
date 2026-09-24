@@ -61,7 +61,7 @@ async fn validate_pending(
     if !prepare_validation_hook(pool, root, &id, &manifest, &checkout, hooks).await? {
         return Ok(true);
     }
-    let validated = validation_service::validate(
+    validation_service::validate(
         pool,
         Request {
             id: &id,
@@ -74,11 +74,8 @@ async fn validate_pending(
             plan,
         },
     )
-    .await;
-    if validated.is_ok() {
-        finish_validation_hook(pool, root, broker, &id, &manifest).await?;
-    }
-    validated?;
+    .await?;
+    finish_validation_hook(pool, root, broker, &id, &manifest).await?;
     Ok(true)
 }
 

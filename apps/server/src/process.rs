@@ -215,7 +215,7 @@ fn capture_hook(
         child
             .stdout
             .take()
-            .ok_or_else(|| io::Error::other("hook stdout unavailable"))?,
+            .ok_or(io::Error::other("hook stdout unavailable"))?,
         stdout,
         limit,
     );
@@ -223,7 +223,7 @@ fn capture_hook(
         child
             .stderr
             .take()
-            .ok_or_else(|| io::Error::other("hook stderr unavailable"))?,
+            .ok_or(io::Error::other("hook stderr unavailable"))?,
         stderr,
         limit,
     );

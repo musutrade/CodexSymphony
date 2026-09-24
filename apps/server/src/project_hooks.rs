@@ -225,11 +225,14 @@ fn log_auxiliary(run_id: &str, result: Result<bool>) {
             "auxiliary after_run failed for {}; preserved candidate retained",
             run_id
         ),
-        Err(error) => tracing::warn!(
-            "auxiliary after_run for {} requires reconciliation: {}",
-            run_id,
-            crate::operator_view::redact_text(&error.to_string())
-        ),
+        Err(error) => {
+            let detail = crate::operator_view::redact_text(&error.to_string());
+            tracing::warn!(
+                "auxiliary after_run for {} requires reconciliation: {}",
+                run_id,
+                detail
+            );
+        }
         Ok(true) => {}
     }
 }
@@ -238,8 +241,7 @@ pub(crate) async fn require_auxiliary_stop(pool: &PgPool, run_id: &str) -> Resul
     let paths: Vec<String> = sqlx::query_scalar("SELECT output_dir FROM project_hook_invocation WHERE run_id=$1 AND event='after_run' AND status IN ('intent','running','unknown')")
         .bind(run_id).fetch_all(pool).await?;
     if paths.iter().any(|path| {
-        Path::new(path).join("identity.json").exists()
-            && !Path::new(path).join("quiescent.json").exists()
+        Path::new(path).join("identity.json").exists() && !verified_stop(Path::new(path))
     }) {
         return Err("after_run process stop proof missing".into());
     }
@@ -338,7 +340,7 @@ async fn existing_invocation(
     ) {
         return Ok(StartDecision::Recover(id, PathBuf::from(directory)));
     }
-    let stopped = Path::new(&directory).join("quiescent.json").exists();
+    let stopped = verified_stop(Path::new(&directory));
     if status == "unknown" && stopped {
         sqlx::query(
             "UPDATE project_hook_invocation SET stop_confirmed=true WHERE invocation_id=$1",
@@ -434,7 +436,7 @@ async fn execute_new(
     let (status, diagnostic, result_json) = classify_result(result, directory);
     sqlx::query("UPDATE project_hook_invocation SET status=$2,result=$3,diagnostic=$4,stop_confirmed=$5 WHERE invocation_id=$1 AND status IN ('intent','running')")
         .bind(id).bind(status).bind(result_json).bind(diagnostic)
-        .bind(directory.join("quiescent.json").exists()).execute(pool).await?;
+        .bind(verified_stop(directory)).execute(pool).await?;
     Ok(status == "success")
 }
 
@@ -446,7 +448,7 @@ fn classify_result(
         Ok((true, value)) => ("success", None, Some(value)),
         Ok((false, value)) => ("failed", None, Some(value)),
         Err(error) => {
-            let stopped = directory.join("quiescent.json").exists();
+            let stopped = verified_stop(directory);
             let status = if !stopped && directory.join("identity.json").exists() {
                 "unknown"
             } else if directory.join("timeout.json").exists() && stopped {
@@ -514,6 +516,12 @@ fn hook_key(id: &str) -> RunKey {
         request_id: id.to_owned(),
         incarnation: id.to_owned(),
     }
+}
+
+fn verified_stop(directory: &Path) -> bool {
+    let started = process::read::<crate::execution::Receipt>(&directory.join("identity.json"));
+    let stopped = process::read::<crate::execution::Receipt>(&directory.join("quiescent.json"));
+    matches!((started, stopped), (Ok(started), Ok(stopped)) if started == stopped)
 }
 
 fn spawn_hook(
@@ -712,7 +720,7 @@ async fn reconcile(
         Ok(value) => value,
         Err(_) => return Ok(None),
     };
-    if process::read::<crate::execution::Receipt>(&directory.join("quiescent.json")).is_err() {
+    if !verified_stop(directory) {
         // A timed-out or restarted caller stops the registered supervisor. Its
         // heartbeat expires independently; absence of ECHILD remains unknown.
         let key = hook_key(id);

@@ -1,10 +1,12 @@
 //! GH-17 deterministic budgets, persistence admission, and retained originals.
 use codexsymphony_server::{
     execution::{Launch, RunKey},
+    extension_contract::{HookConfig, HookEvent, HookRole, ReplayPolicy},
     preparation::{Evidence, Failure, NetworkEvidence, Retry, network_ready},
     preparation_store, process, run_store, storage,
 };
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use sqlx::{
     PgPool,
     postgres::{PgConnectOptions, PgPoolOptions},
@@ -431,6 +433,91 @@ fn broker_fixture(
     };
     broker.prepare(&workspace, true).unwrap();
     (broker, workspace, launch)
+}
+
+#[tokio::test]
+async fn reviewed_hook_failures_are_recorded_at_each_preparation_boundary() {
+    use codexsymphony_server::preparation_service::{self, Request};
+    use std::os::unix::fs::PermissionsExt;
+    let _serial = DATABASE_TEST.lock().await;
+    unsafe {
+        std::env::set_var(
+            "SYMPHONY_SUPERVISOR",
+            env!("CARGO_BIN_EXE_codexsymphony-server"),
+        );
+    }
+    for case in ["registration", "after_create", "event_error", "before_run"] {
+        let pool = database().await;
+        let directory = root();
+        let (broker, workspace, launch) = broker_fixture(&directory);
+        let script = directory.join("hook.py");
+        fs::write(&script, "#!/usr/bin/python3\nimport sys\nsys.exit(7)\n").unwrap();
+        fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+        let event = if case == "before_run" {
+            HookEvent::BeforeRun
+        } else {
+            HookEvent::AfterCreate
+        };
+        let hook = HookConfig {
+            name: "guard".into(),
+            event,
+            roles: vec![HookRole::Coding],
+            argv: vec![script.to_string_lossy().into_owned()],
+            script_identity: format!("sha256:{:x}", Sha256::digest(fs::read(&script).unwrap())),
+            timeout_seconds: 10,
+            output_limit_bytes: 8192,
+            replay: ReplayPolicy::Never,
+        };
+        let reviewed = json!({"model":"reviewed-model","hooks":[hook],
+            "project":"synthetic","remote":"test/project","github_repository_id":99,
+            "base_branch":"main","policy":{"allowed_checks":["cargo_test"],
+            "max_timeout_seconds":60,"token_limit":1000,"turn_limit":10,
+            "model_work_seconds":600,"gate_recovery_policy":"one_code_repair"},
+            "revoked":false,"reason":"reviewed"});
+        sqlx::query("UPDATE requirement_revision SET document=jsonb_set(document,'{repository}',$1::jsonb) WHERE requirement_id=1 AND revision=1")
+            .bind(reviewed).execute(&pool).await.unwrap();
+        if case == "event_error" {
+            sqlx::raw_sql("CREATE FUNCTION deny_hook_intent() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected hook intent failure'; END $$; CREATE TRIGGER deny_hook_intent BEFORE INSERT ON project_hook_invocation FOR EACH ROW EXECUTE FUNCTION deny_hook_intent();")
+                .execute(&pool).await.unwrap();
+        }
+        let adapter = directory.join("fixture.py");
+        fs::write(
+            &adapter,
+            format!("print({:?})", json!(evidence()).to_string()),
+        )
+        .unwrap();
+        let mut config = json!({"deployment_identity":"deployment", "launcher":[launch.program]});
+        if case != "registration" {
+            config["hook_allowlist"] = json!([hook]);
+        }
+        assert!(
+            !preparation_service::prepare(
+                &pool,
+                Request {
+                    launch: &launch,
+                    requirement: 1,
+                    revision: 1,
+                    phase: "preparation",
+                    now: codexsymphony_server::github_service::now(),
+                    adapter: &adapter,
+                    control_directory: &directory,
+                    broker: &broker,
+                    workspace: &workspace,
+                    config,
+                },
+            )
+            .await
+            .unwrap(),
+            "{case}"
+        );
+        let code = retry(&pool, &launch).await.last_failure.unwrap().code;
+        let expected = match case {
+            "registration" => "project_hook_registration",
+            "event_error" => "project_hook_error",
+            _ => "project_hook_failed",
+        };
+        assert_eq!(code, expected, "{case}");
+    }
 }
 
 #[tokio::test]
