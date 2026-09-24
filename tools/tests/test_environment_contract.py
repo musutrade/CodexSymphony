@@ -11,6 +11,17 @@ contract=importlib.util.module_from_spec(spec);spec.loader.exec_module(contract)
 
 
 class ContractTests(unittest.TestCase):
+    def test_compiler_wrapper_is_pinned_and_incremental_disabled(self):
+        policy=contract.load(ROOT)
+        env=contract.test_environment(policy)
+        self.assertEqual(env['CARGO_INCREMENTAL'],'0')
+        self.assertEqual(env['RUSTC_WRAPPER'],str(Path.home()/'.cargo/bin/sccache'))
+        full=dict(os.environ,PATH=contract.tool_path(policy),**env)
+        contract.fingerprint(ROOT,full)
+        for key in ('RUSTC_WRAPPER','CARGO_INCREMENTAL','SCCACHE_CACHE_SIZE','SCCACHE_SERVER_UDS'):
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError,'environment drift'):
+                contract.fingerprint(ROOT,full|{key:'changed'})
+
     def test_temporary_probe_uses_declared_rust_even_outside_repository(self):
         policy=contract.load(ROOT)
         env=dict(os.environ,PATH=contract.tool_path(policy),**contract.test_environment(policy))

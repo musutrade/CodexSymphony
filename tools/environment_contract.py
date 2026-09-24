@@ -80,7 +80,8 @@ def tool_path(value):
 def test_environment(value):
     # Probe workspaces may omit rust-toolchain.toml. Never fall back to the
     # mutable rustup default when a collector changes cwd or copies sources.
-    return dict(value['test_environment'], RUSTUP_TOOLCHAIN=value['tools']['rust'])
+    return dict(value['test_environment'], RUSTUP_TOOLCHAIN=value['tools']['rust'],
+                RUSTC_WRAPPER=str(Path.home()/'.cargo/bin/sccache'))
 
 
 def database_args(value, role='test'):
@@ -102,6 +103,12 @@ def fingerprint(repository, environment=None):
     value = load(repository)
     check_files(repository, value)
     env = dict(os.environ if environment is None else environment)
+    extra = {name for name in env if name.startswith('SCCACHE_')} - set(test_environment(value))
+    if extra:
+        raise ValueError('environment drift: undeclared sccache settings: '+', '.join(sorted(extra)))
+    for name, expected in test_environment(value).items():
+        if env.get(name) != expected:
+            raise ValueError(f'environment drift: {name}: expected {expected}, actual {env.get(name)}')
     t = value['tools']
     probes = {'rustc': ('rustc', t['rust']), 'cargo': ('cargo', t['rust']), 'node': ('v', t['node']),
               'npm': ('', t['npm']), 'python3': ('Python', t['python']), 'codex': ('codex-cli', t['codex']),
@@ -109,9 +116,10 @@ def fingerprint(repository, environment=None):
               'rustfmt': ('rustfmt', t['rustfmt']), 'clippy-driver': ('clippy', t['clippy']),
               'harness-gate': ('harness-gate', t['gate']),
               'harness-gate-rust-collector': ('harness-gate-rust-collector', t['rust_collector'])}
+    probes['sccache'] = ('sccache', t['sccache'])
     actual = {}
     for name, (prefix, version) in probes.items():
-        binary = shutil.which(name, path=env.get('PATH'))
+        binary = env.get('RUSTC_WRAPPER') if name == 'sccache' else shutil.which(name, path=env.get('PATH'))
         if not binary:
             raise ValueError('environment drift: missing ' + name)
         arguments=[binary,'llvm-cov','--version'] if name=='cargo-llvm-cov' else [binary,'--version']
@@ -125,9 +133,6 @@ def fingerprint(repository, environment=None):
         actual[name] = {'version': result, 'sha256': hashlib.sha256(Path(binary).read_bytes()).hexdigest()}
         if actual[name]['sha256'] != value['tool_sha256'][name]:
             raise ValueError('environment drift: '+name+' binary SHA-256 differs from manifest')
-    for name, expected in test_environment(value).items():
-        if env.get(name) != expected:
-            raise ValueError(f'environment drift: {name}: expected {expected}, actual {env.get(name)}')
     identity = {'contract': digest(value), 'tools': actual, 'postgres': value['postgres'], 'test_environment': test_environment(value)}
     return {'schema': 'codexsymphony-environment-fingerprint/v1', 'fingerprint': digest(identity), **identity}
 

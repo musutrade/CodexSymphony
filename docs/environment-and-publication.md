@@ -76,3 +76,21 @@ systemd 的有效 ExecStart，旧 drop-in 覆盖会立即报错。开发服务�
 和发布入口摘要，以及本地与 CI 使用的 Gate approval 是否一致。仅写入新 unit 文件
 不算部署完成；实际进程仍使用旧配置时阻止接单。历史覆盖配置应归档并恢复单一 unit
 入口，磁盘和挂载保护等无关配置保留。
+
+## 编译缓存
+
+宿主执行 `python3 tools/install_sccache.py` 安装清单锁定的 sccache；下载包和二进制
+均校验 SHA-256。继续通过上面的 `environment_contract.py shell` 进入开发环境，
+无需修改个人 `~/.cargo/config.toml`。Symphony 和 Gate 显式使用同一个宿主二进制、
+`RUSTC_WRAPPER` 与缓存配置，Rust 增量编译关闭；版本和配置纳入环境指纹。
+
+缓存上限由清单中的 `SCCACHE_CACHE_SIZE` 控制。宿主使用持久开发缓存，Symphony
+各工作区使用 `target/sccache`。Gate 从主干完整 PASS 发布的种子恢复独立副本，
+PR 和开发进程不能改写公共种子。sccache 内容随现有编译缓存一起管理容量与 TTL；
+不会复用旧测试结果或覆盖率计数。各隔离命令使用自己的 Unix socket，结束前保存
+统计并停止缓存服务，避免连接到宿主进程或其他任务的缓存服务。
+
+Gate 的 `sccache-stats.json` 保留各阶段命中、未命中和不可缓存请求；宿主在上述
+开发 shell 内可执行 `sccache --show-stats`。涉及链接的编译无法缓存；已有 Cargo
+依赖缓存命中时，sccache 的额外收益可能有限。覆盖率构建保留真实源码路径，
+不通过忽略路径或源码差异制造命中。比较耗时需同时查看 Cargo 编译和完整 Gate。

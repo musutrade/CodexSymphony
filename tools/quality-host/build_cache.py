@@ -22,7 +22,7 @@ def cache_key(repository, approval):
         p = Path(name)
         if p.name in ('Cargo.toml', 'Cargo.lock', 'rust-toolchain', 'rust-toolchain.toml') or '.cargo' in p.parts:
             inputs[name] = hashlib.sha256((repository / p).read_bytes()).hexdigest()
-    value = {'schema': 2, 'scope': 'dependencies', 'inputs': inputs, 'runtime': approval['runtime_files'],
+    value = {'schema': 3, 'scope': 'dependencies-and-sccache', 'inputs': inputs, 'runtime': approval['runtime_files'],
              'policy': approval['config_files'], 'rustc': subprocess.check_output(['rustc', '-vV'], text=True),
              'cargo': subprocess.check_output(['cargo', '-V'], text=True)}
     return hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
@@ -153,7 +153,7 @@ def restore(root, key, target, max_bytes=DEFAULT_BYTES, ttl=DEFAULT_TTL):
             return {'hit': False}
         receipt = json.loads((source / 'cache.json').read_text())
         if (receipt['key'] != key or receipt['producer'] != 'main-full-pass'
-                or receipt.get('schema') != 2 or receipt.get('scope') != 'dependencies'):
+                or receipt.get('schema') != 3 or receipt.get('scope') != 'dependencies-and-sccache'):
             raise ValueError('invalid compiler cache producer')
         copy_tree(source / 'target', target)
         os.utime(source, None)
@@ -172,7 +172,7 @@ def publish(root, key, target, source_sha, max_bytes=DEFAULT_BYTES, ttl=DEFAULT_
             size = inventory(stage / 'target')
             if not max_bytes or size > max_bytes:
                 return {'published': False, 'reason': 'entry exceeds cache budget', 'bytes': size}
-            receipt = {'schema': 2, 'scope': 'dependencies', 'key': key, 'producer': 'main-full-pass',
+            receipt = {'schema': 3, 'scope': 'dependencies-and-sccache', 'key': key, 'producer': 'main-full-pass',
                        'source_sha': source_sha, 'bytes': size}
             (stage / 'cache.json').write_text(json.dumps(receipt) + '\n')
             if inventory(stage) > max_bytes:
