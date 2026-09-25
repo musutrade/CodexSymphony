@@ -1,0 +1,35 @@
+{
+  "observed_at": "2026-09-25T03:58:16.825776+00:00",
+  "health": "ok",
+  "database": "ok",
+  "app": {
+    "id": 4867361,
+    "slug": "my-disposable-bot",
+    "html_url": "https://github.com/apps/my-disposable-bot",
+    "permissions": {
+      "actions": "write",
+      "administration": "write",
+      "checks": "write",
+      "contents": "read",
+      "deployments": "write",
+      "environments": "write",
+      "merge_queues": "write",
+      "metadata": "read",
+      "pull_requests": "read",
+      "repository_hooks": "write",
+      "workflows": "write"
+    }
+  },
+  "required_permissions": {
+    "contents": "write",
+    "pull_requests": "write",
+    "checks": "read",
+    "actions": "read"
+  },
+  "issue": "GH-121",
+  "token_request": {
+    "status": 422,
+    "message": "The level of access for permissions requested are not granted to this installation.",
+    "errors": null
+  }
+}

@@ -103,3 +103,7 @@ Submitted and Done describe applicable delivery and business acceptance independ
 of hosting provider and execution stages. Local delivery has no invented PR/CI/merge
 facts. P10 maps existing call sites and planned integration: GH-118 provides contracts
 and compatibility checks, not the later adapters or production deployment.
+
+GH-121 的 `delivery_extension` 是不依赖数据库或 GitHub 类型的调用边界；GitHub
+publication/merge 适配器与部署凭据提供方保留厂商语义。附加交付 Hook 复用原监督
+与调用台账，完整验证失败无法被附加 Hook 覆盖。见[迁移与回退](delivery-extensions.md)。

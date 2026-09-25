@@ -1,0 +1,9 @@
+{
+  "temporary_convention": "no new closures in production Rust, no closures in modified production functions; tests exempt and unrelated existing functions retained",
+  "active_workflow_configuration_unchanged": true,
+  "gate_policy_changed": false,
+  "AGENTS_sha256": "29a9987dac92c64dca52a04b7e0cf41b201922fa788924cd72f9e0ea5e7ff47d",
+  "active_workflow_sha256": "f2d8af7a60f55d8dba1499606ea62372e3c6255f5d00f5b4f95aae0a1f5a09f7",
+  "repository_workflow_sha256": "6e951f47eba336482ed82c38d4f66becd3330563d26fa0b69ff285e59103b28b",
+  "task_workflow_sha256": "6e951f47eba336482ed82c38d4f66becd3330563d26fa0b69ff285e59103b28b"
+}

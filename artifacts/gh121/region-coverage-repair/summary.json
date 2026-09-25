@@ -1,0 +1,57 @@
+{
+  "schema": "gh121-region-coverage-repair/v1",
+  "status": "LOCAL_CHECKS_PASS_REAL_SOURCE_REBIND_REQUIRED",
+  "product_commit": "4d3940a54d3ed501ef35cf5a8d6fbad8f3bc7a5e",
+  "product_tree": "e21c92b1990b974ff8a936ba68d2bf9e19ea4999",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/region-coverage-repair/fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "python3 /opt/symphony-env/workspace_tests.py",
+      "exit_code": 0,
+      "log": "artifacts/gh121/region-coverage-repair/workspace-tests.log",
+      "sha256": "48ff3b25381019a58bf46a4b04ed8db1ec986734d53491b98b443b41f60dfba0"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "artifacts/gh121/region-coverage-repair/clippy.log",
+      "sha256": "09a85e3511f891b844136ca59de9717c73d742a7a80ae7b8d17d54698cc52be0"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/region-coverage-repair/gate-config.log",
+      "sha256": "b47bdbbdf42026d7281b2db9721dc8f71b2b8053dc7fd321b99ba944e791a490"
+    }
+  ],
+  "top_level_tests_passed": 313,
+  "production_source_changed": false,
+  "repair": "Add tests for missing/malformed registry, oversized launch inputs, partial durable-write failure and replay rejection. Production code and quality policy unchanged.",
+  "failed_gate": {
+    "run": "run-1c3980b561d5",
+    "tree": "b8a721d78774723f5d9f6a52f2dec406ad26b6d8",
+    "report": "artifacts/gh121/region-coverage-repair/test_result.md",
+    "source_bound_measurements_produced": true,
+    "failures": [
+      "delivery_hooks::load_registry region 18/24 < 80%",
+      "delivery_hook_process::persist_launch region 23/30 < 80%"
+    ],
+    "repair_confirmed_by_complete_gate": false
+  },
+  "latest_real_core_receipt": "artifacts/gh121/host-real-core-f4042a2-acceptance.json",
+  "real_current_candidate_acceptance": false,
+  "complete_gate_pass": false,
+  "remaining": [
+    "Host reviewed exact-source candidate rebinding",
+    "Finalize evidence and run complete exact-tree Gate",
+    "Publish only after PASS"
+  ],
+  "migration_rollback": "docs/delivery-extensions.md",
+  "evidence_manifest": ".symphony-evidence.json",
+  "publication": "none; local commit only"
+}

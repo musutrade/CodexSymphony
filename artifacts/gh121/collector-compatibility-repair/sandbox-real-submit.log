@@ -1,0 +1,7 @@
+{
+  "ok": true,
+  "exit_code": 0,
+  "fixture_sha256": "f14925cbbd3017c9b2faf65d33a3acb1170ec8cefdf0c3b81b1d5f9e4b6a8ffb",
+  "evidence": "artifacts/gh121/real-delivery-core-1888415/files.json",
+  "gh121_implementation_accepted": false
+}

@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "issue_id": "121",
+  "repo": "musutrade/CodexSymphony",
+  "reason": "Required real GitHub product delivery regression has no exposed credential-isolated execution capability: supplied host operation is read-only identity preflight; github_api only invokes GitHub REST and cannot execute the Rust product adapter. Identity readiness passed, but no bounded real-delivery runner/test setup is supplied.",
+  "evidence": "artifacts/gh121/real-delivery-capability-preflight.json",
+  "resume_condition": "A readable host test-setup receipt identifies an executable authorized real-delivery operation, designated repository ID 1360824360 or 1377749969, scenario and frozen validation policy, and a credential-isolated invocation route for the Rust product adapter; resume acceptance setup preflight then implementation and validation."
+}

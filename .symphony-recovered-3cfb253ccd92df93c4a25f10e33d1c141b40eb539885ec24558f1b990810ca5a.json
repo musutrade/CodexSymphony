@@ -1,0 +1,10 @@
+{
+  "status": "waiting_external",
+  "issue_id": "121",
+  "repo": "musutrade/CodexSymphony",
+  "operation": "product.real_delivery_candidate_install",
+  "request_id": "gh121-test-layout-f4042a2-d4bc0ac48a9643a580e26e6090a10e7a",
+  "reason": "Test-layout repair saved at local commit f4042a278642e071115a6a90ff0b838da1b792a9, tree 1f47365451cdd0f1647016dbb365fd7a93941d28. All Gate missing anchors were cfg(test) functions; tests moved unchanged to existing tests/unit layout, production functions unchanged. Prepared full Rust suite passed 310 top-level tests; fmt, strict Clippy and config diagnostic passed. Existing real-core receipt binds cae3b48, so the supplied host runner requires reviewed exact-source rebinding. New exact LLVM measurements and complete Gate remain pending. No publication.",
+  "evidence": "artifacts/gh121/test-layout-repair/summary.json",
+  "resume_condition": "product_binding.commit=f4042a278642e071115a6a90ff0b838da1b792a9; product_binding.tree=1f47365451cdd0f1647016dbb365fd7a93941d28; reviewed_rebuild_and_install_receipt=present; product_binding.binary_sha256=verified; product_binding.driver_sha256=verified; credential_boundary.only_host_rust_adapter_receives_key=true; credential_boundary.validation_agent_secrets_unmounted=true; credential_boundary.no_workspace_scripts_in_credential_process=true; credential_boundary.arbitrary_argv_rejected=true; repository_id=1377749969; migrated_core_new_candidate_setup=ready; merge=false; main_write=false; protection_or_workflow_edit=false"
+}

@@ -1,0 +1,85 @@
+{
+  "issue": "GH-121",
+  "status": "REAL_CORE_ACCEPTANCE_PASS",
+  "product_binding": {
+    "product_commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+    "product_tree": "ff527305dcd9f875581449a79d5c0322bdec7573",
+    "binary_sha256": "7a5283d6d6991f1086d296650b55d7b537eaec3cc2508c7b140760824541b463",
+    "driver_main_sha256": "bbd3d293bbc39abd84a94b3c97fe748f77409b0ee6645486baf1ee742d91d008",
+    "driver_core_sha256": "de04015fe82a6d8f13730ea8c83e7ac51d4728f73b420c5ebae78a7006d4e124",
+    "driver_lock_sha256": "4f9149d99aee1d637a29db780f9199e008b6006ff285423c95d00786ef942b2a",
+    "credential_isolated_build": true,
+    "exit_code": 0,
+    "at": 1790322017
+  },
+  "scenario": {
+    "product_commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+    "product_tree": "ff527305dcd9f875581449a79d5c0322bdec7573",
+    "repository_id": 1377749969,
+    "repository": "musutrade/disposable-2",
+    "base": "main",
+    "base_sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+    "branch": "ai/req-1-gh121-core-8484905",
+    "max_new_prs": 1,
+    "fixture_requirement_id": 1,
+    "fixture_source_run": "gh121-core-8484905",
+    "validation": "product validation_service::validate with frozen cargo test --locked --offline; success and outbox created by product",
+    "profile": "legacy-compatible frozen validation policy, no optional auxiliary hooks; does not certify all hook fault scenarios",
+    "publication": "github_publication_adapter::submit -> delivery_extension::invoke; genuine validation admission and existing delivery_attempt ledger",
+    "main_write": false,
+    "merge": false,
+    "protection_write": false,
+    "workflow_write": false,
+    "production_deployment": false,
+    "credential_isolation": "fixed Rust driver only; nested test namespace excludes both App key and verification database connection file",
+    "database": "isolated codexsymphony-gh121-core-pg, no production state"
+  },
+  "candidate": {
+    "immutable": true,
+    "sha": "b6a4ca58c48abacde8015f74e3f45c3c501bd78d",
+    "tree": "be3fac68969c5ec54e404a3b8c0956ab7ba07c9e"
+  },
+  "validation_id": "gh121-core-validation-8484905",
+  "action_key": "4e5a5a7768681eb82c2fd2d698b332766269452065f774cbb4092ce6aa7acf2b",
+  "remote": {
+    "action_key": "4e5a5a7768681eb82c2fd2d698b332766269452065f774cbb4092ce6aa7acf2b",
+    "base": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+    "branch": "ai/req-1-gh121-core-8484905",
+    "head": "b6a4ca58c48abacde8015f74e3f45c3c501bd78d",
+    "number": 6,
+    "url": "https://github.com/musutrade/disposable-2/pull/6"
+  },
+  "new_core_submit_exercised": true,
+  "real_core_publication_pass": true,
+  "genuine_validation": true,
+  "persisted_intent_before_send": true,
+  "successful_operation_receipts": 2,
+  "duplicate_submit_blocked": true,
+  "agent_sandbox_route_verified": true,
+  "fixture_sha256": "f7e0352fac9aead74dda548723c7bae1234cd35ccd0d6f440ee14703cf62f945",
+  "invocation": [
+    "python3",
+    ".agent-env/core-delivery/request.py",
+    "observe"
+  ],
+  "allowed_operations": [
+    "setup",
+    "submit",
+    "observe"
+  ],
+  "credential_boundary": {
+    "key_only_in_fixed_native_driver": true,
+    "test_process_no_app_or_verification_db_credentials": true,
+    "workspace_programs_not_executed_with_app_key": true,
+    "arbitrary_requests_rejected": true
+  },
+  "complete_evidence": {
+    "path": "artifacts/gh121/real-delivery-core/files.json",
+    "files_verified": 37,
+    "includes_validation_logs_and_reviewed_driver_source": true
+  },
+  "complete_gate_pass": false,
+  "full_issue_accepted": false,
+  "remaining": "Finalize candidate acceptance/evidence and complete exact-tree local_gate before publication; controlled fault and optional Hook coverage remain evaluated by the issue suite. This real scenario uses preserved legacy-compatible frozen validation policy.",
+  "at": 1790322154
+}

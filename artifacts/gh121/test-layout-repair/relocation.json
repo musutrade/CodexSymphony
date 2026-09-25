@@ -1,0 +1,25 @@
+{
+  "moves": [
+    {
+      "production_file": "apps/server/src/delivery_hook_process.rs",
+      "test_file": "apps/server/tests/unit/delivery_hook_process.rs",
+      "production_prefix_sha256": "09aa5ff56ee8bcd211c798daef9f29f8bd417a0136955454d12c93d956140391",
+      "test_body_unchanged_except_indentation": true
+    },
+    {
+      "production_file": "apps/server/src/delivery_hooks.rs",
+      "test_file": "apps/server/tests/unit/delivery_hooks.rs",
+      "production_prefix_sha256": "727683db68825bfc1e41b38ae1eb9dd9b49df85782c4166065e716fec681c35c",
+      "test_body_unchanged_except_indentation": true
+    },
+    {
+      "production_file": "apps/server/src/github_merge_adapter.rs",
+      "test_file": "apps/server/tests/unit/github_merge_adapter.rs",
+      "production_prefix_sha256": "6a80879aa2b64f8e39a7af967b41ce0501dca8382d466b47d6445ab5b3b5de5d",
+      "test_body_unchanged_except_indentation": true
+    }
+  ],
+  "production_logic_changed": false,
+  "quality_policy_changed": false,
+  "reason": "Follow existing tests/unit layout; all unmapped anchors in Gate run-0fc9aa8603b4 are cfg(test) code."
+}

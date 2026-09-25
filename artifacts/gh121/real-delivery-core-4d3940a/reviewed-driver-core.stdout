@@ -1,0 +1,130 @@
+use super::*;
+use codexsymphony_server::{github_publication_adapter as publication, github_store,
+    validation_runner, validation_service, validation_store, delivery_store};
+use sqlx::{PgPool, postgres::PgPoolOptions};
+const RUN: &str = "gh121-core-4d3940a";
+const VALIDATION: &str = "gh121-core-validation-4d3940a-2";
+const BRANCH: &str = "ai/req-1-gh121-core-4d3940a";
+async fn pool() -> Result<PgPool> {
+    Ok(PgPoolOptions::new().max_connections(4).connect(&fs::read_to_string(Path::new(ROOT).join("database-url"))?).await?)
+}
+async fn validate(pool: &PgPool) -> Result<()> {
+    // This mode is launched WITHOUT the App key or GitHub config mounted.
+    if Path::new("/home/gem/.secrets").exists() || Path::new(ROOT).join("github.json").exists() {
+        return Err("validation credential isolation failed".into());
+    }
+    sqlx::migrate!("../source/migrations").run(pool).await?;
+    let manifest:Manifest=serde_json::from_value(read("manifest.json")?)?;
+    let checkout=Path::new(&manifest.workspace.path);
+    let candidate=validation_runner::candidate(checkout)?;
+    if candidate.sha!=manifest.head {return Err("validation candidate mismatch".into());}
+    let contract=json!({"title":"GH-121 core publication acceptance","description":"Host fixed synthetic fixture",
+        "acceptance_criteria":[{"description":"locked real Rust tests pass","verification_ref":"test"}],
+        "validation_plan":[{"id":"test","check":"cargo_test","selector":"validation","expected_result":"pass","timeout_seconds":180}],"network_access":[]});
+    let repository=json!({"github_repository_id":1377749969_i64,"remote":"musutrade/disposable-2","base_branch":"main","revoked":false});
+    let document=json!({"repository_id":1,"repository_version":1,"repository":repository,"contract":contract});
+    let mut tx=pool.begin().await?;
+    sqlx::query("INSERT INTO repository VALUES(1,1,$1,0) ON CONFLICT DO NOTHING").bind(&repository).execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO requirement(id,version,state,contract,revision) OVERRIDING SYSTEM VALUE VALUES(1,1,'Running',$1,1) ON CONFLICT DO NOTHING").bind(&contract).execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO requirement_revision VALUES(1,1,$1) ON CONFLICT DO NOTHING").bind(&document).execute(&mut *tx).await?;
+    // Initial fixture ownership only, never reset an existing execution or budget.
+    sqlx::query("UPDATE execution_control SET requirement_id=1,recovery_complete=true,incarnation='host-core-fixture' WHERE requirement_id IS NULL AND NOT EXISTS(SELECT 1 FROM agent_run)").execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,quiescent) VALUES($1,1,1,'host-core-fixture','host-core-delivery-v1',$2,'gh121-core-fixture-v1','{}','Succeeded',true) ON CONFLICT DO NOTHING")
+        .bind(RUN).bind(&manifest.workspace.path).execute(&mut *tx).await?;
+    sqlx::query("INSERT INTO workspace_snapshot(run_id,manifest,candidate) VALUES($1,$2,true) ON CONFLICT DO NOTHING").bind(RUN).bind(json!(manifest)).execute(&mut *tx).await?;
+    tx.commit().await?;
+    let entry=Path::new(ROOT).join("validation-entry");
+    let plan=validation_runner::Plan{entry_sha256:codexsymphony_server::validation::sha256(fs::read(&entry)?),entry,
+        steps:vec![validation_runner::Step{id:"test".into(),command:vec!["/gate-entry".into()],timeout_seconds:180,code_failure:true}]};
+    let directory=Path::new(ROOT).join("validation/real-test-2");
+    let passed=validation_service::validate(pool,validation_service::Request{id:VALIDATION,source_run:RUN,requirement:1,revision:1,checkout,directory:&directory,candidate:&candidate,plan:&plan}).await?;
+    save("validation.json",json!({"passed":passed,"candidate":candidate,"plan":plan,"status":validation_store::status(pool,VALIDATION).await?,"credential_isolated":true,
+        "created_by":"product validation_service::validate; no seeded validation success"}))?;
+    if !passed {return Err("real product validation failed".into());}
+    Ok(())
+}
+async fn pending(pool: &PgPool) -> Result<Pending> {
+    let job=sqlx::query_as::<_,Pending>("SELECT d.action_key,a.kind,a.state,a.attempts,d.requirement_id,d.revision,d.repository_id,d.repository,d.branch,d.base_branch,d.head_sha,d.manifest,d.pr_number,d.original_action_key,d.expected_head FROM delivery d JOIN delivery_action a USING(action_key) WHERE d.validation_id=$1 AND a.kind='publish'")
+        .bind(VALIDATION).fetch_one(pool).await?;
+    if job.repository_id!=1377749969 || job.repository!="musutrade/disposable-2" || job.branch!=BRANCH || job.base_branch!="main" || job.requirement_id!=1 || job.revision!=1 {return Err("outbox scope mismatch".into());}
+    Ok(job)
+}
+struct Audited<'a>{inner:Github<'a>,pool:&'a PgPool}
+impl Audited<'_>{
+    async fn intent(&self,job:&Pending,operation:&str)->std::result::Result<(),codexsymphony_server::github_http::Error>{
+        let id:Option<i64>=sqlx::query_scalar("SELECT id FROM delivery_attempt WHERE action_key=$1 AND operation=$2 AND result IS NULL ORDER BY id DESC LIMIT 1")
+            .bind(&job.action_key).bind(operation).fetch_optional(self.pool).await.map_err(|_|codexsymphony_server::github_http::invalid())?;
+        let id=id.ok_or_else(codexsymphony_server::github_http::invalid)?;
+        save(&format!("before-{operation}.json"),json!({"persisted_attempt_id":id,"operation":operation,"action_key":job.action_key,"head":job.head_sha,"branch":job.branch,"at":github_service::now(),"call_path":"github_publication_adapter::submit -> delivery_extension::invoke -> native adapter"})).map_err(|_|codexsymphony_server::github_http::invalid())
+    }
+}
+impl Remote for Audited<'_>{
+    async fn capability_check(&mut self,j:&Pending)->codexsymphony_server::github_http::Result<Value>{self.inner.capability_check(j).await}
+    async fn find(&mut self,j:&Pending)->codexsymphony_server::github_http::Result<Option<Value>>{self.inner.find(j).await}
+    async fn head(&mut self,j:&Pending)->codexsymphony_server::github_http::Result<Option<String>>{self.inner.head(j).await}
+    async fn push(&mut self,j:&Pending)->codexsymphony_server::github_http::Result<Value>{self.intent(j,"push").await?;self.inner.push(j).await}
+    async fn create(&mut self,j:&Pending)->codexsymphony_server::github_http::Result<Value>{self.intent(j,"create").await?;self.inner.create(j).await}
+    async fn close(&mut self,_:&Pending,_:u64)->codexsymphony_server::github_http::Result<Value>{Err(codexsymphony_server::github_http::invalid())}
+}
+async fn ledger(pool:&PgPool)->Result<()> {
+    let attempts:Vec<Value>=sqlx::query_scalar("SELECT to_jsonb(a) FROM delivery_attempt a ORDER BY id").fetch_all(pool).await?;
+    let deliveries:Vec<Value>=sqlx::query_scalar("SELECT to_jsonb(d) FROM delivery d ORDER BY action_key").fetch_all(pool).await?;
+    let state:String=sqlx::query_scalar("SELECT state FROM requirement WHERE id=1").fetch_one(pool).await?;
+    save("ledger.json",json!({"attempts":attempts,"deliveries":deliveries,"requirement_state":state}))
+}
+pub async fn execute(mode:&str)->Result<()> {
+    if mode=="prepare" {return prepare();}
+    if !["validate","preflight","submit","observe"].contains(&mode){return Err("unsupported operation".into());}
+    let pool=pool().await?;
+    if mode=="validate" {return validate(&pool).await;}
+    let (config,mut client)=github_service::load(&Path::new(ROOT).join("github.json"))?;
+    let policy:Policy=serde_json::from_slice(&fs::read(Path::new(ROOT).join("policy.json"))?)?;
+    if config.app_id!=5069731 || config.policy!=policy || policy.repository_id!=1377749969 || policy.repository!="musutrade/disposable-2" || policy.default_branch!="main" {return Err("scope mismatch".into());}
+    let base=client.get(&policy,"/repos/musutrade/disposable-2/git/ref/heads/main",github_service::now()).await?;
+    if base["object"]["sha"]!="b7527479849506046b7ad9b74466db7b2a65a3cb" {return Err("frozen main changed".into());}
+    let capability=github_observe::preflight(&mut client,&policy,1,github_service::now()).await?;
+    if !capability.blockers.is_empty(){save("capability.json",json!(capability))?;return Err("capability blocked".into());}
+    github_store::configure(&pool,&policy,1).await?;
+    github_store::save_capability(&pool,&capability).await?;
+    save("capability.json",json!(capability))?;
+    let broker=GitBroker::open(&Path::new(ROOT).join("data/workspaces"))?;
+    let job=pending(&pool).await?;
+    let manifest:Manifest=serde_json::from_value(job.manifest.clone())?;broker.verify(&manifest)?;
+    // Re-verify the genuine retained validation using the product verifier, without executing scripts.
+    let validation=read("validation.json")?;
+    if validation["passed"]!=true || validation["candidate"]["sha"]!=job.head_sha{return Err("validation mismatch".into());}
+    if mode=="preflight" {return ledger(&pool).await;}
+    let mut remote=Audited{inner:Github{client:&mut client,policy:policy.clone(),broker:&broker,now:github_service::now()},pool:&pool};
+    let existing=publication::observe(&pool,&mut remote,&job,github_service::now()).await?;
+    if mode=="submit" && existing.is_none(){
+        if remote.head(&job).await?.as_deref()!=Some(&job.head_sha){
+            publication::submit(&pool,Path::new(ROOT),&mut remote,&job,github_service::now(),"push").await?;
+            ledger(&pool).await?;
+            if remote.head(&job).await?.as_deref()!=Some(&job.head_sha){return Err("push unconfirmed; retained intent forbids blind retry".into());}
+            // A second submit must not send: product ledger sees the prior successful intent.
+            let before:i64=sqlx::query_scalar("SELECT count(*) FROM delivery_attempt").fetch_one(&pool).await?;
+            publication::submit(&pool,Path::new(ROOT),&mut remote,&job,github_service::now(),"push").await?;
+            let after:i64=sqlx::query_scalar("SELECT count(*) FROM delivery_attempt").fetch_one(&pool).await?;
+            if before!=after{return Err("duplicate product intent".into());}
+            save("duplicate-submit.json",json!({"blocked_duplicate":true,"attempts":after}))?;
+        }
+        publication::submit(&pool,Path::new(ROOT),&mut remote,&job,github_service::now(),"create").await?;
+        ledger(&pool).await?;
+    }
+    let pr=publication::observe(&pool,&mut remote,&pending(&pool).await?,github_service::now()).await?.ok_or("PR absent; inspect original intent")?;
+    if job.fact(&pr)!=codexsymphony_server::delivery::PrFact::Open{return Err("remote identity mismatch".into());}
+    delivery_store::confirmed(&pool,&job,&pr).await?;
+    let number=pr["number"].as_u64().ok_or("PR number missing")?;
+    save("pr.json",json!({"number":number,"url":pr["html_url"],"head":pr["head"]["sha"],"base":pr["base"]["sha"],"branch":job.branch,"action_key":job.action_key}))?;
+    let observation=github_observe::observe(&mut client,&policy,number,github_service::now()).await?;
+    github_store::save_observation(&pool,&observation).await?;
+    let passed=observation.head==job.head_sha && observation.base==manifest.workspace.baseline && !observation.checks.is_empty() && observation.checks.iter().all(|c|c.state==CheckState::Success);
+    ledger(&pool).await?;
+    let receipts:i64=sqlx::query_scalar("SELECT count(*) FROM delivery_attempt WHERE action_key=$1 AND operation IN ('push','create') AND result IS NOT NULL AND NOT(result ? 'http_status')").bind(&job.action_key).fetch_one(&pool).await?;
+    save("observation.json",json!(observation))?;
+    save("result.json",json!({"real_core_publication_pass":passed && receipts==2,"new_core_submit_exercised":receipts==2,
+        "product_commit":"4d3940a54d3ed501ef35cf5a8d6fbad8f3bc7a5e","product_tree":"e21c92b1990b974ff8a936ba68d2bf9e19ea4999",
+        "repository_id":1377749969_i64,"pr":number,"candidate":validation["candidate"],"action_key":job.action_key,"validation_id":VALIDATION,"operation_receipts":receipts,
+        "complete_gate_pass":false,"full_issue_accepted":false,"observed_at":github_service::now()}))?;
+    Ok(())
+}

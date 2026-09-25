@@ -1,0 +1,14 @@
+{
+  "head": "1708b3c32bce6289f30706bdc81caf3b3ffbf3be",
+  "tree": "e12d8d2b9b3e5cfd85d449d3d8afc8df3ccd964b",
+  "exit_code": 0,
+  "credential_isolated": true,
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "--offline"
+  ],
+  "stdout_sha256": "2e63cf259f9bc816760113476d1859c525b9cc2c5a5b825d3b7f6faad7c4e7a9",
+  "stderr_sha256": "eda6a1e448774920c7d9b28202de3c6dea064ae7bd3ab8561905d496d12ea8e8"
+}

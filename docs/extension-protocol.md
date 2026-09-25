@@ -172,9 +172,9 @@ GitHub before_publish/before_merge 位于适配器实际写操作边界，可使
 | `extension_contract.rs`、`project_hooks.rs::register/event/after_run/before_remove` | 已实现 v1 冻结配置和四类 Hook；#118 保持格式/事件兼容，不令 after_run 承担验收 |
 | `environment_service.rs`、`preparation_service.rs`、`coordinator.rs::start_runtime/recover` | #119 已接入可选冻结环境绑定；启用、服务启动、准备/恢复/修复及 Agent 启动前核验 |
 | `validation_runner.rs::execute_cancellable`、`validation.rs::verify`、`validation_store.rs` | GH-120 复用候选/步骤账本，环境绑定任务经 validation_context / validation_hook / validation_supervisor 执行完整 P9 validate，核对结果来源，不用 Agent 自报 |
-| `delivery_worker.rs::tick/reconcile/publish`、`delivery_control.rs`、`github_delivery.rs` | 现有 GitHub outbox/对账；#121 接入受控交付操作及凭据边界，#105 实现 local_git |
-| `merge_prevalidation.rs`、`merge_dispatch.rs`、`merge_validation.rs`、`merge_acceptance.rs` | 当前 GitHub 合并前检查及合并后验收；#121 对应适配器写边界和 post_delivery_validate，不移入通用必填 PR/CI |
-| `controlled_contract.rs`、`environment_probe.rs` | #118 通用类型与校验；#119 补齐资源级封装和受审环境探测监督、任务 Call/Evaluation、环境观测迁移，GH-120 已接入候选 validate；#121 交付扩展调度仍后续实现 |
+| `delivery_worker.rs::tick/reconcile/publish`、`delivery_control.rs`、`github_delivery.rs` | GitHub outbox/对账经 GH-121 通用调用边界及原生适配器；#105 实现 local_git |
+| `merge_prevalidation.rs`、`merge_dispatch.rs`、`merge_validation.rs`、`merge_acceptance.rs` | GitHub 合并前检查及合并后验收；GH-121 适配器写边界复核 Hook 后身份，post_delivery_validate 复用原精确合并后验证，不移入通用必填 PR/CI |
+| `controlled_contract.rs`、`environment_probe.rs` | #118 通用类型与校验；#119 补齐资源级封装和受审环境探测监督、任务 Call/Evaluation、环境观测迁移，GH-120 已接入候选 validate；GH-121 的 delivery_extension 接入交付调度 |
 
 旧 Repository 继续通过 `ExtensionConfig::from_legacy_repository` 映射既有 Codex/GitHub 默认；未配置受控扩展不是新能力自动授权。已有冻结任务、累计预算、失败证据和在途交付意图均保留。未来评审显式选择并冻结新配置；替换实现/策略必须重新评审和验证。回退先暂停新领取、静止并保全、对账副作用；采用能读取已有记录的版本，未知能力拒绝新动作但保留材料，不能删记录来绕过恢复。#118 无数据迁移，回退代码不改变现有记录。
 
@@ -228,3 +228,10 @@ semantic_valid；前两者匹配安装摘要，中间两者匹配批准配置摘
 [验证 Hooks](validation-hooks.md) 说明受审 Plan 的 P9 适配、进程来源证明、交付准入、
 访问边界、迁移及回退。四类生命周期 Hook 保持不变。验证入口不执行交付，
 项目检查可使用通用 `validate` 选择器；原检查类型及冻结任务保持兼容。
+
+## P13 交付边界接入（GH-121）
+
+[交付扩展](delivery-extensions.md) 记录通用调用边界、GitHub 旧入口迁移、附加阻断
+Hook、部署凭据提供方、未知写恢复及无 GitHub 的配置接口。P9 操作名及版本不变。
+附加 Hook 的适用阶段由受审配置决定，不改变 P3 的四类生命周期事件。
+原合并后验证继续消费独立观察到的合并事实；local_git 实际执行仍由 #105 提供。

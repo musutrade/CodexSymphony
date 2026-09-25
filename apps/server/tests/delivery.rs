@@ -37,7 +37,8 @@ struct Fake {
     pr: Option<Value>,
     calls: Vec<&'static str>,
     lost: bool,
-    conflict: bool,
+    denied: bool,
+    lost_before_apply: bool,
     fail_close: bool,
     fail_find: bool,
     fail_head: bool,
@@ -52,6 +53,9 @@ fn lost() -> Error {
     }
 }
 impl Remote for Fake {
+    async fn capability_check(&mut self, _: &Pending) -> Result<Value, Error> {
+        Ok(json!({"approved":true}))
+    }
     async fn find(&mut self, _: &Pending) -> Result<Option<Value>, Error> {
         self.calls.push("find");
         if self.fail_find {
@@ -68,8 +72,15 @@ impl Remote for Fake {
     }
     async fn push(&mut self, job: &Pending) -> Result<Value, Error> {
         self.calls.push("push");
-        if self.conflict {
+        if self.lost_before_apply {
             return Err(lost());
+        }
+        if self.denied {
+            return Err(Error {
+                code: "permission_denied",
+                status: Some(403),
+                retry_after_seconds: None,
+            });
         }
         self.head = Some(job.head_sha.clone());
         if self.lost {
@@ -176,8 +187,8 @@ async fn crashes_before_send_after_remote_and_during_commit() {
         .unwrap()
         .unwrap();
     let mut remote = Fake::default();
-    tick(&pool, &mut remote, 60).await; // crash before the first actual send
-    assert_eq!(remote.calls.iter().filter(|&&c| c == "push").count(), 1);
+    tick(&pool, &mut remote, 60).await; // crash between intent and unknown send
+    assert_eq!(remote.calls.iter().filter(|&&c| c == "push").count(), 0);
     store::receipt(&pool, attempt, &json!({"late":true}))
         .await
         .unwrap();
@@ -284,9 +295,9 @@ async fn pause_authorization_conflicts_and_bounded_cleanup() {
     for now in [400, 600, 800, 1000, 1200] {
         tick(&pool, &mut remote, now).await;
     }
-    assert_eq!(remote.calls.iter().filter(|&&c| c == "close").count(), 3);
+    assert_eq!(remote.calls.iter().filter(|&&c| c == "close").count(), 1);
     assert_eq!(state(&pool).await.1, Some(1));
-    assert_eq!(job(&pool).await.state, "blocked");
+    assert_eq!(job(&pool).await.state, "unknown");
     remote.pr.as_mut().unwrap()["head"]["sha"] = json!("other");
     tick(&pool, &mut remote, 1400).await;
     assert_eq!(state(&pool).await.1, Some(1));
@@ -698,13 +709,13 @@ async fn operator_retry_preserves_attempts_and_resumes_after_push() {
     let _serial = DATABASE_TEST.lock().await;
     let pool = database().await;
     let mut remote = Fake {
-        conflict: true,
+        denied: true,
         ..Default::default()
     };
     for now in [0, 200] {
         tick(&pool, &mut remote, now).await;
     }
-    remote.conflict = false;
+    remote.denied = false;
     tick(&pool, &mut remote, 400).await;
     tick(&pool, &mut remote, 600).await;
     assert_eq!(job(&pool).await.state, "blocked");
@@ -882,5 +893,38 @@ async fn delivery_backoff_preserves_server_retry_after() {
     .await
     .unwrap();
     assert_eq!(next, i64::MAX);
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn unknown_write_with_negative_reads_is_not_retried_even_after_operator_recheck() {
+    let _serial = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    let mut remote = Fake {
+        lost_before_apply: true,
+        ..Default::default()
+    };
+    for now in [0, 200, 400] {
+        tick(&pool, &mut remote, now).await;
+    }
+    remote.lost_before_apply = false;
+    tick(&pool, &mut remote, 600).await;
+    assert_eq!(
+        remote.calls.iter().filter(|&&call| call == "push").count(),
+        1
+    );
+    assert_eq!(job(&pool).await.state, "unknown");
+    assert!(!remote.calls.contains(&"create"));
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn cancelled_unknown_delivery_hook_retains_ownership_even_after_process_stop() {
+    let _serial = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    sqlx::raw_sql("INSERT INTO project_hook_run(run_id,requirement_id,revision,resource_id,workspace,role,frozen) VALUES('run',1,1,'source','/tmp','coding','{}'); INSERT INTO project_hook_invocation(invocation_id,run_id,resource_id,event,hook_name,status,stop_confirmed,output_dir) VALUES('unknown-hook','run','source','before_deliver','fixture','unknown',true,'/tmp/retained-hook');").execute(&pool).await.unwrap();
+    control::cancel(&pool, 1).await.unwrap();
+    control::settle(&pool).await.unwrap();
+    assert_eq!(state(&pool).await, ("Cancelled".into(), Some(1), false));
     pool.close().await;
 }

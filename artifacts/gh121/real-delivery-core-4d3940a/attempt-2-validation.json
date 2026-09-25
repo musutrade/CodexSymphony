@@ -1,0 +1,25 @@
+{
+  "candidate": {
+    "immutable": true,
+    "sha": "8673e617ca811951fd0af8029ad72912277e415c",
+    "tree": "be3fac68969c5ec54e404a3b8c0956ab7ba07c9e"
+  },
+  "created_by": "product validation_service::validate; no seeded validation success",
+  "credential_isolated": true,
+  "passed": false,
+  "plan": {
+    "entry": "/home/gem/.local/share/codexsymphony/gh121-core-4d3940a/validation-entry",
+    "entry_sha256": "056a329f343ebe693c4ef476bfbc6e98617c0597d88653424413f27e10066ba8",
+    "steps": [
+      {
+        "code_failure": true,
+        "command": [
+          "/gate-entry"
+        ],
+        "id": "test",
+        "timeout_seconds": 180
+      }
+    ]
+  },
+  "status": null
+}

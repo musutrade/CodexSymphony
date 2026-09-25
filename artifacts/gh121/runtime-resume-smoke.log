@@ -1,0 +1,16 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.44s
+     Running tests/runtime.rs (target/debug/deps/runtime-75128c57cedd4475)
+
+running 9 tests
+test frames_and_validation_reject_invalid_input ... ok
+test invalid_answers_and_denials ... ok
+test persistence_and_full_client_acceptance ... ok
+test pinned_codex_full_client_survives_idle_provider_response ... ok
+test storage_recheck_recovers_committed_work_without_completion_declaration ... ok
+test storage_recheck_restores_paid_work_once_without_a_question_or_pause ... ok
+test stream_errors_and_consumer_cancellation ... ok
+test tool_dispatch_errors_are_sanitized_durable_and_replayable ... ok
+test transport_bounds_and_stream_lifetimes ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 30.62s
+

@@ -1,0 +1,25 @@
+{
+  "schema": "gh121-acceptance-gap/v1",
+  "confirmed_cause": "Candidate installation succeeded, but the installed fixed host driver only reconciles existing baseline PR #5. The host receipt explicitly reports new_core_submit_exercised=false and gh121_implementation_accepted=false; submit cannot create a new candidate or branch. Required real regression through the migrated core publication boundary is unavailable in the exposed runner.",
+  "verified_candidate_evidence_files": 35,
+  "checksum_errors": [],
+  "commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+  "tree": "ff527305dcd9f875581449a79d5c0322bdec7573",
+  "sources": [
+    "artifacts/gh121/HOST-CANDIDATE-REBIND.md",
+    "artifacts/gh121/host-real-delivery-candidate-install.json",
+    "artifacts/gh121/REAL-DELIVERY-RUNNER.md",
+    "artifacts/gh121/real-delivery-candidate/files.json",
+    "artifacts/gh121/real-delivery-candidate/result.json"
+  ],
+  "actions": [
+    "Read rebound host receipt and invocation contract",
+    "Verified all 35 candidate evidence file sizes and SHA-256 hashes",
+    "Confirmed local HEAD/tree match installed candidate",
+    "Preserved implementation and earlier test evidence; no repeated submit or external write"
+  ],
+  "unknown": "Whether an enhanced driver exists outside the exposed setup is unknown.",
+  "saved_validation": "Prior final full workspace suite: 304 tests passed; fmt and clippy passed. Complete local_gate remains outstanding. No tests rerun in this recovery.",
+  "next_action": "Operator supplies reviewed bounded runner enhancement; no new operation registration is assumed.",
+  "resume_condition": "A reviewed credential-isolated host runner bound to commit 8484905ebf5e5fc63f31a769f3d1a76cf52bf302 and tree ff527305dcd9f875581449a79d5c0322bdec7573 exposes a bounded real publication scenario through github_publication_adapter and delivery_extension, with genuine identity-bound validation and persisted operation intent; setup declares repository scope and authorized candidate/branch, preserves credential isolation and no merge/main/protection/workflow writes, and returns source/candidate/operation/remote identity evidence. Resume real delivery acceptance, evidence finalization, then complete local_gate."
+}

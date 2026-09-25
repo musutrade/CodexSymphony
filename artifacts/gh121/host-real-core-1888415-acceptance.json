@@ -1,0 +1,86 @@
+{
+  "issue": "GH-121",
+  "status": "REAL_CORE_ACCEPTANCE_PASS",
+  "product_binding": {
+    "product_commit": "1888415503edbb3325cce7e9267828133ae2247b",
+    "product_tree": "7195d5a151ddd887cc191023f74c491e886cc0b2",
+    "binary_sha256": "dacadb1d2857558345bbb06d49c86ad02167b60f15e54bb3620c3cac7999e929",
+    "driver_main_sha256": "fac450c2dcaf4537f78ac086e2271480edad4393adda541547bd2bed28eb0a06",
+    "driver_core_sha256": "34721f37595a77067dcafe52f6dc02789ce2ddf50e24190fb6548271a4074878",
+    "driver_lock_sha256": "4f9149d99aee1d637a29db780f9199e008b6006ff285423c95d00786ef942b2a",
+    "credential_isolated_build": true,
+    "exit_code": 0,
+    "at": 1790323606
+  },
+  "scenario": {
+    "product_commit": "1888415503edbb3325cce7e9267828133ae2247b",
+    "product_tree": "7195d5a151ddd887cc191023f74c491e886cc0b2",
+    "repository_id": 1377749969,
+    "repository": "musutrade/disposable-2",
+    "base": "main",
+    "base_sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+    "branch": "ai/req-1-gh121-core-1888415",
+    "max_new_prs": 1,
+    "fixture_requirement_id": 1,
+    "fixture_source_run": "gh121-core-1888415",
+    "validation": "product validation_service::validate with frozen cargo test --locked --offline; success and outbox created by product",
+    "profile": "legacy-compatible frozen validation policy, no optional auxiliary hooks; does not certify all hook fault scenarios",
+    "publication": "github_publication_adapter::submit -> delivery_extension::invoke; genuine validation admission and existing delivery_attempt ledger",
+    "main_write": false,
+    "merge": false,
+    "protection_write": false,
+    "workflow_write": false,
+    "production_deployment": false,
+    "credential_isolation": "fixed Rust driver only; nested test namespace excludes both App key and verification database connection file",
+    "database": "isolated gh121_compat_1888415 database in fixture-only codexsymphony-gh121-core-pg; no production state"
+  },
+  "candidate": {
+    "immutable": true,
+    "sha": "bd29140514288d5127f90a27ca562c241a9756a2",
+    "tree": "be3fac68969c5ec54e404a3b8c0956ab7ba07c9e"
+  },
+  "validation_id": "gh121-core-validation-1888415",
+  "action_key": "8a5430a6bcef34d7985e556091afe3186fa2f0f75965677c3bd9b0f360634b55",
+  "remote": {
+    "action_key": "8a5430a6bcef34d7985e556091afe3186fa2f0f75965677c3bd9b0f360634b55",
+    "base": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+    "branch": "ai/req-1-gh121-core-1888415",
+    "head": "bd29140514288d5127f90a27ca562c241a9756a2",
+    "number": 7,
+    "url": "https://github.com/musutrade/disposable-2/pull/7"
+  },
+  "new_core_submit_exercised": true,
+  "real_core_publication_pass": true,
+  "genuine_validation": true,
+  "persisted_intent_before_send": true,
+  "successful_operation_receipts": 2,
+  "duplicate_submit_blocked": true,
+  "agent_sandbox_route_verified": true,
+  "fixture_sha256": "f14925cbbd3017c9b2faf65d33a3acb1170ec8cefdf0c3b81b1d5f9e4b6a8ffb",
+  "invocation": [
+    "python3",
+    ".agent-env/core-1888415/request.py",
+    "observe"
+  ],
+  "allowed_operations": [
+    "setup",
+    "submit",
+    "observe"
+  ],
+  "credential_boundary": {
+    "key_only_in_fixed_native_driver": true,
+    "test_process_no_app_or_verification_db_credentials": true,
+    "workspace_programs_not_executed_with_app_key": true,
+    "arbitrary_requests_rejected": true
+  },
+  "complete_evidence": {
+    "path": "artifacts/gh121/real-delivery-core-1888415/files.json",
+    "files_verified": 32,
+    "includes_validation_logs_and_reviewed_driver_source": true
+  },
+  "complete_gate_pass": false,
+  "full_issue_accepted": false,
+  "remaining": "Finalize candidate acceptance/evidence and complete exact-tree local_gate before publication; controlled fault and optional Hook coverage remain evaluated by the issue suite. This real scenario uses preserved legacy-compatible frozen validation policy.",
+  "at": 1790323606,
+  "supersedes_for_product_source": "old core fixture PR #6 is retained for product commit 8484905; this new source uses PR #7"
+}

@@ -113,7 +113,7 @@ async fn repository(
     runtime: Option<axum::Extension<tokio::task::AbortHandle>>,
 ) -> Result<Json<Value>> {
     let rows: Vec<String> = sqlx::query_scalar(
-        "SELECT jsonb_build_object('id',r.id,'version',r.version,'repository',r.document,'capability_blockers',COALESCE(g.capability->'blockers','[\"GitHub capability has not been checked\"]'::jsonb),'capability_checked_at',g.checked_at,'capability_error',g.error->>'code','capability_http_status',g.error->'http_status','capability_stale',COALESCE(g.repository_version<>r.version OR g.stale OR g.checked_at IS NULL OR g.checked_at<=extract(epoch FROM now())::bigint-60 OR g.checked_at>extract(epoch FROM now())::bigint OR g.capability->'policy' IS DISTINCT FROM g.policy,true),'delivery_ready',COALESCE(NOT (r.document->>'revoked')::boolean AND g.repository_version=r.version AND NOT g.stale AND (NOT (g.policy->'delivery' IS NOT NULL AND g.policy->'delivery'<>'null'::jsonb) OR g.checked_at<=extract(epoch FROM now())::bigint) AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy,false))::text FROM repository r LEFT JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint ORDER BY r.id",
+        "SELECT jsonb_build_object('id',r.id,'version',r.version,'repository',r.document,'capability_blockers',CASE WHEN r.document->>'delivery'='local_git' THEN '[\"local_git delivery adapter not installed\"]'::jsonb ELSE COALESCE(g.capability->'blockers','[\"GitHub capability has not been checked\"]'::jsonb) END,'capability_checked_at',g.checked_at,'capability_error',g.error->>'code','capability_http_status',g.error->'http_status','capability_stale',COALESCE(g.repository_version<>r.version OR g.stale OR g.checked_at IS NULL OR g.checked_at<=extract(epoch FROM now())::bigint-60 OR g.checked_at>extract(epoch FROM now())::bigint OR g.capability->'policy' IS DISTINCT FROM g.policy,true),'delivery_ready',COALESCE(NOT (r.document->>'revoked')::boolean AND g.repository_version=r.version AND NOT g.stale AND (NOT (g.policy->'delivery' IS NOT NULL AND g.policy->'delivery'<>'null'::jsonb) OR g.checked_at<=extract(epoch FROM now())::bigint) AND g.checked_at>extract(epoch FROM now())::bigint-60 AND g.capability->'blockers'='[]'::jsonb AND g.capability->'policy'=g.policy,false))::text FROM repository r LEFT JOIN github_repository g ON g.repository_id=(r.document->>'github_repository_id')::bigint ORDER BY r.id",
     )
     .fetch_all(&pool)
     .await?;
@@ -323,6 +323,7 @@ async fn check_identity(
         let (_, previous) = current_repository(tx, repository_id).await?;
         contract::require(
             previous.remote == next.remote
+                && previous.delivery_mode() == next.delivery_mode()
                 && previous.github_repository_id == next.github_repository_id,
             "registered repository identity cannot change",
         )?;

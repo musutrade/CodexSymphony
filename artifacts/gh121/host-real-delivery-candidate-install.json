@@ -1,0 +1,62 @@
+{
+  "issue": "GH-121",
+  "operation": "product.real_delivery_candidate_install",
+  "status": "READY",
+  "product_binding": {
+    "commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+    "tree": "ff527305dcd9f875581449a79d5c0322bdec7573",
+    "binary_sha256": "4c252791ecd421a1892c6a22ff44eb1ea90d76506559734ed45b4dd2ca71bfee",
+    "driver_sha256": "da87435eb8a0f619a73d3440e4bc2cf160aec4d634150b33d0e97ec498cdaca6"
+  },
+  "reviewed_rebuild_and_install_receipt": true,
+  "review_scope": [
+    "exact candidate native GitHub credential loader and HTTP boundary",
+    "fixed driver native capability/find/head/observe path",
+    "frozen repository, branch, validation policy and immutable host executable",
+    "auxiliary Hooks and arbitrary workspace programs are not executed in the credentialed fixture"
+  ],
+  "credential_boundary": {
+    "only_host_rust_adapter_receives_key": true,
+    "validation_agent_secrets_unmounted": true,
+    "no_workspace_scripts_in_credential_process": true,
+    "arbitrary_argv_rejected": true
+  },
+  "build": {
+    "isolated": true,
+    "exit_code": 0,
+    "lock_sha256": "3ec67e0d0d57a6d0ebe150879cc80db14b4ab7f3c03ecae86450389bff6460a2"
+  },
+  "repository_id": 1377749969,
+  "fixed_branch": "ai/req-121-gh121-real-20260925",
+  "merge": false,
+  "main_write": false,
+  "protection_or_workflow_edit": false,
+  "fixture_sha256": "feedd27204a4bb4cf98c7d7bf0a10cb9996bf856794dcc7ecd97402ef09fe848",
+  "runner_command": [
+    "python3",
+    ".agent-env/real-delivery/request.py",
+    "observe"
+  ],
+  "rebound_runner_setup": "ready",
+  "agent_sandbox_route_verified": true,
+  "evidence": "artifacts/gh121/real-delivery-candidate/files.json",
+  "baseline_archive": "/home/gem/.local/share/codexsymphony/gh121-real-delivery/releases/baseline-0246011cd9e8",
+  "acceptance_limits": {
+    "full_issue_acceptance": false,
+    "complete_gate_pass": false,
+    "new_core_submit_exercised": false,
+    "existing_pr_observation_is_not_new_publication": true
+  },
+  "at": 1790321308,
+  "complete_evidence_files_verified": 35,
+  "native_observation": {
+    "gh121_implementation_accepted": false,
+    "head": "1708b3c32bce6289f30706bdc81caf3b3ffbf3be",
+    "observed_at": 1790321304,
+    "pr": 5,
+    "product_commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+    "repository_id": 1377749969,
+    "runner_scenario_pass": true,
+    "scope": "candidate-bound native GitHub adapter reconciliation; existing baseline PR is not proof of a new publication through the core boundary"
+  }
+}

@@ -1,0 +1,66 @@
+{"test_fixture": {"ok": true, "role": "test", "before_id": "e5c7da78a560eb434be0477ccda93068eda60b358f63c6fe4cdd686dc71a4d5c", "container_id": "b9affa8277a84fab17cce2893d6189a03bc17625b88b8664904bbfab0871b878", "running": true, "image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "storage": "tmpfs", "memory_limit_bytes": 2147483648, "environment": {"image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "memory": 2147483648, "memory_swap": 4294967296, "nano_cpus": 1000000000}, "memory_events": {"low": 0, "high": 0, "max": 0, "oom": 0, "oom_kill": 0, "oom_group_kill": 0, "sock_throttled": 0}}, "tmpdir": "/tmp/cs-dyonp8q3"}
+{"schema": "codexsymphony-environment-fingerprint/v1", "fingerprint": "64b2dec364e628450605ed2ad950295de37bcf5b29f226c729e674b1e8f39529", "contract": "6c9fa8aaa50350ed7843a96adc29fe17a1041617c59909e15965a0363901bbf6", "tools": {"rustc": {"version": "rustc 1.97.1 (8bab26f4f 2026-07-14)", "sha256": "d3a664c970a9fd8361b64194861bebc1ae37b9054e5ee3400dc1c9e691797eea"}, "cargo": {"version": "cargo 1.97.1 (c980f4866 2026-06-30)", "sha256": "828980723df339d62434390e9fb8ef8831036583343ae2316b7ab5646b5c1953"}, "node": {"version": "v24.18.0", "sha256": "41a74efb34cbde5c7632cdac0cf8bd1a14d0b8d73dc1e82755014d9a9ce70f5c"}, "npm": {"version": "11.16.0", "sha256": "8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7"}, "python3": {"version": "Python 3.14.4", "sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"}, "codex": {"version": "codex-cli 0.156.1", "sha256": "0b2e9301d6100dddda3b9d5c80ebaeaa3a2f1962388f2f36f6b96a9f08b1f33f"}, "cargo-llvm-cov": {"version": "cargo-llvm-cov 0.9.0", "sha256": "61d0638359c3dd320e61b1a3467857036307235afed31fb51781a66ec5cf47a5"}, "rustfmt": {"version": "rustfmt 1.9.0-stable (8bab26f4f6 2026-07-14)", "sha256": "30de9e1efcd8f8fe7750e00d0c45ff8f4c480608ef1be5baf9ab6f1b4556e8f8"}, "clippy-driver": {"version": "clippy 0.1.97 (8bab26f4f6 2026-07-14)", "sha256": "e8fa6ad666c353e4c9248fc67074cf160ff2a5dbd97debd20416b81d7f917373"}, "harness-gate": {"version": "harness-gate 0.4.7", "sha256": "b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9"}, "harness-gate-rust-collector": {"version": "harness-gate-rust-collector 0.1.0-rc.7", "sha256": "663823010a6830ce1abd326317ce1983495103a69d647bed886a7ad65bc25b38"}, "sccache": {"version": "sccache 0.18.0", "sha256": "973cb15f6a986d84ca334bbed3bbe2eb8f1ee8fd81bf9e115b8539a293bf8d59"}}, "postgres": {"image": "postgres@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "image_id": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "test": {"memory": 2147483648, "memory_swap": 4294967296, "nano_cpus": 1000000000}, "dev": {"memory": 536870912, "memory_swap": 1073741824, "nano_cpus": 1000000000}}, "test_environment": {"RUST_TEST_THREADS": "1", "CARGO_BUILD_JOBS": "2", "TZ": "UTC", "LANG": "C.UTF-8", "CARGO_INCREMENTAL": "0", "SCCACHE_DIR": "/home/gem/.cache/codexsymphony/sccache", "SCCACHE_CACHE_SIZE": "5G", "SCCACHE_SERVER_UDS": "/tmp/codexsymphony-sccache.sock", "SCCACHE_CONF": "/dev/null", "SCCACHE_CACHED_CONF": "/tmp/codexsymphony-sccache-config", "SCCACHE_IDLE_TIMEOUT": "0", "SCCACHE_CLIENT_SIDE": "0", "SCCACHE_LOCAL_RW_MODE": "READ_WRITE", "RUSTC_WORKSPACE_WRAPPER": "", "RUSTUP_TOOLCHAIN": "1.97.1", "RUSTC_WRAPPER": "/home/gem/.cargo/bin/sccache"}}
+    Blocking waiting for file lock on build directory
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-121/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 08s
+     Running unittests src/lib.rs (target/debug/deps/codexsymphony_server-6fc6cca0063c828b)
+
+running 20 tests
+test environment_probe::time_tests::protocol_timestamp_rejects_pre_epoch_and_overflow ... ok
+test linked_integration::tests::updated_combo_gets_new_checkouts_and_full_independent_validation ... [master 8134ce6] second source
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/cs-dyonp8q3/validation-runner-24f85435-1fbf-4ab1-b1cf-f66da8fd5463/repo
+ * branch            8134ce6b3606c83ca0efbf5aea7e276bc0acab27 -> FETCH_HEAD
+[master 5f2c74a] repair
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/cs-dyonp8q3/validation-runner-1a657261-fcec-4fea-bc9c-80f403081daa/repo
+ * branch            5f2c74a0ce3cbaa3e200c34e6a27386044e20e9c -> FETCH_HEAD
+ok
+test linked_repair_acceptance::tests::repair_acceptance_retains_original_failure_and_integration_never_becomes_done_from_merge ... ok
+test linked_repair_source::tests::current_target_is_frozen_without_reusing_failed_candidate_and_retries_are_finite ... [master f93327f] target advanced
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/cs-dyonp8q3/validation-runner-f5335764-3f8c-494a-bc20-fa35ea033604/repo
+ * branch            f93327f3020f8caa12073b2a58049e6d3bd24c03 -> FETCH_HEAD
+ok
+test linked_repair_source::tests::github_target_requires_an_authenticated_exact_branch_sha ... FAILED
+test linked_repair_source::tests::reviewed_multi_repository_check_mapping_selects_one_repository_at_a_time ... ok
+test linked_repair_source::tests::source_transport_failure_and_pause_race_preserve_the_original_failure ... From /tmp/cs-dyonp8q3/validation-runner-1267b310-dcc2-435f-83d4-0ffed1903cd0/repo
+ * branch            7ba64fe95ddaa75d8d70d3e255ead14675b01831 -> FETCH_HEAD
+From /tmp/cs-dyonp8q3/validation-runner-1267b310-dcc2-435f-83d4-0ffed1903cd0/repo
+ * branch            7ba64fe95ddaa75d8d70d3e255ead14675b01831 -> FETCH_HEAD
+ok
+test linked_repair_worker::tests::committed_repair_diff_accepts_only_reviewed_paths_and_rejects_baseline_drift ... [ai/req-1-5b04320a-d246-4e5c-b011-e3044b3a1a6d dc81de3] repair diff
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[ai/req-1-64b1f637-1a3c-4bae-9df7-2678a338458f fff003b] repair diff
+ 1 file changed, 1 insertion(+)
+ create mode 100644 outside
+ok
+test linked_repair_worker::tests::duplicate_reservation_pause_restart_bind_and_scope_remain_on_original_item ... ok
+test linked_repair_worker::tests::quota_counts_prior_repair_stages_and_keeps_original_failure ... ok
+test linked_repair_worker::tests::successful_preparation_binds_exact_reserved_repair_once ... ok
+test merge_acceptance::tests::accepted_linked_merge_returns_to_original_integration_without_completion ... ok
+test merge_acceptance::tests::blocked_merge_replays_original_failed_invocation ... ok
+test merge_acceptance::tests::pause_at_acceptance_start_never_marks_execution_started ... ok
+test merge_acceptance::tests::retained_blocked_merge_can_record_one_original_failure ... ok
+test merge_dispatch::tests::absent_fixed_and_external_policies_never_dispatch_and_invalid_dispatch_fails ... ok
+test merge_prevalidation::tests::authorization_is_rechecked_before_marking_test_merge_started ... ok
+test merge_validation::tests::checkout_reuse_checks_head_and_invalid_fetch_never_certifies_source ... ok
+test project_hooks::failure_classification_tests::error_classification_requires_matching_stop_receipts_before_timeout_or_cancel ... ok
+test validation_supervisor::tests::missing_startup_identity_requests_stop_without_restarting ... ok
+
+failures:
+
+---- linked_repair_source::tests::github_target_requires_an_authenticated_exact_branch_sha stdout ----
+
+thread 'linked_repair_source::tests::github_target_requires_an_authenticated_exact_branch_sha' (12966) panicked at apps/server/src/../tests/unit/linked_repair_source.rs:342:54:
+called `Result::unwrap()` on an `Err` value: Error { code: "github_identity_conflict", status: None, retry_after_seconds: None }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+
+failures:
+    linked_repair_source::tests::github_target_requires_an_authenticated_exact_branch_sha
+
+test result: FAILED. 19 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.01s
+
+error: test failed, to rerun pass `--lib`
+{"exit_code": 101, "test_fixture_after": {"ok": true, "role": "test", "before_id": "b9affa8277a84fab17cce2893d6189a03bc17625b88b8664904bbfab0871b878", "container_id": "b9affa8277a84fab17cce2893d6189a03bc17625b88b8664904bbfab0871b878", "running": true, "image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "storage": "tmpfs", "memory_limit_bytes": 2147483648, "environment": {"image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "memory": 2147483648, "memory_swap": 4294967296, "nano_cpus": 1000000000}, "memory_events": {"low": 0, "high": 0, "max": 0, "oom": 0, "oom_kill": 0, "oom_group_kill": 0, "sock_throttled": 0}}}

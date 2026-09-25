@@ -1,0 +1,6 @@
+{
+  "failure": "ng: not found; web/angular/node_modules absent",
+  "recovery": "npm ci --offline --prefix web/angular",
+  "exit_code": 0,
+  "source_changes": false
+}

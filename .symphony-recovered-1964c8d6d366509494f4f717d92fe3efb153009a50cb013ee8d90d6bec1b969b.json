@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "issue_id": "121",
+  "repo": "musutrade/CodexSymphony",
+  "reason": "Installed complete Gate Rust collector rejects Serde metadata in contract.rs and environment_host.rs and vec! in delivery_hook_process.rs, delivery_hooks.rs and environment_host.rs; backend capture produced no required coverage/CRAP measurements (run-f8ba2d3305e6).",
+  "evidence": "artifacts/gh121/gate-collector-blocker/summary.json",
+  "resume_condition": "Approved installed Rust collector source compatibility succeeds for the retained GH-121 contract.rs, delivery_hook_process.rs, delivery_hooks.rs and environment_host.rs without unsupported metadata/macros; resume complete local_gate and require a new exact-tree PASS before publication."
+}

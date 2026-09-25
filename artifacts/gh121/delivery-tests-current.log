@@ -1,0 +1,60 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-121/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 34.88s
+     Running tests/automatic_merge.rs (target/debug/deps/automatic_merge-9f9444951f2a84e3)
+
+running 7 tests
+test cancellation_cannot_release_incomplete_test_merge_validation ... ok
+test durable_unknown_reconciles_without_repeating_merge ... ok
+test final_capability_plan_and_pr_changes_never_send_merge ... ok
+test identities_checks_and_protection_are_not_interchangeable ... ok
+test merge_finishes_final_reserved_turn_but_never_exceeds_budget ... ok
+test pause_and_base_race_prevent_dispatch ... ok
+test prepared_intent_rechecks_authorization_recovery_and_write_ownership ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.23s
+
+     Running tests/delivery.rs (target/debug/deps/delivery-9eb0e2097ccf7d55)
+
+running 16 tests
+test cancel_in_flight_closes_once_and_merge_races_preserve_facts ... ok
+test cancellation_with_unsent_repair_closes_only_the_published_candidate ... ok
+test cancelled_unknown_create_and_push_keep_ownership_until_reconciled ... ok
+test crashes_before_send_after_remote_and_during_commit ... FAILED
+test delivery_backoff_preserves_server_retry_after ... ok
+test exact_identity_and_merge_facts ... ok
+test fresh_exact_merge_releases_without_done_and_api_exposes_delivery ... ok
+test initial_ready_plan_is_durable_and_admission_binds_the_same_worktree ... ok
+test lost_push_and_create_responses_reconcile_without_duplicate_work ... ok
+test missing_delivery_identity_rolls_back_and_cancel_reports_absent_requirement ... ok
+test operator_retry_preserves_attempts_and_resumes_after_push ... ok
+test pause_authorization_conflicts_and_bounded_cleanup ... FAILED
+test remote_read_failures_and_disappeared_pr_never_trigger_writes ... ok
+test repair_updates_original_pr_and_reconciles_lost_push_without_overwriting_external_head ... ok
+test transaction_rollback_does_not_lose_outbox_and_wrong_pr_is_never_closed ... ok
+test unknown_write_with_negative_reads_is_not_retried_even_after_operator_recheck ... ok
+
+failures:
+
+---- crashes_before_send_after_remote_and_during_commit stdout ----
+
+thread 'crashes_before_send_after_remote_and_during_commit' (9363) panicked at apps/server/tests/delivery.rs:188:5:
+assertion `left == right` failed
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- pause_authorization_conflicts_and_bounded_cleanup stdout ----
+
+thread 'pause_authorization_conflicts_and_bounded_cleanup' (9481) panicked at apps/server/tests/delivery.rs:295:5:
+assertion `left == right` failed
+  left: 1
+ right: 3
+
+
+failures:
+    crashes_before_send_after_remote_and_during_commit
+    pause_authorization_conflicts_and_bounded_cleanup
+
+test result: FAILED. 14 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 20.00s
+
+error: test failed, to rerun pass `--test delivery`

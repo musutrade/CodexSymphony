@@ -1,0 +1,7 @@
+{"phase": "snapshot", "started_at": "2026-09-25T08:10:18.362181+00:00", "status": "PASS", "duration_ms": 795}
+{"phase": "cache-restore", "started_at": "2026-09-25T08:10:21.230967+00:00", "status": "PASS", "duration_ms": 3560}
+{"phase": "preflight-selftest", "started_at": "2026-09-25T08:10:24.792258+00:00", "status": "PASS", "duration_ms": 34393}
+{"phase": "preflight-format", "started_at": "2026-09-25T08:10:59.187608+00:00", "status": "PASS", "duration_ms": 1016}
+{"phase": "preflight-frontend-lint", "started_at": "2026-09-25T08:11:00.205405+00:00", "status": "PASS", "duration_ms": 4276}
+{"phase": "backend-capture", "started_at": "2026-09-25T08:11:06.657002+00:00", "status": "FAIL", "duration_ms": 799105}
+{"phase": "capture-all", "started_at": "2026-09-25T08:11:04.483720+00:00", "status": "FAIL", "duration_ms": 802174}

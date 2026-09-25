@@ -1,0 +1,9 @@
+{
+  "passed": 3,
+  "tests": [
+    "arbitrary operation rejected",
+    "wrong fixture rejected",
+    "agent argv rejected"
+  ],
+  "at": 1790322062
+}

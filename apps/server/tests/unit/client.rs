@@ -7,6 +7,6 @@ pub fn client(root: &std::path::Path) -> crate::github_http::AppClient {
         .output()
         .unwrap();
     assert!(output.status.success());
-    crate::github_http::AppClient::new("http://127.0.0.1:1/", 42, &std::fs::read(key).unwrap())
+    crate::github_http::AppClient::new("http://127.0.0.1:1/", 1042, &std::fs::read(key).unwrap())
         .unwrap()
 }

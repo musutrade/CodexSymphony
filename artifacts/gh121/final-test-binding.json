@@ -1,0 +1,5 @@
+{
+  "command": "python3 /opt/symphony-env/workspace_tests.py",
+  "source_inventory": "artifacts/gh121/implementation-inventory.json",
+  "source_inventory_sha256": "be71024c9340f8f1f1b5a99dee5a2e318e22e4670878dd4eec7313722cf9336c"
+}

@@ -1,0 +1,14 @@
+{
+  "issue": "GH-121",
+  "run": "run-0d758608b081",
+  "status": "blocked",
+  "validated_input_tree": "31a57828fd8eb02378538f3dda0fc8610aa663db",
+  "product_commit": "1888415503edbb3325cce7e9267828133ae2247b",
+  "confirmed": "Installed rc.7 source collector failed exact LLVM source mapping after coverage execution; no measurements or complete verify report produced.",
+  "diagnostic": "source mapping failed; no measurements produced:\nmissing exact source anchor: apps/server/src/github_credentials.rs:[44, 32]\nsource callable missing native mapping: apps/server/src/github_credentials.rs:[33, 58] (closure); apps/server/src/github_credentials.rs:[39, 22] (closure); apps/server/src/github_credentials.rs:[44, 14] (closure); apps/server/src/github_merge_adapter.rs:[137, 10] (closure); apps/server/src/github_publication_adapter.rs:[193, 30] (closure); no exact LLVM entry counter; parent execution is not a substitute\n",
+  "saved_progress": "Implementation and collector compatibility repair retained; latest ordinary full Rust suite 306 passed, fmt/clippy passed; real migrated core acceptance for 1888415 retained; no remote publication.",
+  "attempted": "Finalized evidence; invoked complete local_gate and inspected retained diagnostic exports. No policy or collector changes.",
+  "hypothesis": "Collector cannot map these optimized closure entry counters; underlying cause not independently established.",
+  "next_action": "Restore approved collector exact source/LLVM mapping for the retained current source and coverage artifact, then resume complete Gate validation.",
+  "resume_condition": "Approved installed collector maps all listed github_credentials/github_merge_adapter/github_publication_adapter anchors for product source 1888415503edbb3325cce7e9267828133ae2247b and produces source-bound coverage/CRAP measurements; then a fresh complete exact-tree local_gate PASS is required before publication."
+}

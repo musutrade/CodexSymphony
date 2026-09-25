@@ -1,0 +1,23 @@
+{
+  "issue": 121,
+  "branch": "symphony/GH-121",
+  "main": "034d803df21185305429681e2dac3a1e57d57af9",
+  "remote_issue_branch": "absent (GitHub GET ref 404)",
+  "dependencies": [
+    {
+      "issue": 118,
+      "pr": 123,
+      "merged": true,
+      "merge_commit": "549a8c137f7fb982306aa174195ea9e9cc3384bb"
+    },
+    {
+      "issue": 120,
+      "pr": 127,
+      "merged": true,
+      "merge_commit": "034d803df21185305429681e2dac3a1e57d57af9"
+    }
+  ],
+  "method": "injected github_api readback in this continuation",
+  "environment": "prepared disposable PostgreSQL16 fixture running, tmpfs, 2GiB memory; real Runtime smoke passed",
+  "authority": "No real writes, PR publication, production deployment, CI changes or quality-policy changes in this continuation"
+}

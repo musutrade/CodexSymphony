@@ -1,0 +1,9 @@
+{
+  "gh121_implementation_accepted": false,
+  "head": "1708b3c32bce6289f30706bdc81caf3b3ffbf3be",
+  "observed_at": 1790317142,
+  "pr": 5,
+  "repository_id": 1377749969,
+  "runner_scenario_pass": true,
+  "scope": "baseline real Rust GitHub adapter normal path; core migration and controlled regressions remain required"
+}

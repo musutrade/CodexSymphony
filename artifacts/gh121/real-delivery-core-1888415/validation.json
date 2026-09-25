@@ -1,0 +1,53 @@
+{
+  "candidate": {
+    "immutable": true,
+    "sha": "bd29140514288d5127f90a27ca562c241a9756a2",
+    "tree": "be3fac68969c5ec54e404a3b8c0956ab7ba07c9e"
+  },
+  "created_by": "product validation_service::validate; no seeded validation success",
+  "credential_isolated": true,
+  "passed": true,
+  "plan": {
+    "entry": "/home/gem/.local/share/codexsymphony/gh121-core-1888415/validation-entry",
+    "entry_sha256": "3835c4f0762fb6eb02fdabc2fcfbf08f0c203f8f14cb4b43fc693f4ccc4e1566",
+    "steps": [
+      {
+        "code_failure": true,
+        "command": [
+          "/gate-entry"
+        ],
+        "id": "test",
+        "timeout_seconds": 180
+      }
+    ]
+  },
+  "status": {
+    "candidate_sha": "bd29140514288d5127f90a27ca562c241a9756a2",
+    "candidate_tree": "be3fac68969c5ec54e404a3b8c0956ab7ba07c9e",
+    "id": "gh121-core-validation-1888415",
+    "requirement_id": 1,
+    "result": "succeeded",
+    "stage": "handoff",
+    "steps": [
+      {
+        "availability": "available",
+        "bytes": 691,
+        "consumer": "outbox:8a5430a6bcef34d7985e556091afe3186fa2f0f75965677c3bd9b0f360634b55",
+        "exit_code": 0,
+        "id": "test",
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh121-core-1888415/validation/real-test/step-0.log",
+        "output_sha256": "5e09b587fb9500e6e8b404a8ec202b271c1d302094623c0eb5c79a7517561103",
+        "recorded_at": "2026-09-25T08:04:21.594459+00:00",
+        "status": "succeeded"
+      }
+    ],
+    "trusted": {
+      "command_sha256": "daaa77283af817ca56118f67fcad7edef0f1de5d431889e8d8406dba19db6d16",
+      "config_sha256": "4c88bba2cebb0d669381a5e0f45c7192894842c68b7a8a78e890f598d63353ce",
+      "protected_entry": "/home/gem/.local/share/codexsymphony/gh121-core-1888415/validation-entry",
+      "protected_entry_sha256": "3835c4f0762fb6eb02fdabc2fcfbf08f0c203f8f14cb4b43fc693f4ccc4e1566",
+      "tool": "trusted-development-process",
+      "tool_version": "1"
+    }
+  }
+}

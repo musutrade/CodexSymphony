@@ -74,3 +74,5 @@ A13 原件恢复进展、剩余缺口及当前就绪状态见 [证据恢复索�
 受控交付本轮按 #118 → #119 → #120 → #121 → #105 → #122 串行；[方案及授权快照](docs/product-controlled-delivery-plan.md)、[统一扩展协议与实际调用点](docs/extension-protocol.md)区分现有实现和待接入能力。项目环境、验证、凭据与交付由受审扩展提供，缓存可选；Rust、GitHub App 和 Harness-Gate 不是受管项目的通用前提。本仓库自己的门禁不变。
 
 项目完整验证接入、P9 证据与交付准入见 [验证 Hooks](docs/validation-hooks.md)。
+
+交付扩展、GitHub 路径迁移、凭据提供方及附加 Hooks 见 [交付扩展接入](docs/delivery-extensions.md)。

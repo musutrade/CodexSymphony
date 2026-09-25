@@ -1,0 +1,981 @@
+commit cae3b48dcc5759f6506e38661b84dc7b84643490
+Author:     CodexSymphony <codexsymphony@localhost>
+AuthorDate: Fri Sep 25 09:22:10 2026 +0000
+Commit:     CodexSymphony <codexsymphony@localhost>
+CommitDate: Fri Sep 25 09:22:10 2026 +0000
+
+    Refactor delivery boundaries and cover recovery failure paths
+
+diff --git a/apps/server/src/contract.rs b/apps/server/src/contract.rs
+index 1779358..3ad7897 100644
+--- a/apps/server/src/contract.rs
++++ b/apps/server/src/contract.rs
+@@ -170,6 +170,20 @@ pub fn validate_repository(repo: &Repository) -> Result<(), &'static str> {
+         text(&repo.project) && text(&repo.reason),
+         "project and reason are required",
+     )?;
++    validate_repository_target(repo)?;
++    require(identifier(&repo.base_branch), "base branch is required")?;
++    require(
++        match &repo.model {
++            Some(model) => identifier(model),
++            None => true,
++        },
++        "invalid model identity",
++    )?;
++    validate_repository_hooks(&repo.hooks)?;
++    validate_policy(&repo.policy)
++}
++
++fn validate_repository_target(repo: &Repository) -> Result<(), &'static str> {
+     match repo.delivery_mode() {
+         crate::extension_contract::DeliveryMode::GithubPr => {
+             require(
+@@ -188,13 +202,7 @@ pub fn validate_repository(repo: &Repository) -> Result<(), &'static str> {
+             )?;
+         }
+     }
+-    require(identifier(&repo.base_branch), "base branch is required")?;
+-    require(
+-        repo.model.as_ref().is_none_or(|model| identifier(model)),
+-        "invalid model identity",
+-    )?;
+-    validate_repository_hooks(&repo.hooks)?;
+-    validate_policy(&repo.policy)
++    Ok(())
+ }
+ 
+ fn validate_repository_hooks(
+diff --git a/apps/server/src/delivery_extension.rs b/apps/server/src/delivery_extension.rs
+index d8af23d..0c9041d 100644
+--- a/apps/server/src/delivery_extension.rs
++++ b/apps/server/src/delivery_extension.rs
+@@ -111,13 +111,8 @@ pub async fn invoke<A: Adapter>(
+     request: &A::Input,
+ ) -> Result<Option<Reply<A::Input, A::Facts>>> {
+     control.check(&operation, request)?;
+-    if operation == Operation::Submit {
+-        control.admit(request).await?;
+-        control.before_deliver(request).await?;
+-        control.admit(request).await?;
+-        if !control.begin(request).await? {
+-            return Ok(None);
+-        }
++    if operation == Operation::Submit && !prepare_submit(control, request).await? {
++        return Ok(None);
+     }
+     let result = dispatch(adapter, &operation, request).await;
+     control.retain(request, &result).await?;
+@@ -130,6 +125,16 @@ pub async fn invoke<A: Adapter>(
+     Ok(Some(reply))
+ }
+ 
++async fn prepare_submit<Input, Facts>(
++    control: &mut impl Control<Input, Facts>,
++    request: &Input,
++) -> Result<bool> {
++    control.admit(request).await?;
++    control.before_deliver(request).await?;
++    control.admit(request).await?;
++    control.begin(request).await
++}
++
+ async fn dispatch<A: Adapter>(
+     adapter: &mut A,
+     operation: &Operation,
+diff --git a/apps/server/src/delivery_hook_process.rs b/apps/server/src/delivery_hook_process.rs
+index f4b0956..4064339 100644
+--- a/apps/server/src/delivery_hook_process.rs
++++ b/apps/server/src/delivery_hook_process.rs
+@@ -64,6 +64,10 @@ pub async fn execute(pool: &PgPool, job: &Job, claimed: bool) -> Result<Evaluati
+     if crate::validation_runner::candidate(&job.checkout)? != job.candidate {
+         return Err("delivery hook changed the candidate".into());
+     }
++    replay(job)
++}
++
++fn replay(job: &Job) -> Result<Evaluation> {
+     // Replay validates retained logs and protected implementation without
+     // executing a completed Plan. Missing binding/result is not a new launch.
+     if !job.directory.join("binding.json").is_file() || !job.directory.join("result.json").is_file()
+@@ -86,17 +90,8 @@ pub async fn execute(pool: &PgPool, job: &Job, claimed: bool) -> Result<Evaluati
+ }
+ 
+ fn spawn(job: &Job, key: &RunKey) -> Result<()> {
++    persist_launch(job)?;
+     let directory = &job.directory;
+-    std::fs::create_dir_all(directory)?;
+-    if directory.join("input.json").exists() {
+-        return Err("delivery hook already has intent".into());
+-    }
+-    if serde_json::to_vec(job)?.len() > 64 * 1024 {
+-        return Err("delivery hook input exceeds limit".into());
+-    }
+-    process::durable_write(&directory.join("input.json"), job)?;
+-    process::durable_write(&directory.join("hook.json"), &job.call)?;
+-    process::durable_write(&directory.join("hook-limit.json"), &(1024_u64 * 1024))?;
+     let supervisor = std::env::var_os("SYMPHONY_SUPERVISOR")
+         .map(PathBuf::from)
+         .unwrap_or(std::env::current_exe()?);
+@@ -110,11 +105,32 @@ fn spawn(job: &Job, key: &RunKey) -> Result<()> {
+             directory.to_string_lossy().into_owned(),
+         ]),
+     };
+-    let mut child = process::spawn(&supervisor, directory, &launch)?;
+-    tokio::task::spawn_blocking(move || child.wait());
++    let child = process::spawn(&supervisor, directory, &launch)?;
++    tokio::spawn(reap(child));
+     Ok(())
+ }
+ 
++fn persist_launch(job: &Job) -> Result<()> {
++    let directory = &job.directory;
++    std::fs::create_dir_all(directory)?;
++    if directory.join("input.json").exists() {
++        return Err("delivery hook already has intent".into());
++    }
++    if serde_json::to_vec(job)?.len() > 64 * 1024 {
++        return Err("delivery hook input exceeds limit".into());
++    }
++    process::durable_write(&directory.join("input.json"), job)?;
++    process::durable_write(&directory.join("hook.json"), &job.call)?;
++    process::durable_write(&directory.join("hook-limit.json"), &(1024_u64 * 1024))?;
++    Ok(())
++}
++
++async fn reap(mut child: std::process::Child) {
++    while let Ok(None) = child.try_wait() {
++        tokio::time::sleep(Duration::from_millis(50)).await;
++    }
++}
++
+ async fn wait(pool: &PgPool, job: &Job, key: &RunKey) -> Result<()> {
+     let started = Instant::now();
+     let mut stopping = None;
+@@ -122,24 +138,28 @@ async fn wait(pool: &PgPool, job: &Job, key: &RunKey) -> Result<()> {
+         if crate::validation_supervisor::quiescent(&job.directory, key)? {
+             return Ok(());
+         }
+-        check_startup(job, key, started)?;
++        check_startup(&job.directory, key, started)?;
+         if !allowed(pool, job).await {
+             process::durable_write(&job.directory.join("stop.json"), key)?;
+             stopping.get_or_insert_with(Instant::now);
+         }
+         check_stop(stopping)?;
+-        process::durable_write(&job.directory.join("storage-heartbeat.json"), key)?;
+-        if job.directory.join("identity.json").exists() {
+-            process::durable_write(&job.directory.join("start.json"), key)?;
+-        }
++        heartbeat(&job.directory, key)?;
+         tokio::time::sleep(Duration::from_millis(50)).await;
+     }
+ }
+ 
+-fn check_startup(job: &Job, key: &RunKey, started: Instant) -> Result<()> {
+-    if !job.directory.join("identity.json").exists() && started.elapsed() >= Duration::from_secs(10)
+-    {
+-        process::durable_write(&job.directory.join("stop.json"), key)?;
++fn heartbeat(directory: &Path, key: &RunKey) -> Result<()> {
++    process::durable_write(&directory.join("storage-heartbeat.json"), key)?;
++    if directory.join("identity.json").exists() {
++        process::durable_write(&directory.join("start.json"), key)?;
++    }
++    Ok(())
++}
++
++fn check_startup(directory: &Path, key: &RunKey, started: Instant) -> Result<()> {
++    if !directory.join("identity.json").exists() && started.elapsed() >= Duration::from_secs(10) {
++        process::durable_write(&directory.join("stop.json"), key)?;
+         return Err("delivery hook startup unknown".into());
+     }
+     Ok(())
+@@ -152,8 +172,58 @@ async fn allowed(pool: &PgPool, job: &Job) -> bool {
+             .unwrap_or(false)
+ }
+ fn check_stop(stopping: Option<Instant>) -> Result<()> {
+-    if stopping.is_some_and(|at| at.elapsed() >= Duration::from_secs(20)) {
++    let expired = match stopping {
++        Some(at) => at.elapsed() >= Duration::from_secs(20),
++        None => false,
++    };
++    if expired {
+         return Err("delivery hook stop unknown".into());
+     }
+     Ok(())
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn startup_timeout_persists_stop_and_never_authorizes_start() {
++        let directory = std::env::temp_dir().join(format!(
++            "delivery-start-{}",
++            process::new_identity().unwrap()
++        ));
++        std::fs::create_dir_all(&directory).unwrap();
++        let key = RunKey {
++            run_id: "run".into(),
++            request_id: "request".into(),
++            incarnation: "boot".into(),
++        };
++        check_startup(&directory, &key, Instant::now()).unwrap();
++        heartbeat(&directory, &key).unwrap();
++        assert!(!directory.join("start.json").exists());
++        let expired = Instant::now() - Duration::from_secs(11);
++        assert!(check_startup(&directory, &key, expired).is_err());
++        let stopped: RunKey = process::read(&directory.join("stop.json")).unwrap();
++        assert_eq!(stopped, key);
++        process::durable_write(&directory.join("identity.json"), &key).unwrap();
++        check_startup(&directory, &key, expired).unwrap();
++        heartbeat(&directory, &key).unwrap();
++        let started: RunKey = process::read(&directory.join("start.json")).unwrap();
++        assert_eq!(started, key);
++        check_stop(None).unwrap();
++        check_stop(Some(Instant::now())).unwrap();
++        assert!(check_stop(Some(Instant::now() - Duration::from_secs(21))).is_err());
++        std::fs::remove_dir_all(directory).unwrap();
++    }
++
++    #[tokio::test]
++    async fn child_reaping_waits_for_exit() {
++        let child = std::process::Command::new("sh")
++            .args(["-c", "sleep 0.1; exit 7"])
++            .spawn()
++            .unwrap();
++        let pid = child.id();
++        reap(child).await;
++        assert!(!Path::new(&format!("/proc/{pid}")).exists());
++    }
++}
+diff --git a/apps/server/src/delivery_hooks.rs b/apps/server/src/delivery_hooks.rs
+index 09e625c..1defe86 100644
+--- a/apps/server/src/delivery_hooks.rs
++++ b/apps/server/src/delivery_hooks.rs
+@@ -43,52 +43,85 @@ pub async fn run(pool: &PgPool, action: &str, operation: &str, stage: Stage) ->
+     else {
+         return Ok(());
+     };
+-    let selected: Vec<_> = environment
+-        .controlled
+-        .extensions
+-        .iter()
+-        .filter(|entry| entry.operations.contains(&Operation::BeforeDeliver))
+-        .collect();
++    let selected = selected_registrations(&environment);
+     if selected.is_empty() {
+         return Ok(());
+     }
++    let (context, installed, scope) = load_registry(&environment, context)?;
++    for registration in selected {
++        let entry = checked_entry(&installed, registration, scope, &context.checkout)?;
++        execute(
++            pool,
++            action,
++            operation,
++            &source,
++            &validation,
++            stage,
++            entry,
++            &context,
++        )
++        .await?;
++    }
++    Ok(())
++}
++
++fn selected_registrations(environment: &crate::environment::Plan) -> Vec<&Registration> {
++    let mut selected = Vec::new();
++    for entry in &environment.controlled.extensions {
++        if entry.operations.contains(&Operation::BeforeDeliver) {
++            selected.push(entry);
++        }
++    }
++    selected
++}
++
++fn load_registry(
++    environment: &crate::environment::Plan,
++    context: Option<Value>,
++) -> Result<(Context, Vec<Installed>, &str)> {
+     let path = std::env::var_os("DELIVERY_HOOK_REGISTRY")
+         .ok_or("reviewed delivery hook registry missing")?;
+-    let installed: Vec<Installed> = serde_json::from_slice(&std::fs::read(path)?)?;
+-    let context: Context =
++    let installed = serde_json::from_slice(&std::fs::read(path)?)?;
++    let context =
+         serde_json::from_value(context.ok_or("delivery hook needs original validation context")?)?;
+-    let scope = &environment
+-        .controlled
+-        .extensions
+-        .iter()
+-        .find(|entry| entry.id == environment.extension_id)
+-        .ok_or("environment scope registration missing")?
+-        .scope_ref;
+-    for registration in selected {
+-        if &registration.scope_ref != scope {
+-            return Err("delivery hook repository scope differs".into());
++    let scope = environment_scope(environment)?;
++    Ok((context, installed, scope))
++}
++
++fn checked_entry<'a>(
++    installed: &'a [Installed],
++    registration: &Registration,
++    scope: &str,
++    checkout: &Path,
++) -> Result<&'a Installed> {
++    let entry = installed_entry(installed, registration, scope)?;
++    check_entry(entry, checkout)?;
++    Ok(entry)
++}
++
++fn environment_scope(environment: &crate::environment::Plan) -> Result<&str> {
++    for entry in &environment.controlled.extensions {
++        if entry.id == environment.extension_id {
++            return Ok(&entry.scope_ref);
+         }
++    }
++    Err("environment scope registration missing".into())
++}
+ 
+-        let entry = installed
+-            .iter()
+-            .find(|entry| &entry.registration == registration)
+-            .ok_or("selected delivery hook is not installed")?;
+-        check_entry(entry, &context.checkout)?;
+-        if entry.stages.contains(&stage) {
+-            execute(
+-                pool,
+-                action,
+-                operation,
+-                &source,
+-                &validation,
+-                stage,
+-                entry,
+-                &context,
+-            )
+-            .await?;
++fn installed_entry<'a>(
++    installed: &'a [Installed],
++    registration: &Registration,
++    scope: &str,
++) -> Result<&'a Installed> {
++    if registration.scope_ref != scope {
++        return Err("delivery hook repository scope differs".into());
++    }
++    for entry in installed {
++        if &entry.registration == registration {
++            return Ok(entry);
+         }
+     }
+-    Ok(())
++    Err("selected delivery hook is not installed".into())
+ }
+ 
+ fn check_entry(entry: &Installed, checkout: &Path) -> Result<()> {
+@@ -119,14 +152,91 @@ async fn execute(
+     entry: &Installed,
+     context: &Context,
+ ) -> Result<()> {
++    if !entry.stages.contains(&stage) {
++        return Ok(());
++    }
+     crate::validation_context::delivery(pool, action).await?;
+     let identity = crate::validation::sha256(format!(
+         "{action}:{operation}:{validation}:{}:{}",
+         stage.name(),
+         entry.registration.id
+     ));
++    let call = prepare_call(pool, action, operation, stage, entry, context, &identity).await?;
++    let directory = context
++        .directory
++        .parent()
++        .ok_or("validation directory parent missing")?
++        .join("delivery-hooks")
++        .join(&identity);
++    let proposed = Job {
++        call,
++        checkout: context.checkout.clone(),
++        directory,
++        candidate: crate::validation_runner::candidate(&context.checkout)?,
++        plan: entry.plan.clone(),
++    };
++    let (job, claimed) = claim(pool, action, operation, source, stage, &proposed).await?;
++    let result = crate::delivery_hook_process::execute(pool, &job, claimed).await;
++    retain(pool, &identity, &job, &result).await?;
++    admit_result(pool, action, &job, result).await
++}
++
++async fn admit_result(
++    pool: &PgPool,
++    action: &str,
++    job: &Job,
++    result: Result<crate::controlled_contract::Evaluation>,
++) -> Result<()> {
++    let evaluation = result?;
++    evaluation
++        .check_pass(&job.call, crate::runtime_client::now().saturating_mul(1000))
++        .map_err(crate::environment::protocol)?;
++    crate::environment_service::admit(
++        pool,
++        job.call.identity.requirement_id,
++        job.call.identity.revision,
++        "delivery",
++        None,
++    )
++    .await?;
++    crate::validation_context::delivery(pool, action).await
++}
++
++async fn claim(
++    pool: &PgPool,
++    action: &str,
++    operation: &str,
++    source: &str,
++    stage: Stage,
++    proposed: &Job,
++) -> Result<(Job, bool)> {
++    let identity = &proposed.call.identity.invocation_id;
++    let claimed = sqlx::query("INSERT INTO project_hook_invocation(invocation_id,run_id,resource_id,event,hook_name,status,output_dir,input) VALUES($1,$2,$3,$4,$5,'intent',$6,$7) ON CONFLICT DO NOTHING")
++        .bind(identity).bind(source).bind(format!("{action}:{operation}")).bind(stage.name()).bind(&proposed.call.extension_id)
++        .bind(proposed.directory.to_string_lossy().as_ref()).bind(json!(proposed)).execute(pool).await?.rows_affected() == 1;
++    let saved: Value =
++        sqlx::query_scalar("SELECT input FROM project_hook_invocation WHERE invocation_id=$1")
++            .bind(identity)
++            .fetch_one(pool)
++            .await?;
++    let job: Job = serde_json::from_value(saved)?;
++    if json!(job) != json!(proposed) {
++        return Err("frozen delivery hook input changed".into());
++    }
++    Ok((job, claimed))
++}
++
++async fn prepare_call(
++    pool: &PgPool,
++    action: &str,
++    operation: &str,
++    stage: Stage,
++    entry: &Installed,
++    context: &Context,
++    identity: &str,
++) -> Result<crate::controlled_contract::Call> {
+     let mut call = context.call.clone();
+-    call.identity.invocation_id = identity.clone();
++    call.identity.invocation_id = identity.to_owned();
+     call.identity.attempt = 1;
+     call.identity.resource_id = action.into();
+     call.policy_digest = crate::validation::sha256(serde_json::to_vec(&(
+@@ -138,12 +248,10 @@ async fn execute(
+     call.operation = Operation::BeforeDeliver;
+     call.extension_id = entry.registration.id.clone();
+     call.implementation_digest = entry.registration.implementation_digest.clone();
+-    call.required_checks = entry
+-        .plan
+-        .steps
+-        .iter()
+-        .map(|step| step.id.clone())
+-        .collect();
++    call.required_checks.clear();
++    for step in &entry.plan.steps {
++        call.required_checks.push(step.id.clone());
++    }
+     let environment = crate::environment_service::plan(
+         pool,
+         call.identity.requirement_id,
+@@ -169,46 +277,7 @@ async fn execute(
+     .await?;
+     call.validate(&task.frozen, &controlled, approved)
+         .map_err(crate::environment::protocol)?;
+-    let directory = context
+-        .directory
+-        .parent()
+-        .ok_or("validation directory parent missing")?
+-        .join("delivery-hooks")
+-        .join(&identity);
+-    let proposed = Job {
+-        call,
+-        checkout: context.checkout.clone(),
+-        directory,
+-        candidate: crate::validation_runner::candidate(&context.checkout)?,
+-        plan: entry.plan.clone(),
+-    };
+-    let claimed = sqlx::query("INSERT INTO project_hook_invocation(invocation_id,run_id,resource_id,event,hook_name,status,output_dir,input) VALUES($1,$2,$3,$4,$5,'intent',$6,$7) ON CONFLICT DO NOTHING")
+-        .bind(&identity).bind(source).bind(format!("{action}:{operation}")).bind(stage.name()).bind(&entry.registration.id)
+-        .bind(proposed.directory.to_string_lossy().as_ref()).bind(json!(proposed)).execute(pool).await?.rows_affected() == 1;
+-    let saved: Value =
+-        sqlx::query_scalar("SELECT input FROM project_hook_invocation WHERE invocation_id=$1")
+-            .bind(&identity)
+-            .fetch_one(pool)
+-            .await?;
+-    let job: Job = serde_json::from_value(saved)?;
+-    if json!(job) != json!(proposed) {
+-        return Err("frozen delivery hook input changed".into());
+-    }
+-    let result = crate::delivery_hook_process::execute(pool, &job, claimed).await;
+-    retain(pool, &identity, &job, &result).await?;
+-    let evaluation = result?;
+-    evaluation
+-        .check_pass(&job.call, crate::runtime_client::now().saturating_mul(1000))
+-        .map_err(crate::environment::protocol)?;
+-    crate::environment_service::admit(
+-        pool,
+-        job.call.identity.requirement_id,
+-        job.call.identity.revision,
+-        "delivery",
+-        None,
+-    )
+-    .await?;
+-    crate::validation_context::delivery(pool, action).await
++    Ok(call)
+ }
+ 
+ async fn retain(
+@@ -253,21 +322,69 @@ async fn retain(
+ pub async fn reconcile(pool: &PgPool) -> Result<()> {
+     let rows: Vec<(String,Value)> = sqlx::query_as("SELECT invocation_id,input FROM project_hook_invocation WHERE input IS NOT NULL AND event IN ('before_deliver','before_publish','before_merge') AND status IN ('intent','running','unknown') ORDER BY created_at LIMIT 1").fetch_all(pool).await?;
+     for (identity, input) in rows {
+-        let job: Job = serde_json::from_value(input)?;
+-        if identity != job.call.identity.invocation_id {
+-            return Err("delivery hook recovery identity mismatch".into());
+-        }
+-        let key = crate::execution::RunKey {
+-            run_id: identity.clone(),
+-            request_id: identity.clone(),
+-            incarnation: identity.clone(),
+-        };
+-        if !crate::validation_supervisor::quiescent(&job.directory, &key)? {
+-            std::fs::create_dir_all(&job.directory)?;
+-            crate::process::durable_write(&job.directory.join("stop.json"), &key)?;
+-        }
+-        let result = crate::delivery_hook_process::execute(pool, &job, false).await;
+-        retain(pool, &identity, &job, &result).await?;
++        reconcile_invocation(pool, &identity, input).await?;
+     }
+     Ok(())
+ }
++
++async fn reconcile_invocation(pool: &PgPool, identity: &str, input: Value) -> Result<()> {
++    let job: Job = serde_json::from_value(input)?;
++    if identity != job.call.identity.invocation_id {
++        return Err("delivery hook recovery identity mismatch".into());
++    }
++    let key = crate::execution::RunKey {
++        run_id: identity.to_owned(),
++        request_id: identity.to_owned(),
++        incarnation: identity.to_owned(),
++    };
++    if !crate::validation_supervisor::quiescent(&job.directory, &key)? {
++        std::fs::create_dir_all(&job.directory)?;
++        crate::process::durable_write(&job.directory.join("stop.json"), &key)?;
++    }
++    let result = crate::delivery_hook_process::execute(pool, &job, false).await;
++    retain(pool, identity, &job, &result).await?;
++    Ok(())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    fn installed() -> Installed {
++        Installed {
++            registration: Registration {
++                id: "reviewed".into(),
++                implementation_digest: "digest".into(),
++                operations: Vec::from([Operation::BeforeDeliver]),
++                scope_ref: "repository:1".into(),
++                config_ref: "configuration".into(),
++                credential_provider_ref: None,
++            },
++            stages: Vec::from([Stage::BeforeMerge]),
++            plan: Plan {
++                entry: "/missing-reviewed-entry".into(),
++                entry_sha256: "digest".into(),
++                steps: Vec::new(),
++            },
++        }
++    }
++
++    #[test]
++    fn registry_resolution_rejects_scope_and_registration_substitution() {
++        let entries = [installed()];
++        let registration = &entries[0].registration;
++        assert!(installed_entry(&entries, registration, "repository:1").is_ok());
++        assert!(installed_entry(&entries, registration, "repository:2").is_err());
++        let mut changed = registration.clone();
++        changed.config_ref = "different".into();
++        assert!(installed_entry(&entries, &changed, "repository:1").is_err());
++        let mut environment: crate::environment::Plan = serde_json::from_value(json!({
++            "controlled":{"protocol_version":1,"environment":{"repository_revision":"repository:1@1",
++                "contract_digest":"digest","host_profile_ref":"host","role":"test"},"extensions":[registration]},
++            "host_profile_digest":"host","extension_id":"reviewed","lockfiles":[],"roles":{},"ci":false,"cache":null
++        })).unwrap();
++        assert_eq!(environment_scope(&environment).unwrap(), "repository:1");
++        environment.extension_id = "missing".into();
++        assert!(environment_scope(&environment).is_err());
++    }
++}
+diff --git a/apps/server/src/delivery_remote.rs b/apps/server/src/delivery_remote.rs
+index 518206b..c520de7 100644
+--- a/apps/server/src/delivery_remote.rs
++++ b/apps/server/src/delivery_remote.rs
+@@ -133,10 +133,10 @@ impl Remote for Github<'_> {
+         if current.as_deref() == Some(&job.head_sha) {
+             return Ok(json!({"already_at_candidate":job.head_sha}));
+         }
+-        let expected = job
+-            .expected_head
+-            .as_deref()
+-            .or_else(|| job.manifest["workspace"]["baseline"].as_str());
++        let expected = match job.expected_head.as_deref() {
++            Some(head) => Some(head),
++            None => job.manifest["workspace"]["baseline"].as_str(),
++        };
+         if current.is_some() && current.as_deref() != expected {
+             return Err(invalid());
+         }
+diff --git a/apps/server/src/github_merge_adapter.rs b/apps/server/src/github_merge_adapter.rs
+index 24e0676..f9bd0b5 100644
+--- a/apps/server/src/github_merge_adapter.rs
++++ b/apps/server/src/github_merge_adapter.rs
+@@ -14,16 +14,8 @@ struct Merge<'a, R> {
+     remote: &'a mut R,
+     now: i64,
+ }
+-impl<R: Remote> Adapter for Merge<'_, R> {
+-    type Input = Intent;
+-    type Facts = Value;
+-    async fn capability_check(&mut self, intent: &Intent) -> Result<Reply<Intent, Value>> {
+-        Ok(Reply {
+-            request: intent.clone(),
+-            facts: json!(self.remote.preflight(intent).await?),
+-        })
+-    }
+-    async fn submit(&mut self, intent: &Intent) -> Result<Reply<Intent, Value>> {
++impl<R: Remote> Merge<'_, R> {
++    async fn check_evidence(&mut self, intent: &Intent) -> Result<()> {
+         let capability: crate::github::Capability =
+             serde_json::from_value(self.capability_check(intent).await?.facts)?;
+         if capability.policy != intent.policy || !capability.blockers.is_empty() {
+@@ -38,6 +30,21 @@ impl<R: Remote> Adapter for Merge<'_, R> {
+         ) {
+             return Err("GitHub merge evidence changed after hook".into());
+         }
++        Ok(())
++    }
++}
++
++impl<R: Remote> Adapter for Merge<'_, R> {
++    type Input = Intent;
++    type Facts = Value;
++    async fn capability_check(&mut self, intent: &Intent) -> Result<Reply<Intent, Value>> {
++        Ok(Reply {
++            request: intent.clone(),
++            facts: json!(self.remote.preflight(intent).await?),
++        })
++    }
++    async fn submit(&mut self, intent: &Intent) -> Result<Reply<Intent, Value>> {
++        self.check_evidence(intent).await?;
+         let pr = self.remote.pr(intent).await?;
+         if !crate::merge_worker::pr_ready(&pr, intent) {
+             return Err("GitHub head/base changed after hook".into());
+@@ -136,3 +143,73 @@ pub async fn submit(
+     .await?;
+     Ok(())
+ }
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::github::{Capability, Observation};
++    use crate::github_http::{Error, invalid};
++
++    struct Recovery {
++        fail: bool,
++    }
++    impl Remote for Recovery {
++        async fn observe(&mut self, _: &Intent) -> std::result::Result<Observation, Error> {
++            Err(invalid())
++        }
++        async fn preflight(&mut self, _: &Intent) -> std::result::Result<Capability, Error> {
++            Err(invalid())
++        }
++        async fn pr(&mut self, _: &Intent) -> std::result::Result<Value, Error> {
++            Err(invalid())
++        }
++        async fn merge(&mut self, _: &Intent) -> std::result::Result<Value, Error> {
++            panic!("recovery must never repeat merge")
++        }
++        async fn reconcile(&mut self, intent: &Intent) -> std::result::Result<Observation, Error> {
++            if self.fail {
++                return Err(invalid());
++            }
++            Ok(serde_json::from_value(json!({
++                "policy":intent.policy, "repository_id":7, "number":12,
++                "head":intent.head, "base":intent.base, "head_ref":intent.branch,
++                "base_ref":"main", "test_merge_sha":null, "merged_sha":"merged",
++                "merge":"Merged", "closed":true, "checks":[], "last_synced_at":100,
++                "actual_checkout_sha":null, "phases":null
++            }))
++            .unwrap())
++        }
++    }
++
++    #[tokio::test]
++    async fn reconciliation_preserves_original_identity_and_remote_errors() {
++        let intent: Intent = serde_json::from_value(json!({
++            "delivery_key":"delivery", "requirement":1, "revision":2, "authorization":null,
++            "policy":{"repository_id":7,"repository":"owner/repo","default_branch":"main",
++                "version":1,"required":[],"wait_seconds":900,"delivery":null},
++            "pr":12,"head":"candidate","base":"base","checkout_sha":null,
++            "branch":"ai/candidate","validation_id":"validation","dependencies":{}
++        }))
++        .unwrap();
++        let mut remote = Recovery { fail: false };
++        let reply = Merge {
++            remote: &mut remote,
++            now: 100,
++        }
++        .reconcile(&intent)
++        .await
++        .unwrap();
++        assert_eq!(reply.request, intent);
++        assert_eq!(reply.facts["merged_sha"], "merged");
++        remote.fail = true;
++        assert!(
++            Merge {
++                remote: &mut remote,
++                now: 100
++            }
++            .reconcile(&intent)
++            .await
++            .is_err()
++        );
++    }
++}
+diff --git a/apps/server/src/github_publication_adapter.rs b/apps/server/src/github_publication_adapter.rs
+index 02a6293..69b57c4 100644
+--- a/apps/server/src/github_publication_adapter.rs
++++ b/apps/server/src/github_publication_adapter.rs
+@@ -33,19 +33,7 @@ impl<R: Remote> Adapter for Publication<'_, R> {
+         if input.operation != "close" {
+             self.capability_check(input).await?;
+         }
+-        let facts = match input.operation.as_str() {
+-            "push" => self.remote.push(&input.job).await?,
+-            "create" => self.remote.create(&input.job).await?,
+-            "close" => {
+-                self.remote
+-                    .close(
+-                        &input.job,
+-                        input.job.pr_number.ok_or("close PR identity missing")? as u64,
+-                    )
+-                    .await?
+-            }
+-            _ => return Err("unapproved GitHub publication operation".into()),
+-        };
++        let facts = self.send(input).await?;
+         Ok(Reply {
+             request: input.clone(),
+             facts,
+@@ -62,6 +50,25 @@ impl<R: Remote> Adapter for Publication<'_, R> {
+         self.observe(input).await
+     }
+ }
++impl<R: Remote> Publication<'_, R> {
++    async fn send(&mut self, input: &Input) -> Result<Value> {
++        let facts = match input.operation.as_str() {
++            "push" => self.remote.push(&input.job).await?,
++            "create" => self.remote.create(&input.job).await?,
++            "close" => {
++                self.remote
++                    .close(
++                        &input.job,
++                        input.job.pr_number.ok_or("close PR identity missing")? as u64,
++                    )
++                    .await?
++            }
++            _ => return Err("unapproved GitHub publication operation".into()),
++        };
++        Ok(facts)
++    }
++}
++
+ struct Admission<'a> {
+     pool: &'a PgPool,
+     root: &'a Path,
+diff --git a/apps/server/tests/environment.rs b/apps/server/tests/environment.rs
+index e46a983..6500e44 100644
+--- a/apps/server/tests/environment.rs
++++ b/apps/server/tests/environment.rs
+@@ -1134,6 +1134,7 @@ async fn p9_validation_is_bound_to_task_environment_and_retained_source_at_deliv
+     .await
+     .unwrap();
+     validation_context::delivery(&pool, &action).await.unwrap();
++    delivery_hook_fixture::cancel_running_hook(&root, &pool, &action).await;
+     sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
+         .execute(&pool)
+         .await
+diff --git a/apps/server/tests/github.rs b/apps/server/tests/github.rs
+index 3ee1110..7008b8a 100644
+--- a/apps/server/tests/github.rs
++++ b/apps/server/tests/github.rs
+@@ -755,6 +755,16 @@ async fn control_plane_configuration_and_readonly_cli() {
+     let config = json!({"app_id":1042,"api_url":f.url,"private_key_path":f.root.join("fixture.pem"),"policy":action_policy(),"probe_pr":1});
+     let file = f.root.join("config.json");
+     std::fs::write(&file, serde_json::to_vec(&config).unwrap()).unwrap();
++    assert!(github_service::load(&file).is_ok());
++    assert!(github_service::load(&f.root.join("missing-config")).is_err());
++    let broken = f.root.join("broken-config");
++    std::fs::write(&broken, b"{").unwrap();
++    assert!(github_service::load(&broken).is_err());
++    let mut missing_key = config.clone();
++    missing_key["private_key_path"] = json!(f.root.join("missing-key"));
++    std::fs::write(&broken, serde_json::to_vec(&missing_key).unwrap()).unwrap();
++    assert!(github_service::load(&broken).is_err());
++
+     let pool = database().await;
+     let worker = github_service::start_path(&pool, &file).await.unwrap();
+     // Capability is an intermediate result. Require complete PR sync cycles,
+@@ -1155,6 +1165,15 @@ async fn delivery_adapter_reconciles_exact_branch_and_rechecks_before_close() {
+     value["merged"] = json!(true);
+     fixture.put("/repos/owner/repo/pulls/1", value.clone());
+     assert_eq!(remote.close(&job, 1).await.unwrap(), value);
++    // A matching lease reaches the transport's local ancestry check. The
++    // nonexistent predecessor is rejected before any external Git write.
++    fixture.put(
++        &format!("/repos/owner/repo/git/ref/heads/{}", job.branch),
++        json!({"object":{"sha":"expected-old-head"}}),
++    );
++    job.expected_head = Some("expected-old-head".into());
++    assert!(remote.push(&job).await.is_err());
++    job.expected_head = None;
+     // A valid local candidate still cannot push when App authentication fails.
+     fixture.fail("/repos/owner/repo/installation", vec![403]);
+     remote.now = 10_000;
+diff --git a/apps/server/tests/support/delivery_hooks.rs b/apps/server/tests/support/delivery_hooks.rs
+index 86b69e0..4cfbd39 100644
+--- a/apps/server/tests/support/delivery_hooks.rs
++++ b/apps/server/tests/support/delivery_hooks.rs
+@@ -93,6 +93,7 @@ pub async fn exercise(root: &Path, pool: &PgPool, action: &str) {
+     .fetch_one(pool)
+     .await
+     .unwrap();
++    reconcile_missing_stop(pool, Path::new(&directory)).await;
+     reject_changed_inputs(Path::new(&directory));
+     let evaluation = Path::new(&directory).join("evaluation.json");
+     let original = fs::read(&evaluation).unwrap();
+@@ -190,3 +191,109 @@ fn reject_changed_inputs(directory: &Path) {
+     assert!(codexsymphony_server::delivery_hook_process::run(directory).is_err());
+     fs::write(&path, original).unwrap();
+ }
++
++async fn reconcile_missing_stop(pool: &PgPool, directory: &Path) {
++    let saved: serde_json::Value =
++        sqlx::query_scalar("SELECT input FROM project_hook_invocation WHERE output_dir=$1")
++            .bind(directory.to_str().unwrap())
++            .fetch_one(pool)
++            .await
++            .unwrap();
++    let mut wrong = saved.clone();
++    wrong["call"]["identity"]["invocation_id"] = json!("different-invocation");
++    sqlx::query("UPDATE project_hook_invocation SET status='unknown',input=$2 WHERE output_dir=$1")
++        .bind(directory.to_str().unwrap())
++        .bind(&wrong)
++        .execute(pool)
++        .await
++        .unwrap();
++    assert!(delivery_hooks::reconcile(pool).await.is_err());
++    sqlx::query("UPDATE project_hook_invocation SET input=$2 WHERE output_dir=$1")
++        .bind(directory.to_str().unwrap())
++        .bind(&saved)
++        .execute(pool)
++        .await
++        .unwrap();
++    let quiescent = directory.join("quiescent.json");
++    let proof = fs::read(&quiescent).unwrap();
++    fs::remove_file(&quiescent).unwrap();
++    delivery_hooks::reconcile(pool).await.unwrap();
++    let (status, stopped): (String, bool) = sqlx::query_as(
++        "SELECT status,stop_confirmed FROM project_hook_invocation WHERE output_dir=$1",
++    )
++    .bind(directory.to_str().unwrap())
++    .fetch_one(pool)
++    .await
++    .unwrap();
++    assert_eq!(status, "unknown");
++    assert!(!stopped);
++    assert!(directory.join("stop.json").is_file());
++    // Restore the retained proof from the already completed synthetic invocation;
++    // no real process is running and recovery has not repeated the hook.
++    fs::write(quiescent, proof).unwrap();
++    fs::remove_file(directory.join("stop.json")).unwrap();
++    delivery_hooks::reconcile(pool).await.unwrap();
++}
++
++pub async fn cancel_running_hook(root: &Path, pool: &PgPool, action: &str) {
++    unsafe {
++        std::env::set_var(
++            "DELIVERY_HOOK_REGISTRY",
++            root.join("delivery-registry.json"),
++        );
++    }
++    let before = fs::read(root.join("delivery-effects")).unwrap().len();
++    fs::write(root.join("delivery-case"), "timeout").unwrap();
++    let cancel = async {
++        tokio::time::timeout(std::time::Duration::from_secs(5), async {
++            while fs::read(root.join("delivery-effects")).unwrap().len() == before {
++                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
++            }
++        })
++        .await
++        .unwrap();
++        sqlx::query("UPDATE requirement SET cancel_requested=true WHERE id=1")
++            .execute(pool)
++            .await
++            .unwrap();
++    };
++    let (outcome, ()) = tokio::join!(
++        delivery_hooks::run(pool, action, "cancel-running", Stage::BeforeMerge),
++        cancel
++    );
++    assert!(outcome.is_err());
++    let (status, stopped, directory): (String, bool, String) = sqlx::query_as(
++        "SELECT status,stop_confirmed,output_dir FROM project_hook_invocation WHERE resource_id=$1",
++    )
++    .bind(format!("{action}:cancel-running"))
++    .fetch_one(pool)
++    .await
++    .unwrap();
++    assert_eq!(status, "unknown");
++    assert!(stopped);
++    assert!(Path::new(&directory).join("stop.json").is_file());
++    sqlx::query("UPDATE requirement SET cancel_requested=false WHERE id=1")
++        .execute(pool)
++        .await
++        .unwrap();
++    fs::remove_file(root.join("delivery-case")).unwrap();
++    assert!(
++        delivery_hooks::run(pool, action, "cancel-running", Stage::BeforeMerge)
++            .await
++            .is_err()
++    );
++    assert_eq!(
++        fs::read(root.join("delivery-effects")).unwrap().len(),
++        before + 1
++    );
++    // Cancellation invalidates the old validation durably even after the control
++    // flag is cleared. This test belongs after all successful-admission assertions.
++    assert!(
++        codexsymphony_server::validation_context::delivery(pool, action)
++            .await
++            .is_err()
++    );
++    unsafe {
++        std::env::remove_var("DELIVERY_HOOK_REGISTRY");
++    }
++}

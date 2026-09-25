@@ -1,0 +1,63 @@
+{
+  "bundle_digest": "b0938ccab1e35535b892079750a47319920c822186962116dafa1764094bbb05",
+  "excluded": [],
+  "files": [
+    {
+      "digest": "2afbf63ba36b482497a14f904e11d89df4600e08f48fac81b14da3f5ee5dbf79",
+      "executable": false,
+      "path": ".github/workflows/ci.yml"
+    },
+    {
+      "digest": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+      "executable": false,
+      "path": ".gitignore"
+    },
+    {
+      "digest": "0fd17157d25e56c39d366ef2d3c9201e52ae718f55c3638bfba37696e54d5f3d",
+      "executable": false,
+      "path": "Cargo.lock"
+    },
+    {
+      "digest": "d2fdeeecb540fc6e5a592b6d70140e9fdab9a1aae889baed7cadfc71d72d425a",
+      "executable": false,
+      "path": "Cargo.toml"
+    },
+    {
+      "digest": "a690550c31a43bc1717efe52f0af5bd58e86198f97ef93d31ca3984965dc1c82",
+      "executable": false,
+      "path": "README.md"
+    },
+    {
+      "digest": "c280ca633e73f57cb8f39772a0fef4cbb947294f8b1c576d478717ce864d573a",
+      "executable": false,
+      "path": "gh121-acceptance.txt"
+    },
+    {
+      "digest": "5e14e40959fca7910afc84bc78fef3e3d399d79cf1d430b7dba7edd558f1d3c5",
+      "executable": false,
+      "path": "gh88-b06.json"
+    },
+    {
+      "digest": "946129e9fecb6ca4139c3292fa21dfca7dd8a9f11c668b55bd64ab5b58cd32d5",
+      "executable": false,
+      "path": "src/lib.rs"
+    }
+  ],
+  "head": "1708b3c32bce6289f30706bdc81caf3b3ffbf3be",
+  "index_digest": "7c56a668747643d58caf61045c83d1bfd2387757522efe6f20bfc02372a29c5f",
+  "index_tree": "e12d8d2b9b3e5cfd85d449d3d8afc8df3ccd964b",
+  "workspace": {
+    "baseline": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+    "branch": "ai/req-121-gh121-real-20260925",
+    "identity": "gh121-host-fixture-v1",
+    "key": {
+      "incarnation": "host-fixture",
+      "request_id": "host-real-delivery-v1",
+      "run_id": "gh121-real-20260925"
+    },
+    "path": "/home/gem/.local/share/codexsymphony/gh121-real-delivery/data/workspaces/runs/gh121-real-20260925",
+    "phase": "handoff",
+    "requirement": 121,
+    "revision": 1
+  }
+}

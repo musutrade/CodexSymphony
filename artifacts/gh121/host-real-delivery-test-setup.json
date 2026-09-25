@@ -1,0 +1,97 @@
+{
+  "issue": "GH-121",
+  "status": "RUNNER_READY",
+  "operation": "product.real_delivery_acceptance",
+  "repository": {
+    "id": 1377749969,
+    "name": "musutrade/disposable-2",
+    "base_branch": "main",
+    "base_sha": "b7527479849506046b7ad9b74466db7b2a65a3cb"
+  },
+  "scenario": "real-product-adapter-submit-observe",
+  "invocation": {
+    "transport": "fixed host spool broker",
+    "client": ".agent-env/real-delivery/request.py",
+    "command": [
+      "python3",
+      ".agent-env/real-delivery/request.py",
+      "observe"
+    ],
+    "allowed_operations": [
+      "setup",
+      "submit",
+      "observe"
+    ],
+    "fixture_sha256": "0246011cd9e8ce674652ea38544fac053904b2b0b62801c5aa19411a8278c514",
+    "service": "codexsymphony-gh121-real-delivery.service"
+  },
+  "frozen_validation_policy": {
+    "local": [
+      "cargo",
+      "test",
+      "--locked",
+      "--offline"
+    ],
+    "remote": {
+      "repository_id": 1377749969,
+      "repository": "musutrade/disposable-2",
+      "default_branch": "main",
+      "version": 1,
+      "required": [
+        {
+          "name": "test-job",
+          "source": {
+            "kind": "actions",
+            "app_id": 15368,
+            "workflow_id": 362376551,
+            "workflow_sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+            "event": "pull_request",
+            "branch": "operator/a13-capability-probe",
+            "branch_from_pr": true
+          }
+        }
+      ],
+      "wait_seconds": 900
+    },
+    "source_manifest": "artifacts/gh121/real-delivery/manifest.json",
+    "require_unchanged_protection": true,
+    "candidate_validation_before_credentials": true
+  },
+  "credential_boundary": {
+    "app_id": 5069731,
+    "only_host_rust_adapter_receives_key": true,
+    "validation_agent_secrets_unmounted": true,
+    "no_workspace_scripts_in_credential_process": true,
+    "arbitrary_argv_rejected": true
+  },
+  "product_binding": {
+    "commit": "034d803df21185305429681e2dac3a1e57d57af9",
+    "tree": "8d47fdb71e2d9358f99dd0fcd1fd1fc7714812d1",
+    "binary_sha256": "34ea07e2e62b85d612f4c2c1578bbe0306f90af5d1df8e28e4ac4243409033a3",
+    "driver_sha256": "0e5c2603ea60df525cad96839e80559000a4178751a76a912f848b7b8d222dea"
+  },
+  "limits": {
+    "max_new_prs": 1,
+    "fixed_branch": "ai/req-121-gh121-real-20260925",
+    "merge": false,
+    "main_write": false,
+    "protection_or_workflow_edit": false,
+    "database": "none; isolated adapter fixture does not seed fabricated product validation rows",
+    "unknown_write": "durable intent; read-only reconciliation before any retry"
+  },
+  "full_evidence": "artifacts/gh121/real-delivery/files.json",
+  "new_implementation_accepted": false,
+  "candidate_rebind": "After implementation and local validation, freeze GH-121 source commit/tree, request host review and rebuild of this driver against that exact candidate; keep all policy and credential constraints. The baseline runner PASS cannot satisfy GH-121 completion. Core admission and controlled fault regressions also remain mandatory.",
+  "at": 1790317070,
+  "baseline_real_scenario": {
+    "gh121_implementation_accepted": false,
+    "head": "1708b3c32bce6289f30706bdc81caf3b3ffbf3be",
+    "observed_at": 1790317039,
+    "pr": 5,
+    "repository_id": 1377749969,
+    "runner_scenario_pass": true,
+    "scope": "baseline real Rust GitHub adapter normal path; core migration and controlled regressions remain required"
+  },
+  "agent_sandbox_route_verified": true,
+  "complete_export_files_verified": 31
+}

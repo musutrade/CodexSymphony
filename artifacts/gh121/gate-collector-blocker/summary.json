@@ -1,0 +1,9 @@
+{
+  "confirmed_cause": "Installed complete Gate Rust collector rejects Serde metadata in contract.rs and environment_host.rs and vec! in delivery_hook_process.rs, delivery_hooks.rs and environment_host.rs; backend capture produced no required coverage/CRAP measurements (run-f8ba2d3305e6).",
+  "recovery_condition": "Approved installed Rust collector source compatibility succeeds for the retained GH-121 contract.rs, delivery_hook_process.rs, delivery_hooks.rs and environment_host.rs without unsupported metadata/macros; resume complete local_gate and require a new exact-tree PASS before publication.",
+  "source_commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+  "gate_tree": "48ffd8f9598a1f4b558ba7a54e80b988a6b5b18f",
+  "saved_progress": "Implementation, 304-test full suite, fmt/clippy and real migrated-core publication evidence retained; npm offline dependency restoration passed; no publication.",
+  "hypotheses": "No product test failure inferred; capture stopped before measurements.",
+  "next_action": "Operator supplies reviewed collector compatibility; resume complete Gate."
+}

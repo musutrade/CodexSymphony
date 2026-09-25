@@ -303,6 +303,10 @@ impl AppClient {
         Ok(self.tokens[&policy.repository_id].permissions.clone())
     }
     async fn ensure_token(&mut self, policy: &Policy, now: i64) -> Result<()> {
+        if !crate::github_credentials::separate_check_identity(policy, self.app_id) {
+            return Err(invalid());
+        }
+
         if self
             .tokens
             .get(&policy.repository_id)

@@ -5,13 +5,14 @@ use crate::{
     delivery_store::{self as store, Pending},
     github_http::{Error, invalid},
 };
-use serde_json::{Value, json};
+use serde_json::Value;
 use sqlx::PgPool;
 use std::path::Path;
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 #[allow(async_fn_in_trait)]
 pub trait Remote {
+    async fn capability_check(&mut self, job: &Pending) -> std::result::Result<Value, Error>;
     async fn find(&mut self, job: &Pending) -> std::result::Result<Option<Value>, Error>;
     async fn head(&mut self, job: &Pending) -> std::result::Result<Option<String>, Error>;
     async fn push(&mut self, job: &Pending) -> std::result::Result<Value, Error>;
@@ -32,10 +33,11 @@ async fn reconcile(
     now: i64,
 ) -> Result<()> {
     store::observed(pool, job, now).await?;
-    let found = match remote.find(job).await {
+    let found = match crate::github_publication_adapter::observe(pool, remote, job, now).await {
         Ok(pr) => pr,
         Err(error) => {
-            store::failed(pool, job, now, &error).await?;
+            let error = error.downcast_ref::<Error>().ok_or(error.to_string())?;
+            store::failed(pool, job, now, error).await?;
             return Ok(());
         }
     };
@@ -93,22 +95,9 @@ async fn publish(
     now: i64,
     operation: &str,
 ) -> Result<()> {
-    if !crate::storage::permit(pool, root).await {
-        return Ok(());
-    }
-    crate::environment_service::admit(pool, job.requirement_id, job.revision, "delivery", None)
-        .await?;
-    crate::validation_context::delivery(pool, &job.action_key).await?;
-    let Some(attempt) = store::begin(pool, job, operation, now).await? else {
-        return Ok(());
-    };
-    let result = if operation == "push" {
-        remote.push(job).await
-    } else {
-        remote.create(job).await
-    };
-    record(pool, job, attempt, now, result).await
+    crate::github_publication_adapter::submit(pool, root, remote, job, now, operation).await
 }
+
 async fn reconcile_pr(
     pool: &PgPool,
     root: &Path,
@@ -154,47 +143,8 @@ async fn close(
     now: i64,
     pr: Value,
 ) -> Result<()> {
-    if !crate::storage::permit(pool, root).await {
-        return Ok(());
+    if job.pr_number != pr["number"].as_i64() {
+        return Err(invalid().into());
     }
-    let Some(attempt) = store::begin(pool, job, "close", now).await? else {
-        return Ok(());
-    };
-    let result = remote
-        .close(job, pr["number"].as_u64().ok_or_else(invalid)?)
-        .await;
-    record(pool, job, attempt, now, result).await
-}
-async fn record(
-    pool: &PgPool,
-    job: &Pending,
-    attempt: i64,
-    now: i64,
-    result: std::result::Result<Value, Error>,
-) -> Result<()> {
-    match result {
-        Ok(result) => {
-            store::receipt(pool, attempt, &result).await?;
-            // A write response is archived, then independently read back next
-            // tick. Cancellation/pause may have arrived while it was in flight.
-            sqlx::query(
-                "UPDATE delivery_action SET next_attempt_at=$3 WHERE action_key=$1 AND kind=$2",
-            )
-            .bind(&job.action_key)
-            .bind(&job.kind)
-            .bind(now)
-            .execute(pool)
-            .await?;
-        }
-        Err(error) => {
-            store::receipt(
-                pool,
-                attempt,
-                &json!({"code":error.code,"http_status":error.status}),
-            )
-            .await?;
-            store::failed(pool, job, now, &error).await?;
-        }
-    }
-    Ok(())
+    crate::github_publication_adapter::submit(pool, root, remote, job, now, "close").await
 }

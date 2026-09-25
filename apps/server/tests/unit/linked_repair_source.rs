@@ -322,7 +322,7 @@ async fn github_target_requires_an_authenticated_exact_branch_sha() {
         async move {
             assert!(request.headers().contains_key("authorization"));
             axum::Json(match request.uri().path() {
-                "/repos/owner/repo/installation" => json!({"id":7,"app_id":42}),
+                "/repos/owner/repo/installation" => json!({"id":7,"app_id":1042}),
                 "/app/installations/7/access_tokens" => json!({"token":"disposable-fixture","expires_at":"2099-01-01T00:00:00Z","permissions":{}}),
                 "/repos/owner/repo/git/ref/heads/main" => value.lock().unwrap().clone(),
                 other => panic!("unexpected source request {other}"),
@@ -333,8 +333,12 @@ async fn github_target_requires_an_authenticated_exact_branch_sha() {
     let url = format!("http://{}/", listener.local_addr().unwrap());
     let task = tokio::spawn(async move { axum::serve(listener, router).await.unwrap() });
     let _ = crate::merge_test_support::client::client(&root);
-    let mut client =
-        AppClient::new(&url, 42, &std::fs::read(root.join("unit-key.pem")).unwrap()).unwrap();
+    let mut client = AppClient::new(
+        &url,
+        1042,
+        &std::fs::read(root.join("unit-key.pem")).unwrap(),
+    )
+    .unwrap();
     let mut remote = RemoteGit {
         client: &mut client,
         now: 1000,

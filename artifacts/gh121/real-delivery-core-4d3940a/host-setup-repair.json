@@ -1,0 +1,5 @@
+{
+  "cause": "Missing host fixture nested-run/target; existing product validation uniqueness prevents retrying same candidate in same requirement revision",
+  "repair": "Directory created. New isolated synthetic test database for real acceptance; previous database and failed evidence retained unchanged. No product validation ledger edited and no actual GH-121 execution/budget reset. This does NOT certify proposed product prerequisite recovery.",
+  "at": 1790334280
+}

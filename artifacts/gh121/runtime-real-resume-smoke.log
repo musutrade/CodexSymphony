@@ -1,0 +1,8 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.22s
+     Running tests/runtime_real.rs (target/debug/deps/runtime_real-57392b561719c369)
+
+running 1 test
+test real_runtime_transport_and_supervision ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.46s
+

@@ -1,0 +1,42 @@
+{
+  "observed_at": "2026-09-25T05:59:57.235746+00:00",
+  "stage": "GH-121 acceptance setup preflight",
+  "environment_presence_only": {
+    "GITHUB_APP_CONFIG": false,
+    "RUNTIME_CONFIG": false
+  },
+  "prepared_environment_entries": [
+    "bin",
+    "dbctl.py",
+    "e2e.py",
+    "environment.lock.json",
+    "environment_contract.py",
+    "http-capture",
+    "pg",
+    "run.py",
+    "verify.py",
+    "workspace_tests.py"
+  ],
+  "source_sha256": {
+    "artifacts/gh121/host-product-identity-preflight.json": "509cff034ab5ef761f978848c67d12f998abea2c054ac852513e65130449d487",
+    "artifacts/gh121/host-delivery-app.json": "7db35641a3134c82a973869296420f2210869ea41282a59aed9bb7979fc31517",
+    "tools/a01-smoke.mjs": "15aec1a02313a21ab7b7822d6108400516bf1ef7507d02497a29377842e657aa",
+    "apps/server/src/github_service.rs": "4bca73c513c0cabf599bb3a3a79cf3283a36eb87fe49739213db347c17ef5461"
+  },
+  "available_external_tool": "github_api: GitHub REST only; no deployed product execution operation",
+  "preauthorized_host_operation": "product.identity_preflight: read-only, receipt PASS; not Runtime or real delivery acceptance",
+  "local_smoke": {
+    "runtime": {
+      "passed": 9,
+      "failed": 0,
+      "log": "artifacts/gh121/runtime-resume-smoke.log"
+    },
+    "runtime_real": {
+      "passed": 1,
+      "failed": 0,
+      "exit_code": 0,
+      "log": "artifacts/gh121/runtime-real-resume-smoke.log"
+    }
+  },
+  "unresolved": "No designated executable host operation/receipt or isolated credential-provider endpoint for exercising the Rust product GitHub adapter is supplied. The identity receipt does not supply that execution capability. No credentials read and no external write attempted."
+}

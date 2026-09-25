@@ -1,0 +1,60 @@
+{
+  "schema": "gh121-test-layout-repair/v1",
+  "status": "LOCAL_CHECKS_PASS_REAL_SOURCE_REBIND_REQUIRED",
+  "product_commit": "f4042a278642e071115a6a90ff0b838da1b792a9",
+  "product_tree": "1f47365451cdd0f1647016dbb365fd7a93941d28",
+  "source_inventory": "artifacts/gh121/test-layout-repair/source-inventory.json",
+  "source_files": 710,
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "python3 /opt/symphony-env/workspace_tests.py",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/workspace-tests.log",
+      "sha256": "ffd74a18e58c1be6c41be3bae896892b6889fa4c20c5a8e3a07cd65bff9be613"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/clippy.log",
+      "sha256": "87e48f781ee01b87a252ed8a993f70a1c2e6b0c0dc1f67bde63bad225fea6ad3"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/gate-config.log",
+      "sha256": "b47bdbbdf42026d7281b2db9721dc8f71b2b8053dc7fd321b99ba944e791a490"
+    }
+  ],
+  "top_level_tests_passed": 310,
+  "failed": 0,
+  "ignored": 0,
+  "reported_top_level_suites": 39,
+  "repair": "Move only cfg(test) helpers/tests unchanged except indentation into existing tests/unit layout. Production function bytes unchanged. No exclusions or quality policy changes.",
+  "relocation_evidence": "artifacts/gh121/test-layout-repair/relocation.json",
+  "failed_gate": {
+    "run": "run-0fc9aa8603b4",
+    "tree": "16e2da7a8ac58c7c856a62b53c3e2bf15cb00f7a",
+    "manifest": "artifacts/gh121/test-layout-repair/manifest.json",
+    "cause": "Exact source mapping failed for cfg(test) helpers/tests in three files. LLVM coverage file produced; required source-bound measurements and final report not produced.",
+    "repair_confirmed_by_complete_gate": false
+  },
+  "latest_real_core_receipt": "artifacts/gh121/host-real-core-cae3b48-acceptance.json",
+  "latest_real_core_product_commit": "cae3b48dcc5759f6506e38661b84dc7b84643490",
+  "real_current_candidate_acceptance": false,
+  "complete_gate_pass": false,
+  "next_operation": "product.real_delivery_candidate_install",
+  "remaining": [
+    "Host source-bound reviewed candidate/driver rebuild and real-core receipt for the new exact source",
+    "Finalize evidence then complete exact-tree local_gate with source-bound LLVM coverage/CRAP; repair any remaining failures",
+    "Publish through github_api only after complete PASS"
+  ],
+  "migration_rollback": "docs/delivery-extensions.md",
+  "publication": "none; local commit only",
+  "evidence_manifest": ".symphony-evidence.json"
+}

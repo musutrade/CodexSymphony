@@ -1,0 +1,86 @@
+{
+  "issue": "GH-121",
+  "status": "REAL_CORE_ACCEPTANCE_PASS",
+  "product_binding": {
+    "product_commit": "f4042a278642e071115a6a90ff0b838da1b792a9",
+    "product_tree": "1f47365451cdd0f1647016dbb365fd7a93941d28",
+    "binary_sha256": "d47b8d2efbd7d3ba699aaa08228b770d532ef87475907d6e7370448c1d0f537c",
+    "driver_main_sha256": "2a2ca75392d91fbd3d7dee9b1473928af6600664946c6592dd2070249b37a0d3",
+    "driver_core_sha256": "29bc70a70a251482e38bdd54d9cbb551f9367009a77464e35733f400b5e13c1e",
+    "driver_lock_sha256": "4f9149d99aee1d637a29db780f9199e008b6006ff285423c95d00786ef942b2a",
+    "credential_isolated_build": true,
+    "exit_code": 0,
+    "at": 1790331289
+  },
+  "scenario": {
+    "product_commit": "f4042a278642e071115a6a90ff0b838da1b792a9",
+    "product_tree": "1f47365451cdd0f1647016dbb365fd7a93941d28",
+    "repository_id": 1377749969,
+    "repository": "musutrade/disposable-2",
+    "base": "main",
+    "base_sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+    "branch": "ai/req-1-gh121-core-f4042a2",
+    "max_new_prs": 1,
+    "fixture_requirement_id": 1,
+    "fixture_source_run": "gh121-core-f4042a2",
+    "validation": "product validation_service::validate with frozen cargo test --locked --offline; success and outbox created by product",
+    "profile": "legacy-compatible frozen validation policy, no optional auxiliary hooks; does not certify all hook fault scenarios",
+    "publication": "github_publication_adapter::submit -> delivery_extension::invoke; genuine validation admission and existing delivery_attempt ledger",
+    "main_write": false,
+    "merge": false,
+    "protection_write": false,
+    "workflow_write": false,
+    "production_deployment": false,
+    "credential_isolation": "fixed Rust driver only; nested test namespace excludes both App key and verification database connection file",
+    "database": "isolated gh121_compat_f4042a2 database in fixture-only codexsymphony-gh121-core-pg; no production state"
+  },
+  "candidate": {
+    "immutable": true,
+    "sha": "f707fdfe338e82a7935e55aa610f7b34638bc14e",
+    "tree": "be3fac68969c5ec54e404a3b8c0956ab7ba07c9e"
+  },
+  "validation_id": "gh121-core-validation-f4042a2",
+  "action_key": "b8882f646e16e48873fe49946bcc14250ae81cf66c91bf21ac896f4bc7086881",
+  "remote": {
+    "action_key": "b8882f646e16e48873fe49946bcc14250ae81cf66c91bf21ac896f4bc7086881",
+    "base": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+    "branch": "ai/req-1-gh121-core-f4042a2",
+    "head": "f707fdfe338e82a7935e55aa610f7b34638bc14e",
+    "number": 10,
+    "url": "https://github.com/musutrade/disposable-2/pull/10"
+  },
+  "new_core_submit_exercised": true,
+  "real_core_publication_pass": true,
+  "genuine_validation": true,
+  "persisted_intent_before_send": true,
+  "successful_operation_receipts": 2,
+  "duplicate_submit_blocked": true,
+  "agent_sandbox_route_verified": true,
+  "fixture_sha256": "5aaca34d2096fcf30bc658b0724fadf459afeae9c90b69e2a65c23d0a3e246e9",
+  "invocation": [
+    "python3",
+    ".agent-env/core-f4042a2/request.py",
+    "observe"
+  ],
+  "allowed_operations": [
+    "setup",
+    "submit",
+    "observe"
+  ],
+  "credential_boundary": {
+    "key_only_in_fixed_native_driver": true,
+    "test_process_no_app_or_verification_db_credentials": true,
+    "workspace_programs_not_executed_with_app_key": true,
+    "arbitrary_requests_rejected": true
+  },
+  "complete_evidence": {
+    "path": "artifacts/gh121/real-delivery-core-f4042a2/files.json",
+    "files_verified": 33,
+    "includes_validation_logs_and_reviewed_driver_source": true
+  },
+  "complete_gate_pass": false,
+  "full_issue_accepted": false,
+  "remaining": "Finalize candidate acceptance/evidence and complete exact-tree local_gate before publication; controlled fault and optional Hook coverage remain evaluated by the issue suite. This real scenario uses preserved legacy-compatible frozen validation policy.",
+  "at": 1790331289,
+  "supersedes_for_product_source": "PR #9 is historical evidence for cae3b48; current f4042a2 is exercised through fresh PR #10"
+}

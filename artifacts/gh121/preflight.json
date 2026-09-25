@@ -1,0 +1,56 @@
+[
+  {
+    "command": [
+      "git",
+      "rev-parse",
+      "HEAD"
+    ],
+    "exit_code": 0,
+    "stdout": "034d803df21185305429681e2dac3a1e57d57af9\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "status",
+      "--short"
+    ],
+    "exit_code": 0,
+    "stdout": "?? artifacts/gh121/\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "python3",
+      "/opt/symphony-env/dbctl.py",
+      "status",
+      "test"
+    ],
+    "exit_code": 0,
+    "stdout": "{\"ok\": true, \"role\": \"test\", \"before_id\": \"e5c7da78a560eb434be0477ccda93068eda60b358f63c6fe4cdd686dc71a4d5c\", \"container_id\": \"e5c7da78a560eb434be0477ccda93068eda60b358f63c6fe4cdd686dc71a4d5c\", \"running\": true, \"image\": \"sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777\", \"storage\": \"tmpfs\", \"memory_limit_bytes\": 2147483648, \"environment\": {\"image\": \"sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777\", \"memory\": 2147483648, \"memory_swap\": 4294967296, \"nano_cpus\": 1000000000}, \"memory_events\": {\"low\": 0, \"high\": 0, \"max\": 0, \"oom\": 0, \"oom_kill\": 0, \"oom_group_kill\": 0, \"sock_throttled\": 0}}\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "python3",
+      "tools/gate.py",
+      "config",
+      "check"
+    ],
+    "exit_code": 0,
+    "stdout": "Configuration valid: /home/gem/.local/share/codexsymphony/workspaces/GH-121/.harness-gate/flow.toml\nSchema version: 2\nComponents: backend, frontend\nProfiles: ci, full, hook\nVerification steps: 8\nQuality configuration valid: .harness-gate/quality.toml (v1)\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "python3",
+      "/opt/symphony-env/run.py",
+      "bash",
+      "-c",
+      "cargo --version; rustc --version; node --version; python3 --version; command -v codex; test -w /tmp && test -w . && echo writable; python3 /opt/symphony-env/run.py psql \"$TEST_DATABASE_URL\" -Atc \"select 1\""
+    ],
+    "exit_code": 0,
+    "stdout": "cargo 1.97.1 (c980f4866 2026-06-30)\nrustc 1.97.1 (8bab26f4f 2026-07-14)\nv24.18.0\nPython 3.14.4\n/opt/codex/codex\nwritable\n1\n",
+    "stderr": ""
+  }
+]

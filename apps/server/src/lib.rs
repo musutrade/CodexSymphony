@@ -196,3 +196,12 @@ pub mod linked_repair;
 pub mod linked_repair_acceptance;
 pub mod linked_repair_source;
 pub mod linked_repair_worker;
+
+pub mod delivery_extension;
+pub mod delivery_hook_process;
+pub mod delivery_hooks;
+pub mod github_credentials;
+pub mod github_merge_adapter;
+pub mod github_publication_adapter;
+
+pub mod json_defaults;

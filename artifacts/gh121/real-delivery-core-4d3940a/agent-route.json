@@ -1,0 +1,17 @@
+{
+  "namespace": "installed Symphony trusted_environment.command",
+  "operation": "observe",
+  "exit_code": 0,
+  "credential_absence_assertions": [
+    "App private-key directory",
+    "GitHub CLI credentials",
+    "SYMPHONY_OPERATOR_TOKEN"
+  ],
+  "response": {
+    "ok": true,
+    "exit_code": 0,
+    "fixture_sha256": "59828cf57a87b249487f8e0a4b95df22fe8a523f851c6b33397d397b15198a64",
+    "evidence": "artifacts/gh121/real-delivery-core-4d3940a/files.json",
+    "gh121_implementation_accepted": false
+  }
+}

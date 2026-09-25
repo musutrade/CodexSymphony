@@ -218,7 +218,7 @@ async fn material_protection(
     }
     protection.consumer |= sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM storage_material WHERE status<>'deleted' AND archive->>'path'=$1)")
         .bind(&item.path).fetch_one(&mut **tx).await?;
-    protection.active |= sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM project_hook_invocation i JOIN project_hook_run h ON h.run_id=i.run_id WHERE (i.run_id=$1 OR h.workspace=$2 OR starts_with(i.output_dir,$2||'/')) AND i.status IN ('intent','running','unknown') AND NOT i.stop_confirmed)")
+    protection.active |= sqlx::query_scalar::<_,bool>("SELECT EXISTS(SELECT 1 FROM project_hook_invocation i JOIN project_hook_run h ON h.run_id=i.run_id WHERE (i.run_id=$1 OR h.workspace=$2 OR starts_with(i.output_dir,$2||'/')) AND i.status IN ('intent','running','unknown') AND (NOT i.stop_confirmed OR i.event IN ('before_deliver','before_publish','before_merge')))")
         .bind(&item.run_id).bind(&item.path).fetch_one(&mut **tx).await?;
     protection.unreconciled |= preparation_pending(item);
     Ok(protection)

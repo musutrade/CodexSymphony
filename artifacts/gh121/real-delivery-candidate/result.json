@@ -1,0 +1,10 @@
+{
+  "gh121_implementation_accepted": false,
+  "head": "1708b3c32bce6289f30706bdc81caf3b3ffbf3be",
+  "observed_at": 1790321304,
+  "pr": 5,
+  "product_commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+  "repository_id": 1377749969,
+  "runner_scenario_pass": true,
+  "scope": "candidate-bound native GitHub adapter reconciliation; existing baseline PR is not proof of a new publication through the core boundary"
+}
