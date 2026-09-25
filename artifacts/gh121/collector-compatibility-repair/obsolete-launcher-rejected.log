@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/opt/symphony-env/workspace_tests.py", line 36, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/opt/symphony-env/workspace_tests.py", line 18, in main
+    raise RuntimeError(f'Codex version mismatch: expected {expected}, got {actual}')
+RuntimeError: Codex version mismatch: expected codex-cli 0.156.1, got codex-cli 0.154.0

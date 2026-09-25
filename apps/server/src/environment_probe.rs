@@ -130,7 +130,8 @@ fn resource_call(
     invocation_id: &str,
     context: Option<&TaskContext>,
 ) -> Result<ResourceCall> {
-    let approved = std::slice::from_ref(&profile.registration);
+    let registrations = profile.registrations();
+    let approved = registrations.as_slice();
     let mut resource = ResourceCall {
         protocol_version: 1,
         invocation_id: invocation_id.into(),
@@ -233,12 +234,8 @@ fn task_call(
         deadline_unix_ms: request.resource.deadline_unix_ms,
         required_checks: request.required_checks.clone(),
     };
-    call.validate(
-        &context.frozen,
-        &plan.controlled,
-        std::slice::from_ref(&profile.registration),
-    )
-    .map_err(crate::environment::protocol)?;
+    call.validate(&context.frozen, &plan.controlled, &profile.registrations())
+        .map_err(crate::environment::protocol)?;
     Ok(call)
 }
 

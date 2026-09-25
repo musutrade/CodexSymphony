@@ -37,6 +37,7 @@ pub struct Policy {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Repository {
+    pub delivery: Option<crate::extension_contract::DeliveryMode>,
     pub environment: Option<crate::environment::Plan>,
     pub model: Option<String>,
     pub hooks: Vec<crate::extension_contract::HookConfig>,
@@ -58,6 +59,9 @@ impl Serialize for Repository {
             let text = serde_json::to_string(plan).map_err(serde::ser::Error::custom)?;
             value.serialize_field("environment", &text)?;
         }
+        if let Some(delivery) = &self.delivery {
+            value.serialize_field("delivery", delivery)?;
+        }
         self.serialize_identity(&mut value)?;
         self.serialize_policy(&mut value)?;
         value.end()
@@ -65,6 +69,11 @@ impl Serialize for Repository {
 }
 
 impl Repository {
+    pub fn delivery_mode(&self) -> crate::extension_contract::DeliveryMode {
+        self.delivery
+            .clone()
+            .unwrap_or(crate::extension_contract::DeliveryMode::GithubPr)
+    }
     fn serialize_policy<S: serde::ser::SerializeStruct>(
         &self,
         value: &mut S,
@@ -84,7 +93,9 @@ impl Repository {
         value.serialize_field("hooks", &self.hooks)?;
         value.serialize_field("project", &self.project)?;
         value.serialize_field("remote", &self.remote)?;
-        value.serialize_field("github_repository_id", &self.github_repository_id)?;
+        if self.delivery_mode() == crate::extension_contract::DeliveryMode::GithubPr {
+            value.serialize_field("github_repository_id", &self.github_repository_id)?;
+        }
         Ok(())
     }
 }
@@ -92,6 +103,7 @@ impl Repository {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RepositoryWire {
+    delivery: Option<crate::extension_contract::DeliveryMode>,
     environment: Option<String>,
     model: Option<String>,
     hooks: Option<Vec<crate::extension_contract::HookConfig>>,
@@ -109,8 +121,13 @@ impl<'de> Deserialize<'de> for Repository {
     where
         D: serde::Deserializer<'de>,
     {
-        let wire = RepositoryWire::deserialize(deserializer)?;
+        let wire: RepositoryWire = crate::json_defaults::field(
+            deserializer,
+            "github_repository_id",
+            serde_json::json!(0),
+        )?;
         Ok(Self {
+            delivery: wire.delivery,
             environment: wire
                 .environment
                 .map(|text| serde_json::from_str(&text))
@@ -153,20 +170,39 @@ pub fn validate_repository(repo: &Repository) -> Result<(), &'static str> {
         text(&repo.project) && text(&repo.reason),
         "project and reason are required",
     )?;
+    validate_repository_target(repo)?;
+    require(identifier(&repo.base_branch), "base branch is required")?;
     require(
-        repo.remote.split('/').count() == 2 && identifier(&repo.remote),
-        "remote must be owner/repository",
-    )?;
-    require(
-        repo.github_repository_id > 0 && identifier(&repo.base_branch),
-        "repository identity and base branch are required",
-    )?;
-    require(
-        repo.model.as_ref().is_none_or(|model| identifier(model)),
+        match &repo.model {
+            Some(model) => identifier(model),
+            None => true,
+        },
         "invalid model identity",
     )?;
     validate_repository_hooks(&repo.hooks)?;
     validate_policy(&repo.policy)
+}
+
+fn validate_repository_target(repo: &Repository) -> Result<(), &'static str> {
+    match repo.delivery_mode() {
+        crate::extension_contract::DeliveryMode::GithubPr => {
+            require(
+                repo.remote.split('/').count() == 2 && identifier(&repo.remote),
+                "remote must be owner/repository",
+            )?;
+            require(
+                repo.github_repository_id > 0,
+                "repository identity is required",
+            )?;
+        }
+        crate::extension_contract::DeliveryMode::LocalGit => {
+            require(
+                identifier(&repo.remote) && repo.github_repository_id == 0,
+                "local target reference must not include a GitHub identity",
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn validate_repository_hooks(

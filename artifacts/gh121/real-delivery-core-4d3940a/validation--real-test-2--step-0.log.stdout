@@ -1,0 +1,16 @@
+App key and verification DB credentials absent
+   Compiling a13-disposable v0.1.0 (/home/gem/.local/share/codexsymphony/gh121-core-4d3940a/data/workspaces/runs/gh121-core-4d3940a)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running unittests src/lib.rs (/home/gem/.local/share/codexsymphony/gh121-core-4d3940a/nested-run/target/debug/deps/a13_disposable-a758cad80842c4b3)
+
+running 1 test
+test repository_identity ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests a13_disposable
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

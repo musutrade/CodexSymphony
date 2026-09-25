@@ -1,0 +1,422 @@
+{
+  "scope": "complete backend source measurement threshold diagnostics; NOT signed complete Gate verification",
+  "subjects_with_violations": 15,
+  "subjects": [
+    {
+      "source": "apps/server/src/contract.rs",
+      "source_sha256": "5b3e4e50b4ac9f4a4fb4e903f51237ca6e5d7a0d0e2ff6d5a18632e287febd69",
+      "start": [
+        168,
+        1
+      ],
+      "end": [
+        198,
+        2
+      ],
+      "name": "validate_repository",
+      "complexity": 12,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 12364,
+            "denominator": 1029
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_extension.rs",
+      "source_sha256": "ba16d27aeace0d2f0b45b31068441840e284c2a79face77ee27d5027a41541ce",
+      "start": [
+        107,
+        1
+      ],
+      "end": [
+        131,
+        2
+      ],
+      "name": "invoke",
+      "complexity": 13,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 13,
+            "denominator": 1
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hook_process.rs",
+      "source_sha256": "23dca208d29e1d48d060b65fcf912ff2a04a6e9d0e23a7f7540942d5c8e03e7e",
+      "start": [
+        50,
+        1
+      ],
+      "end": [
+        86,
+        2
+      ],
+      "name": "execute",
+      "complexity": 12,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 393,
+            "denominator": 32
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hook_process.rs",
+      "source_sha256": "23dca208d29e1d48d060b65fcf912ff2a04a6e9d0e23a7f7540942d5c8e03e7e",
+      "start": [
+        88,
+        1
+      ],
+      "end": [
+        116,
+        2
+      ],
+      "name": "spawn",
+      "complexity": 10,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 244690,
+            "denominator": 24389
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hook_process.rs",
+      "source_sha256": "23dca208d29e1d48d060b65fcf912ff2a04a6e9d0e23a7f7540942d5c8e03e7e",
+      "start": [
+        118,
+        1
+      ],
+      "end": [
+        137,
+        2
+      ],
+      "name": "wait",
+      "complexity": 10,
+      "violations": [
+        {
+          "metric": "coverage.region",
+          "value": {
+            "numerator": 31,
+            "denominator": 42
+          },
+          "limit": ">= 0.8"
+        },
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 7390,
+            "denominator": 729
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hook_process.rs",
+      "source_sha256": "23dca208d29e1d48d060b65fcf912ff2a04a6e9d0e23a7f7540942d5c8e03e7e",
+      "start": [
+        139,
+        1
+      ],
+      "end": [
+        146,
+        2
+      ],
+      "name": "check_startup",
+      "complexity": 4,
+      "violations": [
+        {
+          "metric": "coverage.line",
+          "value": {
+            "numerator": 5,
+            "denominator": 7
+          },
+          "limit": ">= 0.8"
+        },
+        {
+          "metric": "coverage.region",
+          "value": {
+            "numerator": 6,
+            "denominator": 11
+          },
+          "limit": ">= 0.8"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hook_process.rs",
+      "source_sha256": "23dca208d29e1d48d060b65fcf912ff2a04a6e9d0e23a7f7540942d5c8e03e7e",
+      "start": [
+        155,
+        29
+      ],
+      "end": [
+        155,
+        73
+      ],
+      "name": "<closure>",
+      "complexity": 1,
+      "violations": [
+        {
+          "metric": "coverage.line",
+          "value": {
+            "numerator": 0,
+            "denominator": 1
+          },
+          "limit": ">= 0.8"
+        },
+        {
+          "metric": "coverage.region",
+          "value": {
+            "numerator": 0,
+            "denominator": 2
+          },
+          "limit": ">= 0.8"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hooks.rs",
+      "source_sha256": "4bdd22e127823ee36d412926cfdeacd2cbaef7861739fe8da05390b955044546",
+      "start": [
+        39,
+        1
+      ],
+      "end": [
+        92,
+        2
+      ],
+      "name": "run",
+      "complexity": 17,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 2007836,
+            "denominator": 117649
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hooks.rs",
+      "source_sha256": "4bdd22e127823ee36d412926cfdeacd2cbaef7861739fe8da05390b955044546",
+      "start": [
+        111,
+        1
+      ],
+      "end": [
+        212,
+        2
+      ],
+      "name": "execute",
+      "complexity": 18,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 3066705,
+            "denominator": 170368
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_hooks.rs",
+      "source_sha256": "4bdd22e127823ee36d412926cfdeacd2cbaef7861739fe8da05390b955044546",
+      "start": [
+        251,
+        1
+      ],
+      "end": [
+        273,
+        2
+      ],
+      "name": "reconcile",
+      "complexity": 10,
+      "violations": [
+        {
+          "metric": "coverage.region",
+          "value": {
+            "numerator": 37,
+            "denominator": 49
+          },
+          "limit": ">= 0.8"
+        },
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 827,
+            "denominator": 80
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/delivery_remote.rs",
+      "source_sha256": "0f8655df3b88250aca90934d818519b149828b9a7d5609150a4e521949647e36",
+      "start": [
+        129,
+        5
+      ],
+      "end": [
+        153,
+        6
+      ],
+      "name": "push",
+      "complexity": 7,
+      "violations": [
+        {
+          "metric": "coverage.line",
+          "value": {
+            "numerator": 14,
+            "denominator": 25
+          },
+          "limit": ">= 0.8"
+        },
+        {
+          "metric": "coverage.region",
+          "value": {
+            "numerator": 26,
+            "denominator": 37
+          },
+          "limit": ">= 0.8"
+        },
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 174594,
+            "denominator": 15625
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/github_merge_adapter.rs",
+      "source_sha256": "00e348777cdf4a721b99f47327fb7e761e22126c2e877e74521809b89d1a0986",
+      "start": [
+        26,
+        5
+      ],
+      "end": [
+        49,
+        6
+      ],
+      "name": "submit",
+      "complexity": 11,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 995,
+            "denominator": 88
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/github_merge_adapter.rs",
+      "source_sha256": "00e348777cdf4a721b99f47327fb7e761e22126c2e877e74521809b89d1a0986",
+      "start": [
+        56,
+        5
+      ],
+      "end": [
+        61,
+        6
+      ],
+      "name": "reconcile",
+      "complexity": 2,
+      "violations": [
+        {
+          "metric": "coverage.line",
+          "value": {
+            "numerator": 0,
+            "denominator": 4
+          },
+          "limit": ">= 0.8"
+        },
+        {
+          "metric": "coverage.region",
+          "value": {
+            "numerator": 0,
+            "denominator": 9
+          },
+          "limit": ">= 0.8"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/github_publication_adapter.rs",
+      "source_sha256": "9ea6638978c4743e2e9acb575d8165dc66754995f92e98d0c636df5e7c46996b",
+      "start": [
+        32,
+        5
+      ],
+      "end": [
+        53,
+        6
+      ],
+      "name": "submit",
+      "complexity": 10,
+      "violations": [
+        {
+          "metric": "risk.crap",
+          "value": {
+            "numerator": 68690,
+            "denominator": 6859
+          },
+          "limit": "<= 10"
+        }
+      ]
+    },
+    {
+      "source": "apps/server/src/github_service.rs",
+      "source_sha256": "023d7efd0519360e38f906d98b843e1c7b5115df0a9ceec38d028ec0652cb0cd",
+      "start": [
+        17,
+        1
+      ],
+      "end": [
+        21,
+        2
+      ],
+      "name": "load",
+      "complexity": 4,
+      "violations": [
+        {
+          "metric": "coverage.region",
+          "value": {
+            "numerator": 11,
+            "denominator": 14
+          },
+          "limit": ">= 0.8"
+        }
+      ]
+    }
+  ]
+}

@@ -63,6 +63,18 @@ impl Github<'_> {
     }
 }
 impl Remote for Github<'_> {
+    async fn capability_check(&mut self, job: &Pending) -> Result<Value, Error> {
+        self.bound(job)?;
+        self.candidate(job)?;
+        let permissions = self.client.permissions(&self.policy, self.now).await?;
+        let repository =
+            crate::github_observe::repository(self.client, &self.policy, self.now).await?;
+        if repository["id"] != job.repository_id {
+            return Err(invalid());
+        }
+        Ok(json!({"repository":repository,"permissions":permissions}))
+    }
+
     async fn find(&mut self, job: &Pending) -> Result<Option<Value>, Error> {
         self.bound(job)?;
         let path = self.query(job)?;
@@ -117,6 +129,17 @@ impl Remote for Github<'_> {
     async fn push(&mut self, job: &Pending) -> Result<Value, Error> {
         self.bound(job)?;
         let repository = self.candidate(job)?;
+        let current = self.head(job).await?;
+        if current.as_deref() == Some(&job.head_sha) {
+            return Ok(json!({"already_at_candidate":job.head_sha}));
+        }
+        let expected = match job.expected_head.as_deref() {
+            Some(head) => Some(head),
+            None => job.manifest["workspace"]["baseline"].as_str(),
+        };
+        if current.is_some() && current.as_deref() != expected {
+            return Err(invalid());
+        }
         self.client
             .push_conditional(
                 &self.policy,
@@ -131,6 +154,9 @@ impl Remote for Github<'_> {
     async fn create(&mut self, job: &Pending) -> Result<Value, Error> {
         self.bound(job)?;
         self.candidate(job)?;
+        if self.head(job).await?.as_deref() != Some(&job.head_sha) {
+            return Err(invalid());
+        }
         self.client.write(&self.policy,reqwest::Method::POST,&self.path("pulls"),json!({"title":format!("Requirement {} revision {}",job.requirement_id,job.revision),"head":job.branch,"base":job.base_branch,"body":job.identity().marker()}),self.now).await
     }
     async fn close(&mut self, job: &Pending, number: u64) -> Result<Value, Error> {

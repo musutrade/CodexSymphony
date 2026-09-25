@@ -1,0 +1,10 @@
+{
+  "status": "waiting_external",
+  "issue_id": "121",
+  "repo": "musutrade/CodexSymphony",
+  "operation": "product.identity_preflight",
+  "request_id": "gh121-identity-preflight-f8c1bc5cd1a6482f9eb23b8fed34502f",
+  "reason": "Local environment and Runtime smoke checks passed; real GitHub delivery regression requires current deployed product health/database and designated repository delivery identities, observable through the preauthorized read-only host operation.",
+  "evidence": "artifacts/gh121/resume-notes.md",
+  "resume_condition": "health=ok; database=ok; repositories=1360824360,1377749969; delivery_ready=true"
+}

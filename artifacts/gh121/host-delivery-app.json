@@ -1,0 +1,28 @@
+{
+  "app_id": 5069731,
+  "slug": "musutrade-symphony-delivery",
+  "installation_id": 164696480,
+  "permissions": {
+    "actions": "read",
+    "administration": "read",
+    "checks": "read",
+    "contents": "write",
+    "metadata": "read",
+    "pull_requests": "write"
+  },
+  "repository_selection": "selected",
+  "repositories": [
+    [
+      "musutrade/disposable",
+      1360824360
+    ],
+    [
+      "musutrade/disposable-2",
+      1377749969
+    ]
+  ],
+  "private_key_matches": true,
+  "checked_at": 1790315553,
+  "status": "PASS: independent delivery App installed and product identity preflight passed",
+  "notice": "Separate delivery App; Gate App remains 4867361. Real delivery regression must follow issue authorization, frozen policy and all admission checks. The legacy disposable test-job is an echo-only historical probe, not substantive quality acceptance."
+}

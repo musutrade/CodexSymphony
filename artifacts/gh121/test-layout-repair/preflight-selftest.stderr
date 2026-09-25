@@ -1,0 +1,124 @@
+test_cancellation_stops_child_process_group (test_ci_policy.Cancellation.test_cancellation_stops_child_process_group) ... ok
+test_cancelled_queue_does_not_clone_or_create_check (test_ci_policy.Cancellation.test_cancelled_queue_does_not_clone_or_create_check) ... ok
+test_documentation_does_not_prepare_dependencies_or_launch_full_gate (test_ci_policy.Cancellation.test_documentation_does_not_prepare_dependencies_or_launch_full_gate) ... ok
+test_midrun_cancellation_publishes_cancelled_not_success (test_ci_policy.Cancellation.test_midrun_cancellation_publishes_cancelled_not_success) ... ok
+test_process_exit_timeout_and_api_error (test_ci_policy.Cancellation.test_process_exit_timeout_and_api_error) ... ok
+test_stale_attempt_and_completed_actions_are_cancelled (test_ci_policy.Cancellation.test_stale_attempt_and_completed_actions_are_cancelled) ... ok
+test_code_and_unknown_markdown_require_full (test_ci_policy.DocumentationScope.test_code_and_unknown_markdown_require_full) ... ok
+test_deleted_renamed_executable_and_symlink_docs_require_full (test_ci_policy.DocumentationScope.test_deleted_renamed_executable_and_symlink_docs_require_full) ... ok
+test_doc_receipt_has_exact_identity_and_explicit_scope (test_ci_policy.DocumentationScope.test_doc_receipt_has_exact_identity_and_explicit_scope) ... ok
+test_invalid_docs_reject_instead_of_pass (test_ci_policy.DocumentationScope.test_invalid_docs_reject_instead_of_pass) ... ok
+test_no_baseline_or_changed_policy_or_docs_baseline_requires_full (test_ci_policy.DocumentationScope.test_no_baseline_or_changed_policy_or_docs_baseline_requires_full) ... ok
+test_nonancestor_success_cannot_authorize_docs (test_ci_policy.DocumentationScope.test_nonancestor_success_cannot_authorize_docs) ... ok
+test_only_whole_approved_snapshots_match (test_host.DeploymentTransition.test_only_whole_approved_snapshots_match) ... ok
+test_unknown_deployment_fields_are_not_configuration_overrides (test_host.DeploymentTransition.test_unknown_deployment_fields_are_not_configuration_overrides) ... ok
+test_only_full_main_push_can_publish_compiler_cache (test_host.GateTimeBudget.test_only_full_main_push_can_publish_compiler_cache) ... ok
+test_timeout_default_configuration_and_invalid_values (test_host.GateTimeBudget.test_timeout_default_configuration_and_invalid_values) ... ok
+test_failed_grant_is_not_cached (test_host.InstallationTokens.test_failed_grant_is_not_cached) ... ok
+test_scoped_token_reuse_and_refresh (test_host.InstallationTokens.test_scoped_token_reuse_and_refresh) ... ok
+test_finished_actions_receipt_is_reconciled_once_without_success (test_host.InterruptedRecovery.test_finished_actions_receipt_is_reconciled_once_without_success) ... ok
+test_cross_device_dependencies_copy_and_other_errors_propagate (test_host.TrustedRun.test_cross_device_dependencies_copy_and_other_errors_propagate) ... ok
+test_exact_attempt_identity (test_host.TrustedRun.test_exact_attempt_identity) ... ok
+test_fork_and_wrong_workflow_are_rejected (test_host.TrustedRun.test_fork_and_wrong_workflow_are_rejected) ... ok
+test_policy_and_symlink_changes_are_rejected (test_host.TrustedRun.test_policy_and_symlink_changes_are_rejected) ... ok
+test_direct_authenticated_requests_still_work (test_redirects.CredentialRedirects.test_direct_authenticated_requests_still_work) ... ok
+test_https_downgrade_is_rejected_by_same_handler (test_redirects.CredentialRedirects.test_https_downgrade_is_rejected_by_same_handler) ... ok
+test_invalid_origin_paths_fail_before_transport (test_redirects.CredentialRedirects.test_invalid_origin_paths_fail_before_transport) ... ok
+test_non_success_is_not_retried (test_redirects.CredentialRedirects.test_non_success_is_not_retried) ... ok
+test_redirects_never_reach_same_or_cross_origin_sink_or_replay_writes (test_redirects.CredentialRedirects.test_redirects_never_reach_same_or_cross_origin_sink_or_replay_writes) ... ok
+test_equal_tree_binds_new_attempt_without_relabelling_prior_report (test_tree_reuse.TreeReuse.test_equal_tree_binds_new_attempt_without_relabelling_prior_report) ... ok
+test_queue_time_does_not_consume_execution_budget (test_wait_workflow.WaitBudgets.test_queue_time_does_not_consume_execution_budget) ... ok
+test_separate_timeouts_and_wrong_app_cannot_start_clock (test_wait_workflow.WaitBudgets.test_separate_timeouts_and_wrong_app_cannot_start_clock) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 8.428s
+
+OK
+test_cache_symlink_cannot_delete_evidence (test_cache.CacheTests.test_cache_symlink_cannot_delete_evidence) ... ok
+test_only_build_cache_is_removed (test_cache.CacheTests.test_only_build_cache_is_removed) ... ok
+test_expanded_workspace_falls_back_and_partial_capture_never_gets_sealed (test_execution_cache.CapturedTests.test_expanded_workspace_falls_back_and_partial_capture_never_gets_sealed) ... ok
+test_same_capture_reused_but_source_log_commit_and_partial_selection_rejected (test_execution_cache.CapturedTests.test_same_capture_reused_but_source_log_commit_and_partial_selection_rejected) ... ok
+test_capacity_ttl_and_unsafe_entries (test_execution_cache.PrivateCache.test_capacity_ttl_and_unsafe_entries) ... ok
+test_main_seed_is_private_and_counters_never_cross_runs (test_execution_cache.PrivateCache.test_main_seed_is_private_and_counters_never_cross_runs) ... ok
+test_workspace_outputs_are_excluded_before_copying (test_execution_cache.PrivateCache.test_workspace_outputs_are_excluded_before_copying) ... ok
+test_tls_cookie_response_csrf_and_restricted_bootstrap (test_http_auth.AuthCaptureTests.test_tls_cookie_response_csrf_and_restricted_bootstrap) ... ok
+test_business_authorizations_and_setup_enums_are_not_credentials (test_http_contract.ContractBridgeTests.test_business_authorizations_and_setup_enums_are_not_credentials) ... ok
+test_rejects_raw_schema_missing_coverage_duplicates_and_mask_constraints (test_http_contract.ContractBridgeTests.test_rejects_raw_schema_missing_coverage_duplicates_and_mask_constraints) ... ok
+test_verified_tls_full_measurement_and_retained_sentinel_scan (test_http_contract.ContractBridgeTests.test_verified_tls_full_measurement_and_retained_sentinel_scan) ... ok
+test_metadata_imports_preserve_inventory_and_rejections (test_http_interceptors.InterceptorInventoryTests.test_metadata_imports_preserve_inventory_and_rejections) ... ok
+test_fixture_cannot_read_outside_checkout (test_http_scenarios.FixtureTests.test_fixture_cannot_read_outside_checkout) ... ok
+test_fixture_runs_in_supplied_disposable_container_and_errors_abort (test_http_scenarios.FixtureTests.test_fixture_runs_in_supplied_disposable_container_and_errors_abort) ... ok
+test_external_listener_and_invalid_references_are_rejected (test_http_scenarios.ScenarioTests.test_external_listener_and_invalid_references_are_rejected) ... ok
+test_real_post_patch_and_response_binding (test_http_scenarios.ScenarioTests.test_real_post_patch_and_response_binding) ... ok
+
+----------------------------------------------------------------------
+Ran 16 tests in 19.850s
+
+OK
+test_git_tree_includes_edits_additions_deletions_and_modes_without_index_changes (test_gate.PublicationTests.test_git_tree_includes_edits_additions_deletions_and_modes_without_index_changes) ... ok
+test_missing_failed_stale_environment_wrong_tree_and_modified_report_reject (test_gate.PublicationTests.test_missing_failed_stale_environment_wrong_tree_and_modified_report_reject) ... ok
+test_repository_filters_cannot_transform_validated_bytes_or_execute_on_host (test_gate.PublicationTests.test_repository_filters_cannot_transform_validated_bytes_or_execute_on_host) ... ok
+test_workspace_cannot_escape_issue_directory (test_gate.PublicationTests.test_workspace_cannot_escape_issue_directory) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.270s
+
+OK
+test_checked_in_projections_match (test_environment_contract.ContractTests.test_checked_in_projections_match) ... ok
+test_compiler_wrapper_is_pinned_and_incremental_disabled (test_environment_contract.ContractTests.test_compiler_wrapper_is_pinned_and_incremental_disabled) ... ok
+test_database_memory_swap_cpu_and_image_each_reject_drift (test_environment_contract.ContractTests.test_database_memory_swap_cpu_and_image_each_reject_drift) ... ok
+test_generated_lock_change_is_rejected (test_environment_contract.ContractTests.test_generated_lock_change_is_rejected) ... ok
+test_temporary_probe_uses_declared_rust_even_outside_repository (test_environment_contract.ContractTests.test_temporary_probe_uses_declared_rust_even_outside_repository) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 2.178s
+
+OK
+test_archive_failure_preserves_active_workflow (test_environment_installation.EnvironmentInstallationTests.test_archive_failure_preserves_active_workflow) ... ok
+test_effective_service_override_rejects_stale_deployment (test_environment_installation.EnvironmentInstallationTests.test_effective_service_override_rejects_stale_deployment) ... ok
+test_first_install_still_requires_environment_acceptance (test_environment_installation.EnvironmentInstallationTests.test_first_install_still_requires_environment_acceptance) ... ok
+test_install_persists_reviewed_gate_and_versions_release_with_it (test_environment_installation.EnvironmentInstallationTests.test_install_persists_reviewed_gate_and_versions_release_with_it) ... ok
+test_locked_codex_uses_workspace_lock_and_rejects_mismatch (test_environment_installation.EnvironmentInstallationTests.test_locked_codex_uses_workspace_lock_and_rejects_mismatch) ... ok
+test_malformed_existing_routing_is_rejected (test_environment_installation.EnvironmentInstallationTests.test_malformed_existing_routing_is_rejected) ... ok
+test_missing_host_resources_fail_before_installation (test_environment_installation.EnvironmentInstallationTests.test_missing_host_resources_fail_before_installation) ... ok
+test_network_allocator_avoids_overlaps_and_is_independent_of_issue_number (test_environment_installation.EnvironmentInstallationTests.test_network_allocator_avoids_overlaps_and_is_independent_of_issue_number) ... ok
+test_reinstall_keeps_operator_labels_and_installs_new_hook (test_environment_installation.EnvironmentInstallationTests.test_reinstall_keeps_operator_labels_and_installs_new_hook) ... ok
+test_required_preservation_cannot_install_against_unverified_controller (test_environment_installation.EnvironmentInstallationTests.test_required_preservation_cannot_install_against_unverified_controller) ... ok
+test_subnet_exhaustion_fails_explicitly (test_environment_installation.EnvironmentInstallationTests.test_subnet_exhaustion_fails_explicitly) ... ok
+test_test_fixture_has_more_memory_than_persistent_dev (test_environment_installation.EnvironmentInstallationTests.test_test_fixture_has_more_memory_than_persistent_dev) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.038s
+
+OK
+test_api_contract_identity_is_not_reencoded (test_artifact_packaging.LauncherPackagingBoundary.test_api_contract_identity_is_not_reencoded) ... ok
+test_duplicate_payloads_are_decoded_and_encoded_once (test_artifact_packaging.Packaging.test_duplicate_payloads_are_decoded_and_encoded_once) ... ok
+test_json_evidence_is_lossless_and_keeps_source_bindings (test_artifact_packaging.Packaging.test_json_evidence_is_lossless_and_keeps_source_bindings) ... ok
+test_lossless_encoding_preserves_distinct_source_descriptors (test_artifact_packaging.Packaging.test_lossless_encoding_preserves_distinct_source_descriptors) ... ok
+test_tamper_and_nested_mismatch_fail_without_deletion (test_artifact_packaging.Packaging.test_tamper_and_nested_mismatch_fail_without_deletion) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 3.558s
+
+OK
+test_changed_archive_rejected_before_installation (test_gate_install.PackagePins.test_changed_archive_rejected_before_installation) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+OK
+test_exit_keeps_diagnostics (test_http_readiness.ReadinessTests.test_exit_keeps_diagnostics) ... ok
+test_ready_line_in_same_pipe_write_as_startup_logs (test_http_readiness.ReadinessTests.test_ready_line_in_same_pipe_write_as_startup_logs) ... ok
+test_ready_line_split_between_writes (test_http_readiness.ReadinessTests.test_ready_line_split_between_writes) ... ok
+test_timeout_keeps_diagnostics (test_http_readiness.ReadinessTests.test_timeout_keeps_diagnostics) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.306s
+
+OK
+test_hit_source_invalidation_and_run_isolation (test_sccache.CompilerCache.test_hit_source_invalidation_and_run_isolation) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.328s
+
+OK

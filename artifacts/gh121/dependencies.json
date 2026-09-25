@@ -1,0 +1,19 @@
+{
+  "repository": "musutrade/CodexSymphony",
+  "observed_at": "2026-09-25",
+  "source": "authenticated github_api GET /pulls/{number}",
+  "pulls": [
+    {
+      "number": 123,
+      "merged": true,
+      "base": "main",
+      "merge_commit_sha": "549a8c137f7fb982306aa174195ea9e9cc3384bb"
+    },
+    {
+      "number": 127,
+      "merged": true,
+      "base": "main",
+      "merge_commit_sha": "034d803df21185305429681e2dac3a1e57d57af9"
+    }
+  ]
+}

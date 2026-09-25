@@ -1,0 +1,8 @@
+{
+  "passed": 3,
+  "cases": [
+    "arbitrary operation rejected",
+    "wrong fixture rejected",
+    "agent argv rejected"
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema": "gh121-quality-repair/v1",
+  "status": "LOCAL_CHECKS_PASS_REAL_SOURCE_REBIND_REQUIRED",
+  "product_commit": "cae3b48dcc5759f6506e38661b84dc7b84643490",
+  "product_tree": "e066ef8579885806e40b08748389bd68f0fb6e66",
+  "source_inventory": "artifacts/gh121/quality-repair/source-inventory.json",
+  "source_inventory_sha256": "cc8eb6487b0662f9c86ed03c9e081355237e7efe3b2a57980146e9bb44318ed0",
+  "source_files": 707,
+  "source_and_modes_unchanged": true,
+  "environment_fingerprint": "64b2dec364e628450605ed2ad950295de37bcf5b29f226c729e674b1e8f39529",
+  "checks": [
+    {
+      "command": "python3 /opt/symphony-env/workspace_tests.py",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/workspace-tests-final.log",
+      "sha256": "f994887cd28b3760e7d0e9234637c619607d2446b0b9d3dfddf778dd1f625568"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/fmt-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/clippy-final.log",
+      "sha256": "35309967529d59e2d40d1d94ac0703931348805134019410b9de8b65f4472389"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/gate-config.log",
+      "sha256": "b47bdbbdf42026d7281b2db9721dc8f71b2b8053dc7fd321b99ba944e791a490"
+    }
+  ],
+  "top_level_tests_passed": 310,
+  "reported_top_level_suites": 39,
+  "all_printed_test_results_passed": 311,
+  "count_note": "Top-level counts use the final result in each Cargo binary/doc-test section and omit the separately printed nested child result.",
+  "preliminary_inventory": {
+    "files": 138,
+    "all_changed_functions_complexity_lte_10": true,
+    "evidence": "artifacts/gh121/quality-repair/preliminary-inventory.json",
+    "exact_llvm_measurement": false
+  },
+  "coverage_crap": "Final changed source has not yet produced new exact LLVM coverage/CRAP measurements; old source measurements are not reused.",
+  "complete_gate_pass": false,
+  "latest_real_core_receipt": "artifacts/gh121/host-real-core-8f5ed89-acceptance.json",
+  "latest_real_core_product_commit": "8f5ed89af8d098bf34f9d816fdcf50d9252f2ef4",
+  "real_current_candidate_acceptance": false,
+  "next_operation": "product.real_delivery_candidate_install",
+  "remaining": [
+    "Host reviewed build and credential-isolated migrated-core fixture rebinding for the exact new source",
+    "Bounded real-core regression on the newly authorized fixture",
+    "Final evidence manifest and complete exact-tree local_gate; fix any actual measurement/quality failures",
+    "Validated publication through github_api only after complete PASS"
+  ],
+  "migration_rollback": "docs/delivery-extensions.md",
+  "publication": "none; local commit only",
+  "evidence_manifest": ".symphony-evidence.json"
+}

@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "issue_id": "121",
+  "repo": "musutrade/CodexSymphony",
+  "reason": "Installed rc.7 source collector failed exact LLVM source mapping after coverage execution; no measurements or complete verify report produced.",
+  "evidence": "artifacts/gh121/gate-source-mapping-blocker/summary.json",
+  "resume_condition": "Approved installed collector maps all listed github_credentials/github_merge_adapter/github_publication_adapter anchors for product source 1888415503edbb3325cce7e9267828133ae2247b and produces source-bound coverage/CRAP measurements; then a fresh complete exact-tree local_gate PASS is required before publication."
+}

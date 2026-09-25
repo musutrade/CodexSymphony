@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "issue_id": "121",
+  "repo": "musutrade/CodexSymphony",
+  "reason": "Candidate installation succeeded, but the installed fixed host driver only reconciles existing baseline PR #5. The host receipt explicitly reports new_core_submit_exercised=false and gh121_implementation_accepted=false; submit cannot create a new candidate or branch. Required real regression through the migrated core publication boundary is unavailable in the exposed runner.",
+  "evidence": "artifacts/gh121/candidate-runner-acceptance-gap.json",
+  "resume_condition": "A reviewed credential-isolated host runner bound to commit 8484905ebf5e5fc63f31a769f3d1a76cf52bf302 and tree ff527305dcd9f875581449a79d5c0322bdec7573 exposes a bounded real publication scenario through github_publication_adapter and delivery_extension, with genuine identity-bound validation and persisted operation intent; setup declares repository scope and authorized candidate/branch, preserves credential isolation and no merge/main/protection/workflow writes, and returns source/candidate/operation/remote identity evidence. Resume real delivery acceptance, evidence finalization, then complete local_gate."
+}

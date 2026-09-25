@@ -170,7 +170,7 @@ impl ExtensionConfig {
                 model: repo.model.clone(),
                 effort: None,
             },
-            delivery: DeliveryMode::GithubPr,
+            delivery: repo.delivery_mode(),
             hooks: repo.hooks.clone(),
             decision: None,
         }

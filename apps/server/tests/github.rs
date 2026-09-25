@@ -154,7 +154,7 @@ impl Fixture {
         };
         fixture.put(
             "/repos/owner/repo/installation",
-            json!({"id":7,"app_id":42}),
+            json!({"id":7,"app_id":1042}),
         );
         fixture.grant(
             json!({"contents":"write","pull_requests":"write","checks":"read","actions":"read"}),
@@ -189,7 +189,7 @@ impl Fixture {
     fn client(&self) -> AppClient {
         AppClient::new(
             &self.url,
-            42,
+            1042,
             &std::fs::read(self.root.join("fixture.pem")).unwrap(),
         )
         .unwrap()
@@ -426,7 +426,7 @@ async fn private_permissions_access_unknown_and_configuration_changes() {
     );
     f.put(
         "/repos/owner/repo/installation",
-        json!({"id":7,"app_id":42}),
+        json!({"id":7,"app_id":1042}),
     );
     f.put(
         "/app/installations/7/access_tokens",
@@ -752,9 +752,19 @@ async fn slow_repository_does_not_backdate_later_repository_or_pr_evidence() {
 async fn control_plane_configuration_and_readonly_cli() {
     let f = Fixture::new().await;
     f.actions();
-    let config = json!({"app_id":42,"api_url":f.url,"private_key_path":f.root.join("fixture.pem"),"policy":action_policy(),"probe_pr":1});
+    let config = json!({"app_id":1042,"api_url":f.url,"private_key_path":f.root.join("fixture.pem"),"policy":action_policy(),"probe_pr":1});
     let file = f.root.join("config.json");
     std::fs::write(&file, serde_json::to_vec(&config).unwrap()).unwrap();
+    assert!(github_service::load(&file).is_ok());
+    assert!(github_service::load(&f.root.join("missing-config")).is_err());
+    let broken = f.root.join("broken-config");
+    std::fs::write(&broken, b"{").unwrap();
+    assert!(github_service::load(&broken).is_err());
+    let mut missing_key = config.clone();
+    missing_key["private_key_path"] = json!(f.root.join("missing-key"));
+    std::fs::write(&broken, serde_json::to_vec(&missing_key).unwrap()).unwrap();
+    assert!(github_service::load(&broken).is_err());
+
     let pool = database().await;
     let worker = github_service::start_path(&pool, &file).await.unwrap();
     // Capability is an intermediate result. Require complete PR sync cycles,
@@ -941,7 +951,7 @@ async fn configured_server_and_transport_failure() {
     let f = Fixture::new().await;
     f.actions();
     let mut client = f.client();
-    let config = json!({"app_id":42,"api_url":f.url,"private_key_path":f.root.join("fixture.pem"),"policy":action_policy(),"probe_pr":1});
+    let config = json!({"app_id":1042,"api_url":f.url,"private_key_path":f.root.join("fixture.pem"),"policy":action_policy(),"probe_pr":1});
     let file = f.root.join("server-config.json");
     std::fs::write(&file, serde_json::to_vec(&config).unwrap()).unwrap();
     let schema: String = sqlx::query_scalar("SELECT current_schema()")
@@ -1118,6 +1128,24 @@ async fn delivery_adapter_reconciles_exact_branch_and_rechecks_before_close() {
     value["head"] = json!({"repo":{"id":99},"ref":job.branch,"sha":baseline});
     value["base"]["repo"]["full_name"] = json!("owner/repo");
     fixture.put("POST /repos/owner/repo/pulls", value.clone());
+    assert_eq!(
+        remote.capability_check(&job).await.unwrap()["repository"]["id"],
+        99
+    );
+    fixture.put(
+        &format!("/repos/owner/repo/git/ref/heads/{}", job.branch),
+        json!({"object":{"sha":"foreign-head"}}),
+    );
+    assert!(remote.create(&job).await.is_err());
+    assert!(remote.push(&job).await.is_err());
+    fixture.put(
+        &format!("/repos/owner/repo/git/ref/heads/{}", job.branch),
+        json!({"object":{"sha":baseline}}),
+    );
+    assert_eq!(
+        remote.push(&job).await.unwrap()["already_at_candidate"],
+        baseline
+    );
     assert_eq!(remote.create(&job).await.unwrap(), value);
     fixture.put("/repos/owner/repo/pulls", json!([{"number":1}]));
     fixture.put("/repos/owner/repo/pulls/1", value.clone());
@@ -1137,6 +1165,15 @@ async fn delivery_adapter_reconciles_exact_branch_and_rechecks_before_close() {
     value["merged"] = json!(true);
     fixture.put("/repos/owner/repo/pulls/1", value.clone());
     assert_eq!(remote.close(&job, 1).await.unwrap(), value);
+    // A matching lease reaches the transport's local ancestry check. The
+    // nonexistent predecessor is rejected before any external Git write.
+    fixture.put(
+        &format!("/repos/owner/repo/git/ref/heads/{}", job.branch),
+        json!({"object":{"sha":"expected-old-head"}}),
+    );
+    job.expected_head = Some("expected-old-head".into());
+    assert!(remote.push(&job).await.is_err());
+    job.expected_head = None;
     // A valid local candidate still cannot push when App authentication fails.
     fixture.fail("/repos/owner/repo/installation", vec![403]);
     remote.now = 10_000;

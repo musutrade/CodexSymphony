@@ -29,6 +29,7 @@ impl Write for FailAfter {
 
 fn legacy() -> Repository {
     Repository {
+        delivery: None,
         environment: None,
         model: Some("reviewed-model".into()),
         hooks: Vec::new(),
@@ -529,4 +530,27 @@ fn hook_result_serialization_propagates_output_failures() {
             );
         }
     }
+}
+
+#[test]
+fn local_repository_configuration_has_no_vendor_fields_or_credentials() {
+    let mut value = serde_json::to_value(legacy()).unwrap();
+    value["delivery"] = serde_json::json!("local_git");
+    value["remote"] = serde_json::json!("reviewed-local-target");
+    value
+        .as_object_mut()
+        .unwrap()
+        .remove("github_repository_id");
+    let repository: Repository = serde_json::from_value(value).unwrap();
+    codexsymphony_server::contract::validate_repository(&repository).unwrap();
+    assert_eq!(
+        ExtensionConfig::from_legacy_repository(&repository).delivery,
+        DeliveryMode::LocalGit
+    );
+    assert!(
+        serde_json::to_value(repository)
+            .unwrap()
+            .get("github_repository_id")
+            .is_none()
+    );
 }

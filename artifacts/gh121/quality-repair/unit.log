@@ -1,0 +1,19 @@
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-121/apps/server)
+error[E0433]: cannot find module or crate `libc` in this scope
+   --> apps/server/src/delivery_hook_process.rs:228:22
+    |
+228 |             unsafe { libc::waitpid(pid as i32, std::ptr::null_mut(), libc::WNOHANG) },
+    |                      ^^^^ use of unresolved module or unlinked crate `libc`
+    |
+    = help: if you wanted to use a crate named `libc`, use `cargo add libc` to add it to your `Cargo.toml`
+
+error[E0433]: cannot find module or crate `libc` in this scope
+   --> apps/server/src/delivery_hook_process.rs:228:70
+    |
+228 |             unsafe { libc::waitpid(pid as i32, std::ptr::null_mut(), libc::WNOHANG) },
+    |                                                                      ^^^^ use of unresolved module or unlinked crate `libc`
+    |
+    = help: if you wanted to use a crate named `libc`, use `cargo add libc` to add it to your `Cargo.toml`
+
+For more information about this error, try `rustc --explain E0433`.
+error: could not compile `codexsymphony-server` (lib test) due to 2 previous errors

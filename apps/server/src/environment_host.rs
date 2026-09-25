@@ -9,14 +9,65 @@ use std::{
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug)]
 pub struct Profile {
     pub registration: Registration,
+    pub extensions: Vec<Registration>,
     pub executable: PathBuf,
     pub approved_plans: Vec<String>,
     pub resource_root: PathBuf,
     pub timeout_seconds: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProfileWire {
+    registration: Registration,
+    extensions: Vec<Registration>,
+    executable: PathBuf,
+    approved_plans: Vec<String>,
+    resource_root: PathBuf,
+    timeout_seconds: u64,
+}
+
+impl<'de> Deserialize<'de> for Profile {
+    fn deserialize<D: serde::Deserializer<'de>>(
+        deserializer: D,
+    ) -> std::result::Result<Self, D::Error> {
+        let wire: ProfileWire = crate::json_defaults::field(
+            deserializer,
+            "extensions",
+            serde_json::Value::Array(Vec::new()),
+        )?;
+        Ok(Self {
+            registration: wire.registration,
+            extensions: wire.extensions,
+            executable: wire.executable,
+            approved_plans: wire.approved_plans,
+            resource_root: wire.resource_root,
+            timeout_seconds: wire.timeout_seconds,
+        })
+    }
+}
+
+impl Serialize for Profile {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut value =
+            serializer.serialize_struct("Profile", 5 + usize::from(!self.extensions.is_empty()))?;
+        value.serialize_field("registration", &self.registration)?;
+        if !self.extensions.is_empty() {
+            value.serialize_field("extensions", &self.extensions)?;
+        }
+        value.serialize_field("executable", &self.executable)?;
+        value.serialize_field("approved_plans", &self.approved_plans)?;
+        value.serialize_field("resource_root", &self.resource_root)?;
+        value.serialize_field("timeout_seconds", &self.timeout_seconds)?;
+        value.end()
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -104,7 +155,7 @@ impl Registry {
             )
             .into());
         }
-        plan.validate(std::slice::from_ref(&profile.registration))?;
+        plan.validate(&profile.registrations())?;
         if profile.registration.id != plan.extension_id
             || !profile.approved_plans.contains(&plan.digest())
         {
@@ -123,8 +174,13 @@ impl Registry {
 }
 
 impl Profile {
+    pub fn registrations(&self) -> Vec<Registration> {
+        let mut registrations = Vec::from([self.registration.clone()]);
+        registrations.extend(self.extensions.clone());
+        registrations
+    }
     pub fn identity(&self, evidence_root: &Path) -> String {
-        crate::validation::sha256(
+        let legacy = crate::validation::sha256(
             serde_json::to_vec(&(
                 &self.registration,
                 &self.executable,
@@ -133,7 +189,15 @@ impl Profile {
                 evidence_root,
             ))
             .expect("host profile serializes"),
-        )
+        );
+        if self.extensions.is_empty() {
+            legacy
+        } else {
+            crate::validation::sha256(
+                serde_json::to_vec(&(legacy, &self.extensions))
+                    .expect("extension profile serializes"),
+            )
+        }
     }
     fn validate(&self) -> Result<()> {
         if !self.executable.is_absolute()

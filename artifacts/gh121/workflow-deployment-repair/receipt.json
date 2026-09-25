@@ -1,0 +1,28 @@
+{
+  "issue": "GH-121",
+  "root_cause": "Operator added user-authorized closure convention to active workflow without updating deployment receipt; before_run correctly rejected workflow digest drift. Agent had not started.",
+  "repair": "Validated exact prose-only diff against retained prior workflow, verified every other pinned file unchanged, used existing installer record_deployment, kept drift verifier and all Gate controls unchanged.",
+  "deployment_check": "PASS",
+  "complete_before_run_exit": 0,
+  "infrastructure_failures_preserved": 3,
+  "budget_before": {
+    "cached_input_tokens": 19758080,
+    "consecutive_errors": 0,
+    "external_waits": 2,
+    "infrastructure_failures": 3,
+    "input_tokens": 20285442,
+    "output_tokens": 112944,
+    "run_attempts": 9,
+    "runtime_ms": 5369547,
+    "total_tokens": 20398386
+  },
+  "files": {
+    "deployment-before.json": "d50c3389eb37afb9a17175f0f2c246078bced1fbd99574e831890e7fb6e938dd",
+    "deployment-after.json": "3166c5c8c6aa16d53ab715ecddbe17b1ac44a9d06cf79edba5ae2d891d0efeeb",
+    "before-run.exit": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa",
+    "before-run.log": "2886a0aefe2d89193aafa7d7c3c8e66c7075b0f1368d68c91187a62300342d32",
+    "authorized-workflow.diff": "52173c082e1e9bf396f6b73375e9fe3d2c2b48c05638a2dccc677d509d746058",
+    "deployment-check.json": "3ac89aa75a20b11c5b9507df4699274be3b9e5e67b62299e4b021f4fae8be18e"
+  },
+  "at": 1790326268
+}

@@ -1,0 +1,10 @@
+{
+  "commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+  "tree": "ff527305dcd9f875581449a79d5c0322bdec7573",
+  "binary_sha256": "4c252791ecd421a1892c6a22ff44eb1ea90d76506559734ed45b4dd2ca71bfee",
+  "driver_sha256": "da87435eb8a0f619a73d3440e4bc2cf160aec4d634150b33d0e97ec498cdaca6",
+  "lock_sha256": "3ec67e0d0d57a6d0ebe150879cc80db14b4ab7f3c03ecae86450389bff6460a2",
+  "credential_isolated_build": true,
+  "exit_code": 0,
+  "at": 1790321230
+}

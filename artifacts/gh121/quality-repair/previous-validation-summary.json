@@ -1,0 +1,41 @@
+{
+  "schema": "gh121-local-validation/v1",
+  "source_inventory": "artifacts/gh121/implementation-inventory.json",
+  "source_inventory_sha256": "be71024c9340f8f1f1b5a99dee5a2e318e22e4670878dd4eec7313722cf9336c",
+  "source_files": 704,
+  "source_and_modes_unchanged": true,
+  "environment_fingerprint": "64b2dec364e628450605ed2ad950295de37bcf5b29f226c729e674b1e8f39529",
+  "checks": [
+    {
+      "command": "python3 /opt/symphony-env/workspace_tests.py",
+      "underlying_command": "cargo test --workspace --locked",
+      "exit_code": 0,
+      "rust_suites": 39,
+      "rust_tests_passed": 304,
+      "evidence": "artifacts/gh121/workspace-tests-final.log"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "evidence": "artifacts/gh121/clippy-final.log"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "evidence": "artifacts/gh121/fmt.log"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "evidence": "artifacts/gh121/gate-config.log"
+    }
+  ],
+  "real_new_candidate_regression": "PASS: artifacts/gh121/host-real-core-1888415-acceptance.json; migrated core submit, genuine validation, persisted intents, disposable-2 PR 7; optional hooks and faults covered by controlled tests",
+  "complete_local_gate": "FAIL run-0d758608b081: exact source/LLVM mapping unavailable; artifacts/gh121/gate-source-mapping-blocker/summary.json",
+  "crap_and_coverage": "Unavailable: collector source mapping failed after coverage execution; no measurements produced",
+  "evidence_manifest": ".symphony-evidence.json",
+  "publication": "none",
+  "product_commit": "1888415503edbb3325cce7e9267828133ae2247b",
+  "product_tree": "7195d5a151ddd887cc191023f74c491e886cc0b2",
+  "current_validation": "artifacts/gh121/collector-compatibility-repair/summary.json"
+}

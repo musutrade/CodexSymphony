@@ -1,4 +1,5 @@
 //! Optional control-plane configuration and bounded polling, never a model call.
+use crate::github_credentials::Provider;
 use crate::{github::Policy, github_http::AppClient, github_observe, github_store};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -15,15 +16,7 @@ pub struct Config {
 }
 pub fn load(path: &Path) -> Result<(Config, AppClient)> {
     let config: Config = serde_json::from_slice(&std::fs::read(path)?)?;
-    let pem = std::fs::read(&config.private_key_path)?;
-    let client = AppClient::new(
-        config
-            .api_url
-            .as_deref()
-            .unwrap_or("https://api.github.com/"),
-        config.app_id,
-        &pem,
-    )?;
+    let client = credential_client(&config)?;
     Ok((config, client))
 }
 pub fn now() -> i64 {
@@ -52,6 +45,11 @@ pub async fn start(pool: &PgPool) -> Result<Option<tokio::task::JoinHandle<()>>>
     start_path(pool, Path::new(&path)).await.map(Some)
 }
 pub async fn start_path(pool: &PgPool, path: &Path) -> Result<tokio::task::JoinHandle<()>> {
+    let selected: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repository WHERE COALESCE(document->>'delivery','github_pr')='github_pr')").fetch_one(pool).await?;
+    if !selected {
+        return Ok(tokio::spawn(async {}));
+    }
+
     let value: serde_json::Value = serde_json::from_slice(&std::fs::read(path)?)?;
     if value.get("app").is_none() {
         let (config, client) = load(path)?;
@@ -63,16 +61,7 @@ async fn start_multiple(
     pool: &PgPool,
     deployment: Deployment,
 ) -> Result<tokio::task::JoinHandle<()>> {
-    let pem = std::fs::read(&deployment.app.private_key_path)?;
-    let client = AppClient::new(
-        deployment
-            .app
-            .api_url
-            .as_deref()
-            .unwrap_or("https://api.github.com/"),
-        deployment.app.app_id,
-        &pem,
-    )?;
+    let client = credential_client(&deployment.app)?;
     github_store::configure(pool, &deployment.app.policy, deployment.app.probe_pr).await?;
     for repository in deployment.repositories {
         github_store::configure(pool, &repository.policy, repository.probe_pr).await?;
@@ -141,6 +130,7 @@ async fn delivery_tick(pool: &PgPool, client: &mut AppClient, now: i64) -> Resul
     deliver(pool, client, &root, now).await
 }
 pub async fn deliver(pool: &PgPool, client: &mut AppClient, root: &Path, now: i64) -> Result<()> {
+    crate::delivery_hooks::reconcile(pool).await?;
     crate::delivery_control::settle(pool).await?;
     crate::merge_prevalidation::tick(pool, client, root, now).await?;
     crate::merge_worker::tick(pool, &mut crate::merge_worker::Broker { client, now }, now).await?;
@@ -199,4 +189,16 @@ async fn sync_prs(pool: &PgPool, client: &mut AppClient, now: i64) -> Result<()>
         }
     }
     Ok(())
+}
+
+fn credential_client(config: &Config) -> Result<AppClient> {
+    crate::github_credentials::FileProvider {
+        api_url: config
+            .api_url
+            .as_deref()
+            .unwrap_or("https://api.github.com/"),
+        app_id: config.app_id,
+        private_key: Path::new(&config.private_key_path),
+    }
+    .client()
 }

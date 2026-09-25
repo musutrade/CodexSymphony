@@ -1,5 +1,7 @@
 #[path = "support/auth.rs"]
 mod auth_client;
+#[path = "support/delivery_hooks.rs"]
+mod delivery_hook_fixture;
 #[path = "support/environment_preparation.rs"]
 mod preparation_fixture;
 // GH-119: real local processes/tools; database/CI/provider delivery are separate.
@@ -132,6 +134,7 @@ fn fixture(root: &Path, name: &str, language: &str, cached: bool) -> (Plan, Prof
     };
     plan.controlled.environment.contract_digest = plan.contract_digest();
     let mut profile = Profile {
+        extensions: vec![],
         registration,
         executable,
         approved_plans: vec![plan.digest()],
@@ -919,6 +922,8 @@ async fn p9_validation_is_bound_to_task_environment_and_retained_source_at_deliv
     environment.controlled.extensions = vec![registry.profiles["python"].registration.clone()];
     environment.controlled.environment.repository_revision = "repository:1@1".into();
     environment.host_profile_digest = registry.profiles["python"].identity(&registry.evidence_root);
+    delivery_hook_fixture::install(&root, &mut environment, &mut registry);
+    environment.host_profile_digest = registry.profiles["python"].identity(&registry.evidence_root);
     approve(&mut registry, &mut environment);
     let config = root.join("registry.json");
     fs::write(&config, serde_json::to_vec(&registry).unwrap()).unwrap();
@@ -1012,6 +1017,7 @@ async fn p9_validation_is_bound_to_task_environment_and_retained_source_at_deliv
         .await
         .unwrap();
     validation_context::delivery(&pool, &action).await.unwrap();
+    delivery_hook_fixture::exercise(&root, &pool, &action).await;
     let source_identity = codexsymphony_server::controlled_contract::SourceIdentity {
         commit: candidate.sha.clone(),
         tree: candidate.tree.clone(),
@@ -1128,6 +1134,7 @@ async fn p9_validation_is_bound_to_task_environment_and_retained_source_at_deliv
     .await
     .unwrap();
     validation_context::delivery(&pool, &action).await.unwrap();
+    delivery_hook_fixture::cancel_running_hook(&root, &pool, &action).await;
     sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
         .execute(&pool)
         .await

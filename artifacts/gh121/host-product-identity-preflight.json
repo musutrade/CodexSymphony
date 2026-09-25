@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "operation": "product.identity_preflight",
+  "app_id": 5069731,
+  "health": "ok",
+  "database": "ok",
+  "repository_ids": [
+    1360824360,
+    1377749969
+  ],
+  "delivery_ready": true,
+  "checked_at": 1790315790,
+  "read_only": true,
+  "notice": "Identity readiness only; not Runtime or real delivery acceptance."
+}

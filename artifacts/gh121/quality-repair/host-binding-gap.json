@@ -1,0 +1,12 @@
+{
+  "requested_product_commit": "cae3b48dcc5759f6506e38661b84dc7b84643490",
+  "requested_product_tree": "e066ef8579885806e40b08748389bd68f0fb6e66",
+  "available_real_receipt": "artifacts/gh121/host-real-core-8f5ed89-acceptance.json",
+  "available_receipt_sha256": "02bc53eabfb8820d238d20dc7bded95027fbbc6fa479b4906421cc40c0177d80",
+  "available_product_commit": "8f5ed89af8d098bf34f9d816fdcf50d9252f2ef4",
+  "same_source": false,
+  "required_operation": "product.real_delivery_candidate_install",
+  "operation_instructions": "artifacts/gh121/REAL-DELIVERY-RUNNER.md",
+  "core_route_instructions": "artifacts/gh121/CORE-DELIVERY-ACCEPTANCE.md",
+  "scope": "Disposable repository 1377749969 only; no production deployment, merge, main, workflow or protection writes; host-reviewed candidate/driver build without credentials; validation scripts have no App key; genuine validation and persisted intents through migrated core."
+}

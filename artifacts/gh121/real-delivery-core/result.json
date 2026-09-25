@@ -1,0 +1,19 @@
+{
+  "action_key": "4e5a5a7768681eb82c2fd2d698b332766269452065f774cbb4092ce6aa7acf2b",
+  "candidate": {
+    "immutable": true,
+    "sha": "b6a4ca58c48abacde8015f74e3f45c3c501bd78d",
+    "tree": "be3fac68969c5ec54e404a3b8c0956ab7ba07c9e"
+  },
+  "complete_gate_pass": false,
+  "full_issue_accepted": false,
+  "new_core_submit_exercised": true,
+  "observed_at": 1790322258,
+  "operation_receipts": 2,
+  "pr": 6,
+  "product_commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+  "product_tree": "ff527305dcd9f875581449a79d5c0322bdec7573",
+  "real_core_publication_pass": true,
+  "repository_id": 1377749969,
+  "validation_id": "gh121-core-validation-8484905"
+}

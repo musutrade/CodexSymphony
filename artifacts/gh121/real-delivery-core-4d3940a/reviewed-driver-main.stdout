@@ -1,0 +1,41 @@
+use codexsymphony_server::{delivery_remote::Github, delivery_store::Pending,
+    delivery_worker::Remote, execution::RunKey, git_broker::GitBroker,
+    github::{CheckState, Policy}, github_observe, github_service, workspace::{Manifest, Workspace}};
+use serde_json::{json, Value};
+use std::{fs, io::Write, path::Path};
+const ROOT: &str = "/home/gem/.local/share/codexsymphony/gh121-core-4d3940a";
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+fn save(name: &str, value: Value) -> Result<()> {
+    let path = Path::new(ROOT).join("audit").join(name);
+    let mut f = fs::File::create(path.with_extension("tmp"))?;
+    f.write_all(serde_json::to_string_pretty(&value)?.as_bytes())?;
+    f.sync_all()?;
+    fs::rename(path.with_extension("tmp"), path)?;
+    fs::File::open(Path::new(ROOT).join("audit"))?.sync_all()?;
+    Ok(())
+}
+fn read(name: &str) -> Result<Value> {
+    Ok(serde_json::from_slice(&fs::read(Path::new(ROOT).join("audit").join(name))?)?)
+}
+fn prepare() -> Result<()> {
+    if Path::new(ROOT).join("audit/manifest.json").exists() { return Ok(()); }
+    let broker_root=Path::new(ROOT).join("data/workspaces");
+    let broker = if broker_root.exists() {GitBroker::open(&broker_root)?} else {GitBroker::initialize(&broker_root, &Path::new(ROOT).join("seed.bundle"))?};
+    let workspace = Workspace {
+        key: RunKey {run_id:"gh121-core-4d3940a".into(),request_id:"host-core-delivery-v1".into(),incarnation:"host-core-fixture".into()},
+        identity:"gh121-core-fixture-v1".into(),requirement:1,revision:1,phase:"handoff".into(),
+        baseline:"b7527479849506046b7ad9b74466db7b2a65a3cb".into(),branch:"ai/req-1-gh121-core-4d3940a".into(),
+        path:broker.path("gh121-core-4d3940a")?.to_string_lossy().into_owned()
+    };
+    broker.prepare(&workspace,true)?;
+    fs::write(Path::new(&workspace.path).join("gh121-acceptance.txt"),"GH-121 migrated core publication acceptance fixture; fixed repository and branch.\n")?;
+    broker.commit(&workspace,"test: GH-121 core publication acceptance")?;
+    save("manifest.json",json!(broker.preserve(&workspace)?))
+}
+
+mod core;
+#[tokio::main]
+async fn main() {
+ let mode=std::env::args().nth(1).unwrap_or_default();
+ if let Err(e)=core::execute(&mode).await {let _=save("last-error.json",json!({"operation":mode,"error":e.to_string(),"at":github_service::now()})); eprintln!("{e}");std::process::exit(1);}
+}

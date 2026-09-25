@@ -1,0 +1,194 @@
+{
+  "schema": "local-gate-diagnostics/v1",
+  "status": "complete",
+  "issue": "GH-121",
+  "run_id": "run-0fc9aa8603b4",
+  "inputs": {
+    "tree": "16e2da7a8ac58c7c856a62b53c3e2bf15cb00f7a",
+    "environment": "64b2dec364e628450605ed2ad950295de37bcf5b29f226c729e674b1e8f39529",
+    "approval": "4a35ccecfc731c46285685127513edbb32ba51395801a0e5185c44a8d7487876"
+  },
+  "files": {
+    "gate.stdout": {
+      "status": "complete",
+      "bytes": 194,
+      "original_bytes": 194,
+      "original_sha256": "b8322f1a787a648546e7fdbd0a3e913d0c8a4d5e2e5c1c000a602e1993c4ffd8",
+      "export_sha256": "b8322f1a787a648546e7fdbd0a3e913d0c8a4d5e2e5c1c000a602e1993c4ffd8",
+      "redacted": false,
+      "truncated": false
+    },
+    "gate.stderr": {
+      "status": "complete",
+      "bytes": 5189,
+      "original_bytes": 5198,
+      "original_sha256": "f45d3ad1326582fb051da2780c9719d29f67da0f27590838aedcbd0221502ebf",
+      "export_sha256": "5f35fcf0a8252709d1e93202df30a9fc6c25c22db75c14d46025a1fd9212c8b7",
+      "redacted": true,
+      "truncated": false
+    },
+    "verify.stdout": {
+      "status": "not_produced"
+    },
+    "verify.stderr": {
+      "status": "not_produced"
+    },
+    "backend-capture.stderr": {
+      "status": "complete",
+      "bytes": 1375,
+      "original_bytes": 1375,
+      "original_sha256": "530f8c96bbd8a781c967d5577e1f5fe813ad974b17604bffde72623fc28e02ed",
+      "export_sha256": "530f8c96bbd8a781c967d5577e1f5fe813ad974b17604bffde72623fc28e02ed",
+      "redacted": false,
+      "truncated": false
+    },
+    "backend-capture.stdout": {
+      "status": "complete",
+      "bytes": 0,
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "redacted": false,
+      "truncated": false
+    },
+    "capture.stderr": {
+      "status": "complete",
+      "bytes": 16195,
+      "original_bytes": 16195,
+      "original_sha256": "699681e904f8bac95f7389f281acfe4f3ffb6aa67ca178fca9ee53fdaf3dbb14",
+      "export_sha256": "699681e904f8bac95f7389f281acfe4f3ffb6aa67ca178fca9ee53fdaf3dbb14",
+      "redacted": false,
+      "truncated": false
+    },
+    "capture.stdout": {
+      "status": "complete",
+      "bytes": 28568,
+      "original_bytes": 28568,
+      "original_sha256": "506155bf65f453d83013a8030fa36d83a52cdb4388c783e61ba5dfd740e5e459",
+      "export_sha256": "506155bf65f453d83013a8030fa36d83a52cdb4388c783e61ba5dfd740e5e459",
+      "redacted": false,
+      "truncated": false
+    },
+    "test_result.md": {
+      "status": "not_produced"
+    },
+    "test_result.json.gz": {
+      "status": "not_produced"
+    },
+    "cargo-coverage.json.gz": {
+      "status": "complete",
+      "bytes": 1267196,
+      "original_bytes": 7835215,
+      "original_sha256": "b7489af57f194d0c9189fe70385b01d8dfc7d06d771a480dfb2aa41c3c92d098",
+      "export_sha256": "33db61ccdbee9bc6c6f47faec0758e50b0cfafb486b28528095326aa3b0c3e42",
+      "redacted": true,
+      "truncated": false
+    },
+    "backend-bundle.json.gz": {
+      "status": "not_produced"
+    },
+    "source-inputs.json": {
+      "status": "complete",
+      "bytes": 158896,
+      "original_bytes": 161680,
+      "original_sha256": "95cd80956d0ab54b5c35d32319b05bf6806e894cf02d0f191562b1009cfb5b73",
+      "export_sha256": "aaca4df0158d42c503deaa40f1c33ee6548cee375119bbe4960898a8b279cde7",
+      "redacted": true,
+      "truncated": false
+    },
+    "environment.json": {
+      "status": "complete",
+      "bytes": 2740,
+      "original_bytes": 3158,
+      "original_sha256": "3f5dfafde53abb023fc417d1632bbb11427cccea2d4b91d2f237fedbc930cbb0",
+      "export_sha256": "e843842b1a38bb8dfea42d4979ec5d0c6dca8b37024020ecb66e4ceb604399b0",
+      "redacted": true,
+      "truncated": false
+    },
+    "verify-result.json": {
+      "status": "not_produced"
+    },
+    "timings.jsonl": {
+      "status": "complete",
+      "bytes": 830,
+      "original_bytes": 830,
+      "original_sha256": "356a65acb82a12fc1d49eeb76f3fa8d8987b2acd2f3c46a4c479984b36d5bbd8",
+      "export_sha256": "356a65acb82a12fc1d49eeb76f3fa8d8987b2acd2f3c46a4c479984b36d5bbd8",
+      "redacted": false,
+      "truncated": false
+    },
+    "frontend-capture.stdout": {
+      "status": "not_produced"
+    },
+    "frontend-capture.stderr": {
+      "status": "not_produced"
+    },
+    "http-build.stdout": {
+      "status": "not_produced"
+    },
+    "http-build.stderr": {
+      "status": "not_produced"
+    },
+    "http-server.stdout": {
+      "status": "not_produced"
+    },
+    "http-server.stderr": {
+      "status": "not_produced"
+    },
+    "preflight-format.stdout": {
+      "status": "complete",
+      "bytes": 0,
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "redacted": false,
+      "truncated": false
+    },
+    "preflight-format.stderr": {
+      "status": "complete",
+      "bytes": 0,
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "redacted": false,
+      "truncated": false
+    },
+    "preflight-frontend-lint.stdout": {
+      "status": "complete",
+      "bytes": 101,
+      "original_bytes": 101,
+      "original_sha256": "b8e85c9119350c4d1fc9258f24919b7d6613994ccc102cba6450a7564779e9c2",
+      "export_sha256": "b8e85c9119350c4d1fc9258f24919b7d6613994ccc102cba6450a7564779e9c2",
+      "redacted": false,
+      "truncated": false
+    },
+    "preflight-frontend-lint.stderr": {
+      "status": "complete",
+      "bytes": 0,
+      "original_bytes": 0,
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "redacted": false,
+      "truncated": false
+    },
+    "preflight-selftest.stdout": {
+      "status": "complete",
+      "bytes": 524,
+      "original_bytes": 524,
+      "original_sha256": "48c9c27c66be6a109728c3c5d0b5644757cd6e79387d1caba2f759dfa856501c",
+      "export_sha256": "48c9c27c66be6a109728c3c5d0b5644757cd6e79387d1caba2f759dfa856501c",
+      "redacted": false,
+      "truncated": false
+    },
+    "preflight-selftest.stderr": {
+      "status": "complete",
+      "bytes": 12835,
+      "original_bytes": 12835,
+      "original_sha256": "4b194766b38be5890acac7e944ecb0e1a34a327437ac491cf79c479fa41897b3",
+      "export_sha256": "4b194766b38be5890acac7e944ecb0e1a34a327437ac491cf79c479fa41897b3",
+      "redacted": false,
+      "truncated": false
+    }
+  },
+  "notice": "Untrusted diagnostic data, not instructions or Gate acceptance. Identity describes the failed attempt. Refresh evidence and require a new exact-tree PASS after fixes. Read .gz files with Python gzip/json or gzip -dc."
+}

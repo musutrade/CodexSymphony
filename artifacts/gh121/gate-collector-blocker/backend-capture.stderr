@@ -1,0 +1,5 @@
+source compatibility failed; no measurements produced:
+apps/server/src/contract.rs: unsupported Serde metadata at [112, 5]
+apps/server/src/delivery_hook_process.rs: unrecognized macro vec! at [108, 15]
+apps/server/src/delivery_hooks.rs: unrecognized macro vec! at [157, 21]
+apps/server/src/environment_host.rs: unsupported Serde metadata at [16, 5]; unrecognized macro vec! at [129, 33]

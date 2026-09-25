@@ -1,0 +1,5 @@
+{
+  "at": 1790316790,
+  "error": "permission_denied (HTTP Some(403))",
+  "operation": "preflight"
+}

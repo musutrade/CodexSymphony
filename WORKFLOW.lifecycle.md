@@ -153,6 +153,16 @@ Keep Rust domain logic independent of runtime, persistence and GitHub adapters.
 Use the Angular skills when implementing the frontend. Phase 0a uses the minimal
 Material UI specified in chapter 23. Avoid implementing later phases implicitly.
 
+Temporary Rust convention: do not introduce production closures, including move
+and async closures. Replace closures in production functions you edit with
+behavior-equivalent named functions or explicit control flow; leave unrelated
+legacy functions alone. Test-only closures are allowed, but never move production
+logic outside measurement. Keep CRAP <= 10 and all coverage/requiredness thresholds
+unchanged. Inventory compatibility alone is insufficient: require exact LLVM
+source-bound measurements and the complete final-tree Gate PASS. Lift this rule
+only after a reviewed collector upgrade passes the retained closure mapping
+regressions and complete Gate. See root AGENTS.md for scope and removal criteria.
+
 Run the Issue's acceptance commands and the checks relevant to changed code.
 Once a root Cargo workspace exists, Rust changes require cargo fmt --all -- --check,
 the full `cargo test --workspace --locked` through the prepared fixture entry,

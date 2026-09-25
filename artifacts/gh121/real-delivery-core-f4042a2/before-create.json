@@ -1,0 +1,9 @@
+{
+  "action_key": "b8882f646e16e48873fe49946bcc14250ae81cf66c91bf21ac896f4bc7086881",
+  "at": 1790331177,
+  "branch": "ai/req-1-gh121-core-f4042a2",
+  "call_path": "github_publication_adapter::submit -> delivery_extension::invoke -> native adapter",
+  "head": "f707fdfe338e82a7935e55aa610f7b34638bc14e",
+  "operation": "create",
+  "persisted_attempt_id": 2
+}

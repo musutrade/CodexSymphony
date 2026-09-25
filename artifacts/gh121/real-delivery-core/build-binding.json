@@ -1,0 +1,11 @@
+{
+  "product_commit": "8484905ebf5e5fc63f31a769f3d1a76cf52bf302",
+  "product_tree": "ff527305dcd9f875581449a79d5c0322bdec7573",
+  "binary_sha256": "7a5283d6d6991f1086d296650b55d7b537eaec3cc2508c7b140760824541b463",
+  "driver_main_sha256": "bbd3d293bbc39abd84a94b3c97fe748f77409b0ee6645486baf1ee742d91d008",
+  "driver_core_sha256": "de04015fe82a6d8f13730ea8c83e7ac51d4728f73b420c5ebae78a7006d4e124",
+  "driver_lock_sha256": "4f9149d99aee1d637a29db780f9199e008b6006ff285423c95d00786ef942b2a",
+  "credential_isolated_build": true,
+  "exit_code": 0,
+  "at": 1790322017
+}

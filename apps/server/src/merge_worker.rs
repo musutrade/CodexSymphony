@@ -223,19 +223,9 @@ async fn send_merge(
     intent: &Intent,
     now: i64,
 ) -> Result<()> {
-    crate::environment_service::admit(pool, intent.requirement, intent.revision, "delivery", None)
-        .await?;
-    crate::validation_context::delivery(pool, &intent.delivery_key).await?;
-    if store::begin(pool, intent, now).await? {
-        match remote.merge(intent).await {
-            Ok(response) => {
-                store::receipt(pool, intent, json!({"merge_response":response}), now, 30).await?
-            }
-            Err(error) => record_error(pool, intent, &error, now).await?,
-        }
-    }
-    Ok(())
+    crate::github_merge_adapter::submit(pool, remote, intent, now).await
 }
+
 async fn ready_to_merge(
     pool: &PgPool,
     remote: &mut impl Remote,
@@ -266,7 +256,7 @@ async fn ready_to_merge(
     }
     Ok(true)
 }
-fn pr_ready(pr: &Value, intent: &Intent) -> bool {
+pub(crate) fn pr_ready(pr: &Value, intent: &Intent) -> bool {
     !(pr["head"]["sha"] != intent.head
         || pr["base"]["sha"] != intent.base
         || pr["mergeable"] != true

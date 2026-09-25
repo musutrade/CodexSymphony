@@ -1,0 +1,32 @@
+{
+  "commit": "cae3b48dcc5759f6506e38661b84dc7b84643490",
+  "tree": "e066ef8579885806e40b08748389bd68f0fb6e66",
+  "verified_source_files_and_modes": 707,
+  "verified_checks": [
+    {
+      "command": "python3 /opt/symphony-env/workspace_tests.py",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/workspace-tests-final.log",
+      "sha256": "f994887cd28b3760e7d0e9234637c619607d2446b0b9d3dfddf778dd1f625568"
+    },
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/fmt-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/clippy-final.log",
+      "sha256": "35309967529d59e2d40d1d94ac0703931348805134019410b9de8b65f4472389"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/quality-repair/gate-config.log",
+      "sha256": "b47bdbbdf42026d7281b2db9721dc8f71b2b8053dc7fd321b99ba944e791a490"
+    }
+  ],
+  "review": "Retained tests/hashes verified; cohesive method extraction preserves admit/hook/re-admit/durable-intent order, scope binding, and remote error handling. Gate quality verdict still pending."
+}

@@ -1,0 +1,20 @@
+{
+  "baseline": "034d803df21185305429681e2dac3a1e57d57af9",
+  "prerequisites": {
+    "123": "merged",
+    "127": "merged"
+  },
+  "runtime_smoke": {
+    "exit_code": 0,
+    "passed": 10,
+    "log": "artifacts/gh121/current-runtime-smoke.log"
+  },
+  "host_setup": {
+    "ok": true,
+    "request_id": "fd898aa748644afe885784f1eb0d1db1",
+    "fixture_sha256": "0246011cd9e8ce674652ea38544fac053904b2b0b62801c5aa19411a8278c514"
+  },
+  "gate_config": "passed",
+  "database_status": "running; pinned image and resource policy",
+  "source_changes": false
+}

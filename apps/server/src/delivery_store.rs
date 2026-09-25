@@ -70,7 +70,7 @@ fn invalid() -> sqlx::Error {
     sqlx::Error::Protocol("delivery identity missing".into())
 }
 
-#[derive(Clone, sqlx::FromRow)]
+#[derive(Clone, PartialEq, sqlx::FromRow)]
 pub struct Pending {
     pub action_key: String,
     pub kind: String,
@@ -129,6 +129,13 @@ pub async fn begin(pool: &PgPool, job: &Pending, operation: &str, now: i64) -> R
         ("publish", "push" | "create") | ("close", "close")
     ) || !allowed(&mut tx, job).await?
     {
+        return Ok(None);
+    }
+    // A missing response or server-side failure does not establish that a
+    // request was never applied. A negative read cannot disprove a late write.
+    let unresolved: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM delivery_attempt WHERE action_key=$1 AND operation=$2 AND (result IS NULL OR COALESCE(result->>'http_status','') NOT IN ('401','403','404','409','422')))")
+        .bind(&job.action_key).bind(operation).fetch_one(&mut *tx).await?;
+    if unresolved {
         return Ok(None);
     }
     let result = write_attempt(&mut tx, job, operation, now).await?;

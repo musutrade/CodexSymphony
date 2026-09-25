@@ -1,0 +1,34 @@
+{
+  "commit": "f4042a278642e071115a6a90ff0b838da1b792a9",
+  "tree": "1f47365451cdd0f1647016dbb365fd7a93941d28",
+  "verified_source_files_and_git_modes": 710,
+  "verified_check_logs": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/fmt.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": "python3 /opt/symphony-env/workspace_tests.py",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/workspace-tests.log",
+      "sha256": "ffd74a18e58c1be6c41be3bae896892b6889fa4c20c5a8e3a07cd65bff9be613"
+    },
+    {
+      "command": "cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/clippy.log",
+      "sha256": "87e48f781ee01b87a252ed8a993f70a1c2e6b0c0dc1f67bde63bad225fea6ad3"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "artifacts/gh121/test-layout-repair/gate-config.log",
+      "sha256": "b47bdbbdf42026d7281b2db9721dc8f71b2b8053dc7fd321b99ba944e791a490"
+    }
+  ],
+  "production_prefix_bytes_unchanged": true,
+  "relocated_tests_equal_after_deindent": true,
+  "gate_policy_unchanged": true
+}
