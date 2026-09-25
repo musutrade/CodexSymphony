@@ -1,0 +1,47 @@
+[
+  {
+    "command": [
+      "cargo",
+      "fmt",
+      "--all",
+      "--",
+      "--check"
+    ],
+    "exit_code": 0,
+    "log": "artifacts/gh120/fmt-quality-fixed.log"
+  },
+  {
+    "command": [
+      "python3",
+      "/opt/symphony-env/run.py",
+      "cargo",
+      "clippy",
+      "--workspace",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "exit_code": 0,
+    "log": "artifacts/gh120/clippy-quality-fixed.log"
+  },
+  {
+    "command": [
+      "python3",
+      "tools/gate.py",
+      "config",
+      "check"
+    ],
+    "exit_code": 0,
+    "log": "artifacts/gh120/gate-config-quality-fixed.log"
+  },
+  {
+    "command": [
+      "python3",
+      "/opt/symphony-env/workspace_tests.py"
+    ],
+    "exit_code": 0,
+    "log": "artifacts/gh120/workspace-tests-quality-fixed.log"
+  }
+]

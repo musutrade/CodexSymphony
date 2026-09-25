@@ -238,6 +238,9 @@ fn hook_environment(command: &mut Command, directory: &Path) {
         "LC_ALL",
         "TZ",
         "NO_COLOR",
+        // Preserve the verifier's profile destination across the clean environment.
+        // Instrumented supervisors otherwise write into the frozen checkout.
+        "LLVM_PROFILE_FILE",
         "TEST_DATABASE_URL",
         "HTTP_PROXY",
         "HTTPS_PROXY",
@@ -294,6 +297,7 @@ pub(crate) fn development_environment(command: &mut Command) {
         "CARGO_HOME",
         "RUSTUP_HOME",
         "CARGO_TARGET_DIR",
+        "LLVM_PROFILE_FILE",
         "TEST_DATABASE_URL",
         "DEV_DATABASE_URL",
         "HTTP_PROXY",

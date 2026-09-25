@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "issue_id": "120",
+  "repo": "musutrade/CodexSymphony",
+  "reason": "Complete Gate run-59d426e355ed reports unresolved CRAP failures, but local_gate exposes only truncated verification output and its full report path is unavailable in the workspace; complete failing subjects and measurements cannot be inspected.",
+  "evidence": "artifacts/gh120/quality-report-blocked.md",
+  "resume_condition": "Full test_result.md and untruncated verify stdout/stderr for run-59d426e355ed, including all failing subjects and source-bound measurements, are readable through authorized diagnostics or workspace evidence; resume code quality diagnosis and require a new complete exact-tree PASS before publication."
+}

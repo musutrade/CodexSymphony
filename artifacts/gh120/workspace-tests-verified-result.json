@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "/opt/symphony-env/workspace_tests.py"
+  ],
+  "started": "2026-09-24T19:04:57.426706+00:00",
+  "elapsed_seconds": 666.737,
+  "exit_code": 0,
+  "source_unchanged": true,
+  "source_inventory_sha256": "01a3d87a4c59810263bcd3e39cd6d8e131f65897957380fe1fe902b42067db6e"
+}

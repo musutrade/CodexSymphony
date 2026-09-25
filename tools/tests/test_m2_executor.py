@@ -38,13 +38,19 @@ assert subprocess.run([str(release/'coding'), 'app-server']).returncode != 0
         self.home = self.root/'execution/run/codex-home'
         self.home.mkdir(parents=True)
         self.private = []
-        for name in ('control', 'github', 'signing', 'notifier'):
+        for name in ('control', 'github', 'signing', 'notifier', 'host-home'):
             directory = self.root/name
             directory.mkdir(mode=0o700)
             secret = directory/'sentinel'
             secret.write_text('non-sensitive-' + name)
             secret.chmod(0o600)
             self.private.append(directory)
+        host_home = self.root/'host-home'
+        (host_home/'.gitconfig').write_text('[credential]\n helper = host-only-helper\n')
+        (host_home/'.codex').mkdir()
+        (host_home/'.codex'/'config.toml').write_text('[mcp_servers.host]\ncommand = "host-only"\n[features]\napps = true\n')
+        (host_home/'.ssh').mkdir()
+        (host_home/'.ssh'/'id_ed25519').write_text('non-sensitive-SSH-sentinel')
         (self.workspace/'source.txt').write_text('authorized source')
         self.project = self.root/'project-test'
         self.project.mkdir()
@@ -68,7 +74,7 @@ assert subprocess.run([str(release/'coding'), 'app-server']).returncode != 0
         self.save()
         return subprocess.run(self.command(code), cwd=self.workspace,
             env=dict(os.environ, CODEX_HOME=str(self.home), CONTROL_SENTINEL='must-not-inherit',
-                     DATABASE_URL='must-not-inherit'), capture_output=True, text=True, timeout=10)
+                     DATABASE_URL='must-not-inherit', SSH_AUTH_SOCK=str(self.root/'host-home'/'agent.sock')), capture_output=True, text=True, timeout=10)
 
     def test_coding_and_validation_cannot_read_private_files_or_parent_environment(self):
         for role in ('coding', 'validation'):
@@ -83,6 +89,12 @@ for name in {list(map(str, self.private))!r}:
     except (FileNotFoundError, PermissionError): pass
     else: raise AssertionError('private sentinel readable')
 assert 'CONTROL_SENTINEL' not in os.environ and 'DATABASE_URL' not in os.environ
+assert 'SSH_AUTH_SOCK' not in os.environ
+assert os.environ['HOME'] == '/home/executor'
+assert not Path({str(self.root/'host-home'/'.gitconfig')!r}).exists()
+assert not Path({str(self.root/'host-home'/'.codex'/'config.toml')!r}).exists()
+assert not Path({str(self.root/'host-home'/'.ssh'/'id_ed25519')!r}).exists()
+assert not Path(os.environ['HOME'], '.codex').exists()
 assert not Path({str(self.path)!r}).exists()
 assert not Path('/proc/{os.getpid()}/root').exists()
 Path('ordinary-command-output').write_text('working')

@@ -223,6 +223,9 @@ async fn send_merge(
     intent: &Intent,
     now: i64,
 ) -> Result<()> {
+    crate::environment_service::admit(pool, intent.requirement, intent.revision, "delivery", None)
+        .await?;
+    crate::validation_context::delivery(pool, &intent.delivery_key).await?;
     if store::begin(pool, intent, now).await? {
         match remote.merge(intent).await {
             Ok(response) => {

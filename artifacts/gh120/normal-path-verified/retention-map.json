@@ -1,0 +1,67 @@
+{
+  "kind": "controlled_fixture_copy_map",
+  "original_directory": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate",
+  "note": "Workspace copies of the real local test invocation; original disposable fixture is cleaned by the test. This is not a host after_run archive receipt or a Gate signature.",
+  "files": [
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/binding.json",
+      "path": "artifacts/gh120/normal-path-verified/binding.json",
+      "sha256": "f8e17c16c2b506d7e80163fa0f8c94e962a4961cbb2e84bafd8f11862c8c5c96"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/candidate-README.md",
+      "path": "artifacts/gh120/normal-path-verified/candidate-README.md",
+      "sha256": "f524a657e731b4c17e33892d716a6beca1a5b0103cfc9844cf67dba6500168c6"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/environment-plan.json",
+      "path": "artifacts/gh120/normal-path-verified/environment-plan.json",
+      "sha256": "e37d43ecd00733fd0037eb4b3e7ba0bab7b15dade6b22073ea8da711860062a1"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/evaluation.json",
+      "path": "artifacts/gh120/normal-path-verified/evaluation.json",
+      "sha256": "f4ba8321211b330d3ed55bf9447d58833f8d0e1c3877aef6a3bdfa1869514708"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/exit.json",
+      "path": "artifacts/gh120/normal-path-verified/exit.json",
+      "sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/identity.json",
+      "path": "artifacts/gh120/normal-path-verified/identity.json",
+      "sha256": "7275b595841425f6d8c55c787400f17ec916ae26d25831a6f6cf0bd59105e296"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/input.json",
+      "path": "artifacts/gh120/normal-path-verified/input.json",
+      "sha256": "676a8fd8c812ed27b80d270b174743b06c74c1df9466bc40a7ef35a589527b91"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/invocation.json",
+      "path": "artifacts/gh120/normal-path-verified/invocation.json",
+      "sha256": "201d06fb30fc0c955ec73690987e9551fdc4e2b87acc17a6c82f99ba1f0ce4a9"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/quiescent.json",
+      "path": "artifacts/gh120/normal-path-verified/quiescent.json",
+      "sha256": "7275b595841425f6d8c55c787400f17ec916ae26d25831a6f6cf0bd59105e296"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/result.json",
+      "path": "artifacts/gh120/normal-path-verified/result.json",
+      "sha256": "18249adcd16a1c651618fcb8e23a192e536d8da021d23f6fff6d3b2ea4c056b6"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/source.json",
+      "path": "artifacts/gh120/normal-path-verified/source.json",
+      "sha256": "e65897a6e1338acc95112abbcb75904415f5c9299c9d2c0db9d8a5c086ac358d"
+    },
+    {
+      "artifact_id": "/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/step-0.log",
+      "path": "artifacts/gh120/normal-path-verified/step-0.log",
+      "sha256": "4989b344d9ff6a59e1830c8355a7c31aaac679cdd0983562667384988a0c5dd3"
+    }
+  ]
+}

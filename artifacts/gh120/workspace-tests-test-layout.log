@@ -1,0 +1,573 @@
+{"test_fixture": {"ok": true, "role": "test", "before_id": "d3621f5b12cb3c338bb68cadb5fc82bddf49c07a727377280a7f1473018a0d3f", "container_id": "45fc7e60d64b6678ef687fc498f30f470a04842ceb48e2a8f5a88093b0ef8278", "running": true, "image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "storage": "tmpfs", "memory_limit_bytes": 2147483648, "environment": {"image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "memory": 2147483648, "memory_swap": 4294967296, "nano_cpus": 1000000000}, "memory_events": {"low": 0, "high": 0, "max": 0, "oom": 0, "oom_kill": 0, "oom_group_kill": 0, "sock_throttled": 0}}, "tmpdir": "/tmp/cs-mop8l_qv"}
+{"schema": "codexsymphony-environment-fingerprint/v1", "fingerprint": "64b2dec364e628450605ed2ad950295de37bcf5b29f226c729e674b1e8f39529", "contract": "6c9fa8aaa50350ed7843a96adc29fe17a1041617c59909e15965a0363901bbf6", "tools": {"rustc": {"version": "rustc 1.97.1 (8bab26f4f 2026-07-14)", "sha256": "d3a664c970a9fd8361b64194861bebc1ae37b9054e5ee3400dc1c9e691797eea"}, "cargo": {"version": "cargo 1.97.1 (c980f4866 2026-06-30)", "sha256": "828980723df339d62434390e9fb8ef8831036583343ae2316b7ab5646b5c1953"}, "node": {"version": "v24.18.0", "sha256": "41a74efb34cbde5c7632cdac0cf8bd1a14d0b8d73dc1e82755014d9a9ce70f5c"}, "npm": {"version": "11.16.0", "sha256": "8e5f6f3429f8cdbe693cdc29904e9d5a7b127a494bd15c804bd54c7403bfcbe7"}, "python3": {"version": "Python 3.14.4", "sha256": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41"}, "codex": {"version": "codex-cli 0.156.1", "sha256": "0b2e9301d6100dddda3b9d5c80ebaeaa3a2f1962388f2f36f6b96a9f08b1f33f"}, "cargo-llvm-cov": {"version": "cargo-llvm-cov 0.9.0", "sha256": "61d0638359c3dd320e61b1a3467857036307235afed31fb51781a66ec5cf47a5"}, "rustfmt": {"version": "rustfmt 1.9.0-stable (8bab26f4f6 2026-07-14)", "sha256": "30de9e1efcd8f8fe7750e00d0c45ff8f4c480608ef1be5baf9ab6f1b4556e8f8"}, "clippy-driver": {"version": "clippy 0.1.97 (8bab26f4f6 2026-07-14)", "sha256": "e8fa6ad666c353e4c9248fc67074cf160ff2a5dbd97debd20416b81d7f917373"}, "harness-gate": {"version": "harness-gate 0.4.7", "sha256": "b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9"}, "harness-gate-rust-collector": {"version": "harness-gate-rust-collector 0.1.0-rc.7", "sha256": "663823010a6830ce1abd326317ce1983495103a69d647bed886a7ad65bc25b38"}, "sccache": {"version": "sccache 0.18.0", "sha256": "973cb15f6a986d84ca334bbed3bbe2eb8f1ee8fd81bf9e115b8539a293bf8d59"}}, "postgres": {"image": "postgres@sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "image_id": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "test": {"memory": 2147483648, "memory_swap": 4294967296, "nano_cpus": 1000000000}, "dev": {"memory": 536870912, "memory_swap": 1073741824, "nano_cpus": 1000000000}}, "test_environment": {"RUST_TEST_THREADS": "1", "CARGO_BUILD_JOBS": "2", "TZ": "UTC", "LANG": "C.UTF-8", "CARGO_INCREMENTAL": "0", "SCCACHE_DIR": "/home/gem/.cache/codexsymphony/sccache", "SCCACHE_CACHE_SIZE": "5G", "SCCACHE_SERVER_UDS": "/tmp/codexsymphony-sccache.sock", "SCCACHE_CONF": "/dev/null", "SCCACHE_CACHED_CONF": "/tmp/codexsymphony-sccache-config", "SCCACHE_IDLE_TIMEOUT": "0", "SCCACHE_CLIENT_SIDE": "0", "SCCACHE_LOCAL_RW_MODE": "READ_WRITE", "RUSTC_WORKSPACE_WRAPPER": "", "RUSTUP_TOOLCHAIN": "1.97.1", "RUSTC_WRAPPER": "/home/gem/.cargo/bin/sccache"}}
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-120/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 04s
+     Running unittests src/lib.rs (target/debug/deps/codexsymphony_server-6fc6cca0063c828b)
+
+running 20 tests
+test environment_probe::time_tests::protocol_timestamp_rejects_pre_epoch_and_overflow ... ok
+test linked_integration::tests::updated_combo_gets_new_checkouts_and_full_independent_validation ... [master 05ef132] second source
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/cs-mop8l_qv/validation-runner-7973ed1d-fb57-4475-b57e-f61cfa0d231b/repo
+ * branch            05ef1329394f8400dd59ed2713302a6e333263ca -> FETCH_HEAD
+[master 22e7c75] repair
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/cs-mop8l_qv/validation-runner-f33a0744-5dcf-4987-8c44-9fe05ee83753/repo
+ * branch            22e7c75ae7a2a82190732be314bbe9f17fff8e14 -> FETCH_HEAD
+ok
+test linked_repair_acceptance::tests::repair_acceptance_retains_original_failure_and_integration_never_becomes_done_from_merge ... ok
+test linked_repair_source::tests::current_target_is_frozen_without_reusing_failed_candidate_and_retries_are_finite ... [master 727b3ad] target advanced
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+From /tmp/cs-mop8l_qv/validation-runner-47a3f601-288e-403a-8a59-d1713969b873/repo
+ * branch            727b3ad6347808bfd91e010a4aafaeaa1d6902e8 -> FETCH_HEAD
+ok
+test linked_repair_source::tests::github_target_requires_an_authenticated_exact_branch_sha ... ok
+test linked_repair_source::tests::reviewed_multi_repository_check_mapping_selects_one_repository_at_a_time ... ok
+test linked_repair_source::tests::source_transport_failure_and_pause_race_preserve_the_original_failure ... From /tmp/cs-mop8l_qv/validation-runner-f301afef-411b-45b1-978f-8269d5c785a8/repo
+ * branch            0ce02434066e86dba7151c718acae3cc7fa0fd0b -> FETCH_HEAD
+From /tmp/cs-mop8l_qv/validation-runner-f301afef-411b-45b1-978f-8269d5c785a8/repo
+ * branch            0ce02434066e86dba7151c718acae3cc7fa0fd0b -> FETCH_HEAD
+ok
+test linked_repair_worker::tests::committed_repair_diff_accepts_only_reviewed_paths_and_rejects_baseline_drift ... [ai/req-1-488c66d5-0630-466b-a188-b22e587a67d0 e5001eb] repair diff
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+[ai/req-1-d40c536b-6c8a-4c72-a64b-7369a4ffe504 e845b75] repair diff
+ 1 file changed, 1 insertion(+)
+ create mode 100644 outside
+ok
+test linked_repair_worker::tests::duplicate_reservation_pause_restart_bind_and_scope_remain_on_original_item ... ok
+test linked_repair_worker::tests::quota_counts_prior_repair_stages_and_keeps_original_failure ... ok
+test linked_repair_worker::tests::successful_preparation_binds_exact_reserved_repair_once ... ok
+test merge_acceptance::tests::accepted_linked_merge_returns_to_original_integration_without_completion ... ok
+test merge_acceptance::tests::blocked_merge_replays_original_failed_invocation ... ok
+test merge_acceptance::tests::pause_at_acceptance_start_never_marks_execution_started ... ok
+test merge_acceptance::tests::retained_blocked_merge_can_record_one_original_failure ... ok
+test merge_dispatch::tests::absent_fixed_and_external_policies_never_dispatch_and_invalid_dispatch_fails ... ok
+test merge_prevalidation::tests::authorization_is_rechecked_before_marking_test_merge_started ... ok
+test merge_validation::tests::checkout_reuse_checks_head_and_invalid_fetch_never_certifies_source ... ok
+test project_hooks::failure_classification_tests::error_classification_requires_matching_stop_receipts_before_timeout_or_cancel ... ok
+test validation_supervisor::tests::missing_startup_identity_requests_stop_without_restarting ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 79.14s
+
+     Running unittests src/main.rs (target/debug/deps/codexsymphony_server-61780c762faeddab)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/adapter_failures.rs (target/debug/deps/adapter_failures-b3e15a91a373b200)
+
+running 1 test
+test storage_failures_are_sanitized_by_each_business_adapter ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/automatic_merge.rs (target/debug/deps/automatic_merge-9f9444951f2a84e3)
+
+running 7 tests
+test cancellation_cannot_release_incomplete_test_merge_validation ... ok
+test durable_unknown_reconciles_without_repeating_merge ... ok
+test final_capability_plan_and_pr_changes_never_send_merge ... ok
+test identities_checks_and_protection_are_not_interchangeable ... ok
+test merge_finishes_final_reserved_turn_but_never_exceeds_budget ... ok
+test pause_and_base_race_prevent_dispatch ... ok
+test prepared_intent_rechecks_authorization_recovery_and_write_ownership ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 19.31s
+
+     Running tests/bounded_recovery.rs (target/debug/deps/bounded_recovery-d356810bdda53ab1)
+
+running 10 tests
+test ci_admission_requires_current_pr_head_and_original_candidate_identity ... ok
+test cold_start_barrier_reconciles_unstarted_intent_without_new_ordinal ... ok
+test durable_recovery_child ... ok
+test durable_reservations_settlement_restart_duplicate_events_and_exact_exhaustion ... ok
+test facts_classify_service_failure_before_code_and_bound_backoff ... ok
+test insufficient_parent_balance_and_cancel_do_not_charge_or_launch ... ok
+test invalid_phase_evidence_blocks_instead_of_charging_a_repair ... ok
+test late_parent_exposure_blocks_prepaid_call_without_releasing_its_hold ... ok
+test paused_repair_resumes_under_same_ordinal_and_prepaid_exact_budget ... ok
+test storage_configuration_failure_rolls_back_ordinal_and_group_hold ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.16s
+
+     Running tests/budget.rs (target/debug/deps/budget-9941fb45a284330f)
+
+running 2 tests
+test cumulative_counters_and_waits_preserve_unknowns_and_overflow ... ok
+test transactions_reconcile_usage_across_runs_revisions_and_crashes ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.84s
+
+     Running tests/controlled_contract.rs (target/debug/deps/controlled_contract-19ef8af287a0cddc)
+
+running 6 tests
+test call_requires_reviewed_identity_source_and_deadline ... ok
+test malformed_approved_registrations_still_fail ... ok
+test partial_results_unknowns_duplicates_and_missing_evidence_cannot_pass ... ok
+test results_bind_exact_candidate_environment_policy_attempt_and_operation ... ok
+test unknown_versions_capabilities_and_unreviewed_changes_are_rejected ... ok
+test vendor_and_language_independent_configuration_roundtrips ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/delivery.rs (target/debug/deps/delivery-9eb0e2097ccf7d55)
+
+running 15 tests
+test cancel_in_flight_closes_once_and_merge_races_preserve_facts ... ok
+test cancellation_with_unsent_repair_closes_only_the_published_candidate ... ok
+test cancelled_unknown_create_and_push_keep_ownership_until_reconciled ... ok
+test crashes_before_send_after_remote_and_during_commit ... ok
+test delivery_backoff_preserves_server_retry_after ... ok
+test exact_identity_and_merge_facts ... ok
+test fresh_exact_merge_releases_without_done_and_api_exposes_delivery ... ok
+test initial_ready_plan_is_durable_and_admission_binds_the_same_worktree ... ok
+test lost_push_and_create_responses_reconcile_without_duplicate_work ... ok
+test missing_delivery_identity_rolls_back_and_cancel_reports_absent_requirement ... ok
+test operator_retry_preserves_attempts_and_resumes_after_push ... ok
+test pause_authorization_conflicts_and_bounded_cleanup ... ok
+test remote_read_failures_and_disappeared_pr_never_trigger_writes ... ok
+test repair_updates_original_pr_and_reconciles_lost_push_without_overwriting_external_head ... ok
+test transaction_rollback_does_not_lose_outbox_and_wrong_pr_is_never_closed ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 18.39s
+
+     Running tests/drafts.rs (target/debug/deps/drafts-8788d4ce6d206e4b)
+
+running 3 tests
+test atomic_import_conflicts_legacy_guards_migration_and_real_restart ... ok
+test deterministic_parser_and_incomplete_data ... ok
+test gh59_database_upgrades_without_rewriting_draft_history_or_execution_facts ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.07s
+
+     Running tests/environment.rs (target/debug/deps/environment-a56153a43192d95f)
+
+running 9 tests
+test cache_permissions_capacity_seed_identity_and_symlinks_are_checked ... ok
+test forged_missing_or_failed_evidence_never_passes ... ok
+test immutable_review_admission_startup_recovery_ci_and_budget_continuity ... ok
+test installed_new_binary_does_not_approve_an_old_running_process ... ok
+test p9_validation_is_bound_to_task_environment_and_retained_source_at_delivery ... ok
+test real_two_project_admission_detects_drift_and_preserves_isolation ... .
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+✔ value (1.120382ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 80.213594
+ok
+test resource_envelopes_and_host_profiles_cannot_relabel_approval ... ok
+test reviewed_identity_role_and_scope_reject_unsupported_changes ... ok
+test timeout_stops_descendants_and_unreconciled_intent_blocks_another_probe ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 59.22s
+
+     Running tests/execution.rs (target/debug/deps/execution-fb83f43bc5b1466e)
+
+running 2 tests
+test execution_acceptance ... Error: Os { code: 17, kind: AlreadyExists, message: "File exists" }
+ok
+test os_identity_and_lock_boundaries ... Error: "Run directory required"
+ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 36.66s
+
+     Running tests/extension_contract.rs (target/debug/deps/extension_contract-60e5704ddfce6606)
+
+running 8 tests
+test hook_input_is_versioned_and_bound_to_registered_event_role ... ok
+test hook_registration_rejects_each_required_field_and_unknown_decisions ... ok
+test hook_result_checks_malformed_input_failure_fields_and_artifact_paths ... ok
+test hook_result_serialization_propagates_output_failures ... ok
+test legacy_repository_maps_without_changing_its_execution_or_delivery_choice ... ok
+test response_version_identity_shape_and_size_are_checked ... ok
+test script_registration_and_frozen_identity_reject_workspace_or_default_changes ... ok
+test version_and_unregistered_capabilities_fail_before_freezing ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/generation.rs (target/debug/deps/generation-9b45cb6f448c0693)
+
+running 8 tests
+test durable_admission_atomic_commit_edit_conflict_and_recovery ... ok
+test http_records_replay_validation_and_unconfigured_generation ... ok
+test invalid_output_never_partially_writes_a_draft ... ok
+test operator_configuration_is_explicit_and_bounded ... ok
+test parent_identity_binding_runs_in_an_isolated_child ... 
+running 1 test
+test parent_identity_binding_runs_in_an_isolated_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+
+ok
+test pinned_runtime_success_invalid_output_token_limit_and_timeout ... ok
+test real_http_generation_edit_race_process_crash_and_failed_recovery ... ok
+test request_validation_prompt_data_and_usage ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 9.19s
+
+     Running tests/github.rs (target/debug/deps/github-25417a18f9bab598)
+
+running 52 tests
+test app_push_reports_local_git_failures_without_remote_writes_or_token_disclosure ... ok
+test authenticated_http_never_follows_redirects ... ok
+test configured_delivery_service_and_real_fast_forward_git ... To /tmp/cs-mop8l_qv/validation-runner-11c8efc3-c067-49e8-9a0b-eddc70e01b44/remote.git
+ * [new branch]      d04ec35def71b6864663a5a9aa3aea23952e2afd -> check
+To /tmp/cs-mop8l_qv/validation-runner-11c8efc3-c067-49e8-9a0b-eddc70e01b44/remote.git
+   d04ec35..03425ca  03425ca33adb8c5b400f94730aba77b0d975a4fb -> check
+To /tmp/cs-mop8l_qv/validation-runner-11c8efc3-c067-49e8-9a0b-eddc70e01b44/remote.git
+ ! [rejected]        d04ec35def71b6864663a5a9aa3aea23952e2afd -> check (non-fast-forward)
+error: failed to push some refs to '/tmp/cs-mop8l_qv/validation-runner-11c8efc3-c067-49e8-9a0b-eddc70e01b44/remote.git'
+hint: Updates were rejected because a pushed branch tip is behind its remote
+hint: counterpart. If you want to integrate the remote changes, use 'git pull'
+hint: before pushing again.
+hint: See the 'Note about fast-forwards' in 'git push --help' for details.
+To /tmp/cs-mop8l_qv/validation-runner-11c8efc3-c067-49e8-9a0b-eddc70e01b44/remote.git
+ ! [rejected]        d04ec35def71b6864663a5a9aa3aea23952e2afd -> check (stale info)
+error: failed to push some refs to '/tmp/cs-mop8l_qv/validation-runner-11c8efc3-c067-49e8-9a0b-eddc70e01b44/remote.git'
+ok
+test configured_server_and_transport_failure ... ok
+test control_plane_configuration_and_readonly_cli ... ok
+test delivery_adapter_reconciles_exact_branch_and_rechecks_before_close ... ok
+test delivery_basic_header_uses_rfc4648_padding ... ok
+test exact_commit_fetch_rejects_malformed_identity_and_keeps_credentials_out_of_git_config ... ok
+test fact_and_source_resolution ... ok
+test generated_pr_branch_requires_explicit_same_repository_source_binding ... ok
+test git_push_inherits_only_service_proxy_routing ... ok
+test http_token_scope_pagination_and_separate_sources ... ok
+test identities_rules_and_incomplete_payloads_fail_closed ... ok
+test merge_acceptance::broker_merge_real_merged_checkout_completes_child_and_advances_successor ... ok
+test merge_acceptance::dispatch_branch_movement_and_failed_send_cannot_repeat_a_write ... ok
+test merge_acceptance::failed_merged_command_keeps_original_output_and_blocks_successors ... ok
+test merge_acceptance::pause_and_cancel_racing_a_sent_merge_retain_fact_without_false_done ... ok
+test merge_acceptance::pause_during_actual_merged_validation_stops_process_and_retains_evidence ... ok
+test merge_acceptance::post_checks_dispatch_once_then_validate_actual_merged_source ... ok
+test merge_acceptance::post_checks_failure_and_timeout_keep_owner_and_block_successors ... ok
+test merge_acceptance::post_merge_failure_preserves_merge_and_owner_without_business_done ... ok
+test merge_acceptance::response_loss_validates_actual_merge_without_guessing_method_or_resending ... ok
+test merge_acceptance::test_merge_is_independently_validated_and_never_relabelled_as_merged ... ok
+test merge_acceptance::test_merge_missing_plan_blocks_before_merge_and_preserves_owner ... ok
+test merge_acceptance::transient_post_observation_retries_and_validation_honors_pause ... ok
+test persistent_polling_blocks_claims_without_starting_a_model ... ok
+test private_actions_do_not_require_unselected_legacy_status_permission ... ok
+test private_permissions_access_unknown_and_configuration_changes ... ok
+test recovery_acceptance::compiler_failure_and_missing_logs_are_distinct_and_keep_originals ... ok
+test recovery_acceptance::complete_pagination_is_required_even_for_an_endless_source ... ok
+test recovery_acceptance::external_run_or_pr_changes_and_missing_rerun_grant_block_writes ... ok
+test recovery_acceptance::infrastructure_lost_response_pause_and_remote_attempt_reconciliation ... ok
+test recovery_acceptance::log_authorization_and_review_prose_cannot_certify_a_code_repair ... ok
+test recovery_acceptance::retry_after_and_remote_read_failures_are_bounded_without_code_charges ... ok
+test recovery_acceptance::unreadable_utf8_and_http_date_retry_after_keep_factual_boundaries ... ok
+test slow_repository_does_not_backdate_later_repository_or_pr_evidence ... ok
+test terminal_pr_history_does_not_starve_active_delivery_or_skip_cancel_cleanup ... ok
+test v1::capability_changes_permissions_logs_and_workflows_block_without_writes ... ok
+test v1::changing_head_or_base_during_collection_rejects_the_entire_snapshot ... ok
+test v1::external_checks_reject_missing_publishers_and_unpinned_triggers ... ok
+test v1::external_status_and_check_sources_need_pinned_triggers_and_publishers ... ok
+test v1::fixed_validation_plan_and_checkout_are_independent_identity_evidence ... ok
+test v1::incomplete_authorization_and_unsupported_protection_remain_blockers ... ok
+test v1::legacy_migration_contract_gaps_and_test_merge_protection ... ok
+test v1::log_download_never_forwards_credentials_and_rejects_untrusted_or_unbounded_content ... ok
+test v1::ordered_store_preserves_originals_and_invalidates_policy_identity ... ok
+test v1::phases_private_public_and_no_combined_status ... ok
+test v1::rerun_preserves_failures_and_conflicts_never_pick_a_green ... ok
+test v1::selected_merge_and_dispatch_capabilities_do_not_mutate_remote_rules ... ok
+test v1::test_merge_requires_strict_checks_and_admin_enforcement ... ok
+test v1::test_merge_unknown_merge_and_current_job_conflicts_fail_closed ... ok
+test v1::workflow_blob_is_checked_on_every_observed_source_not_only_capability_probe ... ok
+
+test result: ok. 52 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 120.94s
+
+     Running tests/group_edits.rs (target/debug/deps/group_edits-84b1b0f4b656ecab)
+
+running 9 tests
+test adding_removing_and_budget_reduction_preserve_ledgers_and_reject_policy_drift ... ok
+test change_analysis_and_dependency_order ... ok
+test delta_review_is_atomic_idempotent_and_preserves_identity_and_balances ... ok
+test dependency_closure_matches_same_repository_baseline_binding ... ok
+test invalid_coverage_budget_and_claimed_inputs_never_partially_authorize ... ok
+test invalid_envelopes_and_unapproved_queues_do_not_create_partial_membership ... ok
+test kind_rebinding_is_rejected_and_added_validation_items_never_create_a_run ... ok
+test reorder_restarts_without_reauthorizing_and_content_edits_keep_completed_facts ... ok
+test shared_scope_and_group_ceiling_invalidate_all_outstanding_inputs ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 7.61s
+
+     Running tests/group_queue.rs (target/debug/deps/group_queue-995c73b17051be20)
+
+running 11 tests
+test cancelled_children_leave_queue_only_after_cleanup_without_satisfying_dependencies ... ok
+test cross_repository_versions_do_not_use_git_ancestry_and_share_legacy_owner ... ok
+test global_claim_restart_budget_and_completion_protocol ... ok
+test group_ceiling_inflight_reservations_and_late_usage_survive_restart ... ok
+test interrupted_workspace_operation_is_visible_without_releasing_owner ... ok
+test legacy_draft_edit_serializes_with_first_queue_projection ... ok
+test legacy_same_transaction_queue_keeps_numeric_order ... ok
+test queue_edit_and_real_claim_serialize_in_both_orders ... ok
+test queue_wait_reasons_and_bound_review_conflict_preserve_authorization ... ok
+test storage_recovery_retires_only_proven_unstarted_runtime_reservations ... ok
+test unauthorized_stale_unavailable_cancelled_and_unsupported_never_claim ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 17.34s
+
+     Running tests/group_review.rs (target/debug/deps/group_review-6db3e48bd1ddb537)
+
+running 4 tests
+test competing_confirmations_create_one_authorization ... ok
+test domain_checks_coverage_versions_policy_and_budget ... ok
+test postgres_atomic_review_replay_races_and_persistent_accounting ... ok
+test postgres_rejects_invalid_coverage_references_plans_policies_and_order ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.64s
+
+     Running tests/health.rs (target/debug/deps/health-f3f90b7dcc3229fe)
+
+running 6 tests
+test health_checks_a_real_database ... ok
+test recovery_acceptance::restored_database_is_guarded_and_drill_has_no_business_routes ... recovery drill listening at 127.0.0.1:40159
+ok
+test security::accounts_sessions_revocation_expiry_csrf_and_persistent_limits ... ok
+test security::invalid_configuration_is_closed ... ok
+test security::proxy_and_header_boundaries_fail_closed ... ok
+test unavailable_database_is_503_without_connection_details ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.96s
+
+     Running tests/integration_validation.rs (target/debug/deps/integration_validation-aebb645f147fefa1)
+
+running 20 tests
+test authorization_edit_and_repository_revocation_races_keep_parent_incomplete ... ok
+test cancellation_and_unknown_spawn_keep_outcomes_separate ... ok
+test changed_parent_revision_cannot_borrow_old_integration_acceptance ... ok
+test clean_commit_drift_before_execution_cannot_be_relabelled ... ok
+test completed_dependency_versions_are_checked_before_claim ... ok
+test explicit_authorization_rejects_stale_scopes_and_missing_repository_coverage ... ok
+test failed_required_check_retains_owner_without_parent_done_or_repair_child ... ok
+test independent_repositories_freeze_distinct_versions_without_cross_ancestry ... ok
+test infrastructure_retry_preserves_originals_and_uses_a_new_validation_identity ... ok
+test integration_supervisor_growth_uses_its_preallocated_hot_budget ... ok
+test missing_step_and_changed_configuration_never_claim ... ok
+test native_integration_failure_persists_once_without_changing_kind_or_releasing_owner ... ok
+test no_code_difference_completes_child_parent_and_releases_owner ... ok
+test pause_stops_supervised_work_and_restart_never_unpauses ... ok
+test prepared_restart_and_cancel_racing_success_never_create_business_done ... ok
+test reviewed_two_validation_chain_keeps_parent_waiting_and_reuses_no_child_fact ... ok
+test serial_repair_versions_rerun_all_checks_and_preserve_failed_combinations ... ok
+test source_mutation_and_forged_binding_cannot_complete ... ok
+test storage_stop_receipt_can_be_reconciled_before_clearing_storage_latch ... ok
+test zero_model_validation_may_finish_at_exact_group_budget_but_not_above_it ... ok
+
+test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 39.07s
+
+     Running tests/legacy_contract.rs (target/debug/deps/legacy_contract-d709c314d39a930c)
+
+running 1 test
+test non_json_response_is_preserved ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/linked_repair.rs (target/debug/deps/linked_repair-6086d44d43bfa89c)
+
+running 3 tests
+test exact_paths_and_native_failure_required_no_model_interpretation ... ok
+test independent_contract_failure_is_classified_only_with_trusted_code_flag ... ok
+test unknown_security_infrastructure_and_no_failure_cannot_start_code ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.18s
+
+     Running tests/multiple_repositories.rs (target/debug/deps/multiple_repositories-1f891be5e1bccfa5)
+
+running 1 test
+test registration_review_routing_and_global_ownership ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+     Running tests/operators.rs (target/debug/deps/operators-efcb21a132c0fad1)
+
+running 3 tests
+test control_availability_and_redaction ... ok
+test operator_previews_never_expose_multiline_private_keys ... ok
+test versioned_operations_and_independent_durable_views ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.82s
+
+     Running tests/preparation.rs (target/debug/deps/preparation-8b9299acce8e841c)
+
+running 11 tests
+test connectivity_requires_identity_without_domain_enforcement ... ok
+test deadline_completion_and_identity_mismatch_require_reconciliation ... ok
+test evidence_commit_failure_refuses_claim_without_latching_other_work ... ok
+test fixed_retry_budget_and_pause_are_independent ... ok
+test malformed_reviewed_network_declaration_cannot_admit_a_run ... ok
+test persisted_attempts_resume_phase_and_preserve_pause ... ok
+test preparation_service_persists_real_adapter_errors_and_admits_only_success ... ok
+test reviewed_hook_failures_are_recorded_at_each_preparation_boundary ... ok
+test service_rejects_wrong_broker_and_bounds_output_and_scopes_storage_failure ... ok
+test stale_success_requires_new_authorization_and_cannot_be_overwritten ... ok
+test task_storage_failure_preserves_originals_without_global_latch ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 13.35s
+
+     Running tests/project_hooks.rs (target/debug/deps/project_hooks-00fac8838c020b69)
+
+running 15 tests
+test absent_hooks_keep_default_path_and_validation_role_is_explicit ... ok
+test after_run_requires_quiescence_and_preserved_snapshot_but_auxiliary_failure_keeps_fact ... ok
+test cancellation_waits_for_supervisor_stop_receipt ... ok
+test idempotent_failure_replays_once_with_same_invocation_and_new_attempt ... ok
+test invalid_before_remove_resource_never_starts_reviewed_script ... ok
+test lost_supervisor_after_identity_preserves_unknown_side_effects ... ok
+test mismatched_stop_receipt_cannot_confirm_hook_quiescence ... ok
+test missing_supervisor_identity_fails_without_starting_the_hook ... ok
+test reviewed_hooks_run_once_and_loss_reconciles_without_replaying ... ok
+test reviewed_repository_rejects_unbounded_or_ambiguous_hooks ... ok
+test script_identity_spawn_and_output_limits_fail_closed ... ok
+test stopped_hook_reconciliation_preserves_each_recorded_outcome ... ok
+test supervisor_cannot_claim_quiescence_when_hook_output_cannot_be_opened ... ok
+test timeout_stops_detached_descendants_and_preserves_unknown_boundary ... ok
+test undeployed_hooks_and_corrupt_frozen_identity_fail_before_execution ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 58.24s
+
+     Running tests/requirements.rs (target/debug/deps/requirements-c1d6c789a7b0b0f6)
+
+running 2 tests
+test database_api_acceptance ... ok
+test policy_and_authorization_reject_invalid_or_expanded_inputs ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.04s
+
+     Running tests/runtime.rs (target/debug/deps/runtime-75128c57cedd4475)
+
+running 9 tests
+test frames_and_validation_reject_invalid_input ... ok
+test invalid_answers_and_denials ... ok
+test persistence_and_full_client_acceptance ... ok
+test pinned_codex_full_client_survives_idle_provider_response ... ok
+test storage_recheck_recovers_committed_work_without_completion_declaration ... ok
+test storage_recheck_restores_paid_work_once_without_a_question_or_pause ... ok
+test stream_errors_and_consumer_cancellation ... ok
+test tool_dispatch_errors_are_sanitized_durable_and_replayable ... ok
+test transport_bounds_and_stream_lifetimes ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 35.93s
+
+     Running tests/runtime_environment.rs (target/debug/deps/runtime_environment-2504583e107d7a2c)
+
+running 1 test
+test runtime_child_receives_only_deployment_environment ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+     Running tests/runtime_real.rs (target/debug/deps/runtime_real-57392b561719c369)
+
+running 1 test
+test real_runtime_transport_and_supervision ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.47s
+
+     Running tests/startup.rs (target/debug/deps/startup-5a25e19159af4b20)
+
+running 6 tests
+test auth_admin::controlled_admin_input_and_reset_are_durable_and_secret_free ... ok
+test connection_and_bind_failures_do_not_announce_readiness ... ok
+test invalid_bind_address_fails_without_announcing_readiness ... ok
+test missing_database_configuration_fails_startup ... ok
+test occupied_listener_fails_without_starting_workers ... ok
+test serves_a_real_request_and_shuts_down_cleanly ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 33.58s
+
+     Running tests/storage.rs (target/debug/deps/storage-d976cba0e1fb2bf4)
+
+running 15 tests
+test accounting_restarts_the_whole_pass_only_for_bounded_disappearance ... ok
+test active_runtime_socket_keeps_originals_and_accounts_actual_bytes ... ok
+test archive_verification_and_descriptor_bound_interrupted_deletion ... ok
+test before_remove_failure_and_late_reference_both_retain_original ... ok
+test controlled_admission_retention_and_resolution_boundaries ... ok
+test expired_records_and_task_quotas_do_not_block_other_requirements ... ok
+test incomplete_capacity_check_does_not_stop_runs_or_require_recovery ... ok
+test invalid_storage_category_fails_closed ... ok
+test live_runtime_socket_is_measured_but_never_archived ... ok
+test measurement_rejects_missing_roots_and_inventory_overflow ... ok
+test merged_and_test_merge_material_is_inventoried_without_losing_originals ... ok
+test persisted_retention_archive_retries_and_cumulative_admission ... ok
+test phase_notifications_require_real_changes ... ok
+test preparation_identity_mismatch_is_protected_and_deleted_material_stays_deleted ... ok
+test reader_panic_is_reported_to_capture_owner ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 35.60s
+
+     Running tests/validation.rs (target/debug/deps/validation-399157e0765fedec)
+
+running 5 tests
+test recovery_context_and_repair_boundaries ... ok
+test rejects_every_identity_and_evidence_failure ... ok
+test rejects_tampered_output ... ok
+test repair_is_once_and_infra_is_free ... ok
+test verifies_fixed_candidate ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/validation_runner.rs (target/debug/deps/validation_runner-55524621fb2b23fc)
+
+running 8 tests
+test cancellation_stops_validation_and_preserves_incomplete_invocation ... ok
+test deployment_mount_boundary_runs_real_candidate_validation ... ok
+test fixed_process_and_reconciliation ... ok
+test p9_nonzero_and_unknown_steps_never_become_pass ... ok
+test protected_plan_rejects_tampering ... ok
+test retained_results_cannot_replace_approved_commands_or_omit_checks ... ok
+test two_reviewed_hooks_produce_consumable_p9_evidence_without_harness_gate ... ok
+test validation_does_not_inherit_control_plane_credentials ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 4.22s
+
+     Running tests/validation_store.rs (target/debug/deps/validation_store-d691295a4302ce60)
+
+running 6 tests
+test durable_exact_evidence_and_read_only_api ... ok
+test infrastructure_retry_preserves_failed_candidate_and_never_reserves_code ... ok
+test real_validation_service_success_failure_and_recovery ... ok
+test reconciles_durable_process_result_and_rejects_corrupt_ledger ... ok
+test repairs_are_atomic_and_requirement_owned ... ok
+test worker_drives_fixed_candidate_and_one_repair_to_new_validation ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 11.84s
+
+     Running tests/workspaces.rs (target/debug/deps/workspaces-0df1a1a5c10bcfe0)
+
+running 12 tests
+test authorization_idempotency_database_failure_and_recovery ... ok
+test commit_ignored_caches_and_literal_source_paths ... ok
+test crash_after_files_child ... ok
+test crash_after_files_leaves_pending_without_reference ... 
+running 1 test
+test crash_after_files_child ... ok
+test disk_write_failure_child ... ok
+test git_round_trip_and_security ... ok
+test invalidated_candidate_and_wrong_ownership_cannot_restore ... ok
+test operating_system_write_failure_preserves_original ... ok
+test preservation_failures_leave_sources_and_partial_files ... ok
+test stage_selection_and_cold_start_preservation ... ok
+test storage_reclaims_only_pushed_clean_snapshots_and_untracked_caches ... ok
+test storage_retirement_requires_durable_delivery_and_preserves_reclaim_proof ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 8.14s
+
+   Doc-tests codexsymphony_server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+{"exit_code": 0, "test_fixture_after": {"ok": true, "role": "test", "before_id": "45fc7e60d64b6678ef687fc498f30f470a04842ceb48e2a8f5a88093b0ef8278", "container_id": "45fc7e60d64b6678ef687fc498f30f470a04842ceb48e2a8f5a88093b0ef8278", "running": true, "image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "storage": "tmpfs", "memory_limit_bytes": 2147483648, "environment": {"image": "sha256:57c72fd2a128e416c7fcc499958864df5301e940bca0a56f58fddf30ffc07777", "memory": 2147483648, "memory_swap": 4294967296, "nano_cpus": 1000000000}, "memory_events": {"low": 0, "high": 0, "max": 0, "oom": 0, "oom_kill": 0, "oom_group_kill": 0, "sock_throttled": 0}}}

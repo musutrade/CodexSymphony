@@ -1,0 +1,14 @@
+{
+  "status": "PASS",
+  "check": "Installed rc.7 compatibility scan of all approved production Rust sources",
+  "source_files": 131,
+  "changed_files": {
+    "apps/server/src/validation_context.rs": "735a3976c2e4ceda289c5cd84e1d7d5954e5cecf5dbf5130581679175efe2918",
+    "apps/server/src/validation_hook.rs": "af9b24a3fff7453f35f492446ed87f7f9d48cf8efbde6c294df3749e3fd78c52",
+    "apps/server/src/validation_supervisor.rs": "73f8ec325fd1af14ea15b3afd4e9842e1749e8f55c7e7403395d089fff97867f"
+  },
+  "collector_inventory_sha256": "2b2d7047a7c9be7629f510cabd5a69eec105c6254cd99749f98f8c1f37ab5af7",
+  "original_evidence": "artifacts/gh120/gate-collector-blocker.json",
+  "change": "Four fixed-list vec! expressions replaced with equivalent Vec::from arrays. No collector or policy changes.",
+  "remaining": "Refresh exact-source inventory and evidence; rerun complete local_gate and require exact-tree PASS before publication."
+}

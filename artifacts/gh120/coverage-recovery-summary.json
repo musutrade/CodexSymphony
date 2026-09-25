@@ -1,0 +1,56 @@
+{
+  "source_unchanged": true,
+  "source_inventory_sha256": "0d5032d4b6735f0ec95964af667a40939d50737679da7a89b8842ff1ef023861",
+  "passed": 293,
+  "failed": 0,
+  "ignored": 0,
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/fmt-coverage-recovery.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/run.py",
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/clippy-coverage-recovery.log"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "config",
+        "check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/gate-config-coverage-recovery.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/workspace_tests.py"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/workspace-tests-coverage-recovery.log"
+    }
+  ],
+  "complete_gate": "Required after final evidence manifest; no PASS inferred from ordinary checks.",
+  "normal_path": "normal-path-quality-fixed retains genuine process/Git/PostgreSQL evidence for unchanged production code."
+}

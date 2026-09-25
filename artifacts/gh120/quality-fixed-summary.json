@@ -1,0 +1,60 @@
+{
+  "source_unchanged": true,
+  "source_inventory_sha256": "8f444e1e44c24ce078a9a41c83bbc17a153b27065e815395f7918e396aca7052",
+  "passed": 293,
+  "failed": 0,
+  "ignored": 0,
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/fmt-quality-fixed.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/run.py",
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/clippy-quality-fixed.log"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "config",
+        "check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/gate-config-quality-fixed.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/workspace_tests.py"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/workspace-tests-quality-fixed.log"
+    }
+  ],
+  "normal_path": {
+    "command": "GH120_EVIDENCE_DIR=<workspace>/artifacts/gh120/normal-path-quality-fixed python3 /opt/symphony-env/run.py cargo test --locked -p codexsymphony-server --test environment p9_validation -- --test-threads=1",
+    "exit_code": 0,
+    "log": "artifacts/gh120/normal-path-quality-fixed.log",
+    "evidence": "artifacts/gh120/normal-path-quality-fixed"
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "controlled": {
+    "protocol_version": 1,
+    "environment": {
+      "repository_revision": "repository:1@1",
+      "contract_digest": "47e5c39dc71e0dfc461636e52fc798aa691c726d1c3eea99a6d6a19968cb5b66",
+      "host_profile_ref": "python",
+      "role": "test"
+    },
+    "extensions": [
+      {
+        "id": "python",
+        "implementation_digest": "aa9e30e4d58b17721fa1648d2a1d2cd16458d618880cb586e2c834dd2deb8c2b",
+        "operations": [
+          "environment_check"
+        ],
+        "scope_ref": "repository:1",
+        "config_ref": "python-config",
+        "credential_provider_ref": null
+      }
+    ]
+  },
+  "host_profile_digest": "729406f3d698b4d88fe36ad7b9000515a679a251b4733b15a51a0b34f986cf72",
+  "extension_id": "python",
+  "lockfiles": [],
+  "roles": {
+    "dev": {
+      "expected": {
+        "image": "none",
+        "memory": 64,
+        "schedule.threads": 1,
+        "tool.digest": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41",
+        "tool.version": "Python 3.14.4"
+      },
+      "services": {},
+      "runtime": {
+        "runtime.state": [
+          "ready",
+          "idle"
+        ]
+      },
+      "checks": [
+        "environment"
+      ],
+      "differences": "Same tool/resource contract; independent data per repository"
+    },
+    "test": {
+      "expected": {
+        "image": "none",
+        "memory": 64,
+        "schedule.threads": 1,
+        "tool.digest": "52e0a13e60a981d8c4b6478be2ba5176f69da07948a056bf49cf6f077e30cb41",
+        "tool.version": "Python 3.14.4"
+      },
+      "services": {},
+      "runtime": {
+        "runtime.state": [
+          "ready",
+          "idle"
+        ]
+      },
+      "checks": [
+        "environment"
+      ],
+      "differences": "Same tool/resource contract; independent data per repository"
+    }
+  },
+  "ci": false,
+  "cache": null
+}

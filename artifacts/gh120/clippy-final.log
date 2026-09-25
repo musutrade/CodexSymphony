@@ -1,0 +1,14 @@
+    Checking codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/workspaces/GH-120/apps/server)
+error: this expression creates a reference which is immediately dereferenced by the compiler
+   --> apps/server/src/validation_context.rs:276:9
+    |
+276 |         &plan,
+    |         ^^^^^ help: change this to: `plan`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.97.0/index.html#needless_borrow
+    = note: `-D clippy::needless-borrow` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_borrow)]`
+
+error: could not compile `codexsymphony-server` (lib) due to 1 previous error
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `codexsymphony-server` (lib test) due to 1 previous error

@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/gem/.local/share/harness-gate/rust-source/0.1.0-rc.7/capture.py", line 109, in <module>
+    main()
+    ~~~~^^
+  File "/home/gem/.local/share/harness-gate/rust-source/0.1.0-rc.7/capture.py", line 65, in main
+    subprocess.run(command, env=env, cwd=root, stdout=stdout, stderr=stderr, check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['cargo', 'llvm-cov', '--manifest-path', '/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/probes/backend/workspace/apps/server/Cargo.toml', '--locked', '--json', '--output-path', '/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/probes/backend/cargo-coverage.json', '--verbose']' returned non-zero exit status 101.

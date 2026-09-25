@@ -1,0 +1,10 @@
+
+running 5 tests
+test cancellation_stops_validation_and_preserves_incomplete_invocation ... ok
+test deployment_mount_boundary_runs_real_candidate_validation ... ok
+test fixed_process_and_reconciliation ... ok
+test protected_plan_rejects_tampering ... ok
+test validation_does_not_inherit_control_plane_credentials ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.81s
+

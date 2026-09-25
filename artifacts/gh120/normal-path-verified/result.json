@@ -1,0 +1,1 @@
+[{"id":"test","command":["/gate-entry"],"exit_code":0,"output":"complete project test passed\n","output_sha256":"4989b344d9ff6a59e1830c8355a7c31aaac679cdd0983562667384988a0c5dd3","log_ref":"/tmp/cs-s0xrn195/environment-a7c75446-7ac9-40c0-933f-9c9db330ebed/validate/step-0.log","consumer":"handoff","code_failure":true}]

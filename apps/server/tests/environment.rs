@@ -901,3 +901,387 @@ impl std::io::Write for LimitedWriter {
         Ok(())
     }
 }
+
+#[tokio::test]
+async fn p9_validation_is_bound_to_task_environment_and_retained_source_at_delivery() {
+    use codexsymphony_server::{
+        environment_service, validation_context, validation_runner, validation_service,
+    };
+    let root = temporary();
+    let (mut environment, profile) = fixture(&root, "python", "python3", false);
+    let mut registry = registry(&root, vec![("python".into(), profile)]);
+    registry
+        .profiles
+        .get_mut("python")
+        .unwrap()
+        .registration
+        .scope_ref = "repository:1".into();
+    environment.controlled.extensions = vec![registry.profiles["python"].registration.clone()];
+    environment.controlled.environment.repository_revision = "repository:1@1".into();
+    environment.host_profile_digest = registry.profiles["python"].identity(&registry.evidence_root);
+    approve(&mut registry, &mut environment);
+    let config = root.join("registry.json");
+    fs::write(&config, serde_json::to_vec(&registry).unwrap()).unwrap();
+    unsafe {
+        std::env::set_var(
+            "SYMPHONY_SUPERVISOR",
+            env!("CARGO_BIN_EXE_codexsymphony-server"),
+        );
+        std::env::set_var("ENVIRONMENT_CONFIG", &config);
+    }
+    let repository = json!({"environment":serde_json::to_string(&environment).unwrap(),"revoked":false,"project":"Python","remote":"owner/python","github_repository_id":1,"base_branch":"main","reason":"reviewed complete validation","policy":{"allowed_checks":["validate"],"max_timeout_seconds":60,"token_limit":100,"turn_limit":3,"model_work_seconds":60,"gate_recovery_policy":"one_code_repair"}});
+    let pool = database(&repository).await;
+    let contract = json!({"title":"project test","description":"candidate check","acceptance_criteria":[{"description":"passes","verification_ref":"test"}],"validation_plan":[{"id":"test","check":"validate","selector":"test","expected_result":"pass","timeout_seconds":30}],"network_access":[]});
+    let typed_contract: codexsymphony_server::contract::Contract =
+        serde_json::from_value(contract.clone()).unwrap();
+    let mut typed_repository: codexsymphony_server::contract::Repository =
+        serde_json::from_value(repository.clone()).unwrap();
+    codexsymphony_server::contract::authorize(&typed_contract, &typed_repository).unwrap();
+    typed_repository.environment = None;
+    assert!(codexsymphony_server::contract::authorize(&typed_contract, &typed_repository).is_err());
+    sqlx::query("UPDATE requirement_revision SET document=document || jsonb_build_object('contract',$1::jsonb) WHERE requirement_id=1").bind(contract).execute(&pool).await.unwrap();
+    sqlx::raw_sql("UPDATE requirement SET state='Running' WHERE id=1; UPDATE execution_control SET recovery_complete=true,paused=false WHERE id=1;").execute(&pool).await.unwrap();
+    let checkout = root.join("candidate");
+    assert!(
+        Command::new("git")
+            .args(["clone", "-q"])
+            .arg(root.join("python"))
+            .arg(&checkout)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let candidate = validation_runner::candidate(&checkout).unwrap();
+    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,quiescent) VALUES('source',1,1,'boot','request',$1,'source','{}','Succeeded',true)").bind(checkout.to_str().unwrap()).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO workspace_snapshot(run_id,manifest,candidate) VALUES('source',$1,true)").bind(json!({"head":candidate.sha,"workspace":{"branch":"ai/req-1-source","baseline":candidate.sha}})).execute(&pool).await.unwrap();
+    let entry = root.join("project-validation");
+    let script = "#!/bin/sh\ntest -f README.md && printf 'complete project test passed\\n'\n";
+    fs::write(&entry, script).unwrap();
+    fs::set_permissions(&entry, fs::Permissions::from_mode(0o700)).unwrap();
+    let plan = validation_runner::Plan {
+        entry,
+        entry_sha256: sha256(script),
+        steps: vec![validation_runner::Step {
+            id: "test".into(),
+            command: vec!["/gate-entry".into()],
+            timeout_seconds: 10,
+            code_failure: true,
+        }],
+    };
+    let runtime_config = root.join("runtime.json");
+    let runtime_value = json!({"validation":plan,"settings":{"startup_seconds":10,"response_seconds":10,"stall_seconds":10,"reservation":{"tokens":1,"turns":1,"model_seconds":1},"codex_config":""},"preparation_adapter":"/bin/true","preparation":{"launcher":["/bin/true"]}});
+    fs::write(&runtime_config, serde_json::to_vec(&runtime_value).unwrap()).unwrap();
+    unsafe {
+        std::env::set_var("RUNTIME_CONFIG", &runtime_config);
+    }
+    let directory = root.join("validate");
+    let request = || validation_service::Request {
+        id: "validate",
+        source_run: "source",
+        requirement: 1,
+        revision: 1,
+        checkout: &checkout,
+        directory: &directory,
+        candidate: &candidate,
+        plan: &plan,
+    };
+    // No Agent test declaration is consumed: the service executes the approved hook.
+    assert!(
+        validation_service::validate(&pool, request())
+            .await
+            .unwrap()
+    );
+    let action: String =
+        sqlx::query_scalar("SELECT action_key FROM delivery WHERE validation_id='validate'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    let evaluation: Value =
+        sqlx::query_scalar("SELECT hook_evaluation FROM candidate_validation WHERE id='validate'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(evaluation["verdict"], "pass");
+    assert_eq!(evaluation["call"]["identity"]["requirement_id"], 1);
+    assert!(
+        validation_service::validate(&pool, request())
+            .await
+            .unwrap()
+    );
+    environment_service::admit(&pool, 1, 1, "delivery", None)
+        .await
+        .unwrap();
+    validation_context::delivery(&pool, &action).await.unwrap();
+    let source_identity = codexsymphony_server::controlled_contract::SourceIdentity {
+        commit: candidate.sha.clone(),
+        tree: candidate.tree.clone(),
+    };
+    validation_context::admit(&pool, "validate", 1, 1, &source_identity)
+        .await
+        .unwrap();
+    // A saved PASS cannot reconstruct missing raw evidence or rerun its Hook.
+    let binding = fs::read(directory.join("binding.json")).unwrap();
+    fs::remove_file(directory.join("binding.json")).unwrap();
+    let error = validation_service::validate(&pool, request())
+        .await
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("accepted validation evidence unavailable")
+    );
+    assert!(!directory.join("binding.json").exists());
+    fs::write(directory.join("binding.json"), binding).unwrap();
+    reject_damaged_validation_records(&pool, &action).await;
+    reject_interrupted_validation_recovery(&pool, &directory).await;
+    validation_context::delivery(&pool, &action).await.unwrap();
+    let wrong_source = codexsymphony_server::controlled_contract::SourceIdentity {
+        commit: "other".into(),
+        tree: candidate.tree.clone(),
+    };
+    assert!(
+        validation_context::admit(&pool, "validate", 1, 1, &wrong_source)
+            .await
+            .is_err()
+    );
+    assert!(
+        validation_context::admit(&pool, "validate", 1, 2, &source_identity)
+            .await
+            .is_err()
+    );
+    let mut changed_runtime = runtime_value.clone();
+    changed_runtime["validation"]["steps"][0]["command"] = json!(["/gate-entry", "replacement"]);
+    fs::write(
+        &runtime_config,
+        serde_json::to_vec(&changed_runtime).unwrap(),
+    )
+    .unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    fs::write(&runtime_config, serde_json::to_vec(&runtime_value).unwrap()).unwrap();
+    validation_context::delivery(&pool, &action).await.unwrap();
+    unsafe {
+        std::env::remove_var("RUNTIME_CONFIG");
+    }
+    if let Some(path) = std::env::var_os("GH120_EVIDENCE_DIR") {
+        let target = PathBuf::from(path);
+        fs::create_dir_all(&target).unwrap();
+        for name in [
+            "input.json",
+            "invocation.json",
+            "binding.json",
+            "evaluation.json",
+            "result.json",
+            "step-0.log",
+            "identity.json",
+            "quiescent.json",
+            "exit.json",
+        ] {
+            fs::copy(directory.join(name), target.join(name)).unwrap();
+        }
+        fs::write(
+            target.join("environment-plan.json"),
+            serde_json::to_vec_pretty(&environment).unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            target.join("source.json"),
+            serde_json::to_vec_pretty(&candidate).unwrap(),
+        )
+        .unwrap();
+        fs::copy(
+            checkout.join("README.md"),
+            target.join("candidate-README.md"),
+        )
+        .unwrap();
+    }
+    fs::write(checkout.join("uncommitted"), "after PASS").unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    fs::remove_file(checkout.join("uncommitted")).unwrap();
+    fs::write(root.join("python/state"), "idle").unwrap();
+    environment_service::admit(&pool, 1, 1, "delivery", None)
+        .await
+        .unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    fs::write(root.join("python/state"), "ready").unwrap();
+    environment_service::admit(&pool, 1, 1, "delivery", None)
+        .await
+        .unwrap();
+    validation_context::delivery(&pool, &action).await.unwrap();
+    fs::write(&plan.entry, "#!/bin/sh\nexit 0\n").unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    fs::write(&plan.entry, script).unwrap();
+    validation_context::delivery(&pool, &action).await.unwrap();
+    let stop_proof = fs::read(directory.join("quiescent.json")).unwrap();
+    fs::remove_file(directory.join("quiescent.json")).unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    fs::write(directory.join("quiescent.json"), stop_proof).unwrap();
+    validation_context::delivery(&pool, &action).await.unwrap();
+    sqlx::query("UPDATE repository SET document=jsonb_set(document,'{revoked}','true') WHERE id=1")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    sqlx::query(
+        "UPDATE repository SET document=jsonb_set(document,'{revoked}','false') WHERE id=1",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    validation_context::delivery(&pool, &action).await.unwrap();
+    sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    sqlx::query("UPDATE requirement SET paused=false WHERE id=1")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(validation_context::delivery(&pool, &action).await.is_err());
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT state FROM agent_run WHERE id='source'")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        "Succeeded"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, String>("SELECT state FROM requirement WHERE id=1")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        "Running"
+    );
+    seed_hook_retry(&pool, "validation-failure", &plan).await;
+    fs::set_permissions(&plan.entry, fs::Permissions::from_mode(0o600)).unwrap();
+    let failed_directory = root.join("validation-failure");
+    let failed = validation_service::Request {
+        id: "validation-failure",
+        directory: &failed_directory,
+        ..request()
+    };
+    assert!(validation_service::validate(&pool, failed).await.is_err());
+    let unknown: Value = sqlx::query_scalar(
+        "SELECT hook_evaluation FROM candidate_validation WHERE id='validation-failure'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(unknown["verdict"], "unknown");
+    assert!(failed_directory.join("stderr.log").exists());
+    let slow_entry = root.join("slow-validation");
+    let slow_script = "#!/bin/sh\nprintf 'starting real check\\n'\nsleep 30\n";
+    fs::write(&slow_entry, slow_script).unwrap();
+    fs::set_permissions(&slow_entry, fs::Permissions::from_mode(0o700)).unwrap();
+    let slow_plan = validation_runner::Plan {
+        entry: slow_entry,
+        entry_sha256: sha256(slow_script),
+        steps: plan.steps.clone(),
+    };
+    seed_hook_retry(&pool, "validation-cancel", &slow_plan).await;
+    let cancelled_directory = root.join("validation-cancel");
+    let cancelled = validation_service::Request {
+        id: "validation-cancel",
+        directory: &cancelled_directory,
+        plan: &slow_plan,
+        ..request()
+    };
+    let stop = async {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+        while !cancelled_directory.join("step-0.log").exists() {
+            assert!(
+                std::time::Instant::now() < deadline,
+                "validation failed to start"
+            );
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
+        sqlx::query("UPDATE requirement SET paused=true WHERE id=1")
+            .execute(&pool)
+            .await
+            .unwrap();
+    };
+    let (result, ()) = tokio::join!(validation_service::validate(&pool, cancelled), stop);
+    assert!(result.is_err());
+    assert!(cancelled_directory.join("quiescent.json").exists());
+    assert!(cancelled_directory.join("stop.json").exists());
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM delivery")
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+        1
+    );
+    unsafe {
+        std::env::remove_var("ENVIRONMENT_CONFIG");
+    }
+    pool.close().await;
+    fs::remove_dir_all(root).unwrap();
+}
+
+async fn reject_damaged_validation_records(pool: &sqlx::PgPool, action: &str) {
+    use codexsymphony_server::validation_context;
+    let saved: (Value, Value, Value) = sqlx::query_as(
+        "SELECT hook_context,hook_evaluation,approved_plan FROM candidate_validation WHERE id='validate'",
+    ).fetch_one(pool).await.unwrap();
+    for (context, evaluation, plan) in [
+        (json!({}), Some(saved.1.clone()), Some(saved.2.clone())),
+        (saved.0.clone(), None, Some(saved.2.clone())),
+        (saved.0.clone(), Some(json!({})), Some(saved.2.clone())),
+        (saved.0.clone(), Some(saved.1.clone()), None),
+        (saved.0.clone(), Some(saved.1.clone()), Some(json!({}))),
+    ] {
+        sqlx::query("UPDATE candidate_validation SET hook_context=$1,hook_evaluation=$2,approved_plan=$3 WHERE id='validate'")
+            .bind(context).bind(evaluation).bind(plan).execute(pool).await.unwrap();
+        assert!(validation_context::delivery(pool, action).await.is_err());
+    }
+    sqlx::query("UPDATE candidate_validation SET hook_context=$1,hook_evaluation=$2,approved_plan=$3 WHERE id='validate'")
+        .bind(saved.0).bind(saved.1).bind(saved.2).execute(pool).await.unwrap();
+    validation_context::delivery(pool, action).await.unwrap();
+}
+
+async fn reject_interrupted_validation_recovery(pool: &sqlx::PgPool, directory: &Path) {
+    use codexsymphony_server::{process, validation_supervisor};
+    let job =
+        || process::read::<validation_supervisor::Job>(&directory.join("input.json")).unwrap();
+    let before = fs::read(directory.join("result.json")).unwrap();
+    validation_supervisor::execute(pool, job(), false)
+        .await
+        .unwrap();
+    let stopped = fs::read(directory.join("quiescent.json")).unwrap();
+    fs::remove_file(directory.join("quiescent.json")).unwrap();
+    let error = validation_supervisor::execute(pool, job(), false)
+        .await
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("validation process outcome unknown")
+    );
+    assert!(directory.join("stop.json").exists());
+    assert!(!directory.join("quiescent.json").exists());
+    assert_eq!(fs::read(directory.join("result.json")).unwrap(), before);
+    // Restore the fixture's original proof; even then the stop intent forbids admission.
+    fs::write(directory.join("quiescent.json"), &stopped).unwrap();
+    assert!(
+        validation_supervisor::execute(pool, job(), false)
+            .await
+            .is_err()
+    );
+    fs::remove_file(directory.join("stop.json")).unwrap();
+    fs::write(directory.join("quiescent.json"), b"{}").unwrap();
+    assert!(
+        validation_supervisor::execute(pool, job(), false)
+            .await
+            .is_err()
+    );
+    fs::write(directory.join("quiescent.json"), stopped).unwrap();
+}
+
+async fn seed_hook_retry(
+    pool: &sqlx::PgPool,
+    id: &str,
+    plan: &codexsymphony_server::validation_runner::Plan,
+) {
+    sqlx::query("INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result,retry_of) SELECT $1,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,$2,required_steps,source_before,source_before,$3,$3,'declaration','pending',id FROM candidate_validation WHERE id='validate'")
+        .bind(id).bind(json!(plan.identity().unwrap())).bind(&plan.entry_sha256).execute(pool).await.unwrap();
+}

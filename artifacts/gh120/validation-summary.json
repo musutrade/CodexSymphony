@@ -1,0 +1,40 @@
+{
+  "source_inventory_sha256": "01a3d87a4c59810263bcd3e39cd6d8e131f65897957380fe1fe902b42067db6e",
+  "source_unchanged_during_full_suite": true,
+  "environment_fingerprint": "64b2dec364e628450605ed2ad950295de37bcf5b29f226c729e674b1e8f39529",
+  "checks": [
+    {
+      "command": "cargo fmt --all -- --check",
+      "exit_code": 0,
+      "log": "artifacts/gh120/fmt-delivery.log"
+    },
+    {
+      "command": "python3 /opt/symphony-env/workspace_tests.py",
+      "underlying_command": "cargo test --workspace --locked",
+      "exit_code": 0,
+      "log": "artifacts/gh120/workspace-tests-verified.log",
+      "result": "artifacts/gh120/workspace-tests-verified-result.json",
+      "summed_test_result_passes": 292,
+      "failed": 0,
+      "ignored": 0
+    },
+    {
+      "command": "python3 /opt/symphony-env/run.py cargo clippy --workspace --all-targets --locked -- -D warnings",
+      "exit_code": 0,
+      "log": "artifacts/gh120/clippy-delivery.log"
+    },
+    {
+      "command": "python3 -m unittest discover -s tools/tests -p test_m2_executor.py -v",
+      "exit_code": 0,
+      "tests": 4,
+      "log": "artifacts/gh120/access-boundary.log"
+    },
+    {
+      "command": "python3 tools/gate.py config check",
+      "exit_code": 0,
+      "log": "artifacts/gh120/gate-config.log"
+    }
+  ],
+  "complete_local_gate": "Must run after this evidence manifest is finalized; publication is contingent on its exact-tree PASS.",
+  "ci": "Pending after publication; not inferred from local validation."
+}

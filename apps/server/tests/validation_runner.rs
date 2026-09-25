@@ -215,3 +215,152 @@ fn cancellation_stops_validation_and_preserves_incomplete_invocation() {
     assert!(runner::execute(&repo, &directory, &candidate, &plan).is_err());
     fs::remove_dir_all(root).unwrap();
 }
+
+fn hook_call(
+    candidate: &codexsymphony_server::validation::Candidate,
+    plan: &Plan,
+) -> codexsymphony_server::controlled_contract::Call {
+    use codexsymphony_server::{
+        controlled_contract::{Call, Operation, SourceIdentity},
+        extension_contract::InvocationIdentity,
+    };
+    Call {
+        identity: InvocationIdentity {
+            protocol_version: 1,
+            requirement_id: 120,
+            revision: 1,
+            run_id: Some("coding".into()),
+            resource_id: "project".into(),
+            invocation_id: "validate".into(),
+            attempt: 1,
+            config_id: sha256("approved configuration"),
+        },
+        controlled_config_digest: sha256("reviewed registry"),
+        operation: Operation::Validate,
+        extension_id: "project-checks".into(),
+        implementation_digest: plan.entry_sha256.clone(),
+        candidate: Some(SourceIdentity {
+            commit: candidate.sha.clone(),
+            tree: candidate.tree.clone(),
+        }),
+        environment_digest: sha256("actual environment"),
+        policy_digest: sha256("policy and baseline"),
+        deadline_unix_ms: (codexsymphony_server::runtime_client::now() + 30) * 1000,
+        required_checks: vec!["test".into()],
+    }
+}
+
+#[test]
+fn two_reviewed_hooks_produce_consumable_p9_evidence_without_harness_gate() {
+    use codexsymphony_server::{controlled_contract::Verdict, validation_hook};
+    let (root, repo, mut plan) = fixture();
+    let candidate = runner::candidate(&repo).unwrap();
+    for (name, script) in [
+        ("shell", "#!/bin/sh\ntest -f source && cat source\n"),
+        (
+            "python",
+            "#!/usr/bin/python3\nfrom pathlib import Path\nassert Path('source').read_text() == 'candidate'\nprint('project test passed')\n",
+        ),
+    ] {
+        fs::write(&plan.entry, script).unwrap();
+        plan.entry_sha256 = sha256(script);
+        let call = hook_call(&candidate, &plan);
+        let directory = root.join(name);
+        let (report, steps) =
+            validation_hook::execute(&repo, &directory, &candidate, &plan, &call).unwrap();
+        assert_eq!(report.verdict, Verdict::Pass);
+        report
+            .check_pass(&call, codexsymphony_server::runtime_client::now() * 1000)
+            .unwrap();
+        assert_eq!(steps.len(), 1);
+        assert_eq!(
+            report.checks[0].evidence[0].sha256,
+            sha256(fs::read(&report.checks[0].evidence[0].artifact_id).unwrap())
+        );
+        assert_eq!(
+            validation_hook::execute(&repo, &directory, &candidate, &plan, &call)
+                .unwrap()
+                .0,
+            report
+        );
+        let alias = root.join(format!("{name}-alias"));
+        std::os::unix::fs::symlink(&plan.entry, &alias).unwrap();
+        let mut aliased = plan.clone();
+        aliased.entry = alias;
+        assert!(
+            validation_hook::execute(
+                &repo,
+                &root.join(format!("{name}-aliased")),
+                &candidate,
+                &aliased,
+                &call
+            )
+            .is_err()
+        );
+        let mut stale = call.clone();
+        stale.identity.revision += 1;
+        assert!(validation_hook::execute(&repo, &directory, &candidate, &plan, &stale).is_err());
+        stale = call.clone();
+        stale.deadline_unix_ms = 1;
+        assert!(validation_hook::execute(&repo, &directory, &candidate, &plan, &stale).is_err());
+        stale = call.clone();
+        stale.required_checks.push("skipped-test".into());
+        assert!(
+            validation_hook::execute(&repo, &root.join("missing"), &candidate, &plan, &stale)
+                .is_err()
+        );
+        fs::write(directory.join("evaluation.json"), "{}").unwrap();
+        assert!(validation_hook::execute(&repo, &directory, &candidate, &plan, &call).is_err());
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn retained_results_cannot_replace_approved_commands_or_omit_checks() {
+    let (root, repo, plan) = fixture();
+    let candidate = runner::candidate(&repo).unwrap();
+    let directory = root.join("retained");
+    let original = runner::execute(&repo, &directory, &candidate, &plan).unwrap();
+    let mut bad = original.clone();
+    bad[0].command = vec!["skipped-test".into()];
+    for changed in [bad, Vec::new()] {
+        fs::write(
+            directory.join("result.json"),
+            serde_json::to_vec(&changed).unwrap(),
+        )
+        .unwrap();
+        assert!(runner::execute(&repo, &directory, &candidate, &plan).is_err());
+    }
+    let mut duplicate = plan.clone();
+    duplicate.steps.push(duplicate.steps[0].clone());
+    assert!(duplicate.identity().is_err());
+    let mut embedded = plan.clone();
+    embedded.entry = repo.join("unreviewed-hook");
+    fs::copy(&plan.entry, &embedded.entry).unwrap();
+    assert!(runner::execute(&repo, &root.join("embedded"), &candidate, &embedded).is_err());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn p9_nonzero_and_unknown_steps_never_become_pass() {
+    use codexsymphony_server::{controlled_contract::Verdict, validation_hook};
+    let (root, repo, plan) = fixture();
+    let candidate = runner::candidate(&repo).unwrap();
+    for (mode, expected) in [("fail", Verdict::Fail), ("timeout", Verdict::Unknown)] {
+        let mut selected = plan.clone();
+        selected.steps[0].command.push(mode.into());
+        let call = hook_call(&candidate, &selected);
+        let (evaluation, _) =
+            validation_hook::execute(&repo, &root.join(mode), &candidate, &selected, &call)
+                .unwrap();
+        assert_eq!(evaluation.verdict, expected);
+        assert!(
+            evaluation
+                .check_pass(&call, codexsymphony_server::runtime_client::now() * 1000)
+                .is_err()
+        );
+        assert!(root.join(mode).join("step-0.log").is_file());
+        assert!(root.join(mode).join("evaluation.json").is_file());
+    }
+    fs::remove_dir_all(root).unwrap();
+}

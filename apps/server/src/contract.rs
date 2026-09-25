@@ -202,7 +202,7 @@ fn validate_policy(policy: &Policy) -> Result<(), &'static str> {
     )?;
     for check in &policy.allowed_checks {
         require(
-            matches!(check.as_str(), "cargo_test" | "npm_test"),
+            matches!(check.as_str(), "cargo_test" | "npm_test" | "validate"),
             "unsupported trusted check",
         )?;
     }
@@ -266,7 +266,7 @@ fn validate_step(step: &Step) -> Result<(), &'static str> {
         "step ID and test selector must be safe identifiers",
     )?;
     require(
-        matches!(step.check.as_str(), "cargo_test" | "npm_test"),
+        matches!(step.check.as_str(), "cargo_test" | "npm_test" | "validate"),
         "unsupported trusted check",
     )?;
     require(text(&step.expected_result), "expected result is required")?;
@@ -279,6 +279,10 @@ pub fn authorize(contract: &Contract, repository: &Repository) -> Result<(), &'s
     require(!repository.revoked, "repository authorization revoked")?;
     validate_contract(contract)?;
     for step in &contract.validation_plan {
+        require(
+            step.check != "validate" || repository.environment.is_some(),
+            "validate requires a reviewed environment binding",
+        )?;
         require(
             repository.policy.allowed_checks.contains(&step.check),
             "check is not authorized by repository policy",

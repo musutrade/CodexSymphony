@@ -1,0 +1,7 @@
+# GH-120 test-module layout recovery
+
+Complete Gate run-b65f0ab24456 failed collection with `missing exact source anchor: apps/server/src/validation_supervisor.rs:[191, 5]`. That position is the newly added cfg(test) function, not a production function. The exact host response is retained in gate-quality-fixed-failure.json. No measurements or PASS are inferred from that run.
+
+The startup-deadline test has moved unchanged to apps/server/tests/unit/validation_supervisor.rs, referenced by cfg(test)/path from validation_supervisor.rs. This is the existing repository layout used by merge_validation, merge_acceptance and linked_repair_source. No production function, source root, required measurement, quality threshold or test was removed. The installed rc.7 inventory accepts the five validation source files; test-layout-inventory.json records function spans and complexity only, not coverage or CRAP acceptance.
+
+Current source and modes are bound by source-inventory-test-layout.json. Current checks are test-layout-checks.json; earlier quality-fixed results describe the source before this test-layout adjustment. The existing normal-path-quality-fixed evidence remains a genuine fixture run of the same production logic; only the test module location changed afterward. Full source-bound validation and complete Gate must be renewed. Migration, rollback, access-boundary limitations and independent CI acceptance remain as documented in docs/validation-hooks.md and quality-recovery.md.

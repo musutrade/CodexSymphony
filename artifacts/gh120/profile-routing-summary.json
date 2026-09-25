@@ -1,0 +1,58 @@
+{
+  "source_inventory": "artifacts/gh120/source-inventory-profile-routing.json",
+  "source_unchanged_during_checks": true,
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/fmt-profile-routing.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/run.py",
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/clippy-profile-routing.log"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "config",
+        "check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/gate-config-profile-routing.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/workspace_tests.py"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/workspace-tests-profile-routing.log"
+    }
+  ],
+  "test_counts": {
+    "passed": 292,
+    "failed": 0,
+    "ignored": 0
+  },
+  "complete_gate": "Required next, after finalized manifest; not inferred from these checks",
+  "ci": "Pending publication and controller observation"
+}
