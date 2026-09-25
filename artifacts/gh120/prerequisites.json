@@ -1,0 +1,13 @@
+{
+  "repository": "musutrade/CodexSymphony",
+  "branch": "symphony/GH-120",
+  "baseline": "93282b2d64d3bed1a7cfc1c7e8aecefc3935187b",
+  "baseline_tree": "51db06a0f54aca119ab94e94790b6a6debde9e7a",
+  "main_readback": "93282b2d64d3bed1a7cfc1c7e8aecefc3935187b",
+  "issue_branch_initial_status": 404,
+  "dependencies": [
+    {"issue": 118, "pr": 123, "merged": true, "base": "main", "merge_commit": "549a8c137f7fb982306aa174195ea9e9cc3384bb"},
+    {"issue": 119, "pr": 125, "merged": true, "base": "main", "merge_commit": "93282b2d64d3bed1a7cfc1c7e8aecefc3935187b"}
+  ],
+  "source": "Authenticated github_api readbacks; installed contract/environment implementations inspected in this baseline. No external write or deployment performed during preflight."
+}

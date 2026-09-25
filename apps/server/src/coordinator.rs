@@ -196,6 +196,13 @@ pub async fn start_reserved(
     if !run_store::reserved_launch(pool, launch).await? {
         return Err("Run is not authorized to start".into());
     }
+    crate::environment_service::run(
+        pool,
+        &launch.key.run_id,
+        "launch",
+        Path::new(&launch.workspace),
+    )
+    .await?;
     let directory = process::run_directory(root, &launch.key.run_id)?;
     let worker_directory = directory.clone();
     let supervisor = supervisor.to_owned();

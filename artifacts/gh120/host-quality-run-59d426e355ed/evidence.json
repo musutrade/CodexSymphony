@@ -1,0 +1,67 @@
+{
+  "run_id": "run-59d426e355ed",
+  "status": "Full untruncated diagnostic evidence exported; Gate remains FAIL",
+  "failure_count": 11,
+  "subject_count": 10,
+  "exports": {
+    "test_result.md": {
+      "source": "workspace/.harness-gate/reports/test_result.md",
+      "original_sha256": "af2fcf391d45fa8c717e50e8959881bea9ad1a098d55c191128f330a39cddad7",
+      "export_sha256": "af2fcf391d45fa8c717e50e8959881bea9ad1a098d55c191128f330a39cddad7",
+      "bytes": 26163,
+      "truncated": false,
+      "redacted": false
+    },
+    "verify.stdout": {
+      "source": "verify.stdout",
+      "original_sha256": "f14d05b5ff024f12c0220d1c3105d97f7443c12a314ac52e4cb9b3304f2c63c8",
+      "export_sha256": "f14d05b5ff024f12c0220d1c3105d97f7443c12a314ac52e4cb9b3304f2c63c8",
+      "bytes": 26220,
+      "truncated": false,
+      "redacted": false
+    },
+    "verify.stderr": {
+      "source": "verify.stderr",
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "truncated": false,
+      "redacted": false
+    },
+    "verify-result.json": {
+      "source": "verify-result.json",
+      "original_sha256": "44575cf3e057d27ed6d38c999893bde292c57bbb8a748c8d87f949b3dda5ae8d",
+      "export_sha256": "44575cf3e057d27ed6d38c999893bde292c57bbb8a748c8d87f949b3dda5ae8d",
+      "bytes": 158,
+      "truncated": false,
+      "redacted": false
+    },
+    "source-inputs.json": {
+      "source": "source-inputs.json",
+      "original_sha256": "f157be68619e31e9e308f4ec693b19cba80bd0876a569468c8d40f61d6fdf07a",
+      "export_sha256": "f157be68619e31e9e308f4ec693b19cba80bd0876a569468c8d40f61d6fdf07a",
+      "bytes": 99466,
+      "truncated": false,
+      "redacted": false
+    },
+    "cargo-coverage.json.gz": {
+      "source": "probes/backend/cargo-coverage.json",
+      "original_sha256": "0f55b36682ef5260b17e8777e05fb1668a71c1e2103e4c83d154c74eaa6b7bd0",
+      "export_sha256": "3379d3c5d9efca832f263309d31a14c60bac04c282c5d7d5cf4f66152c30dfe5",
+      "bytes": 1157736,
+      "truncated": false,
+      "redacted": false
+    },
+    "backend-bundle.json.gz": {
+      "source": "probes/backend/bundle.json",
+      "original_sha256": "7a72ae835c02a0440716d66053484a6a6827feab6ee0c5daa9c261907b0d973b",
+      "export_sha256": "1c8cdcd6092be793486a3eae5891580e17d8d3e1a690c87c80fd40c4c37e16cc",
+      "bytes": 150993,
+      "truncated": false,
+      "redacted": false
+    }
+  },
+  "all_failures": "all-failures.json",
+  "source": "source/ contains exact matching failed-subject source snapshots",
+  "notice": "Diagnostic evidence is not Gate acceptance. Retain previous evidence, fix actual quality failures, refresh source-bound evidence and require a new complete exact-tree PASS before publication. Budgets and quality limits unchanged."
+}

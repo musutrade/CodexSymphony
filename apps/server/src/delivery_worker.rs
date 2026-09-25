@@ -98,6 +98,7 @@ async fn publish(
     }
     crate::environment_service::admit(pool, job.requirement_id, job.revision, "delivery", None)
         .await?;
+    crate::validation_context::delivery(pool, &job.action_key).await?;
     let Some(attempt) = store::begin(pool, job, operation, now).await? else {
         return Ok(());
     };

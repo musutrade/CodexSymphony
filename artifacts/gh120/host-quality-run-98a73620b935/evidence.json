@@ -1,0 +1,54 @@
+{
+  "run_id": "run-98a73620b935",
+  "source_inventory": "artifacts/gh120/source-inventory-test-layout.json",
+  "inventory_sha256": "ca836c68596da0235a8876c9d80542ff1a954bb307c86aabd4a0a2998a303ce9",
+  "inventory_entries_matched": 693,
+  "mismatches": [],
+  "failure_count": 4,
+  "subject_count": 3,
+  "exports": {
+    "test_result.md": {
+      "original_sha256": "5982de843efe81500520ffabd0377ef5c3772c2a0329df8eb5a761243d4490d8",
+      "export_sha256": "5982de843efe81500520ffabd0377ef5c3772c2a0329df8eb5a761243d4490d8",
+      "bytes": 9878,
+      "truncated": false
+    },
+    "verify.stdout": {
+      "original_sha256": "e17e0a2919bc460e1f89e23bbb1b28a0d9b82b4a1bcf78ec14bdaaf911dba169",
+      "export_sha256": "e17e0a2919bc460e1f89e23bbb1b28a0d9b82b4a1bcf78ec14bdaaf911dba169",
+      "bytes": 9935,
+      "truncated": false
+    },
+    "verify.stderr": {
+      "original_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "export_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "truncated": false
+    },
+    "verify-result.json": {
+      "original_sha256": "ccc4adf75a67f2d53d0be84860f1c0100bc9c694145fd8e618410c583b880121",
+      "export_sha256": "17efc10a46a222d83ea6ef5188050f1752d7b3d58e6cd1a5133d5a07c07aa961",
+      "bytes": 150,
+      "truncated": false
+    },
+    "source-inputs.json": {
+      "original_sha256": "e0cc7b6092beabb1cb2e56eba84af23c8c3a004dc9f56e66d8c37f3257fcba95",
+      "export_sha256": "03a180baf639faccd1b658833b5bd30845ea4208b06514b6485d87a9f562f7be",
+      "bytes": 104950,
+      "truncated": false
+    },
+    "cargo-coverage.json.gz": {
+      "original_sha256": "35f31963ff1c8a8fcb4579b524fc18804830eb0c03bb2d3932aca9c67b70672e",
+      "export_sha256": "5ceff9468c89123d3a919b492dac3a5525624d289212e97d77f06b009540e921",
+      "bytes": 1209219,
+      "truncated": false
+    },
+    "backend-bundle.json.gz": {
+      "original_sha256": "1b3995d4e7197aba32f6465e7ec8af3bf461fddac207b71602e27ce6f414c36d",
+      "export_sha256": "0110493e0c833f6187ed7635fb6dcf76ed0d9fb210f7b29a10a02aa589c22f7f",
+      "bytes": 152121,
+      "truncated": false
+    }
+  },
+  "notice": "Complete diagnostics, not a Gate PASS. Current failed-source files match retained measurements; repair coverage and require a new exact-tree complete PASS."
+}

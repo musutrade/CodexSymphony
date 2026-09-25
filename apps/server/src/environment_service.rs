@@ -99,7 +99,7 @@ async fn current(pool: &PgPool, requirement: i64, revision: i64, plan: &Plan) ->
     Ok(())
 }
 
-async fn context(
+pub(crate) async fn context(
     pool: &PgPool,
     requirement: i64,
     revision: i64,

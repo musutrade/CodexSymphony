@@ -51,8 +51,12 @@ impl Plan {
         if digest(&self.entry)? != self.entry_sha256 {
             return Err("protected validation tool changed".into());
         }
+        let mut ids = std::collections::HashSet::new();
         for step in &self.steps {
             validate_step(step)?;
+            if !ids.insert(&step.id) {
+                return Err("duplicate approved validation check".into());
+            }
         }
         Ok(())
     }
@@ -169,34 +173,65 @@ fn execute_controlled(
 ) -> Result<Vec<StepEvidence>> {
     control.check()?;
     fs::create_dir_all(directory)?;
+    check_paths(root, directory, plan)?;
     let _lock = process::InstanceLock::acquire(&directory.join("lock"))?;
     let identity = plan.identity()?;
     if candidate(root)? != *expected {
         return Err("fixed candidate mismatch".into());
     }
     let binding = serde_json::json!({"candidate":expected,"identity":identity});
-    if let Some(evidence) = replay(directory, &binding)? {
+    if let Some(evidence) = replay(directory, &binding, plan)? {
         return Ok(evidence);
     }
     run_plan(
         root, directory, expected, plan, &identity, &binding, control,
     )
 }
-fn replay(directory: &Path, binding: &serde_json::Value) -> Result<Option<Vec<StepEvidence>>> {
+fn check_paths(root: &Path, directory: &Path, plan: &Plan) -> Result<()> {
+    let checkout = fs::canonicalize(root)?;
+    if plan.entry.starts_with(root)
+        || directory.starts_with(root)
+        || fs::canonicalize(&plan.entry)?.starts_with(&checkout)
+        || fs::canonicalize(directory)?.starts_with(&checkout)
+    {
+        return Err("validation implementation and evidence must be outside candidate".into());
+    }
+    Ok(())
+}
+
+fn replay(
+    directory: &Path,
+    binding: &serde_json::Value,
+    plan: &Plan,
+) -> Result<Option<Vec<StepEvidence>>> {
     if directory.join("binding.json").exists() {
         let saved: serde_json::Value = process::read(&directory.join("binding.json"))?;
         if &saved != binding {
             return Err("validation invocation identity changed".into());
         }
         let evidence: Vec<StepEvidence> = process::read(&directory.join("result.json"))?;
-        for (index, step) in evidence.iter().enumerate() {
-            if digest(&directory.join(format!("step-{index}.log")))? != step.output_sha256 {
-                return Err("retained evidence changed".into());
-            }
+        if evidence.len() != plan.steps.len() {
+            return Err("retained validation check set changed".into());
+        }
+        for (index, (step, approved)) in evidence.iter().zip(&plan.steps).enumerate() {
+            let log = directory.join(format!("step-{index}.log"));
+            verify_retained_step(step, approved, &log)?;
         }
         return Ok(Some(evidence));
     }
     Ok(None)
+}
+fn verify_retained_step(step: &StepEvidence, approved: &Step, log: &Path) -> Result<()> {
+    if step.id != approved.id
+        || step.command != approved.command
+        || step.code_failure != approved.code_failure
+        || step.log_ref != log.to_string_lossy()
+        || sha256(&step.output) != step.output_sha256
+        || digest(log)? != step.output_sha256
+    {
+        return Err("retained evidence changed".into());
+    }
+    Ok(())
 }
 fn run_plan(
     root: &Path,

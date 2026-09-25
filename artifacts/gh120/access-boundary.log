@@ -1,0 +1,9 @@
+test_coding_and_validation_cannot_read_private_files_or_parent_environment (test_m2_executor.BoundaryTests.test_coding_and_validation_cannot_read_private_files_or_parent_environment) ... ok
+test_installer_stages_private_examples_and_refuses_overwrite (test_m2_executor.BoundaryTests.test_installer_stages_private_examples_and_refuses_overwrite) ... ok
+test_product_supervisor_stops_namespace_descendants_and_rejects_replay (test_m2_executor.BoundaryTests.test_product_supervisor_stops_namespace_descendants_and_rejects_replay) ... ok
+test_reject_private_mount_and_incomplete_or_writable_configuration (test_m2_executor.BoundaryTests.test_reject_private_mount_and_incomplete_or_writable_configuration) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.506s
+
+OK

@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "issue_id": "120",
+  "repo": "musutrade/CodexSymphony",
+  "reason": "Installed complete Gate Rust collector rejects four vec! invocations as unrecognized macros and produces no measurements; required coverage/CRAP unavailable.",
+  "evidence": "artifacts/gh120/gate-collector-blocker.json",
+  "resume_condition": "Approved installed Rust collector source compatibility succeeds for retained GH-120 validation_context.rs, validation_hook.rs and validation_supervisor.rs without unsupported macros; resume complete local_gate and require exact-tree PASS before publication."
+}

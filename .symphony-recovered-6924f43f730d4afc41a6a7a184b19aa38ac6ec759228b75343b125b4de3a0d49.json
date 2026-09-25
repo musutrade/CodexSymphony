@@ -1,0 +1,8 @@
+{
+  "status": "blocked",
+  "issue_id": "120",
+  "repo": "musutrade/CodexSymphony",
+  "reason": "Complete host Gate cargo llvm-cov exits 101; underlying compiler/test diagnostics are not exposed by local_gate and retained host log path is unavailable in workspace. Root cause remains unknown.",
+  "evidence": "artifacts/gh120/recovery-blocked.md",
+  "resume_condition": "Retained cargo llvm-cov stdout/stderr and exit status for run-64a11aabddc5 are readable through authorized tool diagnostics or workspace evidence; resume Gate failure diagnosis."
+}

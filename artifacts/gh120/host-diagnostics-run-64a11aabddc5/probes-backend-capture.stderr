@@ -1,0 +1,31 @@
+info: cargo-llvm-cov currently setting cfg(coverage); you can opt-out it by passing --no-cfg-coverage
+     Running `/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin/cargo test --tests --manifest-path /home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/probes/backend/workspace/apps/server/Cargo.toml --target-dir /home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target --locked`
+   Compiling codexsymphony-server v0.1.0 (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/probes/backend/workspace/apps/server)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1m 05s
+     Running unittests src/lib.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/codexsymphony_server-6fc6cca0063c828b)
+From /tmp/validation-runner-2ec16f48-22f8-401e-876b-38c4191d313d/repo
+ * branch            be052ce4199333b3770425151afa4b2f2836d662 -> FETCH_HEAD
+From /tmp/validation-runner-0430a7bc-c37d-4622-933e-f049a13c4bd1/repo
+ * branch            733614bb12d716510b7e63b736b832e7c6d40fc7 -> FETCH_HEAD
+From /tmp/validation-runner-b93b6a44-0cb7-43e8-8e2b-e1b5cfb8db0f/repo
+ * branch            b61232c1a95d38074cf50f147b51df8115e86fb0 -> FETCH_HEAD
+From /tmp/validation-runner-0918ccd9-9b65-45e0-8c14-5e4870400382/repo
+ * branch            b9563142d5c409b26ae05791bfa946b914714eaa -> FETCH_HEAD
+From /tmp/validation-runner-0918ccd9-9b65-45e0-8c14-5e4870400382/repo
+ * branch            b9563142d5c409b26ae05791bfa946b914714eaa -> FETCH_HEAD
+     Running unittests src/main.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/codexsymphony_server-61780c762faeddab)
+     Running tests/adapter_failures.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/adapter_failures-b3e15a91a373b200)
+     Running tests/automatic_merge.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/automatic_merge-9f9444951f2a84e3)
+     Running tests/bounded_recovery.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/bounded_recovery-d356810bdda53ab1)
+     Running tests/budget.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/budget-9941fb45a284330f)
+     Running tests/controlled_contract.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/controlled_contract-19ef8af287a0cddc)
+     Running tests/delivery.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/delivery-9eb0e2097ccf7d55)
+     Running tests/drafts.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/drafts-8788d4ce6d206e4b)
+     Running tests/environment.rs (/home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target/debug/deps/environment-a56153a43192d95f)
+.
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+error: test failed, to rerun pass `--test environment`
+error: process didn't exit successfully: `/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin/cargo test --tests --manifest-path /home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/probes/backend/workspace/apps/server/Cargo.toml --target-dir /home/gem/.local/share/codexsymphony/gate-host/runs/run-64a11aabddc5/target/llvm-cov-target --locked` (exit status: 101)

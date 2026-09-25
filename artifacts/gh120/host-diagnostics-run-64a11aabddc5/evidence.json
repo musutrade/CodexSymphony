@@ -1,0 +1,46 @@
+{
+  "run_id": "run-64a11aabddc5",
+  "cargo_llvm_cov_exit_status": 101,
+  "exit_status_source": "backend-capture.stderr CalledProcessError, corroborated by capture.stderr cargo test exit 101",
+  "failed_test": "p9_validation_is_bound_to_task_environment_and_retained_source_at_delivery",
+  "failure_location": "apps/server/tests/environment.rs:992",
+  "error": "candidate checkout is dirty",
+  "compilation": "Completed; environment integration test failed",
+  "retained_candidate_status": "?? default_1580041910218139655_0_3841.profraw\n",
+  "profiles": [
+    {
+      "name": "default_1580041910218139655_0_3841.profraw",
+      "bytes": 300648,
+      "sha256": "237a1123c407cf19e7ff62aff9f669d2fdbb1a7990a4007ac911a6b47ae66670"
+    }
+  ],
+  "logs": {
+    "probes/backend/capture.stdout": {
+      "exported_file": "probes-backend-capture.stdout",
+      "original_sha256": "e1efff5d63159056cb3da74cc6d9412e93d4952345ca89145da17e9bdd315f43",
+      "exported_sha256": "e1efff5d63159056cb3da74cc6d9412e93d4952345ca89145da17e9bdd315f43",
+      "original_bytes": 8147,
+      "truncated": false,
+      "redaction": "standard host diagnostic redactor"
+    },
+    "probes/backend/capture.stderr": {
+      "exported_file": "probes-backend-capture.stderr",
+      "original_sha256": "49adbb74ea584b602402bfcee16a4d6bb7646cbc8aed741e7b6b47514f9fff05",
+      "exported_sha256": "49adbb74ea584b602402bfcee16a4d6bb7646cbc8aed741e7b6b47514f9fff05",
+      "original_bytes": 3664,
+      "truncated": false,
+      "redaction": "standard host diagnostic redactor"
+    },
+    "backend-capture.stderr": {
+      "exported_file": "backend-capture.stderr",
+      "original_sha256": "95aa1164e1347b99f1c79c76c8b81434bee9ed59d442d4f752aef0723bb6cd85",
+      "exported_sha256": "95aa1164e1347b99f1c79c76c8b81434bee9ed59d442d4f752aef0723bb6cd85",
+      "original_bytes": 1002,
+      "truncated": false,
+      "redaction": "standard host diagnostic redactor"
+    }
+  },
+  "source_inputs_sha256": "7e2a6550449ee22e2153f228290601f8e6f7cc27779f5b767d09c86c8f9eae32",
+  "interpretation": "Coverage-instrumented subprocess created a raw LLVM profile in the candidate checkout. Inspect child environment/profile routing and retain coverage outside the checkout; do not weaken candidate cleanliness or quality policy.",
+  "remaining": "Diagnose and repair based on evidence; refresh exact-source evidence; rerun applicable checks and complete local_gate; exact-tree PASS required before publication."
+}

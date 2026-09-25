@@ -1,0 +1,56 @@
+{
+  "source_unchanged": true,
+  "source_inventory_sha256": "ca836c68596da0235a8876c9d80542ff1a954bb307c86aabd4a0a2998a303ce9",
+  "passed": 293,
+  "failed": 0,
+  "ignored": 0,
+  "checks": [
+    {
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/fmt-test-layout.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/run.py",
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/clippy-test-layout.log"
+    },
+    {
+      "command": [
+        "python3",
+        "tools/gate.py",
+        "config",
+        "check"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/gate-config-test-layout.log"
+    },
+    {
+      "command": [
+        "python3",
+        "/opt/symphony-env/workspace_tests.py"
+      ],
+      "exit_code": 0,
+      "log": "artifacts/gh120/workspace-tests-test-layout.log"
+    }
+  ],
+  "complete_gate": "Required after manifest finalization; no PASS inferred from local checks.",
+  "normal_path": "normal-path-quality-fixed retains genuine process/Git/PostgreSQL evidence; subsequent change moved only the unit test module."
+}
