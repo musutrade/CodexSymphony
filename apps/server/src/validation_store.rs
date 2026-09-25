@@ -135,10 +135,7 @@ pub async fn finish(
     let (saved_required, terminal) = requirements(&mut tx, id).await?;
     let stored = &evidence.steps;
     let mut supplied = steps.to_vec();
-    supplied.sort_by(|a, b| {
-        // Evidence ordering is canonical.
-        a.id.cmp(&b.id)
-    });
+    supplied.sort_by(compare_step);
     let bound =
         supplied == *stored && matches_binding(required, &saved_required, source, entry, &evidence);
     let result = outcome(
@@ -216,12 +213,10 @@ fn outcome(
     if !bound {
         return "blocked";
     }
-    let mut checked = evidence.clone();
-    for step in &mut checked.steps {
-        if step.exit_code.is_some() {
-            step.exit_code = Some(0);
-        }
+    if unknown_extension(&evidence.steps) {
+        return "blocked";
     }
+    let checked = structural_evidence(evidence);
     if verify(&checked, candidate, trusted, required).is_err() {
         return "blocked";
     }
@@ -281,4 +276,32 @@ async fn save_outcome(
         crate::delivery_store::enqueue(tx, id).await?;
     }
     Ok(())
+}
+
+fn compare_step(a: &StepEvidence, b: &StepEvidence) -> std::cmp::Ordering {
+    a.id.cmp(&b.id)
+}
+
+fn unknown_extension(steps: &[StepEvidence]) -> bool {
+    for step in steps {
+        if crate::extension_feedback::negotiated(step)
+            && crate::extension_feedback::verdict(step)
+                == crate::controlled_contract::Verdict::Unknown
+        {
+            return true;
+        }
+    }
+    false
+}
+fn structural_evidence(evidence: &ValidationEvidence) -> ValidationEvidence {
+    let mut checked = evidence.clone();
+    for step in &mut checked.steps {
+        if crate::extension_feedback::negotiated(step) {
+            step.command.remove(1);
+        }
+        if step.exit_code.is_some() {
+            step.exit_code = Some(0);
+        }
+    }
+    checked
 }

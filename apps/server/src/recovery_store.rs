@@ -196,11 +196,16 @@ async fn capacity(
     ordinal: i64,
     resources: Amount,
 ) -> Result<Option<i64>> {
-    let limit: Option<i64> = sqlx::query_scalar("SELECT repair_limit FROM repair_authorization WHERE requirement_id=$1 AND policy='bounded_v1'")
-        .bind(id).fetch_optional(&mut **tx).await?;
-    if limit.is_none_or(|limit| ordinal > limit)
-        || !budget_store::reservation_allowed(tx, id, resources).await?
-    {
+    let limit: Option<i64> =
+        sqlx::query_scalar("SELECT repair_limit FROM repair_authorization WHERE requirement_id=$1")
+            .bind(id)
+            .fetch_optional(&mut **tx)
+            .await?;
+    let within_limit = match limit {
+        Some(limit) => ordinal <= limit,
+        None => false,
+    };
+    if !within_limit || !budget_store::reservation_allowed(tx, id, resources).await? {
         sqlx::query("UPDATE recovery_failure SET decision='blocked',reason='budget_exhausted: preserve current owner and work' WHERE event_key=$1")
             .bind(event).execute(&mut **tx).await?;
         return Ok(None);
@@ -249,6 +254,7 @@ async fn repair_context(
     reservation: &Reservation,
     resources: Amount,
 ) -> Result<Value> {
+    let resolution: Option<Value> = sqlx::query_scalar("SELECT resolution FROM recovery_failure WHERE source_validation_id=$1 AND resolution IS NOT NULL ORDER BY created_at LIMIT 1").bind(&reservation.0).fetch_optional(&mut **tx).await?.flatten();
     let balance = budget_store::balance(tx, id).await?;
     let (source, failure, ordinal, limit) = reservation;
     let contract: Value = sqlx::query_scalar(
@@ -261,7 +267,7 @@ async fn repair_context(
     let group:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('item_id',b.item_id,'limits',b.limits,'used',b.used,'reserved',b.reserved) FROM group_budget b JOIN group_execution_item i ON i.draft_id=b.draft_id AND (b.item_id='' OR b.item_id=i.child_id) WHERE i.requirement_id=$1 ORDER BY b.item_id")
         .bind(id).fetch_all(&mut **tx).await?;
     Ok(
-        json!({"failure":failure,"ordinal":ordinal,"repair_limit":limit,"budget":balance,"group_budget":group,"budget_snapshot":"before_this_reservation","reserved_resources":resources,"source_validation":source,"remaining_acceptance":contract["contract"]["acceptance_criteria"]}),
+        json!({"resolution":resolution,"failure":failure,"ordinal":ordinal,"repair_limit":limit,"budget":balance,"group_budget":group,"budget_snapshot":"before_this_reservation","reserved_resources":resources,"source_validation":source,"remaining_acceptance":contract["contract"]["acceptance_criteria"]}),
     )
 }
 

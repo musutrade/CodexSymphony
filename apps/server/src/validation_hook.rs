@@ -3,7 +3,7 @@
 use crate::{
     controlled_contract::{Call, CheckResult, Evaluation, EvidenceRef, Operation, Verdict},
     process,
-    validation::{Candidate, StepEvidence, sha256},
+    validation::{Candidate, StepEvidence},
     validation_runner::{self, Plan},
 };
 use std::path::Path;
@@ -102,14 +102,17 @@ fn check_required(plan: &Plan, call: &Call) -> Result<()> {
 }
 
 pub fn evaluation(call: &Call, steps: &[StepEvidence]) -> Evaluation {
-    let checks: Vec<_> = steps.iter().map(check_result).collect();
-    let verdict = if checks.iter().any(|check| check.verdict == Verdict::Unknown) {
-        Verdict::Unknown
-    } else if checks.iter().any(|check| check.verdict == Verdict::Fail) {
-        Verdict::Fail
-    } else {
-        Verdict::Pass
-    };
+    let mut checks = Vec::new();
+    let mut verdict = Verdict::Pass;
+    for step in steps {
+        let check = check_result(step);
+        if check.verdict == Verdict::Unknown {
+            verdict = Verdict::Unknown;
+        } else if check.verdict == Verdict::Fail && verdict != Verdict::Unknown {
+            verdict = Verdict::Fail;
+        }
+        checks.push(check);
+    }
     Evaluation {
         call: call.clone(),
         verdict,
@@ -118,13 +121,7 @@ pub fn evaluation(call: &Call, steps: &[StepEvidence]) -> Evaluation {
 }
 
 fn check_result(step: &StepEvidence) -> CheckResult {
-    let verdict = match step.exit_code {
-        Some(0) if !step.output.is_empty() && sha256(&step.output) == step.output_sha256 => {
-            Verdict::Pass
-        }
-        Some(_) => Verdict::Fail,
-        None => Verdict::Unknown,
-    };
+    let verdict = crate::extension_feedback::verdict(step);
     CheckResult {
         id: step.id.clone(),
         verdict,

@@ -1,15 +1,36 @@
 //! Pure business input and authorization rules. Selectors are data, never shell.
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Contract {
+    pub development_constraints: Option<Vec<crate::development_constraints::Constraint>>,
     pub title: String,
     pub description: String,
     pub acceptance_criteria: Vec<Criterion>,
     pub validation_plan: Vec<Step>,
     pub network_access: Vec<String>,
 }
+
+impl Serialize for Contract {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut value = serializer.serialize_struct(
+            "Contract",
+            5 + usize::from(self.development_constraints.is_some()),
+        )?;
+        if let Some(constraints) = &self.development_constraints {
+            value.serialize_field("development_constraints", constraints)?;
+        }
+        value.serialize_field("title", &self.title)?;
+        value.serialize_field("description", &self.description)?;
+        value.serialize_field("acceptance_criteria", &self.acceptance_criteria)?;
+        value.serialize_field("validation_plan", &self.validation_plan)?;
+        value.serialize_field("network_access", &self.network_access)?;
+        value.end()
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Criterion {
@@ -259,6 +280,9 @@ fn validate_policy(policy: &Policy) -> Result<(), &'static str> {
     )
 }
 pub fn validate_contract(contract: &Contract) -> Result<(), &'static str> {
+    crate::development_constraints::validate(
+        contract.development_constraints.as_deref().unwrap_or(&[]),
+    )?;
     require(
         text(&contract.title) && text(&contract.description),
         "title and description are required",
@@ -269,7 +293,10 @@ pub fn validate_contract(contract: &Contract) -> Result<(), &'static str> {
     )?;
     let ids = validate_steps(&contract.validation_plan)?;
     validate_criteria(&contract.acceptance_criteria, &ids)?;
-    for host in &contract.network_access {
+    validate_network(&contract.network_access)
+}
+fn validate_network(hosts: &[String]) -> Result<(), &'static str> {
+    for host in hosts {
         require(identifier(host), "invalid network intent")?;
     }
     Ok(())

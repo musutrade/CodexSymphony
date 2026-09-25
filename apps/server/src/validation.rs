@@ -133,6 +133,9 @@ fn verify_step(step: &StepEvidence) -> Result<(), ValidationError> {
     if step.exit_code != Some(0) {
         return Err(ValidationError::ExitFailed);
     }
+    if crate::extension_feedback::verdict(step) != crate::controlled_contract::Verdict::Pass {
+        return Err(ValidationError::ExitFailed);
+    }
     Ok(())
 }
 

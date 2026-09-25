@@ -63,3 +63,7 @@ python3 /opt/symphony-env/run.py python3 tools/auth_browser_acceptance.py
 ```
 
 第一组使用合成 key、实际本地 HTTP 接收器、持久 SQLite、独立 PostgreSQL schema 和独立进程，覆盖 JSON POST、错误/超时、有限重试、重启/并发去重、版本变化、无业务写权限与泄漏检查；网络 namespace fixture 实际证明 Agent 所在网络不能连接通知器 namespace 的本地接收器。编码和验证实际执行器均不能读取 notifier sentinel。第二组需先 Cargo / Angular build，覆盖桌面/手机登录返回、安全页面、持久待办、旧版本拒绝。宿主旧 `e2e.py` 固定 HTTP origin，与 M2 HTTPS 登录不兼容；使用仓库已有 HTTPS fixture，不放宽认证。
+
+## 生命周期事件模式（#128）
+
+可由核心 dispatcher 调用 Bark 的 `--event` 接口，Bark 自行选择 actionable/all，持久接收后由原 timer 发送。此模式不配置数据库凭据；旧轮询模式仍兼容，部署时选择一种。见[完整契约及部署](lifecycle-recovery.md)。

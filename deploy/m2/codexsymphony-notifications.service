@@ -1,0 +1,24 @@
+[Unit]
+Description=CodexSymphony lifecycle notification dispatch
+
+[Service]
+Type=oneshot
+User=codexsymphony-notifier
+Group=codexsymphony-notifier
+ExecStart=/usr/bin/python3 -I /opt/codexsymphony-notifier/dispatch.py --config /etc/codexsymphony-notifier/notifications.json
+UMask=0077
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectProc=invisible
+ProcSubset=pid
+RestrictSUIDSGID=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Administrator-provisioned, independent egress namespace. Missing namespace
+# prevents start; never silently fall back to the Agent's network permissions.
+NetworkNamespacePath=/run/netns/codexsymphony-notifier
+ReadWritePaths=/var/lib/codexsymphony-notifier
+TimeoutStartSec=25min

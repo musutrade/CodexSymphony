@@ -121,6 +121,8 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .merge(operator_api::routes())
             .merge(execution_api::routes())
             .merge(validation_api::routes())
+            .merge(extension_api::routes())
+            .merge(lifecycle_api::routes())
             .merge(runtime_api::routes())
             .layer(axum::middleware::from_fn(draft_api::guard_legacy))
             .with_state(pool.clone()),
@@ -205,3 +207,14 @@ pub mod github_merge_adapter;
 pub mod github_publication_adapter;
 
 pub mod json_defaults;
+
+pub mod development_constraints;
+pub mod extension_feedback;
+
+pub mod extension_api;
+pub mod extension_failure;
+pub mod extension_recovery;
+pub mod extension_revalidation;
+pub mod validation_legacy;
+
+pub mod lifecycle_api;

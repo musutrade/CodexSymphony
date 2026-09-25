@@ -22,26 +22,16 @@ pub async fn tick_with_hooks(
     plan: &Plan,
     hooks: &Value,
 ) -> Result<bool> {
+    if crate::extension_revalidation::tick(pool, root, broker, plan, hooks).await? {
+        return Ok(true);
+    }
     if crate::recovery_retry::local(pool, root, broker, plan).await? {
         return Ok(true);
     }
-    let row:Option<(String,i64,i64,Value)>=sqlx::query_as("SELECT a.id,a.requirement_id,a.revision,s.manifest FROM agent_run a JOIN workspace_snapshot s ON s.run_id=a.id JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision rev ON rev.requirement_id=r.id AND rev.revision=a.revision CROSS JOIN repository repo WHERE a.state='Succeeded' AND a.quiescent AND a.phase='validation' AND s.candidate AND r.state='Running' AND r.revision=a.revision AND NOT r.paused AND NOT c.paused AND c.recovery_complete AND repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run live WHERE live.requirement_id=r.id AND NOT live.quiescent) AND NOT EXISTS(SELECT 1 FROM recovery_failure f WHERE f.event_key='no-progress:'||a.id) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.requirement_id=r.id AND f.state='blocked') AND NOT EXISTS(SELECT 1 FROM candidate_validation v WHERE v.source_run_id=a.id AND v.result<>'pending') ORDER BY a.run_sequence LIMIT 1").fetch_optional(pool).await?;
-    let Some((source, requirement, revision, manifest)) = row else {
+    let Some(source) = pending_source(pool).await? else {
         return Ok(false);
     };
-    let manifest: Manifest = serde_json::from_value(manifest)?;
-    if !crate::storage_service::validation(pool, &source).await? {
-        return Ok(false);
-    }
-    validate_pending(
-        pool,
-        root,
-        broker,
-        plan,
-        (source, requirement, revision, manifest),
-        hooks,
-    )
-    .await
+    validate_pending(pool, root, broker, plan, source, hooks).await
 }
 async fn validate_pending(
     pool: &PgPool,
@@ -86,13 +76,16 @@ async fn should_validate(
     manifest: &Manifest,
     candidate: &crate::validation::Candidate,
 ) -> Result<bool> {
+    if !crate::extension_recovery::check_scope(pool, broker, source, manifest).await? {
+        return Ok(false);
+    }
     if !crate::linked_repair_worker::candidate_allowed(pool, broker, source, manifest).await? {
         return Ok(false);
     }
     Ok(!crate::recovery_store::unchanged_candidate(pool, source, &candidate.sha).await?)
 }
 
-async fn prepare_validation_hook(
+pub(crate) async fn prepare_validation_hook(
     pool: &PgPool,
     root: &Path,
     id: &str,
@@ -131,7 +124,7 @@ async fn prepare_validation_hook(
     .await
 }
 
-async fn finish_validation_hook(
+pub(crate) async fn finish_validation_hook(
     pool: &PgPool,
     root: &Path,
     broker: &GitBroker,
@@ -178,4 +171,16 @@ pub(crate) fn restore(
         return Err("preserved candidate changed".into());
     }
     Ok(target.path.into())
+}
+
+async fn pending_source(pool: &PgPool) -> Result<Option<(String, i64, i64, Manifest)>> {
+    let row:Option<(String,i64,i64,Value)>=sqlx::query_as("SELECT a.id,a.requirement_id,a.revision,s.manifest FROM agent_run a JOIN workspace_snapshot s ON s.run_id=a.id JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision rev ON rev.requirement_id=r.id AND rev.revision=a.revision CROSS JOIN repository repo WHERE a.state='Succeeded' AND a.quiescent AND a.phase='validation' AND s.candidate AND r.state='Running' AND r.revision=a.revision AND NOT r.paused AND NOT c.paused AND c.recovery_complete AND repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM agent_run live WHERE live.requirement_id=r.id AND NOT live.quiescent) AND NOT EXISTS(SELECT 1 FROM recovery_failure f WHERE f.event_key='no-progress:'||a.id) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.requirement_id=r.id AND f.state='blocked') AND NOT EXISTS(SELECT 1 FROM candidate_validation v WHERE v.source_run_id=a.id AND v.result<>'pending') ORDER BY a.run_sequence LIMIT 1").fetch_optional(pool).await?;
+    let Some((source, requirement, revision, manifest)) = row else {
+        return Ok(None);
+    };
+    let manifest: Manifest = serde_json::from_value(manifest)?;
+    if !crate::storage_service::validation(pool, &source).await? {
+        return Ok(None);
+    }
+    Ok(Some((source, requirement, revision, manifest)))
 }

@@ -2,6 +2,7 @@
 """Host-owned Bark adapter. Install outside all Agent/validation mounts."""
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -21,6 +22,7 @@ KINDS = {
     'delivery': '交付需要处理', 'validation': '验证需要处理',
     'storage_guard': '存储需要处理', 'storage_material': '保存或清理需要处理',
     'evidence_cleanup': '证据清理需要处理',
+    'completed': '需求业务验收已完成', 'progress': '需求阶段有更新',
 }
 ATTEMPTS = 3
 BACKOFF = (30, 120)
@@ -52,10 +54,17 @@ def configuration(path):
     cfg = protected(path)
     if cfg == {'enabled': False}:
         return cfg
-    if set(cfg) != {'enabled', 'application_origin', 'endpoint', 'device_key', 'database', 'state_directory', 'local_fixture', 'psql_program'}:
+    required = {'enabled', 'application_origin', 'endpoint', 'device_key', 'state_directory', 'local_fixture'}
+    if 'event_policy' in cfg:
+        required.add('event_policy')
+    else:
+        required.update(('database', 'psql_program'))
+    if set(cfg) != required:
         raise ValueError('incomplete configuration')
     if cfg['enabled'] is not True or type(cfg['local_fixture']) is not bool:
         raise ValueError('invalid enabled configuration')
+    if cfg.get('event_policy', 'actionable') not in ('actionable', 'all'):
+        raise ValueError('invalid event policy')
     origin(cfg['application_origin'])
     url = urllib.parse.urlsplit(cfg['endpoint'])
     allowed_scheme = url.scheme == 'https'
@@ -67,12 +76,13 @@ def configuration(path):
         raise ValueError('credential-free /push endpoint required')
     if not isinstance(cfg['device_key'], str) or not 1 <= len(cfg['device_key']) <= 256:
         raise ValueError('device key required')
-    if not isinstance(cfg['database'], str) or not cfg['database']:
-        raise ValueError('database required')
-    database_environment(cfg['database'])
-    program = Path(cfg['psql_program'])
-    if not program.is_absolute() or not program.is_file() or not os.access(program, os.X_OK):
-        raise ValueError('administrator-installed psql required')
+    if 'event_policy' not in cfg:
+        if not isinstance(cfg['database'], str) or not cfg['database']:
+            raise ValueError('database required')
+        database_environment(cfg['database'])
+        program = Path(cfg['psql_program'])
+        if not program.is_absolute() or not program.is_file() or not os.access(program, os.X_OK):
+            raise ValueError('administrator-installed psql required')
     directory = Path(cfg['state_directory'])
     info = directory.lstat()
     if not directory.is_absolute() or not stat.S_ISDIR(info.st_mode) or info.st_mode & 0o077 or info.st_uid != os.geteuid():
@@ -227,12 +237,81 @@ def tick(path, cfg):
             db.close()
 
 
+def event_kind(event):
+    status = event.get('facts', {}).get('status', {})
+    if status.get('state') == 'Done':
+        return 'completed'
+    if status.get('paused') is True:
+        return 'paused'
+    if event['phase'] == 'question' and status.get('resume_state') in ('waiting', 'pending'):
+        return 'question'
+    if status.get('todo') is True or status.get('passed') is False or (event['phase'] == 'blocker' and status.get('resolved') is False):
+        return 'failed'
+    if status.get('status') in ('failed', 'timeout', 'unknown'):
+        return 'failed'
+    if status.get('state') in ('failed', 'blocked', 'Failed') or status.get('result') in ('gate_failed', 'blocked') or status.get('decision') == 'blocked':
+        return 'failed'
+    return 'progress'
+
+
+def receive_event(cfg, event):
+    if type(event.get('protocol_version')) is not int or event.get('protocol_version') != 1 or type(event.get('event_id')) is not int or type(event.get('requirement_id')) is not int:
+        raise ValueError('invalid lifecycle event')
+    if event['event_id'] <= 0 or event['requirement_id'] <= 0 or 'event_policy' not in cfg:
+        raise ValueError('event mode not configured')
+    kind = event_kind(event)
+    result = 'ignored' if cfg['event_policy'] == 'actionable' and kind in ('progress', 'completed') else 'accepted'
+    db = ledger(Path(cfg['state_directory']))
+    try:
+        db.execute('CREATE TABLE IF NOT EXISTS event_inbox(event_id INTEGER PRIMARY KEY, payload TEXT NOT NULL, disposition TEXT NOT NULL)')
+        stable = dict(event)
+        stable.pop('attempt', None)
+        payload = json.dumps(stable, sort_keys=True)
+        saved = db.execute('SELECT payload,disposition FROM event_inbox WHERE event_id=?', (event['event_id'],)).fetchone()
+        if saved:
+            if saved['payload'] != payload:
+                raise ValueError('event identity conflict')
+            result = saved['disposition']
+        else:
+            with db:
+                db.execute('INSERT INTO event_inbox VALUES(?,?,?)', (event['event_id'], payload, result))
+                if result == 'accepted':
+                    now = int(time.time())
+                    key = hashlib.sha256(('lifecycle:' + str(event['event_id'])).encode()).hexdigest()
+                    db.execute('INSERT INTO delivery(action_key,requirement_id,kind,first_seen,deadline,next_attempt) VALUES(?,?,?,?,?,?)',
+                               (key, event['requirement_id'], kind, now, now + DEADLINE, now))
+        return {'protocol_version': 1, 'event_id': event['event_id'], 'status': result}
+    finally:
+        db.close()
+
+
+def tick_events(path, cfg):
+    directory = Path(cfg['state_directory'])
+    with (directory / 'worker.lock').open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return 'busy'
+        db = ledger(directory)
+        try:
+            now = int(time.time())
+            with db:
+                db.execute("UPDATE delivery SET state='failed',result='deadline_or_attempt_limit' WHERE state IN ('pending','sending') AND (deadline<=? OR attempts>=?)", (now, ATTEMPTS))
+            rows = db.execute("SELECT * FROM delivery WHERE state IN ('pending','sending') AND next_attempt<=? AND deadline>? AND attempts<? ORDER BY first_seen,action_key LIMIT 100", (now, now + TIMEOUT, ATTEMPTS)).fetchall()
+            for row in rows:
+                attempt(db, path, row, int(time.time()))
+            return 'checked'
+        finally:
+            db.close()
+
+
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=Path)
     parser.add_argument('--send', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--status', action='store_true')
+    parser.add_argument('--event', action='store_true')
     args = parser.parse_args()
     if args.config is None:
         print('disabled')
@@ -240,6 +319,8 @@ def main():
     cfg = configuration(args.config)
     if not cfg['enabled']:
         print('disabled')
+    elif args.event:
+        print(json.dumps(receive_event(cfg, json.load(sys.stdin))))
     elif args.send:
         print(send(cfg, json.load(sys.stdin)))
     elif args.status:
@@ -249,7 +330,7 @@ def main():
         finally:
             db.close()
     else:
-        print(tick(args.config, cfg))
+        print(tick_events(args.config, cfg) if 'event_policy' in cfg else tick(args.config, cfg))
 
 
 if __name__ == '__main__':
