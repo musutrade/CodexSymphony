@@ -547,10 +547,10 @@ async fn host_budget_command_preserves_usage_and_stop_intents() {
             .status
             .success()
     );
-    let unavailable = "postgres://sensitive-user:sensitive-password@127.0.0.1:1/unavailable";
+    let unavailable = "postgres://example-user:example-password@127.0.0.1:1/unavailable";
     let rejected = host_budget_command(Some(unavailable), &args, request.to_string().as_bytes());
     assert!(!rejected.status.success());
-    assert!(!String::from_utf8_lossy(&rejected.stderr).contains("sensitive"));
+    assert!(!String::from_utf8_lossy(&rejected.stderr).contains("example"));
     assert!(
         !host_budget_command(Some(&url), &["increase"], b"")
             .status

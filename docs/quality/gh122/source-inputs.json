@@ -170,7 +170,7 @@
   "apps/server/tests/adapter_failures.rs": "4db2d45e7e74c89f383ea6a3b44f7710326ccb259dcec50ea4053c9a6957cf69",
   "apps/server/tests/automatic_merge.rs": "f3d6bfe5d4c7a859351f1284ba02955a278efdb776875c42722486ce12c9c4c2",
   "apps/server/tests/bounded_recovery.rs": "5ea4da7b75950b94b5e066073a79f4498b7f79480a8513b3c8a2221a184f37e1",
-  "apps/server/tests/budget.rs": "896a1c093ff542fe2a2bd54c0c78d40c4a367a65f33ffeb77de6d1ae9950af19",
+  "apps/server/tests/budget.rs": "aa1773b27a30d3e6afd317bd72d45edcd84b2078b4231152723254d449040dc1",
   "apps/server/tests/collector_compatibility.rs": "1002f201a3199ea5242aa3d3e907442437e2f0b7e83d96e62b3787560b73fa2f",
   "apps/server/tests/controlled_contract.rs": "27f42767927fb1fb09fd8a3257fdc37e4428585c24e012a614e4d0e8ae6f21f9",
   "apps/server/tests/delivery.rs": "3e071b1e0cc4e58f834c411b6ba10eec41ef1bc15070f8812c5e0c19d814bdd5",

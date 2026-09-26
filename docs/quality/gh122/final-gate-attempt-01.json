@@ -1,0 +1,84 @@
+{
+  "run": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-a758b3f2896b",
+  "commit": "85d845ec2eeb80936443081c7b9cb87b0209bc13",
+  "tree": "b584096f276dff9510067240b71aeb13f9f7af7f",
+  "status": "FAIL",
+  "quality": "complete quality pass; whole verification failed secret scan",
+  "cause": "tests/budget.rs used non-secret fixture credentials not designated as placeholders by the existing scanner",
+  "recovery": "replace fixture values with explicit example placeholders; preserve no-disclosure assertion and unchanged scanner policy; fresh exact-source measurements and final Gate required",
+  "timings": [
+    {
+      "phase": "snapshot",
+      "started_at": "2026-09-26T13:33:48.128244+00:00",
+      "status": "PASS",
+      "duration_ms": 1656
+    },
+    {
+      "phase": "cache-restore",
+      "started_at": "2026-09-26T13:33:52.306046+00:00",
+      "status": "PASS",
+      "duration_ms": 2714
+    },
+    {
+      "phase": "preflight-selftest",
+      "started_at": "2026-09-26T13:33:55.021443+00:00",
+      "status": "PASS",
+      "duration_ms": 35651
+    },
+    {
+      "phase": "preflight-format",
+      "started_at": "2026-09-26T13:34:30.673797+00:00",
+      "status": "PASS",
+      "duration_ms": 1116
+    },
+    {
+      "phase": "preflight-frontend-lint",
+      "started_at": "2026-09-26T13:34:31.791175+00:00",
+      "status": "PASS",
+      "duration_ms": 5175
+    },
+    {
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T13:34:39.246998+00:00",
+      "status": "PASS",
+      "duration_ms": 1121856
+    },
+    {
+      "phase": "frontend-capture",
+      "started_at": "2026-09-26T13:53:21.107742+00:00",
+      "status": "PASS",
+      "duration_ms": 16425
+    },
+    {
+      "phase": "http-build",
+      "started_at": "2026-09-26T13:53:39.837522+00:00",
+      "status": "PASS",
+      "duration_ms": 127006
+    },
+    {
+      "phase": "http-fixture",
+      "started_at": "2026-09-26T13:55:47.639801+00:00",
+      "status": "PASS",
+      "duration_ms": 165
+    },
+    {
+      "phase": "capture-all",
+      "started_at": "2026-09-26T13:34:36.969966+00:00",
+      "status": "PASS",
+      "duration_ms": 1284068
+    },
+    {
+      "phase": "compile",
+      "started_at": "2026-09-26T13:56:02.022593+00:00",
+      "status": "PASS",
+      "duration_ms": 1947
+    },
+    {
+      "phase": "verify",
+      "started_at": "2026-09-26T13:56:05.818035+00:00",
+      "status": "FAIL",
+      "duration_ms": 174400
+    }
+  ],
+  "verify_stdout_sha256": "9b305ada4d189a3f9c6bae9f5c6447c61a6ebd1bac7ed028b0af624410048317"
+}
