@@ -1,0 +1,291 @@
+{
+  "schema": "gh122-local-acceptance/v1",
+  "baseline": "9edde80f5938fd48b3bdac7f3148e3bb19125185",
+  "online_delivery_binary": {
+    "at": "2026-09-26T10:09:24.368585+00:00",
+    "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/652612d1deb4d27c/codexsymphony-server",
+    "sha256": "652612d1deb4d27ced85be1040a978ce95cdbbbdff068f9b76ff84389c6b30dd",
+    "source_measurements": "/home/gem/.cache/gh122-full-source-07",
+    "source_input_digest": "26b8c6a9bc9645b940a3a1443ccf07657a5b55a067e4468a74bb5f822b25e748",
+    "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r3/results.json"
+  },
+  "result": {
+    "status": "PASS",
+    "requirement_id": 1,
+    "mode": "local_git",
+    "repository": "gh122-javascript",
+    "head": "89f7680384b35ebb740a2068e76490a7fa5cc074",
+    "tree": "57d86dc98412b35f627fdbca016458cca0be604c",
+    "state": "Done",
+    "delivery_attempts": 1,
+    "github_records": 0,
+    "runs": 2,
+    "model_calls": [
+      {
+        "usage": {
+          "input": 27038,
+          "cached": 13184,
+          "output": 131,
+          "complete": false,
+          "model_seconds": 11
+        },
+        "run_id": "5bfd949f-db8e-4f75-8dcc-623391452c14",
+        "turn_id": "a87f2e9a-1d9b-4c45-a9cb-dae4038e19aa",
+        "reserved": {
+          "turns": 1,
+          "tokens": 20000,
+          "model_seconds": 600
+        }
+      },
+      {
+        "usage": {
+          "input": 55783,
+          "cached": 27008,
+          "output": 545,
+          "complete": false,
+          "model_seconds": 41
+        },
+        "run_id": "0a56d326-14ee-4cb0-95f3-9c7b3053b665",
+        "turn_id": "f9fbfeea-6c8e-466b-a94d-4424da22542c",
+        "reserved": {
+          "turns": 1,
+          "tokens": 150000,
+          "model_seconds": 600
+        }
+      }
+    ],
+    "observed_metrics": {
+      "input": 82821,
+      "cached": 40192,
+      "output": 676,
+      "model_calls": 2,
+      "repair_count": 0,
+      "cache_hit_rate": {
+        "status": "not_applicable"
+      },
+      "ci_wait": {
+        "status": "not_applicable"
+      },
+      "build_test_coverage_subphases": {
+        "status": "unknown"
+      },
+      "stage_samples": [
+        {
+          "complete": true,
+          "phase": "preparation",
+          "seconds": 1,
+          "source": "preparation_history"
+        },
+        {
+          "complete": true,
+          "phase": "preparation",
+          "seconds": 1,
+          "source": "preparation_history"
+        },
+        {
+          "complete": true,
+          "phase": "validation",
+          "seconds": 2,
+          "source": "candidate_validation"
+        }
+      ],
+      "phases": [
+        {
+          "complete": true,
+          "phase": "Ready",
+          "seconds": 4
+        },
+        {
+          "complete": true,
+          "phase": "execution",
+          "seconds": 18
+        },
+        {
+          "complete": true,
+          "phase": "Running",
+          "seconds": 2626
+        },
+        {
+          "complete": true,
+          "phase": "execution",
+          "seconds": 45
+        }
+      ]
+    },
+    "limits": {
+      "turns": 10,
+      "tokens": 200000,
+      "model_seconds": 1200
+    },
+    "budget_version": 2,
+    "checks": [
+      {
+        "id": "behavior",
+        "output": "behavior: pass\n",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "node --input-type=module -e 'import assert from \"node:assert/strict\"; import {value} from \"./value.mjs\"; assert.equal(value(), \"after\"); console.log(\"behavior: pass\")'"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/execution/local-acceptance-local-66db1d62231fa125ceb2ba39d1a3eefd12a6b9159ee30fd2057111d23c41093d/checks/step-0.log",
+        "consumer": "handoff",
+        "exit_code": 0,
+        "code_failure": true,
+        "output_sha256": "cdb50d4fa9bd50af248c1a08d80e07b5e3f6644ebc4d34a4292dcb95f71ef203"
+      },
+      {
+        "id": "syntax",
+        "output": "✔ value returns after (1.3408ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 91.84101\n",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "node --check value.mjs && node --test value.test.mjs"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/execution/local-acceptance-local-66db1d62231fa125ceb2ba39d1a3eefd12a6b9159ee30fd2057111d23c41093d/checks/step-1.log",
+        "consumer": "handoff",
+        "exit_code": 0,
+        "code_failure": true,
+        "output_sha256": "814aef918633587163a781e1cb39a2773a51dcd7164a31ab75d21f33a2cf24b4"
+      }
+    ],
+    "implementation": {
+      "tool": "trusted-development-process",
+      "tool_version": "1",
+      "config_sha256": "00516d75b2e8f5c80e6a1a0641c07e33ea7abaf24a4c9be2a48bf0d5d9f68e2f",
+      "command_sha256": "d821eb9a9086b74c0a882cdd9dc718271f6ab3925f576fb70771956504cc047b",
+      "protected_entry": "/usr/bin/bash",
+      "protected_entry_sha256": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd"
+    },
+    "restart_durability": {
+      "at": "2026-09-26T10:13:01.661072+00:00",
+      "status": "PASS",
+      "state": "Done",
+      "model_calls": 2,
+      "runs": 2,
+      "delivery_attempts": 1,
+      "delivery_version": "89f7680384b35ebb740a2068e76490a7fa5cc074",
+      "acceptance_passed": true
+    },
+    "raw_evidence": {
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/operations-done-before-restart.json": "eabf0b65360799e726b92339329cd1580afcffa6a25962bb446189f915ac948a",
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/operations-done-after-restart.json": "9bb949de71fdcefe3ab8964a66337f8a0e2d8fe43903262ed9ab1fe34f62af0c",
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/delivery-current.json": "f6bad3a175d300cef4f7b2e0192e4fad22826ac650524096c97157f1f0245086",
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/lifecycle-current.json": "59eb5deb1d6b9641b3e8e49f1288d8400365628b54c6c083a7c6ca2e417b5670",
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/restart-durability.json": "9ef0a54816c4e0a2f5a56d12d02452a646b399475eb523f07471fbbd68f5d7f5",
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/facts-done-before-restart.json": "17f3e6ffd0206ebcb581e5a8a1608cee128b310350f779f32c77b340880a8162",
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/budget-increase-result.json": "ca64e1be8d9e421d2166282facf6895fb8ff662fce1ea4912accc1539ccc58c2",
+      "/home/gem/.local/share/codexsymphony/gh122-acceptance/local-r2/resume-after-budget.json": "93e64ae6c7f0421b3ed7f21756d9d6e2d133fe83244e7c7d28cec9257bf29e1a"
+    },
+    "limits_of_evidence": [
+      "Both online calls remain incompletely settled; tokens are observed lower bounds, and all unknown reservations remain held",
+      "no mobile UI or full parent-group acceptance claimed"
+    ]
+  },
+  "later_source11_durability": {
+    "at": "2026-09-26T11:34:39.508917+00:00",
+    "binary": {
+      "at": "2026-09-26T11:32:26.479693+00:00",
+      "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/b5b65c468b2880c9/codexsymphony-server",
+      "sha256": "b5b65c468b2880c9409632368171a6ce57c6bfd182126bf7801182626940dad5",
+      "source_measurements": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-11",
+      "source_input_digest": "7eb1111f97184006a7e65375ab9ef665ebd32be38a2c0f4ec99a3731bf8e802f",
+      "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r5/results.json"
+    },
+    "process": [
+      {
+        "pid": 1861317,
+        "sha256": "b5b65c468b2880c9409632368171a6ce57c6bfd182126bf7801182626940dad5"
+      }
+    ],
+    "facts": {
+      "runs": 2,
+      "github_prs": 0,
+      "model_calls": 2,
+      "delivery_attempts": 1,
+      "github_repositories": 0
+    },
+    "requirement": {
+      "cancel_requested": false,
+      "cleanup_complete": false,
+      "id": 1,
+      "paused": false,
+      "revision": 1,
+      "state": "Done",
+      "version": 9
+    },
+    "delivery_version": "89f7680384b35ebb740a2068e76490a7fa5cc074"
+  },
+  "boundary": "Online coding/delivery used recorded source07 binary; later readbacks prove durability only, not another online model run.",
+  "source13_durability": {
+    "at": "2026-09-26T12:25:59.355841+00:00",
+    "status": "PASS",
+    "binary": {
+      "at": "2026-09-26T12:22:46.394758+00:00",
+      "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/2da33b9d70dc104b/codexsymphony-server",
+      "sha256": "2da33b9d70dc104b9017642db630a7b60dd04c2f9979942a91a29ae7072b6eca",
+      "source_measurements": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-13",
+      "source_input_digest": "087ea5a5ee3dfb733c8c5d2e83c8a824f5cfe378bde61f9f40380a97a8321e4e",
+      "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r7/results.json"
+    },
+    "process": [
+      {
+        "pid": 2004536,
+        "sha256": "2da33b9d70dc104b9017642db630a7b60dd04c2f9979942a91a29ae7072b6eca"
+      }
+    ],
+    "requirement": {
+      "cancel_requested": false,
+      "cleanup_complete": false,
+      "id": 1,
+      "paused": false,
+      "revision": 1,
+      "state": "Done",
+      "version": 9
+    },
+    "facts": {
+      "runs": 2,
+      "github_prs": 0,
+      "model_calls": 2,
+      "delivery_attempts": 1,
+      "github_repositories": 0
+    },
+    "delivery_version": "89f7680384b35ebb740a2068e76490a7fa5cc074",
+    "boundary": "Durability readback of original completed online delivery, not a new model run."
+  },
+  "final_source_durability": {
+    "at": "2026-09-26T13:19:27.972628+00:00",
+    "status": "PASS",
+    "binary": {
+      "at": "2026-09-26T13:17:53.622350+00:00",
+      "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/57887784dd747647/codexsymphony-server",
+      "sha256": "57887784dd747647cf7cdc1197ed99e9823f9ddc075c2fb2c26ab42e03389ae1",
+      "source_measurements": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+      "source_input_digest": "00e46d092603a758ed9dd5545415326dd88962a028945376262a02df9bf4d565",
+      "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r10/results.json"
+    },
+    "process": [
+      {
+        "pid": 2163936,
+        "sha256": "57887784dd747647cf7cdc1197ed99e9823f9ddc075c2fb2c26ab42e03389ae1"
+      }
+    ],
+    "requirement": {
+      "cancel_requested": false,
+      "cleanup_complete": false,
+      "id": 1,
+      "paused": false,
+      "revision": 1,
+      "state": "Done",
+      "version": 9
+    },
+    "facts": {
+      "runs": 2,
+      "github_prs": 0,
+      "model_calls": 2,
+      "delivery_attempts": 1,
+      "github_repositories": 0
+    },
+    "delivery_version": "89f7680384b35ebb740a2068e76490a7fa5cc074",
+    "boundary": "Durability readback of original completed online delivery, not a new model run."
+  }
+}

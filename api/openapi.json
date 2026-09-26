@@ -5036,7 +5036,8 @@
                 "type": "string",
                 "enum": [
                   "revalidate",
-                  "adapt_code"
+                  "adapt_code",
+                  "revalidate_delivery"
                 ]
               },
               "plan_digest": {
@@ -5050,6 +5051,9 @@
                 "items": {
                   "$ref": "#/components/schemas/DevelopmentConstraint"
                 }
+              },
+              "policy_digest": {
+                "type": "string"
               }
             }
           }

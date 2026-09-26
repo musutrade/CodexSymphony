@@ -81,7 +81,6 @@ pub async fn execute(
     settings: &Settings,
 ) -> Result<()> {
     settings.validate()?;
-    runtime_store::open(pool, &launch.key, now()).await?;
     let mut child =
         crate::coordinator::start_runtime(pool, root, supervisor, launch, &settings.codex_config)
             .await?;
@@ -89,7 +88,7 @@ pub async fn execute(
     let transport = Transport::new(&mut child);
     // Reap the supervisor regardless of protocol outcome. Only its ECHILD
     // receipt (read by Coordinator) establishes quiescence.
-    tokio::task::spawn_blocking(move || child.wait());
+    tokio::spawn(reap_supervisor(child));
     let result = match transport {
         Ok(transport) => {
             let mut client = Client {
@@ -126,6 +125,13 @@ pub async fn execute(
     process::durable_write(&directory.join("stop.json"), &launch.key)?;
     result
 }
+
+async fn reap_supervisor(mut child: std::process::Child) {
+    while let Ok(None) = child.try_wait() {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
 impl Client<'_> {
     async fn run(&mut self) -> Result<()> {
         self.initialize().await?;
@@ -162,12 +168,11 @@ impl Client<'_> {
         let initialized = self
             .rpc("initialize", &params, self.settings.startup_seconds)
             .await?;
-        runtime_store::require(
-            initialized["userAgent"]
-                .as_str()
-                .is_some_and(|s| s.contains("/0.156.1 ")),
-            "app-server version mismatch",
-        )?;
+        let version_matches = match initialized["userAgent"].as_str() {
+            Some(agent) => agent.contains("/0.157.1 "),
+            None => false,
+        };
+        runtime_store::require(version_matches, "app-server version mismatch")?;
         self.transport
             .send(&json!({"method":"initialized"}))
             .await?;

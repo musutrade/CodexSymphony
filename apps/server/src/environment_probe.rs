@@ -76,6 +76,10 @@ pub async fn check_bound(
     workspace: Option<&Path>,
     context: Option<&TaskContext>,
 ) -> Result<Report> {
+    // Reconciliation must not mistake another live probe in this process for
+    // an abandoned invocation. Keep its original receipts and wait for it.
+    static PROBES: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+    let _probe = PROBES.lock().await;
     reconcile(&registry.evidence_root)?;
     let profile = registry.resolve(plan)?;
     verify_workspace(profile, workspace)?;

@@ -153,48 +153,25 @@ Keep Rust domain logic independent of runtime, persistence and GitHub adapters.
 Use the Angular skills when implementing the frontend. Phase 0a uses the minimal
 Material UI specified in chapter 23. Avoid implementing later phases implicitly.
 
-Temporary Rust convention: do not introduce production closures, including move
-and async closures. Replace closures in production functions you edit with
-behavior-equivalent named functions or explicit control flow; leave unrelated
-legacy functions alone. Test-only closures are allowed, but never move production
-logic outside measurement. Keep CRAP <= 10 and all coverage/requiredness thresholds
-unchanged. Inventory compatibility alone is insufficient: require exact LLVM
-source-bound measurements and the complete final-tree Gate PASS. Lift this rule
-only after a reviewed collector upgrade passes the retained closure mapping
-regressions and complete Gate. See root AGENTS.md for scope and removal criteria.
-
-Run the Issue's acceptance commands and the checks relevant to changed code.
-Once a root Cargo workspace exists, Rust changes require cargo fmt --all -- --check,
-the full `cargo test --workspace --locked` through the prepared fixture entry,
-and cargo clippy --workspace --all-targets --locked
--- -D warnings, unless a reviewed repository policy defines a more precise scope.
-Frontend changes use the checked-in package scripts and lockfile. Do not fabricate
-commands, passing results, coverage, or evidence for absent code and infrastructure.
-An applicable acceptance check that cannot run is incomplete, not N/A.
+Read and follow [AGENTS.md: Development procedure](AGENTS.md#development-procedure-single-source-of-truth)
+at task start, on resume, and before validation or publication. That file owns
+the stage order, temporary Rust convention, source-bound measurement requirement,
+failure recovery and timing records. Do not maintain a second copy here.
+Resolve command arguments, versions and quality policy from the authorities
+listed there. Include the Issue's acceptance requirements; unavailable required
+acceptance remains incomplete. Do not fabricate commands, results or evidence.
 
 Do not run the real GitHub/cloud/notification spikes by default. Tests with
 external side effects require task authorization and the designated test setup.
 Keep production secrets out of this repository. Do not change CI, required checks,
 this workflow or acceptance policy merely to make the current task pass.
-Before publishing, finish the evidence manifest and all source edits, then call
-`local_gate` with `{"action":"start"}`. This starts the same complete installed
-Gate used by CI without publishing a commit. Read `local_gate` with
-`{"action":"status"}` after a bounded wait (at least 60 seconds); ordinary local
-checks may be used while developing, but only this complete PASS permits delivery.
-A failed result includes the retained log directory; fix the source and start a
-new validation. Do not publish to discover quality failures. The host receipt
-binds the exact Git tree (including executable modes and deletions), environment
-fingerprint and approved Gate implementation. Any source/environment change
-invalidates it. The GitHub tool rejects unvalidated refs/PRs and alternate write
-paths such as the contents API. Do not edit source or evidence after PASS.
-For this repository run `python3 tools/gate.py config check` as a diagnostic. The separately installed trusted host
-runs `python3 tools/gate.py verify --profile ci --all` on the exact published
-commit; GitHub Actions waits for its App-authenticated result. Agent workspaces
-do not receive signing keys or reusable trusted runtime requests. CRAP <= 10 is
-required; missing/unsupported measurements remain blockers. Do not delete quality
-configuration, lower requiredness, substitute N/A, or reuse another source's
-measurement evidence. Hook is partial assurance and cannot replace full CI.
-Read .harness-gate/QUALITY.md and docs/remote-gate.md for provisioning and evidence.
+Controller adapter: call `local_gate` with `{"action":"start"}` at the Gate
+stages defined in AGENTS.md, and `{"action":"status"}` to read the host-owned
+result after a bounded wait (at least 60 seconds). Failed results include retained diagnostic paths.
+The GitHub tool enforces source-bound publication admission and rejects alternate
+write paths such as the contents API. Agent workspaces do not receive signing
+keys or reusable trusted runtime requests. Provisioning and evidence locations
+are documented in .harness-gate/QUALITY.md and docs/remote-gate.md.
 
 Prefer focused reads and bounded output; preserve full evidence in artifacts.
 Before handoff, create `.symphony-evidence.json` using schema `symphony-evidence/v1`

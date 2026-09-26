@@ -1,0 +1,135 @@
+{
+  "generated_at": "2026-09-26T14:21:27.459208+00:00",
+  "source": "retained host timing events, not estimates",
+  "events": [
+    {
+      "run": "/home/gem/.cache/gh122-codex157-source-01",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T07:54:11.806103+00:00",
+      "status": "FAIL",
+      "duration_ms": 840442
+    },
+    {
+      "run": "/home/gem/.cache/gh122-local-source-02",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T08:10:46.422715+00:00",
+      "status": "PASS",
+      "duration_ms": 290179
+    },
+    {
+      "run": "/home/gem/.cache/gh122-full-source-03",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T08:20:34.292458+00:00",
+      "status": "PASS",
+      "duration_ms": 1232005
+    },
+    {
+      "run": "/home/gem/.cache/gh122-full-source-04",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T09:04:24.289036+00:00",
+      "status": "PASS",
+      "duration_ms": 1192999
+    },
+    {
+      "run": "/home/gem/.cache/gh122-full-source-05",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T09:34:12.749924+00:00",
+      "status": "FAIL",
+      "duration_ms": 302131
+    },
+    {
+      "run": "/home/gem/.cache/gh122-budget-source-06",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T09:42:03.969576+00:00",
+      "status": "FAIL",
+      "duration_ms": 133109
+    },
+    {
+      "run": "/home/gem/.cache/gh122-full-source-07",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T09:45:19.778831+00:00",
+      "status": "PASS",
+      "duration_ms": 1305725
+    },
+    {
+      "run": "/home/gem/.cache/gh122-full-source-08",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T10:33:36.678453+00:00",
+      "status": "FAIL",
+      "duration_ms": 529318
+    },
+    {
+      "run": "/home/gem/.cache/gh122-frontend-source-01",
+      "phase": "frontend-capture",
+      "started_at": "2026-09-26T10:35:47.058671+00:00",
+      "status": "PASS",
+      "duration_ms": 24265
+    },
+    {
+      "run": "/home/gem/.cache/gh122-recovery-source-09",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T10:43:50.567419+00:00",
+      "status": "PASS",
+      "duration_ms": 168534
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-10",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T10:47:23.988632+00:00",
+      "status": "PASS",
+      "duration_ms": 1119387
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-11",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T11:09:43.516050+00:00",
+      "status": "PASS",
+      "duration_ms": 1136804
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-12",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T11:41:27.249892+00:00",
+      "status": "PASS",
+      "duration_ms": 1132679
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-13",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T12:01:39.982463+00:00",
+      "status": "PASS",
+      "duration_ms": 1149017
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-14",
+      "cause": "stopped during static review: restrict invalidated-success admission to explicit RevalidateDelivery only",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T12:30:46.452328+00:00",
+      "status": "FAIL",
+      "duration_ms": 139257
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-15",
+      "measurement_status": "FAIL: prepare_pending and eligible exceed CRAP 10; all 373 tests passed",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T12:33:31.321492+00:00",
+      "status": "PASS",
+      "duration_ms": 1183239
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T12:56:12.871912+00:00",
+      "status": "PASS",
+      "duration_ms": 1166385
+    },
+    {
+      "run": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-17",
+      "cause": "explicit non-secret test placeholder replaces scanner-rejected fixture; production binary unchanged",
+      "phase": "backend-capture",
+      "started_at": "2026-09-26T14:00:22.979811+00:00",
+      "status": "PASS",
+      "duration_ms": 1144903
+    }
+  ]
+}

@@ -48,15 +48,26 @@ def disposable(path):
     if not shutil.rmtree.avoids_symlink_attacks:raise ValueError('fd-safe removal required')
 
 
-def linked_run(root,job,receipt):
+def recorded_run(job,receipt):
     name=receipt.get('run')
     if not name and (job/'gate.stdout').is_file():
         matches=re.findall(r'^Retaining complete gate run: (.+)$',(job/'gate.stdout').read_text(),re.M)
         if len(matches)==1:name=matches[0]
-    if not name:return None
-    run=Path(name)
-    if run.parent!=root/'gate-host/runs' or not RUN.fullmatch(run.name) or run.resolve()!=run.absolute():raise ValueError('invalid linked Gate run')
-    if not run.exists():return None
+    return Path(name) if name else None
+
+
+def local_run(root,run):
+    if run.parent!=root/'gate-host/runs' or not RUN.fullmatch(run.name):
+        raise ValueError('invalid linked Gate run')
+    # Historical migration leaves a link to a different disk. It is not a local
+    # disposable run: never follow, validate through, or delete that link/target.
+    # An unavailable winner cannot authorize retirement of any other attempt.
+    if run.is_symlink():return None
+    if run.resolve()!=run.absolute():raise ValueError('invalid linked Gate run')
+    return run if run.exists() else None
+
+
+def verify_run_identity(run,receipt):
     marker=run/'superseded-attempt.json'
     if marker.exists():
         prior=json.loads(marker.read_text())
@@ -64,6 +75,13 @@ def linked_run(root,job,receipt):
     else:
         result=subprocess.run(['git','-C',str(run/'workspace'),'rev-parse','HEAD'],capture_output=True,text=True,timeout=10)
         if result.returncode or result.stdout.strip()!=receipt['source_sha']:raise ValueError('linked run commit mismatch')
+
+
+def linked_run(root,job,receipt):
+    run=recorded_run(job,receipt)
+    if run is None:return None
+    run=local_run(root,run)
+    if run is not None:verify_run_identity(run,receipt)
     return run
 
 

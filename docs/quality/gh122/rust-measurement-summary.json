@@ -1,0 +1,14 @@
+{
+  "at": "2026-09-26T14:20:05.515238+00:00",
+  "status": "PASS",
+  "functions": 2223,
+  "minimum_line_coverage": 0.8,
+  "minimum_region_coverage": 0.8,
+  "maximum_crap": 10.0,
+  "evidence": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-17",
+  "measurements_sha256": "d0d4d9bd2367982b5db0bed4c82307225050d23dadcf7ff7563501254f618c9d",
+  "threshold_failures": 0,
+  "tests": 373,
+  "suites": 41,
+  "source_inputs": 287
+}

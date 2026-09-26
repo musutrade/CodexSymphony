@@ -1,4 +1,4 @@
-// harness-contract-sha256: 9ae60b02d37e8da3029026c0c37a1fece7808ddd93613a1bc055655837c9e907
+// harness-contract-sha256: 1a626e3337b288747c12df35a5fe4bcf8e6b4ad0f9ac1379cc52650a4994410e
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -2589,8 +2589,9 @@ export interface GetExtensionRecoveryResponse {
             source: string;
             version: string;
           }[];
-          kind: 'adapt_code' | 'revalidate';
+          kind: 'adapt_code' | 'revalidate' | 'revalidate_delivery';
           plan_digest?: string;
+          policy_digest?: string;
           resume_condition?: string;
         };
         reason: string;
@@ -2626,8 +2627,9 @@ export interface ResolveExtensionRecoveryRequest {
       source: string;
       version: string;
     }[];
-    kind: 'adapt_code' | 'revalidate';
+    kind: 'adapt_code' | 'revalidate' | 'revalidate_delivery';
     plan_digest?: string;
+    policy_digest?: string;
     resume_condition?: string;
   };
   reason: string;

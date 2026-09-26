@@ -1,0 +1,2009 @@
+{
+  "schema": "gh122-github-real-acceptance/v1",
+  "status": "PASS",
+  "at": "2026-09-26T13:29:54.453806+00:00",
+  "repository": "musutrade/disposable-2",
+  "repository_id": 1377749969,
+  "baseline": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+  "pr_url": "https://github.com/musutrade/disposable-2/pull/12",
+  "online_binary": {
+    "at": "2026-09-26T10:09:24.368585+00:00",
+    "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/652612d1deb4d27c/codexsymphony-server",
+    "sha256": "652612d1deb4d27ced85be1040a978ce95cdbbbdff068f9b76ff84389c6b30dd",
+    "source_measurements": "/home/gem/.cache/gh122-full-source-07",
+    "source_input_digest": "26b8c6a9bc9645b940a3a1443ccf07657a5b55a067e4468a74bb5f822b25e748",
+    "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r3/results.json"
+  },
+  "final_binary": {
+    "at": "2026-09-26T13:17:53.622350+00:00",
+    "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/57887784dd747647/codexsymphony-server",
+    "sha256": "57887784dd747647cf7cdc1197ed99e9823f9ddc075c2fb2c26ab42e03389ae1",
+    "source_measurements": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+    "source_input_digest": "00e46d092603a758ed9dd5545415326dd88962a028945376262a02df9bf4d565",
+    "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r10/results.json"
+  },
+  "facts": {
+    "runs": 1,
+    "calls": [
+      {
+        "usage": {
+          "input": 87539,
+          "cached": 70784,
+          "output": 586,
+          "complete": false,
+          "model_seconds": 40
+        },
+        "run_id": "451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "reserved": {
+          "turns": 1,
+          "tokens": 150000,
+          "model_seconds": 600
+        }
+      }
+    ],
+    "budget": [
+      {
+        "limits": {
+          "turns": 10,
+          "tokens": 200000,
+          "model_seconds": 1200
+        },
+        "version": 2,
+        "exhausted": false
+      }
+    ],
+    "merges": [
+      {
+        "head": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+        "state": "complete",
+        "blocker": null,
+        "merged_at": 1790429015,
+        "acceptance": {
+          "evidence": {
+            "steps": [
+              {
+                "id": "cargo",
+                "output": "   Compiling a13-disposable v0.1.0 (/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/workspaces/runs/merge-dc0d115d94c80d88e53f16b98db98abe0445cf2cc2a776f9ce2b097d41961a22-3e7befaf0b5bdc835854cc1d5a14c62865aec4c4)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s\n     Running unittests src/lib.rs (/home/gem/cargo-target/debug/deps/a13_disposable-a758cad80842c4b3)\n\nrunning 2 tests\ntest gh122_marker_returns_dual_path_ready ... ok\ntest repository_identity ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests a13_disposable\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+                "command": [
+                  "/gate-entry",
+                  "-c",
+                  "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; cargo test --locked --offline"
+                ],
+                "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/validations/post-merge-dc0d115d94c80d88e53f16b98db98abe0445cf2cc2a776f9ce2b097d41961a22/step-0.log",
+                "consumer": "handoff",
+                "exit_code": 0,
+                "code_failure": true,
+                "output_sha256": "4e3cf4dc441c1325ea9cb7c0a8abe082dc4f8a6fdd1828a1ccbe536c1934e1ce"
+              },
+              {
+                "id": "marker",
+                "output": "marker: pass\n",
+                "command": [
+                  "/gate-entry",
+                  "-c",
+                  "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; rustc --crate-name a13_disposable --crate-type lib --edition 2024 src/lib.rs -o /tmp/libgh122-marker.rlib && printf 'extern crate a13_disposable; fn main(){assert_eq!(a13_disposable::gh122_marker(), \"dual-path-ready\");}\\n' | rustc --edition 2024 --extern a13_disposable=/tmp/libgh122-marker.rlib -o /tmp/gh122-marker-check - && /tmp/gh122-marker-check && printf 'marker: pass\\n'"
+                ],
+                "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/validations/post-merge-dc0d115d94c80d88e53f16b98db98abe0445cf2cc2a776f9ce2b097d41961a22/step-1.log",
+                "consumer": "handoff",
+                "exit_code": 0,
+                "code_failure": true,
+                "output_sha256": "326a0a22537115ddf860fb2dd26ba082a4d31dc0de40590dbfbf47dccba03039"
+              }
+            ],
+            "trusted": {
+              "tool": "trusted-development-process",
+              "tool_version": "1",
+              "config_sha256": "bbb0a401858aec768bed519a9394a77cf2a021f2750aeaf86d4041b791d4ecc3",
+              "command_sha256": "3ec99646a4972aae8c2df603db1e17725a01c0c9ee73391a739ce0374eb5c085",
+              "protected_entry": "/usr/bin/bash",
+              "protected_entry_sha256": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd"
+            },
+            "candidate": {
+              "sha": "3e7befaf0b5bdc835854cc1d5a14c62865aec4c4",
+              "tree": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b",
+              "immutable": true
+            },
+            "entry_after": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd",
+            "entry_before": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd",
+            "source_after": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b",
+            "source_before": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b"
+          },
+          "observation": {
+            "base": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+            "head": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+            "merge": "Merged",
+            "checks": [
+              {
+                "state": "Success",
+                "history": [
+                  {
+                    "id": 108411847662,
+                    "app": {
+                      "id": 15368,
+                      "name": "GitHub Actions",
+                      "slug": "github-actions",
+                      "owner": {
+                        "id": 9919,
+                        "url": "https://api.github.com/users/github",
+                        "type": "Organization",
+                        "login": "github",
+                        "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+                        "html_url": "https://github.com/github",
+                        "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
+                        "repos_url": "https://api.github.com/users/github/repos",
+                        "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+                        "events_url": "https://api.github.com/users/github/events{/privacy}",
+                        "site_admin": false,
+                        "gravatar_id": "",
+                        "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
+                        "followers_url": "https://api.github.com/users/github/followers",
+                        "following_url": "https://api.github.com/users/github/following{/other_user}",
+                        "user_view_type": "public",
+                        "organizations_url": "https://api.github.com/users/github/orgs",
+                        "subscriptions_url": "https://api.github.com/users/github/subscriptions",
+                        "received_events_url": "https://api.github.com/users/github/received_events"
+                      },
+                      "events": [
+                        "branch_protection_rule",
+                        "check_run",
+                        "check_suite",
+                        "create",
+                        "delete",
+                        "deployment",
+                        "deployment_status",
+                        "discussion",
+                        "discussion_comment",
+                        "fork",
+                        "gollum",
+                        "issues",
+                        "issue_comment",
+                        "label",
+                        "merge_group",
+                        "milestone",
+                        "page_build",
+                        "public",
+                        "pull_request",
+                        "pull_request_review",
+                        "pull_request_review_comment",
+                        "push",
+                        "registry_package",
+                        "release",
+                        "repository",
+                        "repository_dispatch",
+                        "status",
+                        "watch",
+                        "workflow_dispatch",
+                        "workflow_run"
+                      ],
+                      "node_id": "MDM6QXBwMTUzNjg=",
+                      "html_url": "https://github.com/apps/github-actions",
+                      "client_id": "Iv1.05c79e9ad1f6bdfa",
+                      "created_at": "2018-07-30T09:30:17Z",
+                      "updated_at": "2026-06-18T16:17:48Z",
+                      "description": "Automate your workflow from idea to production",
+                      "permissions": {
+                        "pages": "write",
+                        "checks": "write",
+                        "drives": "write",
+                        "issues": "write",
+                        "models": "read",
+                        "actions": "write",
+                        "contents": "write",
+                        "metadata": "read",
+                        "packages": "write",
+                        "statuses": "write",
+                        "deployments": "write",
+                        "discussions": "write",
+                        "attestations": "write",
+                        "code_quality": "write",
+                        "merge_queues": "write",
+                        "pull_requests": "write",
+                        "administration": "read",
+                        "security_events": "write",
+                        "copilot_requests": "write",
+                        "repository_hooks": "write",
+                        "artifact_metadata": "write",
+                        "repository_projects": "write",
+                        "vulnerability_alerts": "read"
+                      },
+                      "external_url": "https://help.github.com/en/actions"
+                    },
+                    "url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411847662",
+                    "name": "test-job",
+                    "output": {
+                      "text": null,
+                      "title": null,
+                      "summary": null,
+                      "annotations_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411847662/annotations",
+                      "annotations_count": 2
+                    },
+                    "status": "completed",
+                    "node_id": "CR_kwDOUh7L0c8AAAAZPdmD7g",
+                    "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                    "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244779076/job/108411847662",
+                    "conclusion": "success",
+                    "started_at": "2026-09-26T13:19:33Z",
+                    "check_suite": {
+                      "id": 98152137254
+                    },
+                    "details_url": "https://github.com/musutrade/disposable-2/actions/runs/36244779076/job/108411847662",
+                    "external_id": "a9ffcce8-4ec3-5da0-8ff1-c936943958da",
+                    "completed_at": "2026-09-26T13:19:46Z",
+                    "pull_requests": []
+                  },
+                  {
+                    "id": 108411927768,
+                    "app": {
+                      "id": 15368,
+                      "name": "GitHub Actions",
+                      "slug": "github-actions",
+                      "owner": {
+                        "id": 9919,
+                        "url": "https://api.github.com/users/github",
+                        "type": "Organization",
+                        "login": "github",
+                        "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+                        "html_url": "https://github.com/github",
+                        "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
+                        "repos_url": "https://api.github.com/users/github/repos",
+                        "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+                        "events_url": "https://api.github.com/users/github/events{/privacy}",
+                        "site_admin": false,
+                        "gravatar_id": "",
+                        "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
+                        "followers_url": "https://api.github.com/users/github/followers",
+                        "following_url": "https://api.github.com/users/github/following{/other_user}",
+                        "user_view_type": "public",
+                        "organizations_url": "https://api.github.com/users/github/orgs",
+                        "subscriptions_url": "https://api.github.com/users/github/subscriptions",
+                        "received_events_url": "https://api.github.com/users/github/received_events"
+                      },
+                      "events": [
+                        "branch_protection_rule",
+                        "check_run",
+                        "check_suite",
+                        "create",
+                        "delete",
+                        "deployment",
+                        "deployment_status",
+                        "discussion",
+                        "discussion_comment",
+                        "fork",
+                        "gollum",
+                        "issues",
+                        "issue_comment",
+                        "label",
+                        "merge_group",
+                        "milestone",
+                        "page_build",
+                        "public",
+                        "pull_request",
+                        "pull_request_review",
+                        "pull_request_review_comment",
+                        "push",
+                        "registry_package",
+                        "release",
+                        "repository",
+                        "repository_dispatch",
+                        "status",
+                        "watch",
+                        "workflow_dispatch",
+                        "workflow_run"
+                      ],
+                      "node_id": "MDM6QXBwMTUzNjg=",
+                      "html_url": "https://github.com/apps/github-actions",
+                      "client_id": "Iv1.05c79e9ad1f6bdfa",
+                      "created_at": "2018-07-30T09:30:17Z",
+                      "updated_at": "2026-06-18T16:17:48Z",
+                      "description": "Automate your workflow from idea to production",
+                      "permissions": {
+                        "pages": "write",
+                        "checks": "write",
+                        "drives": "write",
+                        "issues": "write",
+                        "models": "read",
+                        "actions": "write",
+                        "contents": "write",
+                        "metadata": "read",
+                        "packages": "write",
+                        "statuses": "write",
+                        "deployments": "write",
+                        "discussions": "write",
+                        "attestations": "write",
+                        "code_quality": "write",
+                        "merge_queues": "write",
+                        "pull_requests": "write",
+                        "administration": "read",
+                        "security_events": "write",
+                        "copilot_requests": "write",
+                        "repository_hooks": "write",
+                        "artifact_metadata": "write",
+                        "repository_projects": "write",
+                        "vulnerability_alerts": "read"
+                      },
+                      "external_url": "https://help.github.com/en/actions"
+                    },
+                    "url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768",
+                    "name": "test-job",
+                    "output": {
+                      "text": null,
+                      "title": null,
+                      "summary": null,
+                      "annotations_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768/annotations",
+                      "annotations_count": 2
+                    },
+                    "status": "completed",
+                    "node_id": "CR_kwDOUh7L0c8AAAAZPdq82A",
+                    "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                    "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                    "conclusion": "success",
+                    "started_at": "2026-09-26T13:20:03Z",
+                    "check_suite": {
+                      "id": 98152210028
+                    },
+                    "details_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                    "external_id": "ed52e03b-ee07-5b66-9f4f-b2f69758a720",
+                    "completed_at": "2026-09-26T13:20:21Z",
+                    "pull_requests": []
+                  }
+                ],
+                "evidence": [
+                  {
+                    "id": 108411927768,
+                    "app": {
+                      "id": 15368,
+                      "name": "GitHub Actions",
+                      "slug": "github-actions",
+                      "owner": {
+                        "id": 9919,
+                        "url": "https://api.github.com/users/github",
+                        "type": "Organization",
+                        "login": "github",
+                        "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+                        "html_url": "https://github.com/github",
+                        "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
+                        "repos_url": "https://api.github.com/users/github/repos",
+                        "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+                        "events_url": "https://api.github.com/users/github/events{/privacy}",
+                        "site_admin": false,
+                        "gravatar_id": "",
+                        "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
+                        "followers_url": "https://api.github.com/users/github/followers",
+                        "following_url": "https://api.github.com/users/github/following{/other_user}",
+                        "user_view_type": "public",
+                        "organizations_url": "https://api.github.com/users/github/orgs",
+                        "subscriptions_url": "https://api.github.com/users/github/subscriptions",
+                        "received_events_url": "https://api.github.com/users/github/received_events"
+                      },
+                      "events": [
+                        "branch_protection_rule",
+                        "check_run",
+                        "check_suite",
+                        "create",
+                        "delete",
+                        "deployment",
+                        "deployment_status",
+                        "discussion",
+                        "discussion_comment",
+                        "fork",
+                        "gollum",
+                        "issues",
+                        "issue_comment",
+                        "label",
+                        "merge_group",
+                        "milestone",
+                        "page_build",
+                        "public",
+                        "pull_request",
+                        "pull_request_review",
+                        "pull_request_review_comment",
+                        "push",
+                        "registry_package",
+                        "release",
+                        "repository",
+                        "repository_dispatch",
+                        "status",
+                        "watch",
+                        "workflow_dispatch",
+                        "workflow_run"
+                      ],
+                      "node_id": "MDM6QXBwMTUzNjg=",
+                      "html_url": "https://github.com/apps/github-actions",
+                      "client_id": "Iv1.05c79e9ad1f6bdfa",
+                      "created_at": "2018-07-30T09:30:17Z",
+                      "updated_at": "2026-06-18T16:17:48Z",
+                      "description": "Automate your workflow from idea to production",
+                      "permissions": {
+                        "pages": "write",
+                        "checks": "write",
+                        "drives": "write",
+                        "issues": "write",
+                        "models": "read",
+                        "actions": "write",
+                        "contents": "write",
+                        "metadata": "read",
+                        "packages": "write",
+                        "statuses": "write",
+                        "deployments": "write",
+                        "discussions": "write",
+                        "attestations": "write",
+                        "code_quality": "write",
+                        "merge_queues": "write",
+                        "pull_requests": "write",
+                        "administration": "read",
+                        "security_events": "write",
+                        "copilot_requests": "write",
+                        "repository_hooks": "write",
+                        "artifact_metadata": "write",
+                        "repository_projects": "write",
+                        "vulnerability_alerts": "read"
+                      },
+                      "external_url": "https://help.github.com/en/actions"
+                    },
+                    "url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768",
+                    "name": "test-job",
+                    "output": {
+                      "text": null,
+                      "title": null,
+                      "summary": null,
+                      "annotations_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768/annotations",
+                      "annotations_count": 2
+                    },
+                    "status": "completed",
+                    "node_id": "CR_kwDOUh7L0c8AAAAZPdq82A",
+                    "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                    "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                    "conclusion": "success",
+                    "started_at": "2026-09-26T13:20:03Z",
+                    "check_suite": {
+                      "id": 98152210028
+                    },
+                    "details_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                    "external_id": "ed52e03b-ee07-5b66-9f4f-b2f69758a720",
+                    "completed_at": "2026-09-26T13:20:21Z",
+                    "workflow_job": {
+                      "id": 108411927768,
+                      "url": "https://api.github.com/repos/musutrade/disposable-2/actions/jobs/108411927768",
+                      "name": "test-job",
+                      "steps": [
+                        {
+                          "name": "Set up job",
+                          "number": 1,
+                          "status": "completed",
+                          "conclusion": "success",
+                          "started_at": "2026-09-26T13:20:04Z",
+                          "completed_at": "2026-09-26T13:20:05Z"
+                        },
+                        {
+                          "name": "Run actions/checkout@v4",
+                          "number": 2,
+                          "status": "completed",
+                          "conclusion": "success",
+                          "started_at": "2026-09-26T13:20:05Z",
+                          "completed_at": "2026-09-26T13:20:05Z"
+                        },
+                        {
+                          "name": "Run cargo test --locked",
+                          "number": 3,
+                          "status": "completed",
+                          "conclusion": "success",
+                          "started_at": "2026-09-26T13:20:05Z",
+                          "completed_at": "2026-09-26T13:20:19Z"
+                        },
+                        {
+                          "name": "Post Run actions/checkout@v4",
+                          "number": 6,
+                          "status": "completed",
+                          "conclusion": "success",
+                          "started_at": "2026-09-26T13:20:19Z",
+                          "completed_at": "2026-09-26T13:20:19Z"
+                        },
+                        {
+                          "name": "Complete job",
+                          "number": 7,
+                          "status": "completed",
+                          "conclusion": "success",
+                          "started_at": "2026-09-26T13:20:19Z",
+                          "completed_at": "2026-09-26T13:20:19Z"
+                        }
+                      ],
+                      "labels": [
+                        "ubuntu-latest"
+                      ],
+                      "run_id": 36244806380,
+                      "status": "completed",
+                      "node_id": "CR_kwDOUh7L0c8AAAAZPdq82A",
+                      "run_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380",
+                      "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                      "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                      "runner_id": 1000012703,
+                      "conclusion": "success",
+                      "created_at": "2026-09-26T13:20:01Z",
+                      "started_at": "2026-09-26T13:20:03Z",
+                      "head_branch": "ai/req-1-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+                      "run_attempt": 1,
+                      "runner_name": "GitHub Actions 1000012703",
+                      "completed_at": "2026-09-26T13:20:21Z",
+                      "check_run_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768",
+                      "workflow_name": "CI",
+                      "runner_group_id": 0,
+                      "runner_group_name": "GitHub Actions"
+                    },
+                    "workflow_run": {
+                      "id": 36244806380,
+                      "url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380",
+                      "name": "CI",
+                      "path": ".github/workflows/ci.yml",
+                      "actor": {
+                        "id": 333642452,
+                        "url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D",
+                        "type": "Bot",
+                        "login": "musutrade-symphony-delivery[bot]",
+                        "node_id": "BOT_kgDOE-L61A",
+                        "html_url": "https://github.com/apps/musutrade-symphony-delivery",
+                        "gists_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/gists{/gist_id}",
+                        "repos_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/repos",
+                        "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                        "events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/events{/privacy}",
+                        "site_admin": false,
+                        "gravatar_id": "",
+                        "starred_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/starred{/owner}{/repo}",
+                        "followers_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/followers",
+                        "following_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/following{/other_user}",
+                        "user_view_type": "public",
+                        "organizations_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/orgs",
+                        "subscriptions_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/subscriptions",
+                        "received_events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/received_events"
+                      },
+                      "event": "pull_request",
+                      "status": "completed",
+                      "node_id": "WFR_kwLOUh7L0c8AAAAIcFva7A",
+                      "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                      "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380",
+                      "jobs_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/jobs",
+                      "logs_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/logs",
+                      "rerun_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/rerun",
+                      "cancel_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/cancel",
+                      "conclusion": "success",
+                      "created_at": "2026-09-26T13:20:01Z",
+                      "repository": {
+                        "id": 1377749969,
+                        "url": "https://api.github.com/repos/musutrade/disposable-2",
+                        "fork": false,
+                        "name": "disposable-2",
+                        "owner": {
+                          "id": 317201575,
+                          "url": "https://api.github.com/users/musutrade",
+                          "type": "Organization",
+                          "login": "musutrade",
+                          "node_id": "O_kgDOEugcpw",
+                          "html_url": "https://github.com/musutrade",
+                          "gists_url": "https://api.github.com/users/musutrade/gists{/gist_id}",
+                          "repos_url": "https://api.github.com/users/musutrade/repos",
+                          "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                          "events_url": "https://api.github.com/users/musutrade/events{/privacy}",
+                          "site_admin": false,
+                          "gravatar_id": "",
+                          "starred_url": "https://api.github.com/users/musutrade/starred{/owner}{/repo}",
+                          "followers_url": "https://api.github.com/users/musutrade/followers",
+                          "following_url": "https://api.github.com/users/musutrade/following{/other_user}",
+                          "user_view_type": "public",
+                          "organizations_url": "https://api.github.com/users/musutrade/orgs",
+                          "subscriptions_url": "https://api.github.com/users/musutrade/subscriptions",
+                          "received_events_url": "https://api.github.com/users/musutrade/received_events"
+                        },
+                        "node_id": "R_kgDOUh7L0Q",
+                        "private": true,
+                        "html_url": "https://github.com/musutrade/disposable-2",
+                        "keys_url": "https://api.github.com/repos/musutrade/disposable-2/keys{/key_id}",
+                        "tags_url": "https://api.github.com/repos/musutrade/disposable-2/tags",
+                        "blobs_url": "https://api.github.com/repos/musutrade/disposable-2/git/blobs{/sha}",
+                        "forks_url": "https://api.github.com/repos/musutrade/disposable-2/forks",
+                        "full_name": "musutrade/disposable-2",
+                        "hooks_url": "https://api.github.com/repos/musutrade/disposable-2/hooks",
+                        "pulls_url": "https://api.github.com/repos/musutrade/disposable-2/pulls{/number}",
+                        "teams_url": "https://api.github.com/repos/musutrade/disposable-2/teams",
+                        "trees_url": "https://api.github.com/repos/musutrade/disposable-2/git/trees{/sha}",
+                        "events_url": "https://api.github.com/repos/musutrade/disposable-2/events",
+                        "issues_url": "https://api.github.com/repos/musutrade/disposable-2/issues{/number}",
+                        "labels_url": "https://api.github.com/repos/musutrade/disposable-2/labels{/name}",
+                        "merges_url": "https://api.github.com/repos/musutrade/disposable-2/merges",
+                        "archive_url": "https://api.github.com/repos/musutrade/disposable-2/{archive_format}{/ref}",
+                        "commits_url": "https://api.github.com/repos/musutrade/disposable-2/commits{/sha}",
+                        "compare_url": "https://api.github.com/repos/musutrade/disposable-2/compare/{base}...{head}",
+                        "description": "Disposable second-repository A13 acceptance tests for CodexSymphony",
+                        "branches_url": "https://api.github.com/repos/musutrade/disposable-2/branches{/branch}",
+                        "comments_url": "https://api.github.com/repos/musutrade/disposable-2/comments{/number}",
+                        "contents_url": "https://api.github.com/repos/musutrade/disposable-2/contents/{+path}",
+                        "git_refs_url": "https://api.github.com/repos/musutrade/disposable-2/git/refs{/sha}",
+                        "git_tags_url": "https://api.github.com/repos/musutrade/disposable-2/git/tags{/sha}",
+                        "releases_url": "https://api.github.com/repos/musutrade/disposable-2/releases{/id}",
+                        "statuses_url": "https://api.github.com/repos/musutrade/disposable-2/statuses/{sha}",
+                        "assignees_url": "https://api.github.com/repos/musutrade/disposable-2/assignees{/user}",
+                        "downloads_url": "https://api.github.com/repos/musutrade/disposable-2/downloads",
+                        "languages_url": "https://api.github.com/repos/musutrade/disposable-2/languages",
+                        "milestones_url": "https://api.github.com/repos/musutrade/disposable-2/milestones{/number}",
+                        "stargazers_url": "https://api.github.com/repos/musutrade/disposable-2/stargazers",
+                        "deployments_url": "https://api.github.com/repos/musutrade/disposable-2/deployments",
+                        "git_commits_url": "https://api.github.com/repos/musutrade/disposable-2/git/commits{/sha}",
+                        "subscribers_url": "https://api.github.com/repos/musutrade/disposable-2/subscribers",
+                        "contributors_url": "https://api.github.com/repos/musutrade/disposable-2/contributors",
+                        "issue_events_url": "https://api.github.com/repos/musutrade/disposable-2/issues/events{/number}",
+                        "subscription_url": "https://api.github.com/repos/musutrade/disposable-2/subscription",
+                        "collaborators_url": "https://api.github.com/repos/musutrade/disposable-2/collaborators{/collaborator}",
+                        "issue_comment_url": "https://api.github.com/repos/musutrade/disposable-2/issues/comments{/number}",
+                        "notifications_url": "https://api.github.com/repos/musutrade/disposable-2/notifications{?since,all,participating}"
+                      },
+                      "run_number": 28,
+                      "updated_at": "2026-09-26T13:20:21Z",
+                      "head_branch": "ai/req-1-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+                      "head_commit": {
+                        "id": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                        "author": {
+                          "name": "CodexSymphony",
+                          "email": "broker@localhost"
+                        },
+                        "message": "Add public GH122 readiness marker and unit test",
+                        "tree_id": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b",
+                        "committer": {
+                          "name": "CodexSymphony",
+                          "email": "broker@localhost"
+                        },
+                        "timestamp": "2026-09-26T10:16:02Z"
+                      },
+                      "run_attempt": 1,
+                      "workflow_id": 362376551,
+                      "workflow_url": "https://api.github.com/repos/musutrade/disposable-2/actions/workflows/362376551",
+                      "artifacts_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/artifacts",
+                      "display_title": "Requirement 1 revision 1",
+                      "pull_requests": [],
+                      "check_suite_id": 98152210028,
+                      "run_started_at": "2026-09-26T13:20:01Z",
+                      "check_suite_url": "https://api.github.com/repos/musutrade/disposable-2/check-suites/98152210028",
+                      "head_repository": {
+                        "id": 1377749969,
+                        "url": "https://api.github.com/repos/musutrade/disposable-2",
+                        "fork": false,
+                        "name": "disposable-2",
+                        "owner": {
+                          "id": 317201575,
+                          "url": "https://api.github.com/users/musutrade",
+                          "type": "Organization",
+                          "login": "musutrade",
+                          "node_id": "O_kgDOEugcpw",
+                          "html_url": "https://github.com/musutrade",
+                          "gists_url": "https://api.github.com/users/musutrade/gists{/gist_id}",
+                          "repos_url": "https://api.github.com/users/musutrade/repos",
+                          "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                          "events_url": "https://api.github.com/users/musutrade/events{/privacy}",
+                          "site_admin": false,
+                          "gravatar_id": "",
+                          "starred_url": "https://api.github.com/users/musutrade/starred{/owner}{/repo}",
+                          "followers_url": "https://api.github.com/users/musutrade/followers",
+                          "following_url": "https://api.github.com/users/musutrade/following{/other_user}",
+                          "user_view_type": "public",
+                          "organizations_url": "https://api.github.com/users/musutrade/orgs",
+                          "subscriptions_url": "https://api.github.com/users/musutrade/subscriptions",
+                          "received_events_url": "https://api.github.com/users/musutrade/received_events"
+                        },
+                        "node_id": "R_kgDOUh7L0Q",
+                        "private": true,
+                        "html_url": "https://github.com/musutrade/disposable-2",
+                        "keys_url": "https://api.github.com/repos/musutrade/disposable-2/keys{/key_id}",
+                        "tags_url": "https://api.github.com/repos/musutrade/disposable-2/tags",
+                        "blobs_url": "https://api.github.com/repos/musutrade/disposable-2/git/blobs{/sha}",
+                        "forks_url": "https://api.github.com/repos/musutrade/disposable-2/forks",
+                        "full_name": "musutrade/disposable-2",
+                        "hooks_url": "https://api.github.com/repos/musutrade/disposable-2/hooks",
+                        "pulls_url": "https://api.github.com/repos/musutrade/disposable-2/pulls{/number}",
+                        "teams_url": "https://api.github.com/repos/musutrade/disposable-2/teams",
+                        "trees_url": "https://api.github.com/repos/musutrade/disposable-2/git/trees{/sha}",
+                        "events_url": "https://api.github.com/repos/musutrade/disposable-2/events",
+                        "issues_url": "https://api.github.com/repos/musutrade/disposable-2/issues{/number}",
+                        "labels_url": "https://api.github.com/repos/musutrade/disposable-2/labels{/name}",
+                        "merges_url": "https://api.github.com/repos/musutrade/disposable-2/merges",
+                        "archive_url": "https://api.github.com/repos/musutrade/disposable-2/{archive_format}{/ref}",
+                        "commits_url": "https://api.github.com/repos/musutrade/disposable-2/commits{/sha}",
+                        "compare_url": "https://api.github.com/repos/musutrade/disposable-2/compare/{base}...{head}",
+                        "description": "Disposable second-repository A13 acceptance tests for CodexSymphony",
+                        "branches_url": "https://api.github.com/repos/musutrade/disposable-2/branches{/branch}",
+                        "comments_url": "https://api.github.com/repos/musutrade/disposable-2/comments{/number}",
+                        "contents_url": "https://api.github.com/repos/musutrade/disposable-2/contents/{+path}",
+                        "git_refs_url": "https://api.github.com/repos/musutrade/disposable-2/git/refs{/sha}",
+                        "git_tags_url": "https://api.github.com/repos/musutrade/disposable-2/git/tags{/sha}",
+                        "releases_url": "https://api.github.com/repos/musutrade/disposable-2/releases{/id}",
+                        "statuses_url": "https://api.github.com/repos/musutrade/disposable-2/statuses/{sha}",
+                        "assignees_url": "https://api.github.com/repos/musutrade/disposable-2/assignees{/user}",
+                        "downloads_url": "https://api.github.com/repos/musutrade/disposable-2/downloads",
+                        "languages_url": "https://api.github.com/repos/musutrade/disposable-2/languages",
+                        "milestones_url": "https://api.github.com/repos/musutrade/disposable-2/milestones{/number}",
+                        "stargazers_url": "https://api.github.com/repos/musutrade/disposable-2/stargazers",
+                        "deployments_url": "https://api.github.com/repos/musutrade/disposable-2/deployments",
+                        "git_commits_url": "https://api.github.com/repos/musutrade/disposable-2/git/commits{/sha}",
+                        "subscribers_url": "https://api.github.com/repos/musutrade/disposable-2/subscribers",
+                        "contributors_url": "https://api.github.com/repos/musutrade/disposable-2/contributors",
+                        "issue_events_url": "https://api.github.com/repos/musutrade/disposable-2/issues/events{/number}",
+                        "subscription_url": "https://api.github.com/repos/musutrade/disposable-2/subscription",
+                        "collaborators_url": "https://api.github.com/repos/musutrade/disposable-2/collaborators{/collaborator}",
+                        "issue_comment_url": "https://api.github.com/repos/musutrade/disposable-2/issues/comments{/number}",
+                        "notifications_url": "https://api.github.com/repos/musutrade/disposable-2/notifications{?since,all,participating}"
+                      },
+                      "triggering_actor": {
+                        "id": 333642452,
+                        "url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D",
+                        "type": "Bot",
+                        "login": "musutrade-symphony-delivery[bot]",
+                        "node_id": "BOT_kgDOE-L61A",
+                        "html_url": "https://github.com/apps/musutrade-symphony-delivery",
+                        "gists_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/gists{/gist_id}",
+                        "repos_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/repos",
+                        "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                        "events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/events{/privacy}",
+                        "site_admin": false,
+                        "gravatar_id": "",
+                        "starred_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/starred{/owner}{/repo}",
+                        "followers_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/followers",
+                        "following_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/following{/other_user}",
+                        "user_view_type": "public",
+                        "organizations_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/orgs",
+                        "subscriptions_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/subscriptions",
+                        "received_events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/received_events"
+                      },
+                      "check_suite_node_id": "CS_kwDOUh7L0c8AAAAW2lPebA",
+                      "previous_attempt_url": null,
+                      "referenced_workflows": []
+                    },
+                    "configuration": {
+                      "path": ".github/workflows/ci.yml",
+                      "selector": {
+                        "job": "test-job",
+                        "trigger": {
+                          "kind": "pull_request"
+                        },
+                        "selector": {
+                          "name": "test-job",
+                          "source": {
+                            "kind": "actions",
+                            "event": "pull_request",
+                            "app_id": 15368,
+                            "branch": "operator/a13-capability-probe",
+                            "workflow_id": 362376551,
+                            "workflow_sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                            "branch_from_pr": true
+                          }
+                        },
+                        "applicability": "always"
+                      },
+                      "workflow": {
+                        "id": 362376551,
+                        "url": "https://api.github.com/repos/musutrade/disposable-2/actions/workflows/362376551",
+                        "name": "CI",
+                        "path": ".github/workflows/ci.yml",
+                        "state": "active",
+                        "node_id": "W_kwDOUh7L0c4VmW1n",
+                        "html_url": "https://github.com/musutrade/disposable-2/blob/main/.github/workflows/ci.yml",
+                        "badge_url": "https://github.com/musutrade/disposable-2/workflows/CI/badge.svg",
+                        "created_at": "2026-09-20T00:50:41.000Z",
+                        "updated_at": "2026-09-20T00:50:41.000Z"
+                      },
+                      "base_blob": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                      "head_blob": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848"
+                    },
+                    "pull_requests": []
+                  }
+                ],
+                "selector": {
+                  "name": "test-job",
+                  "source": {
+                    "kind": "actions",
+                    "event": "pull_request",
+                    "app_id": 15368,
+                    "branch": "operator/a13-capability-probe",
+                    "workflow_id": 362376551,
+                    "workflow_sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                    "branch_from_pr": true
+                  }
+                }
+              }
+            ],
+            "closed": true,
+            "number": 12,
+            "phases": [
+              {
+                "phase": "pre_merge",
+                "checks": [
+                  {
+                    "state": "Success",
+                    "history": [
+                      {
+                        "id": 108411847662,
+                        "app": {
+                          "id": 15368,
+                          "name": "GitHub Actions",
+                          "slug": "github-actions",
+                          "owner": {
+                            "id": 9919,
+                            "url": "https://api.github.com/users/github",
+                            "type": "Organization",
+                            "login": "github",
+                            "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+                            "html_url": "https://github.com/github",
+                            "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
+                            "repos_url": "https://api.github.com/users/github/repos",
+                            "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+                            "events_url": "https://api.github.com/users/github/events{/privacy}",
+                            "site_admin": false,
+                            "gravatar_id": "",
+                            "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
+                            "followers_url": "https://api.github.com/users/github/followers",
+                            "following_url": "https://api.github.com/users/github/following{/other_user}",
+                            "user_view_type": "public",
+                            "organizations_url": "https://api.github.com/users/github/orgs",
+                            "subscriptions_url": "https://api.github.com/users/github/subscriptions",
+                            "received_events_url": "https://api.github.com/users/github/received_events"
+                          },
+                          "events": [
+                            "branch_protection_rule",
+                            "check_run",
+                            "check_suite",
+                            "create",
+                            "delete",
+                            "deployment",
+                            "deployment_status",
+                            "discussion",
+                            "discussion_comment",
+                            "fork",
+                            "gollum",
+                            "issues",
+                            "issue_comment",
+                            "label",
+                            "merge_group",
+                            "milestone",
+                            "page_build",
+                            "public",
+                            "pull_request",
+                            "pull_request_review",
+                            "pull_request_review_comment",
+                            "push",
+                            "registry_package",
+                            "release",
+                            "repository",
+                            "repository_dispatch",
+                            "status",
+                            "watch",
+                            "workflow_dispatch",
+                            "workflow_run"
+                          ],
+                          "node_id": "MDM6QXBwMTUzNjg=",
+                          "html_url": "https://github.com/apps/github-actions",
+                          "client_id": "Iv1.05c79e9ad1f6bdfa",
+                          "created_at": "2018-07-30T09:30:17Z",
+                          "updated_at": "2026-06-18T16:17:48Z",
+                          "description": "Automate your workflow from idea to production",
+                          "permissions": {
+                            "pages": "write",
+                            "checks": "write",
+                            "drives": "write",
+                            "issues": "write",
+                            "models": "read",
+                            "actions": "write",
+                            "contents": "write",
+                            "metadata": "read",
+                            "packages": "write",
+                            "statuses": "write",
+                            "deployments": "write",
+                            "discussions": "write",
+                            "attestations": "write",
+                            "code_quality": "write",
+                            "merge_queues": "write",
+                            "pull_requests": "write",
+                            "administration": "read",
+                            "security_events": "write",
+                            "copilot_requests": "write",
+                            "repository_hooks": "write",
+                            "artifact_metadata": "write",
+                            "repository_projects": "write",
+                            "vulnerability_alerts": "read"
+                          },
+                          "external_url": "https://help.github.com/en/actions"
+                        },
+                        "url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411847662",
+                        "name": "test-job",
+                        "output": {
+                          "text": null,
+                          "title": null,
+                          "summary": null,
+                          "annotations_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411847662/annotations",
+                          "annotations_count": 2
+                        },
+                        "status": "completed",
+                        "node_id": "CR_kwDOUh7L0c8AAAAZPdmD7g",
+                        "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                        "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244779076/job/108411847662",
+                        "conclusion": "success",
+                        "started_at": "2026-09-26T13:19:33Z",
+                        "check_suite": {
+                          "id": 98152137254
+                        },
+                        "details_url": "https://github.com/musutrade/disposable-2/actions/runs/36244779076/job/108411847662",
+                        "external_id": "a9ffcce8-4ec3-5da0-8ff1-c936943958da",
+                        "completed_at": "2026-09-26T13:19:46Z",
+                        "pull_requests": []
+                      },
+                      {
+                        "id": 108411927768,
+                        "app": {
+                          "id": 15368,
+                          "name": "GitHub Actions",
+                          "slug": "github-actions",
+                          "owner": {
+                            "id": 9919,
+                            "url": "https://api.github.com/users/github",
+                            "type": "Organization",
+                            "login": "github",
+                            "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+                            "html_url": "https://github.com/github",
+                            "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
+                            "repos_url": "https://api.github.com/users/github/repos",
+                            "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+                            "events_url": "https://api.github.com/users/github/events{/privacy}",
+                            "site_admin": false,
+                            "gravatar_id": "",
+                            "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
+                            "followers_url": "https://api.github.com/users/github/followers",
+                            "following_url": "https://api.github.com/users/github/following{/other_user}",
+                            "user_view_type": "public",
+                            "organizations_url": "https://api.github.com/users/github/orgs",
+                            "subscriptions_url": "https://api.github.com/users/github/subscriptions",
+                            "received_events_url": "https://api.github.com/users/github/received_events"
+                          },
+                          "events": [
+                            "branch_protection_rule",
+                            "check_run",
+                            "check_suite",
+                            "create",
+                            "delete",
+                            "deployment",
+                            "deployment_status",
+                            "discussion",
+                            "discussion_comment",
+                            "fork",
+                            "gollum",
+                            "issues",
+                            "issue_comment",
+                            "label",
+                            "merge_group",
+                            "milestone",
+                            "page_build",
+                            "public",
+                            "pull_request",
+                            "pull_request_review",
+                            "pull_request_review_comment",
+                            "push",
+                            "registry_package",
+                            "release",
+                            "repository",
+                            "repository_dispatch",
+                            "status",
+                            "watch",
+                            "workflow_dispatch",
+                            "workflow_run"
+                          ],
+                          "node_id": "MDM6QXBwMTUzNjg=",
+                          "html_url": "https://github.com/apps/github-actions",
+                          "client_id": "Iv1.05c79e9ad1f6bdfa",
+                          "created_at": "2018-07-30T09:30:17Z",
+                          "updated_at": "2026-06-18T16:17:48Z",
+                          "description": "Automate your workflow from idea to production",
+                          "permissions": {
+                            "pages": "write",
+                            "checks": "write",
+                            "drives": "write",
+                            "issues": "write",
+                            "models": "read",
+                            "actions": "write",
+                            "contents": "write",
+                            "metadata": "read",
+                            "packages": "write",
+                            "statuses": "write",
+                            "deployments": "write",
+                            "discussions": "write",
+                            "attestations": "write",
+                            "code_quality": "write",
+                            "merge_queues": "write",
+                            "pull_requests": "write",
+                            "administration": "read",
+                            "security_events": "write",
+                            "copilot_requests": "write",
+                            "repository_hooks": "write",
+                            "artifact_metadata": "write",
+                            "repository_projects": "write",
+                            "vulnerability_alerts": "read"
+                          },
+                          "external_url": "https://help.github.com/en/actions"
+                        },
+                        "url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768",
+                        "name": "test-job",
+                        "output": {
+                          "text": null,
+                          "title": null,
+                          "summary": null,
+                          "annotations_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768/annotations",
+                          "annotations_count": 2
+                        },
+                        "status": "completed",
+                        "node_id": "CR_kwDOUh7L0c8AAAAZPdq82A",
+                        "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                        "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                        "conclusion": "success",
+                        "started_at": "2026-09-26T13:20:03Z",
+                        "check_suite": {
+                          "id": 98152210028
+                        },
+                        "details_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                        "external_id": "ed52e03b-ee07-5b66-9f4f-b2f69758a720",
+                        "completed_at": "2026-09-26T13:20:21Z",
+                        "pull_requests": []
+                      }
+                    ],
+                    "evidence": [
+                      {
+                        "id": 108411927768,
+                        "app": {
+                          "id": 15368,
+                          "name": "GitHub Actions",
+                          "slug": "github-actions",
+                          "owner": {
+                            "id": 9919,
+                            "url": "https://api.github.com/users/github",
+                            "type": "Organization",
+                            "login": "github",
+                            "node_id": "MDEyOk9yZ2FuaXphdGlvbjk5MTk=",
+                            "html_url": "https://github.com/github",
+                            "gists_url": "https://api.github.com/users/github/gists{/gist_id}",
+                            "repos_url": "https://api.github.com/users/github/repos",
+                            "avatar_url": "https://avatars.githubusercontent.com/u/9919?v=4",
+                            "events_url": "https://api.github.com/users/github/events{/privacy}",
+                            "site_admin": false,
+                            "gravatar_id": "",
+                            "starred_url": "https://api.github.com/users/github/starred{/owner}{/repo}",
+                            "followers_url": "https://api.github.com/users/github/followers",
+                            "following_url": "https://api.github.com/users/github/following{/other_user}",
+                            "user_view_type": "public",
+                            "organizations_url": "https://api.github.com/users/github/orgs",
+                            "subscriptions_url": "https://api.github.com/users/github/subscriptions",
+                            "received_events_url": "https://api.github.com/users/github/received_events"
+                          },
+                          "events": [
+                            "branch_protection_rule",
+                            "check_run",
+                            "check_suite",
+                            "create",
+                            "delete",
+                            "deployment",
+                            "deployment_status",
+                            "discussion",
+                            "discussion_comment",
+                            "fork",
+                            "gollum",
+                            "issues",
+                            "issue_comment",
+                            "label",
+                            "merge_group",
+                            "milestone",
+                            "page_build",
+                            "public",
+                            "pull_request",
+                            "pull_request_review",
+                            "pull_request_review_comment",
+                            "push",
+                            "registry_package",
+                            "release",
+                            "repository",
+                            "repository_dispatch",
+                            "status",
+                            "watch",
+                            "workflow_dispatch",
+                            "workflow_run"
+                          ],
+                          "node_id": "MDM6QXBwMTUzNjg=",
+                          "html_url": "https://github.com/apps/github-actions",
+                          "client_id": "Iv1.05c79e9ad1f6bdfa",
+                          "created_at": "2018-07-30T09:30:17Z",
+                          "updated_at": "2026-06-18T16:17:48Z",
+                          "description": "Automate your workflow from idea to production",
+                          "permissions": {
+                            "pages": "write",
+                            "checks": "write",
+                            "drives": "write",
+                            "issues": "write",
+                            "models": "read",
+                            "actions": "write",
+                            "contents": "write",
+                            "metadata": "read",
+                            "packages": "write",
+                            "statuses": "write",
+                            "deployments": "write",
+                            "discussions": "write",
+                            "attestations": "write",
+                            "code_quality": "write",
+                            "merge_queues": "write",
+                            "pull_requests": "write",
+                            "administration": "read",
+                            "security_events": "write",
+                            "copilot_requests": "write",
+                            "repository_hooks": "write",
+                            "artifact_metadata": "write",
+                            "repository_projects": "write",
+                            "vulnerability_alerts": "read"
+                          },
+                          "external_url": "https://help.github.com/en/actions"
+                        },
+                        "url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768",
+                        "name": "test-job",
+                        "output": {
+                          "text": null,
+                          "title": null,
+                          "summary": null,
+                          "annotations_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768/annotations",
+                          "annotations_count": 2
+                        },
+                        "status": "completed",
+                        "node_id": "CR_kwDOUh7L0c8AAAAZPdq82A",
+                        "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                        "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                        "conclusion": "success",
+                        "started_at": "2026-09-26T13:20:03Z",
+                        "check_suite": {
+                          "id": 98152210028
+                        },
+                        "details_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                        "external_id": "ed52e03b-ee07-5b66-9f4f-b2f69758a720",
+                        "completed_at": "2026-09-26T13:20:21Z",
+                        "workflow_job": {
+                          "id": 108411927768,
+                          "url": "https://api.github.com/repos/musutrade/disposable-2/actions/jobs/108411927768",
+                          "name": "test-job",
+                          "steps": [
+                            {
+                              "name": "Set up job",
+                              "number": 1,
+                              "status": "completed",
+                              "conclusion": "success",
+                              "started_at": "2026-09-26T13:20:04Z",
+                              "completed_at": "2026-09-26T13:20:05Z"
+                            },
+                            {
+                              "name": "Run actions/checkout@v4",
+                              "number": 2,
+                              "status": "completed",
+                              "conclusion": "success",
+                              "started_at": "2026-09-26T13:20:05Z",
+                              "completed_at": "2026-09-26T13:20:05Z"
+                            },
+                            {
+                              "name": "Run cargo test --locked",
+                              "number": 3,
+                              "status": "completed",
+                              "conclusion": "success",
+                              "started_at": "2026-09-26T13:20:05Z",
+                              "completed_at": "2026-09-26T13:20:19Z"
+                            },
+                            {
+                              "name": "Post Run actions/checkout@v4",
+                              "number": 6,
+                              "status": "completed",
+                              "conclusion": "success",
+                              "started_at": "2026-09-26T13:20:19Z",
+                              "completed_at": "2026-09-26T13:20:19Z"
+                            },
+                            {
+                              "name": "Complete job",
+                              "number": 7,
+                              "status": "completed",
+                              "conclusion": "success",
+                              "started_at": "2026-09-26T13:20:19Z",
+                              "completed_at": "2026-09-26T13:20:19Z"
+                            }
+                          ],
+                          "labels": [
+                            "ubuntu-latest"
+                          ],
+                          "run_id": 36244806380,
+                          "status": "completed",
+                          "node_id": "CR_kwDOUh7L0c8AAAAZPdq82A",
+                          "run_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380",
+                          "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                          "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380/job/108411927768",
+                          "runner_id": 1000012703,
+                          "conclusion": "success",
+                          "created_at": "2026-09-26T13:20:01Z",
+                          "started_at": "2026-09-26T13:20:03Z",
+                          "head_branch": "ai/req-1-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+                          "run_attempt": 1,
+                          "runner_name": "GitHub Actions 1000012703",
+                          "completed_at": "2026-09-26T13:20:21Z",
+                          "check_run_url": "https://api.github.com/repos/musutrade/disposable-2/check-runs/108411927768",
+                          "workflow_name": "CI",
+                          "runner_group_id": 0,
+                          "runner_group_name": "GitHub Actions"
+                        },
+                        "workflow_run": {
+                          "id": 36244806380,
+                          "url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380",
+                          "name": "CI",
+                          "path": ".github/workflows/ci.yml",
+                          "actor": {
+                            "id": 333642452,
+                            "url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D",
+                            "type": "Bot",
+                            "login": "musutrade-symphony-delivery[bot]",
+                            "node_id": "BOT_kgDOE-L61A",
+                            "html_url": "https://github.com/apps/musutrade-symphony-delivery",
+                            "gists_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/gists{/gist_id}",
+                            "repos_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/repos",
+                            "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                            "events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/events{/privacy}",
+                            "site_admin": false,
+                            "gravatar_id": "",
+                            "starred_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/starred{/owner}{/repo}",
+                            "followers_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/followers",
+                            "following_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/following{/other_user}",
+                            "user_view_type": "public",
+                            "organizations_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/orgs",
+                            "subscriptions_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/subscriptions",
+                            "received_events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/received_events"
+                          },
+                          "event": "pull_request",
+                          "status": "completed",
+                          "node_id": "WFR_kwLOUh7L0c8AAAAIcFva7A",
+                          "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                          "html_url": "https://github.com/musutrade/disposable-2/actions/runs/36244806380",
+                          "jobs_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/jobs",
+                          "logs_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/logs",
+                          "rerun_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/rerun",
+                          "cancel_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/cancel",
+                          "conclusion": "success",
+                          "created_at": "2026-09-26T13:20:01Z",
+                          "repository": {
+                            "id": 1377749969,
+                            "url": "https://api.github.com/repos/musutrade/disposable-2",
+                            "fork": false,
+                            "name": "disposable-2",
+                            "owner": {
+                              "id": 317201575,
+                              "url": "https://api.github.com/users/musutrade",
+                              "type": "Organization",
+                              "login": "musutrade",
+                              "node_id": "O_kgDOEugcpw",
+                              "html_url": "https://github.com/musutrade",
+                              "gists_url": "https://api.github.com/users/musutrade/gists{/gist_id}",
+                              "repos_url": "https://api.github.com/users/musutrade/repos",
+                              "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                              "events_url": "https://api.github.com/users/musutrade/events{/privacy}",
+                              "site_admin": false,
+                              "gravatar_id": "",
+                              "starred_url": "https://api.github.com/users/musutrade/starred{/owner}{/repo}",
+                              "followers_url": "https://api.github.com/users/musutrade/followers",
+                              "following_url": "https://api.github.com/users/musutrade/following{/other_user}",
+                              "user_view_type": "public",
+                              "organizations_url": "https://api.github.com/users/musutrade/orgs",
+                              "subscriptions_url": "https://api.github.com/users/musutrade/subscriptions",
+                              "received_events_url": "https://api.github.com/users/musutrade/received_events"
+                            },
+                            "node_id": "R_kgDOUh7L0Q",
+                            "private": true,
+                            "html_url": "https://github.com/musutrade/disposable-2",
+                            "keys_url": "https://api.github.com/repos/musutrade/disposable-2/keys{/key_id}",
+                            "tags_url": "https://api.github.com/repos/musutrade/disposable-2/tags",
+                            "blobs_url": "https://api.github.com/repos/musutrade/disposable-2/git/blobs{/sha}",
+                            "forks_url": "https://api.github.com/repos/musutrade/disposable-2/forks",
+                            "full_name": "musutrade/disposable-2",
+                            "hooks_url": "https://api.github.com/repos/musutrade/disposable-2/hooks",
+                            "pulls_url": "https://api.github.com/repos/musutrade/disposable-2/pulls{/number}",
+                            "teams_url": "https://api.github.com/repos/musutrade/disposable-2/teams",
+                            "trees_url": "https://api.github.com/repos/musutrade/disposable-2/git/trees{/sha}",
+                            "events_url": "https://api.github.com/repos/musutrade/disposable-2/events",
+                            "issues_url": "https://api.github.com/repos/musutrade/disposable-2/issues{/number}",
+                            "labels_url": "https://api.github.com/repos/musutrade/disposable-2/labels{/name}",
+                            "merges_url": "https://api.github.com/repos/musutrade/disposable-2/merges",
+                            "archive_url": "https://api.github.com/repos/musutrade/disposable-2/{archive_format}{/ref}",
+                            "commits_url": "https://api.github.com/repos/musutrade/disposable-2/commits{/sha}",
+                            "compare_url": "https://api.github.com/repos/musutrade/disposable-2/compare/{base}...{head}",
+                            "description": "Disposable second-repository A13 acceptance tests for CodexSymphony",
+                            "branches_url": "https://api.github.com/repos/musutrade/disposable-2/branches{/branch}",
+                            "comments_url": "https://api.github.com/repos/musutrade/disposable-2/comments{/number}",
+                            "contents_url": "https://api.github.com/repos/musutrade/disposable-2/contents/{+path}",
+                            "git_refs_url": "https://api.github.com/repos/musutrade/disposable-2/git/refs{/sha}",
+                            "git_tags_url": "https://api.github.com/repos/musutrade/disposable-2/git/tags{/sha}",
+                            "releases_url": "https://api.github.com/repos/musutrade/disposable-2/releases{/id}",
+                            "statuses_url": "https://api.github.com/repos/musutrade/disposable-2/statuses/{sha}",
+                            "assignees_url": "https://api.github.com/repos/musutrade/disposable-2/assignees{/user}",
+                            "downloads_url": "https://api.github.com/repos/musutrade/disposable-2/downloads",
+                            "languages_url": "https://api.github.com/repos/musutrade/disposable-2/languages",
+                            "milestones_url": "https://api.github.com/repos/musutrade/disposable-2/milestones{/number}",
+                            "stargazers_url": "https://api.github.com/repos/musutrade/disposable-2/stargazers",
+                            "deployments_url": "https://api.github.com/repos/musutrade/disposable-2/deployments",
+                            "git_commits_url": "https://api.github.com/repos/musutrade/disposable-2/git/commits{/sha}",
+                            "subscribers_url": "https://api.github.com/repos/musutrade/disposable-2/subscribers",
+                            "contributors_url": "https://api.github.com/repos/musutrade/disposable-2/contributors",
+                            "issue_events_url": "https://api.github.com/repos/musutrade/disposable-2/issues/events{/number}",
+                            "subscription_url": "https://api.github.com/repos/musutrade/disposable-2/subscription",
+                            "collaborators_url": "https://api.github.com/repos/musutrade/disposable-2/collaborators{/collaborator}",
+                            "issue_comment_url": "https://api.github.com/repos/musutrade/disposable-2/issues/comments{/number}",
+                            "notifications_url": "https://api.github.com/repos/musutrade/disposable-2/notifications{?since,all,participating}"
+                          },
+                          "run_number": 28,
+                          "updated_at": "2026-09-26T13:20:21Z",
+                          "head_branch": "ai/req-1-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+                          "head_commit": {
+                            "id": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                            "author": {
+                              "name": "CodexSymphony",
+                              "email": "broker@localhost"
+                            },
+                            "message": "Add public GH122 readiness marker and unit test",
+                            "tree_id": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b",
+                            "committer": {
+                              "name": "CodexSymphony",
+                              "email": "broker@localhost"
+                            },
+                            "timestamp": "2026-09-26T10:16:02Z"
+                          },
+                          "run_attempt": 1,
+                          "workflow_id": 362376551,
+                          "workflow_url": "https://api.github.com/repos/musutrade/disposable-2/actions/workflows/362376551",
+                          "artifacts_url": "https://api.github.com/repos/musutrade/disposable-2/actions/runs/36244806380/artifacts",
+                          "display_title": "Requirement 1 revision 1",
+                          "pull_requests": [],
+                          "check_suite_id": 98152210028,
+                          "run_started_at": "2026-09-26T13:20:01Z",
+                          "check_suite_url": "https://api.github.com/repos/musutrade/disposable-2/check-suites/98152210028",
+                          "head_repository": {
+                            "id": 1377749969,
+                            "url": "https://api.github.com/repos/musutrade/disposable-2",
+                            "fork": false,
+                            "name": "disposable-2",
+                            "owner": {
+                              "id": 317201575,
+                              "url": "https://api.github.com/users/musutrade",
+                              "type": "Organization",
+                              "login": "musutrade",
+                              "node_id": "O_kgDOEugcpw",
+                              "html_url": "https://github.com/musutrade",
+                              "gists_url": "https://api.github.com/users/musutrade/gists{/gist_id}",
+                              "repos_url": "https://api.github.com/users/musutrade/repos",
+                              "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                              "events_url": "https://api.github.com/users/musutrade/events{/privacy}",
+                              "site_admin": false,
+                              "gravatar_id": "",
+                              "starred_url": "https://api.github.com/users/musutrade/starred{/owner}{/repo}",
+                              "followers_url": "https://api.github.com/users/musutrade/followers",
+                              "following_url": "https://api.github.com/users/musutrade/following{/other_user}",
+                              "user_view_type": "public",
+                              "organizations_url": "https://api.github.com/users/musutrade/orgs",
+                              "subscriptions_url": "https://api.github.com/users/musutrade/subscriptions",
+                              "received_events_url": "https://api.github.com/users/musutrade/received_events"
+                            },
+                            "node_id": "R_kgDOUh7L0Q",
+                            "private": true,
+                            "html_url": "https://github.com/musutrade/disposable-2",
+                            "keys_url": "https://api.github.com/repos/musutrade/disposable-2/keys{/key_id}",
+                            "tags_url": "https://api.github.com/repos/musutrade/disposable-2/tags",
+                            "blobs_url": "https://api.github.com/repos/musutrade/disposable-2/git/blobs{/sha}",
+                            "forks_url": "https://api.github.com/repos/musutrade/disposable-2/forks",
+                            "full_name": "musutrade/disposable-2",
+                            "hooks_url": "https://api.github.com/repos/musutrade/disposable-2/hooks",
+                            "pulls_url": "https://api.github.com/repos/musutrade/disposable-2/pulls{/number}",
+                            "teams_url": "https://api.github.com/repos/musutrade/disposable-2/teams",
+                            "trees_url": "https://api.github.com/repos/musutrade/disposable-2/git/trees{/sha}",
+                            "events_url": "https://api.github.com/repos/musutrade/disposable-2/events",
+                            "issues_url": "https://api.github.com/repos/musutrade/disposable-2/issues{/number}",
+                            "labels_url": "https://api.github.com/repos/musutrade/disposable-2/labels{/name}",
+                            "merges_url": "https://api.github.com/repos/musutrade/disposable-2/merges",
+                            "archive_url": "https://api.github.com/repos/musutrade/disposable-2/{archive_format}{/ref}",
+                            "commits_url": "https://api.github.com/repos/musutrade/disposable-2/commits{/sha}",
+                            "compare_url": "https://api.github.com/repos/musutrade/disposable-2/compare/{base}...{head}",
+                            "description": "Disposable second-repository A13 acceptance tests for CodexSymphony",
+                            "branches_url": "https://api.github.com/repos/musutrade/disposable-2/branches{/branch}",
+                            "comments_url": "https://api.github.com/repos/musutrade/disposable-2/comments{/number}",
+                            "contents_url": "https://api.github.com/repos/musutrade/disposable-2/contents/{+path}",
+                            "git_refs_url": "https://api.github.com/repos/musutrade/disposable-2/git/refs{/sha}",
+                            "git_tags_url": "https://api.github.com/repos/musutrade/disposable-2/git/tags{/sha}",
+                            "releases_url": "https://api.github.com/repos/musutrade/disposable-2/releases{/id}",
+                            "statuses_url": "https://api.github.com/repos/musutrade/disposable-2/statuses/{sha}",
+                            "assignees_url": "https://api.github.com/repos/musutrade/disposable-2/assignees{/user}",
+                            "downloads_url": "https://api.github.com/repos/musutrade/disposable-2/downloads",
+                            "languages_url": "https://api.github.com/repos/musutrade/disposable-2/languages",
+                            "milestones_url": "https://api.github.com/repos/musutrade/disposable-2/milestones{/number}",
+                            "stargazers_url": "https://api.github.com/repos/musutrade/disposable-2/stargazers",
+                            "deployments_url": "https://api.github.com/repos/musutrade/disposable-2/deployments",
+                            "git_commits_url": "https://api.github.com/repos/musutrade/disposable-2/git/commits{/sha}",
+                            "subscribers_url": "https://api.github.com/repos/musutrade/disposable-2/subscribers",
+                            "contributors_url": "https://api.github.com/repos/musutrade/disposable-2/contributors",
+                            "issue_events_url": "https://api.github.com/repos/musutrade/disposable-2/issues/events{/number}",
+                            "subscription_url": "https://api.github.com/repos/musutrade/disposable-2/subscription",
+                            "collaborators_url": "https://api.github.com/repos/musutrade/disposable-2/collaborators{/collaborator}",
+                            "issue_comment_url": "https://api.github.com/repos/musutrade/disposable-2/issues/comments{/number}",
+                            "notifications_url": "https://api.github.com/repos/musutrade/disposable-2/notifications{?since,all,participating}"
+                          },
+                          "triggering_actor": {
+                            "id": 333642452,
+                            "url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D",
+                            "type": "Bot",
+                            "login": "musutrade-symphony-delivery[bot]",
+                            "node_id": "BOT_kgDOE-L61A",
+                            "html_url": "https://github.com/apps/musutrade-symphony-delivery",
+                            "gists_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/gists{/gist_id}",
+                            "repos_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/repos",
+                            "avatar_url": "https://avatars.githubusercontent.com/u/317201575?v=4",
+                            "events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/events{/privacy}",
+                            "site_admin": false,
+                            "gravatar_id": "",
+                            "starred_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/starred{/owner}{/repo}",
+                            "followers_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/followers",
+                            "following_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/following{/other_user}",
+                            "user_view_type": "public",
+                            "organizations_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/orgs",
+                            "subscriptions_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/subscriptions",
+                            "received_events_url": "https://api.github.com/users/musutrade-symphony-delivery%5Bbot%5D/received_events"
+                          },
+                          "check_suite_node_id": "CS_kwDOUh7L0c8AAAAW2lPebA",
+                          "previous_attempt_url": null,
+                          "referenced_workflows": []
+                        },
+                        "configuration": {
+                          "path": ".github/workflows/ci.yml",
+                          "selector": {
+                            "job": "test-job",
+                            "trigger": {
+                              "kind": "pull_request"
+                            },
+                            "selector": {
+                              "name": "test-job",
+                              "source": {
+                                "kind": "actions",
+                                "event": "pull_request",
+                                "app_id": 15368,
+                                "branch": "operator/a13-capability-probe",
+                                "workflow_id": 362376551,
+                                "workflow_sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                                "branch_from_pr": true
+                              }
+                            },
+                            "applicability": "always"
+                          },
+                          "workflow": {
+                            "id": 362376551,
+                            "url": "https://api.github.com/repos/musutrade/disposable-2/actions/workflows/362376551",
+                            "name": "CI",
+                            "path": ".github/workflows/ci.yml",
+                            "state": "active",
+                            "node_id": "W_kwDOUh7L0c4VmW1n",
+                            "html_url": "https://github.com/musutrade/disposable-2/blob/main/.github/workflows/ci.yml",
+                            "badge_url": "https://github.com/musutrade/disposable-2/workflows/CI/badge.svg",
+                            "created_at": "2026-09-20T00:50:41.000Z",
+                            "updated_at": "2026-09-20T00:50:41.000Z"
+                          },
+                          "base_blob": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                          "head_blob": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848"
+                        },
+                        "pull_requests": []
+                      }
+                    ],
+                    "selector": {
+                      "name": "test-job",
+                      "source": {
+                        "kind": "actions",
+                        "event": "pull_request",
+                        "app_id": 15368,
+                        "branch": "operator/a13-capability-probe",
+                        "workflow_id": 362376551,
+                        "workflow_sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                        "branch_from_pr": true
+                      }
+                    }
+                  }
+                ],
+                "base_sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+                "blockers": [],
+                "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                "check_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                "validation": null,
+                "wait_seconds": 900,
+                "actual_checkout_sha": null,
+                "expected_checkout_sha": null
+              },
+              {
+                "phase": "post_merge",
+                "checks": [],
+                "base_sha": "b7527479849506046b7ad9b74466db7b2a65a3cb",
+                "blockers": [],
+                "head_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+                "check_sha": "3e7befaf0b5bdc835854cc1d5a14c62865aec4c4",
+                "validation": null,
+                "wait_seconds": 900,
+                "actual_checkout_sha": null,
+                "expected_checkout_sha": "3e7befaf0b5bdc835854cc1d5a14c62865aec4c4"
+              }
+            ],
+            "policy": {
+              "version": 1,
+              "delivery": {
+                "rules": [],
+                "actions": {
+                  "merge": true,
+                  "read_logs": false,
+                  "merge_method": "squash",
+                  "rerun_actions": false,
+                  "rerequest_checks": false
+                },
+                "pre_merge": {
+                  "checks": [
+                    {
+                      "job": "test-job",
+                      "trigger": {
+                        "kind": "pull_request"
+                      },
+                      "selector": {
+                        "name": "test-job",
+                        "source": {
+                          "kind": "actions",
+                          "event": "pull_request",
+                          "app_id": 15368,
+                          "branch": "operator/a13-capability-probe",
+                          "workflow_id": 362376551,
+                          "workflow_sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                          "branch_from_pr": true
+                        }
+                      },
+                      "applicability": "always"
+                    }
+                  ],
+                  "source": "head",
+                  "checkout": "test_merge",
+                  "wait_seconds": 900
+                },
+                "post_merge": {
+                  "kind": "fixed_validation",
+                  "plan_id": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/operator/validation.json",
+                  "wait_seconds": 900,
+                  "authorization": "GH122 one disposable-2 task only; preserve existing protections; actual merged source validation",
+                  "configuration_sha256": "94be0bc17799c4741ab81554257aff3d8db6d6776938611047d1d26fd16f920f"
+                },
+                "protection": {
+                  "url": "https://api.github.com/repos/musutrade/disposable-2/branches/main/protection",
+                  "lock_branch": {
+                    "enabled": false
+                  },
+                  "enforce_admins": {
+                    "url": "https://api.github.com/repos/musutrade/disposable-2/branches/main/protection/enforce_admins",
+                    "enabled": true
+                  },
+                  "allow_deletions": {
+                    "enabled": false
+                  },
+                  "block_creations": {
+                    "enabled": false
+                  },
+                  "allow_force_pushes": {
+                    "enabled": false
+                  },
+                  "allow_fork_syncing": {
+                    "enabled": false
+                  },
+                  "required_signatures": {
+                    "url": "https://api.github.com/repos/musutrade/disposable-2/branches/main/protection/required_signatures",
+                    "enabled": false
+                  },
+                  "required_status_checks": {
+                    "url": "https://api.github.com/repos/musutrade/disposable-2/branches/main/protection/required_status_checks",
+                    "checks": [
+                      {
+                        "app_id": 15368,
+                        "context": "test-job"
+                      }
+                    ],
+                    "strict": true,
+                    "contexts": [
+                      "test-job"
+                    ],
+                    "contexts_url": "https://api.github.com/repos/musutrade/disposable-2/branches/main/protection/required_status_checks/contexts"
+                  },
+                  "required_linear_history": {
+                    "enabled": false
+                  },
+                  "required_conversation_resolution": {
+                    "enabled": false
+                  }
+                },
+                "schema_version": 1
+              },
+              "required": [
+                {
+                  "name": "test-job",
+                  "source": {
+                    "kind": "actions",
+                    "event": "pull_request",
+                    "app_id": 15368,
+                    "branch": "operator/a13-capability-probe",
+                    "workflow_id": 362376551,
+                    "workflow_sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+                    "branch_from_pr": true
+                  }
+                }
+              ],
+              "repository": "musutrade/disposable-2",
+              "wait_seconds": 900,
+              "repository_id": 1377749969,
+              "default_branch": "main"
+            },
+            "base_ref": "main",
+            "head_ref": "ai/req-1-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+            "merged_sha": "3e7befaf0b5bdc835854cc1d5a14c62865aec4c4",
+            "repository_id": 1377749969,
+            "last_synced_at": 1790429175,
+            "test_merge_sha": null,
+            "actual_checkout_sha": null
+          }
+        },
+        "action_key": "dc0d115d94c80d88e53f16b98db98abe0445cf2cc2a776f9ce2b097d41961a22",
+        "created_at": 1790428853,
+        "merged_sha": "3e7befaf0b5bdc835854cc1d5a14c62865aec4c4",
+        "checkout_sha": "86ea78883651bcab85e2d71af1f99ac32f685663",
+        "merge_method": "squash",
+        "validation_id": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45",
+        "pre_validation": {
+          "steps": [
+            {
+              "id": "cargo",
+              "output": "   Compiling a13-disposable v0.1.0 (/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/workspaces/runs/merge-dc0d115d94c80d88e53f16b98db98abe0445cf2cc2a776f9ce2b097d41961a22-86ea78883651bcab85e2d71af1f99ac32f685663)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.27s\n     Running unittests src/lib.rs (/home/gem/cargo-target/debug/deps/a13_disposable-a758cad80842c4b3)\n\nrunning 2 tests\ntest gh122_marker_returns_dual_path_ready ... ok\ntest repository_identity ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests a13_disposable\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+              "command": [
+                "/gate-entry",
+                "-c",
+                "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; cargo test --locked --offline"
+              ],
+              "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/validations/pre-merge-dc0d115d94c80d88e53f16b98db98abe0445cf2cc2a776f9ce2b097d41961a22-86ea78883651bcab85e2d71af1f99ac32f685663/step-0.log",
+              "consumer": "handoff",
+              "exit_code": 0,
+              "code_failure": true,
+              "output_sha256": "f254eacbc36be9917ed2f0763c938c44dfacc17e7207dd6a689a650625dccff5"
+            },
+            {
+              "id": "marker",
+              "output": "marker: pass\n",
+              "command": [
+                "/gate-entry",
+                "-c",
+                "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; rustc --crate-name a13_disposable --crate-type lib --edition 2024 src/lib.rs -o /tmp/libgh122-marker.rlib && printf 'extern crate a13_disposable; fn main(){assert_eq!(a13_disposable::gh122_marker(), \"dual-path-ready\");}\\n' | rustc --edition 2024 --extern a13_disposable=/tmp/libgh122-marker.rlib -o /tmp/gh122-marker-check - && /tmp/gh122-marker-check && printf 'marker: pass\\n'"
+              ],
+              "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/validations/pre-merge-dc0d115d94c80d88e53f16b98db98abe0445cf2cc2a776f9ce2b097d41961a22-86ea78883651bcab85e2d71af1f99ac32f685663/step-1.log",
+              "consumer": "handoff",
+              "exit_code": 0,
+              "code_failure": true,
+              "output_sha256": "326a0a22537115ddf860fb2dd26ba082a4d31dc0de40590dbfbf47dccba03039"
+            }
+          ],
+          "trusted": {
+            "tool": "trusted-development-process",
+            "tool_version": "1",
+            "config_sha256": "bbb0a401858aec768bed519a9394a77cf2a021f2750aeaf86d4041b791d4ecc3",
+            "command_sha256": "3ec99646a4972aae8c2df603db1e17725a01c0c9ee73391a739ce0374eb5c085",
+            "protected_entry": "/usr/bin/bash",
+            "protected_entry_sha256": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd"
+          },
+          "candidate": {
+            "sha": "86ea78883651bcab85e2d71af1f99ac32f685663",
+            "tree": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b",
+            "immutable": true
+          },
+          "entry_after": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd",
+          "entry_before": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd",
+          "source_after": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b",
+          "source_before": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b"
+        }
+      }
+    ],
+    "attempts": [
+      {
+        "ordinal": 1,
+        "operation": "push",
+        "created_at": "2026-09-26T13:19:20.263289+00:00",
+        "finished_at": "2026-09-26T13:19:27.375571+00:00",
+        "result_sha256": "0f8c30e34e7aa87ce93f6cea04713cdd9ee5223fc4090c0c93027637ec7b3be0",
+        "result_retained": true
+      },
+      {
+        "ordinal": 2,
+        "operation": "create",
+        "created_at": "2026-09-26T13:19:53.544084+00:00",
+        "finished_at": "2026-09-26T13:19:59.248611+00:00",
+        "result_sha256": "c1c2ae2106beb9ed888742fca7544768f9041142ca3708c3fe131c944fbb988c",
+        "result_retained": true
+      }
+    ],
+    "deliveries": [
+      {
+        "pr": 12,
+        "head": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+        "branch": "ai/req-1-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "released": true,
+        "action_key": "d6053d8d8f2ab9652cdd195a1a58f051fd7fc3d1c40f8c4c6db87663315c09e4",
+        "validation_id": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      }
+    ],
+    "requirement": {
+      "id": 1,
+      "state": "Done",
+      "paused": false,
+      "version": 15,
+      "revision": 1
+    },
+    "validations": [
+      {
+        "id": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "stage": "validation",
+        "result": "blocked",
+        "trusted": {
+          "tool": "trusted-development-process",
+          "tool_version": "1",
+          "config_sha256": "94be0bc17799c4741ab81554257aff3d8db6d6776938611047d1d26fd16f920f",
+          "command_sha256": "0520f7e02e4fc2226525d414478a47a0b879761c2c8c5a9b7f06cc912894350e",
+          "protected_entry": "/usr/bin/bash",
+          "protected_entry_sha256": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd"
+        },
+        "retry_of": null,
+        "started_at": "2026-09-26T10:16:12.105366+00:00",
+        "finished_at": "2026-09-26T10:16:13.515724+00:00",
+        "invalidated": true,
+        "candidate_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+        "superseded_by": "revalidate-385ef724-3676-4077-834c-ae7774687211",
+        "candidate_tree": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b"
+      },
+      {
+        "id": "revalidate-385ef724-3676-4077-834c-ae7774687211",
+        "stage": "handoff",
+        "result": "succeeded",
+        "trusted": {
+          "tool": "trusted-development-process",
+          "tool_version": "1",
+          "config_sha256": "bbb0a401858aec768bed519a9394a77cf2a021f2750aeaf86d4041b791d4ecc3",
+          "command_sha256": "3ec99646a4972aae8c2df603db1e17725a01c0c9ee73391a739ce0374eb5c085",
+          "protected_entry": "/usr/bin/bash",
+          "protected_entry_sha256": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd"
+        },
+        "retry_of": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "started_at": "2026-09-26T11:32:40.332518+00:00",
+        "finished_at": "2026-09-26T11:32:42.062722+00:00",
+        "invalidated": true,
+        "candidate_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+        "superseded_by": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45",
+        "candidate_tree": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b"
+      },
+      {
+        "id": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45",
+        "stage": "done",
+        "result": "succeeded",
+        "trusted": {
+          "tool": "trusted-development-process",
+          "tool_version": "1",
+          "config_sha256": "bbb0a401858aec768bed519a9394a77cf2a021f2750aeaf86d4041b791d4ecc3",
+          "command_sha256": "3ec99646a4972aae8c2df603db1e17725a01c0c9ee73391a739ce0374eb5c085",
+          "protected_entry": "/usr/bin/bash",
+          "protected_entry_sha256": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd"
+        },
+        "retry_of": "revalidate-385ef724-3676-4077-834c-ae7774687211",
+        "started_at": "2026-09-26T13:18:27.929083+00:00",
+        "finished_at": "2026-09-26T13:18:29.697338+00:00",
+        "invalidated": false,
+        "candidate_sha": "d4fca58879b78f997ebde0b98317c2287642fd1e",
+        "superseded_by": null,
+        "candidate_tree": "ae06b53b6d1ece44f75cf4c606a0f0e7c529cb2b"
+      }
+    ],
+    "proof_rebinding": [
+      {
+        "validation": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45",
+        "recovery_event": "extension:revalidate-385ef724-3676-4077-834c-ae7774687211:control",
+        "external_attempts": 0,
+        "previous_validation": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      }
+    ],
+    "validation_steps": [
+      {
+        "output": "   Compiling a13-disposable v0.1.0 (/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/workspaces/runs/validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a)\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.17s\n     Running unittests src/lib.rs (/home/gem/cargo-target/debug/deps/a13_disposable-a758cad80842c4b3)\n\nrunning 2 tests\ntest gh122_marker_returns_dual_path_ready ... ok\ntest repository_identity ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests a13_disposable\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+        "status": "succeeded",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; cargo test --locked --offline"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a/step-0.log",
+        "step_id": "cargo",
+        "consumer": "handoff",
+        "exit_code": 0,
+        "recorded_at": "2026-09-26T10:16:13.49285+00:00",
+        "code_failure": true,
+        "output_sha256": "17e74e451220ac47a96ab7b94f25b74f9d3c250aeb4c769697b5d848eb5548ff",
+        "validation_id": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a"
+      },
+      {
+        "output": "",
+        "status": "unknown",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; rustc --crate-name a13_disposable --crate-type lib --edition 2024 src/lib.rs -o /tmp/libgh122-marker.rlib && printf 'extern crate a13_disposable; fn main(){assert_eq!(a13_disposable::gh122_marker(), \"dual-path-ready\");}\\n' | rustc --edition 2024 --extern a13_disposable=/tmp/libgh122-marker.rlib -o /tmp/gh122-marker-check - && /tmp/gh122-marker-check"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a/step-1.log",
+        "step_id": "marker",
+        "consumer": "handoff",
+        "exit_code": 0,
+        "recorded_at": "2026-09-26T10:16:13.500252+00:00",
+        "code_failure": true,
+        "output_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "validation_id": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a"
+      },
+      {
+        "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.01s\n     Running unittests src/lib.rs (/home/gem/cargo-target/debug/deps/a13_disposable-a758cad80842c4b3)\n\nrunning 2 tests\ntest gh122_marker_returns_dual_path_ready ... ok\ntest repository_identity ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests a13_disposable\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+        "status": "succeeded",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; cargo test --locked --offline"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/revalidate-385ef724-3676-4077-834c-ae7774687211/step-0.log",
+        "step_id": "cargo",
+        "consumer": "outbox:d6053d8d8f2ab9652cdd195a1a58f051fd7fc3d1c40f8c4c6db87663315c09e4",
+        "exit_code": 0,
+        "recorded_at": "2026-09-26T11:32:42.044263+00:00",
+        "code_failure": true,
+        "output_sha256": "1c41b1d3f0900883b0f1757ec14f6218e6dc4c61239e5e1d029cea7514371956",
+        "validation_id": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      },
+      {
+        "output": "marker: pass\n",
+        "status": "succeeded",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; rustc --crate-name a13_disposable --crate-type lib --edition 2024 src/lib.rs -o /tmp/libgh122-marker.rlib && printf 'extern crate a13_disposable; fn main(){assert_eq!(a13_disposable::gh122_marker(), \"dual-path-ready\");}\\n' | rustc --edition 2024 --extern a13_disposable=/tmp/libgh122-marker.rlib -o /tmp/gh122-marker-check - && /tmp/gh122-marker-check && printf 'marker: pass\\n'"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/revalidate-385ef724-3676-4077-834c-ae7774687211/step-1.log",
+        "step_id": "marker",
+        "consumer": "outbox:d6053d8d8f2ab9652cdd195a1a58f051fd7fc3d1c40f8c4c6db87663315c09e4",
+        "exit_code": 0,
+        "recorded_at": "2026-09-26T11:32:42.051312+00:00",
+        "code_failure": true,
+        "output_sha256": "326a0a22537115ddf860fb2dd26ba082a4d31dc0de40590dbfbf47dccba03039",
+        "validation_id": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      },
+      {
+        "output": "    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.02s\n     Running unittests src/lib.rs (/home/gem/cargo-target/debug/deps/a13_disposable-a758cad80842c4b3)\n\nrunning 2 tests\ntest gh122_marker_returns_dual_path_ready ... ok\ntest repository_identity ... ok\n\ntest result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n   Doc-tests a13_disposable\n\nrunning 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n\n",
+        "status": "succeeded",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; cargo test --locked --offline"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45/step-0.log",
+        "step_id": "cargo",
+        "consumer": "pr:1377749969:12:d4fca58879b78f997ebde0b98317c2287642fd1e",
+        "exit_code": 0,
+        "recorded_at": "2026-09-26T13:18:29.662599+00:00",
+        "code_failure": true,
+        "output_sha256": "193b33f2b9a541f255d9fce939dfbd05532060c78bf9a1b9e3a7b79e59020e29",
+        "validation_id": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      },
+      {
+        "output": "marker: pass\n",
+        "status": "succeeded",
+        "command": [
+          "/gate-entry",
+          "-c",
+          "export PATH=/home/gem/.rustup/toolchains/1.97.1-x86_64-unknown-linux-gnu/bin:/usr/local/bin:/usr/bin:/bin; rustc --crate-name a13_disposable --crate-type lib --edition 2024 src/lib.rs -o /tmp/libgh122-marker.rlib && printf 'extern crate a13_disposable; fn main(){assert_eq!(a13_disposable::gh122_marker(), \"dual-path-ready\");}\\n' | rustc --edition 2024 --extern a13_disposable=/tmp/libgh122-marker.rlib -o /tmp/gh122-marker-check - && /tmp/gh122-marker-check && printf 'marker: pass\\n'"
+        ],
+        "log_ref": "/home/gem/.local/share/codexsymphony/gh122-acceptance/github/execution/revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45/step-1.log",
+        "step_id": "marker",
+        "consumer": "pr:1377749969:12:d4fca58879b78f997ebde0b98317c2287642fd1e",
+        "exit_code": 0,
+        "recorded_at": "2026-09-26T13:18:29.673324+00:00",
+        "code_failure": true,
+        "output_sha256": "326a0a22537115ddf860fb2dd26ba082a4d31dc0de40590dbfbf47dccba03039",
+        "validation_id": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      }
+    ],
+    "recovery_decisions": [
+      {
+        "decision": "recovered",
+        "event_key": "extension:validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a:legacy:marker",
+        "resolution": {
+          "actor": "authenticated_operator",
+          "command": {
+            "action": {
+              "kind": "revalidate_delivery",
+              "plan_digest": "bbb0a401858aec768bed519a9394a77cf2a021f2750aeaf86d4041b791d4ecc3",
+              "policy_digest": "d14f4761fb0fe9edb097f9f030c18f0c1a030fee56013b4819b67afcc4fb1a57",
+              "resume_condition": "Original cargo and independent marker checks both execute successfully with nonempty source-bound output; original policy and protection remain unchanged"
+            },
+            "reason": "Reviewed marker assertion now emits success output only after actual successful execution; retain same candidate, failed validation and cumulative budget. Apply this exact reviewed Plan to revalidation and actual merged source.",
+            "version": 7,
+            "revision": 1,
+            "request_id": "gh122-revalidate-delivery-plan-01",
+            "validation_id": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a"
+          }
+        },
+        "resolution_state": "complete",
+        "source_validation": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "successor_validation": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      },
+      {
+        "decision": "recovered",
+        "event_key": "extension:revalidate-385ef724-3676-4077-834c-ae7774687211:control",
+        "resolution": {
+          "actor": "authenticated_operator",
+          "command": {
+            "action": {
+              "kind": "revalidate_delivery",
+              "plan_digest": "bbb0a401858aec768bed519a9394a77cf2a021f2750aeaf86d4041b791d4ecc3",
+              "policy_digest": "d14f4761fb0fe9edb097f9f030c18f0c1a030fee56013b4819b67afcc4fb1a57",
+              "resume_condition": "Same candidate and checks produce fresh valid evidence; original publish action has zero attempts, no PR or merge, and any proof rebinding is journaled."
+            },
+            "reason": "Resume the original never-sent delivery after measured storage repair and control interruption; preserve old proof, operation identity and all budgets.",
+            "version": 12,
+            "revision": 1,
+            "request_id": "gh122-revalidate-unsent-after-pause-01",
+            "validation_id": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+          }
+        },
+        "resolution_state": "complete",
+        "source_validation": "revalidate-385ef724-3676-4077-834c-ae7774687211",
+        "successor_validation": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      }
+    ]
+  },
+  "workflow": {
+    "path": ".github/workflows/ci.yml",
+    "sha": "b3b1b15d15e853bcd658cf6ccf4d63d0d00f8848",
+    "size": 205
+  },
+  "limits_of_evidence": [
+    "Online coding used the recorded source07 binary; source16 completed same-candidate recovery, publication, merge and actual-version acceptance.",
+    "Model usage remains incompletely settled; reserved exposure is retained.",
+    "No full parent-group, mobile UI, all-channel notification or production-site acceptance claimed."
+  ],
+  "raw_facts_sha256": "c4952aabd33ef3603f20f8628036e33f1cd2720a986f31b9ca0db50495d8c726",
+  "final_durability": {
+    "at": "2026-09-26T13:31:24.692677+00:00",
+    "status": "PASS",
+    "binary": {
+      "at": "2026-09-26T13:17:53.622350+00:00",
+      "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/57887784dd747647/codexsymphony-server",
+      "sha256": "57887784dd747647cf7cdc1197ed99e9823f9ddc075c2fb2c26ab42e03389ae1",
+      "source_measurements": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+      "source_input_digest": "00e46d092603a758ed9dd5545415326dd88962a028945376262a02df9bf4d565",
+      "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r10/results.json"
+    },
+    "process_pid": 2190766,
+    "process_sha256": "57887784dd747647cf7cdc1197ed99e9823f9ddc075c2fb2c26ab42e03389ae1",
+    "facts": {
+      "runs": 1,
+      "calls": 1,
+      "state": "Done",
+      "merges": 1,
+      "version": 15,
+      "attempts": 2,
+      "deliveries": 1,
+      "completed_merges": 1,
+      "proof_rebindings": 1
+    },
+    "boundary": "Durability readback of the original online task and completed delivery; no new model call or publication."
+  },
+  "isolated_service_stopped": {
+    "at": "2026-09-26T13:31:44.541065+00:00",
+    "pid": 2190765,
+    "stopped": true,
+    "database_retained": true
+  },
+  "publication_results_note": "Full provider responses are retained privately in the hash-bound facts file; public attempt records retain their hashes."
+}

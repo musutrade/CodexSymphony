@@ -23,7 +23,12 @@ verdict 为 pass/fail/unknown。pass 和 fail 都要求执行完整退出 0 且 
 受登录及 CSRF 保护的 `POST /api/requirements/{id}/extension-recovery` 接收 request_id、version、revision、validation_id、reason、action。重复同一请求返回原结果；复用 request_id 改内容或使用旧版本均拒绝。响应 accepted 不表示已经启动。
 
 - `action.kind=revalidate`：提供部署批准的新 plan_digest 和 resume_condition。核心创建新 validation generation，保留原失败和候选 SHA/tree，沿用 required checks，执行环境检查、before_run、验证及 after_run。不会启动 Agent 或重置预算。原验证标为 superseded，不能拿旧 PASS 交付。
+- `action.kind=revalidate_delivery`：仅用于尚未交付的 GitHub 候选，额外提交 `policy_digest`，明确批准同一新计划用于本次候选重验和实际合并版本验收。摘要是当前强类型 `github::Policy` 的 `serde_json::to_vec` 字节的 SHA-256，包含原 post_merge 固定计划及保护规则；不接受任意文本作为授权。仓库版本必须与冻结修订一致，post_merge 必须原为 fixed_validation。新验证成功后，仅它对应的任务、修订、候选和验证 ID 可使用新计划。执行时复查原策略摘要、新计划摘要和保存的 trusted identity；普通 revalidate 不改变 post_merge。仓库全局策略、CI 来源、合并权限、保护规则及旧计划文件均不更新。
 - `action.kind=adapt_code`：提供非空 constraints，沿用现有代码修复 worker、次数和累计资源授权，生成新的 Run 和候选；不把原 unsupported 改成代码错误。额外冻结的约束在每次 Agent 输入构造时注入，包括恢复与修复。候选修改路径必须在批准范围内，超范围阻断验证。
+
+旧退出码适配器若留下 `blocked` 验证和 `unknown` step，但没有结构化故障记录，显式恢复事务会从原 validation_step 补记 unknown 事件。它保留原退出码、输出摘要和日志引用，不把无输出的退出 0 当成 PASS，也不归因代码错误。版本、权限、进程静止、预算和恢复次数任一检查失败时，补记和决定一并回滚。
+
+此恢复不需要新数据库迁移；部署仍须先暂停、确认原调用停止并保留数据库及配置。`revalidate_delivery` 一旦被接受，旧二进制不理解它的合并后计划绑定，不能直接降级继续推进同一数据库。回退应保持暂停，保留新旧决定和实际副作用，再显式审核后续处理。
 
 每个需求最多接受三次显式恢复决定，包含失败的授权；自动修复次数仍受原策略限制。部署计划摘要不匹配且尚未生成后继时，可以提交新的版本化决定；历史决定保留在 business_request。已生成后继则针对该后继的失败处理，不能覆盖旧 generation。暂停、取消、仓库撤权、未静止进程、未处理 blocker 和预算耗尽继续阻断。
 
@@ -74,3 +79,5 @@ WHERE plugin_id='agent:codex';
 受控环境、验证扩展及交付 Hook 继续使用宿主受审 Registration，`scope_ref` 支持 `all`、`repositories:1,42` 和兼容的单仓库 `repository:42`。范围随原配置摘要冻结；实际调用按 `repository_revision` 校验所有选中扩展，宿主登记改变后原摘要失效，须通过已有显式恢复流程重新审核。作用域不能扩大资源根、凭据或操作权限。
 
 生命周期事件在工作区建立前从需求/冻结修订取得仓库身份，写入事件快照。核心在创建 outbox 前筛选；领取、重试与手动重放检查当前授权及原作用域版本。插件收到 `repository_id` 和 `scope_version` 后仍自行选择通知内容和渠道。扩大范围不补投旧事件，也不改变已冻结的执行插件。收窄后保留投递历史与已用次数，越界事件不再返回给插件。
+
+暂停使已通过的验证失效时，`resume` 不恢复旧证据。对于尚未发送的 GitHub 交付，显式 `revalidate_delivery` 可在原任务、候选和操作上重验：必须只有一个未释放交付，发布状态为 pending、attempts 为零、无任何发送尝试记录、PR 或合并操作。新验证成功后只更新原操作的当前验证引用，并在 `delivery_observation` 中追加 `validation_rebound`，记录旧／新验证及恢复授权事件；旧验证结果、失效标记和完整证据保留。未知发送或已有外部副作用仍须对账，不能通过此路径重置。

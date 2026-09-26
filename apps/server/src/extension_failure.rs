@@ -45,6 +45,18 @@ fn collect_feedback(steps: &[StepEvidence]) -> Vec<Value> {
     }
     feedback
 }
+
+/// Older exit-code adapters can retain an unknown result without a structured
+/// fault. Recover only the persisted failure, never infer successful execution.
+pub(crate) async fn reconcile_legacy(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    requirement: i64,
+    validation: &str,
+) -> Result<()> {
+    sqlx::query("INSERT INTO recovery_failure(event_key,requirement_id,source_validation_id,phase,facts,fingerprint,decision,reason) SELECT 'extension:'||v.id||':legacy:'||s.step_id,v.requirement_id,v.id,'local',jsonb_build_object('phase','local','candidate_sha',v.candidate_sha,'feedback',jsonb_build_object('check_id',s.step_id,'verdict','unknown','source','host','exit_code',s.exit_code,'output_sha256',s.output_sha256,'log_ref',s.log_ref,'fault',jsonb_build_object('class','unknown','code','legacy_evidence_unknown','owner','operator','resume_condition','Reconcile original execution and approve a complete validation plan'))),s.output_sha256,'blocked','retained legacy validation evidence is unknown; no code fault inferred' FROM candidate_validation v JOIN validation_step s ON s.validation_id=v.id WHERE v.id=$1 AND v.requirement_id=$2 AND v.result='blocked' AND s.status='unknown' AND COALESCE(s.command->>1,'')<>'--symphony-feedback-v1' ON CONFLICT DO NOTHING")
+        .bind(validation).bind(requirement).execute(&mut **tx).await?;
+    Ok(())
+}
 async fn persist_feedback(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     validation: &str,

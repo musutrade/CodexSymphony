@@ -27,6 +27,11 @@ pub enum Action {
         plan_digest: String,
         resume_condition: String,
     },
+    RevalidateDelivery {
+        plan_digest: String,
+        resume_condition: String,
+        policy_digest: String,
+    },
     AdaptCode {
         constraints: Vec<Constraint>,
     },
@@ -41,7 +46,7 @@ pub async fn decide(pool: &PgPool, id: i64, command: &Decision) -> Result<Value>
     }
     let event = eligible(&mut tx, id, command).await?;
     let state = match command.action {
-        Action::Revalidate { .. } => "pending",
+        Action::Revalidate { .. } | Action::RevalidateDelivery { .. } => "pending",
         Action::AdaptCode { .. } => "adaptation",
     };
     let result = persist_decision(&mut tx, id, command, &event, state).await?;
@@ -97,6 +102,11 @@ fn validate(command: &Decision) -> Result<()> {
         Action::Revalidate {
             plan_digest,
             resume_condition,
+        }
+        | Action::RevalidateDelivery {
+            plan_digest,
+            resume_condition,
+            ..
         } => {
             require(digest_valid(plan_digest), "approved plan digest required")?;
             require(
@@ -135,9 +145,9 @@ async fn replay(tx: &mut Tx<'_>, request: &str, input: &Value) -> Result<Option<
 }
 
 async fn eligible(tx: &mut Tx<'_>, id: i64, command: &Decision) -> Result<String> {
-    let revision = authorized_revision(tx, id, command).await?;
-    let row: (String, Option<Value>) = sqlx::query_as("SELECT f.event_key,v.hook_context FROM recovery_failure f JOIN candidate_validation v ON v.id=f.source_validation_id WHERE f.requirement_id=$1 AND v.revision=$2 AND v.id=$3 AND v.result IN ('gate_failed','blocked') AND v.superseded_by IS NULL AND NOT EXISTS(SELECT 1 FROM agent_run newer JOIN agent_run original ON original.id=v.source_run_id WHERE newer.requirement_id=v.requirement_id AND newer.run_sequence>original.run_sequence) AND f.decision='blocked' AND (f.resolution IS NULL OR (f.resolution_state='blocked' AND f.successor_validation IS NULL)) AND NOT EXISTS(SELECT 1 FROM recovery_failure other WHERE other.source_validation_id=v.id AND other.event_key<>f.event_key AND other.resolution IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM candidate_validation newer WHERE newer.retry_of=v.id) AND NOT EXISTS(SELECT 1 FROM delivery d WHERE d.requirement_id=$1 AND NOT d.released) ORDER BY f.event_key LIMIT 1")
-        .bind(id).bind(revision).bind(&command.validation_id).fetch_one(&mut **tx).await?;
+    let revision = prepare_authorized_failure(tx, id, command).await?;
+    let row: (String, Option<Value>) = sqlx::query_as("SELECT f.event_key,v.hook_context FROM recovery_failure f JOIN candidate_validation v ON v.id=f.source_validation_id WHERE f.requirement_id=$1 AND v.revision=$2 AND v.id=$3 AND (v.result IN ('gate_failed','blocked') OR ($4 AND v.result='succeeded' AND v.hook_invalidated)) AND v.superseded_by IS NULL AND NOT EXISTS(SELECT 1 FROM agent_run newer JOIN agent_run original ON original.id=v.source_run_id WHERE newer.requirement_id=v.requirement_id AND newer.run_sequence>original.run_sequence) AND f.decision='blocked' AND (f.resolution IS NULL OR (f.resolution_state='blocked' AND f.successor_validation IS NULL)) AND NOT EXISTS(SELECT 1 FROM recovery_failure other WHERE other.source_validation_id=v.id AND other.event_key<>f.event_key AND other.resolution IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM candidate_validation newer WHERE newer.retry_of=v.id) ORDER BY f.event_key LIMIT 1")
+        .bind(id).bind(revision).bind(&command.validation_id).bind(matches!(&command.action, Action::RevalidateDelivery { .. })).fetch_one(&mut **tx).await?;
     stopped(row.1)?;
     let hooks_stopped: bool = sqlx::query_scalar("SELECT NOT EXISTS(SELECT 1 FROM project_hook_invocation WHERE run_id=$1 AND status IN ('intent','running','unknown') AND NOT stop_confirmed)")
         .bind(&command.validation_id).fetch_one(&mut **tx).await?;
@@ -147,6 +157,20 @@ async fn eligible(tx: &mut Tx<'_>, id: i64, command: &Decision) -> Result<String
     )?;
     check_limits(tx, id).await?;
     Ok(row.0)
+}
+
+async fn prepare_authorized_failure(tx: &mut Tx<'_>, id: i64, command: &Decision) -> Result<i64> {
+    let revision = authorized_revision(tx, id, command).await?;
+    crate::extension_delivery_recovery::authorize(tx, id, revision, &command.action).await?;
+    crate::extension_delivery_recovery::prepare_pending(
+        tx,
+        id,
+        &command.validation_id,
+        &command.action,
+    )
+    .await?;
+    crate::extension_failure::reconcile_legacy(tx, id, &command.validation_id).await?;
+    Ok(revision)
 }
 
 async fn authorized_revision(tx: &mut Tx<'_>, id: i64, command: &Decision) -> Result<i64> {

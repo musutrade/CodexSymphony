@@ -79,7 +79,7 @@ async fn preparing(tx: &mut Tx<'_>) -> Result<()> {
 }
 
 async fn bind_candidates(tx: &mut Tx<'_>) -> Result<()> {
-    sqlx::query("UPDATE storage_attempt s SET identity=s.identity || jsonb_build_object('candidate',v.candidate_sha,'pr',d.pr_number) FROM candidate_validation v LEFT JOIN delivery d ON d.validation_id=v.id WHERE v.source_run_id=s.run_id AND (s.identity->'candidate' IS DISTINCT FROM to_jsonb(v.candidate_sha) OR s.identity->'pr' IS DISTINCT FROM COALESCE(to_jsonb(d.pr_number),'null'::jsonb))")
+    sqlx::query("UPDATE storage_attempt s SET identity=s.identity || jsonb_build_object('candidate',v.candidate_sha,'pr',d.pr_number) FROM candidate_validation v LEFT JOIN delivery d ON d.validation_id=v.id WHERE v.source_run_id=s.run_id AND v.id=(SELECT current.id FROM candidate_validation current WHERE current.source_run_id=s.run_id AND current.superseded_by IS NULL ORDER BY current.started_at DESC NULLS LAST,current.id DESC LIMIT 1) AND (s.identity->'candidate' IS DISTINCT FROM to_jsonb(v.candidate_sha) OR s.identity->'pr' IS DISTINCT FROM COALESCE(to_jsonb(d.pr_number),'null'::jsonb))")
         .execute(&mut **tx).await?;
     Ok(())
 }
@@ -311,7 +311,7 @@ async fn register_path(tx: &mut Tx<'_>, config: &Deployment, material: Material<
 
 async fn summaries(tx: &mut Tx<'_>, limit: u64) -> Result<()> {
     // Bound long-lived summaries at ingress. Original results are not rewritten.
-    let values: Vec<(String,Value)> = sqlx::query_as("SELECT s.run_id,s.summary || jsonb_build_object('run',to_jsonb(a)-'launch','validation',(SELECT to_jsonb(v)-'trusted'-'required_steps' FROM candidate_validation v WHERE v.source_run_id=s.run_id),'preparation',(SELECT jsonb_build_object('retry',retry,'ready',ready) FROM preparation_record WHERE run_id=s.run_id),'resolved_by',s.resolved_by) FROM storage_attempt s LEFT JOIN agent_run a ON a.id=s.run_id")
+    let values: Vec<(String,Value)> = sqlx::query_as("SELECT s.run_id,s.summary || jsonb_build_object('run',to_jsonb(a)-'launch','validation',(SELECT to_jsonb(v)-'trusted'-'required_steps' FROM candidate_validation v WHERE v.source_run_id=s.run_id AND v.superseded_by IS NULL ORDER BY v.started_at DESC NULLS LAST,v.id DESC LIMIT 1),'validations',(SELECT COALESCE(jsonb_agg(to_jsonb(v)-'trusted'-'required_steps' ORDER BY v.started_at NULLS FIRST,v.id),'[]'::jsonb) FROM candidate_validation v WHERE v.source_run_id=s.run_id),'preparation',(SELECT jsonb_build_object('retry',retry,'ready',ready) FROM preparation_record WHERE run_id=s.run_id),'resolved_by',s.resolved_by) FROM storage_attempt s LEFT JOIN agent_run a ON a.id=s.run_id")
         .fetch_all(&mut **tx).await?;
     for (run, mut value) in values {
         crate::operator_view::redact(&mut value);

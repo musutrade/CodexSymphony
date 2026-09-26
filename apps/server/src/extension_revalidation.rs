@@ -184,7 +184,7 @@ async fn create_successor(
     source_stopped(tx, source).await?;
     let validation = format!("revalidate-{}", crate::process::new_identity()?);
     let trusted = plan.identity()?;
-    sqlx::query("INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result,retry_of,approved_plan,hook_required) SELECT $1,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,$3,required_steps,source_before,source_before,$4,$4,'declaration','pending',id,$5,hook_required FROM candidate_validation WHERE id=$2 AND result IN ('blocked','gate_failed') AND superseded_by IS NULL")
+    sqlx::query("INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result,retry_of,approved_plan,hook_required) SELECT $1,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,$3,required_steps,source_before,source_before,$4,$4,'declaration','pending',id,$5,hook_required FROM candidate_validation WHERE id=$2 AND (result IN ('blocked','gate_failed') OR (result='succeeded' AND hook_invalidated)) AND superseded_by IS NULL")
         .bind(&validation).bind(source).bind(json!(trusted)).bind(&trusted.protected_entry_sha256).bind(json!(plan)).execute(&mut **tx).await?;
     sqlx::query(
         "UPDATE candidate_validation SET superseded_by=$2,hook_invalidated=true WHERE id=$1",

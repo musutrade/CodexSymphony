@@ -185,8 +185,11 @@ fn cumulative_counters_and_waits_preserve_unknowns_and_overflow() {
     }
 }
 
-#[tokio::test]
+// The real host command waits in a child process; SQLx must still be able to
+// finish the parent's asynchronous transaction rollback and release its lock.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn transactions_reconcile_usage_across_runs_revisions_and_crashes() {
+    host_budget_command_preserves_usage_and_stop_intents().await;
     last_reserved_turn_can_finish().await;
     let pool = fixture().await;
     let first = call("first", "one", 60);
@@ -454,6 +457,109 @@ async fn transactions_reconcile_usage_across_runs_revisions_and_crashes() {
     assert!(blocker.starts_with("runtime_timeout"));
     preparation_history_keeps_quota(&pool).await;
     corrupted_accounting_fails_closed(&pool).await;
+    pool.close().await;
+}
+
+fn host_budget_command(url: Option<&str>, args: &[&str], input: &[u8]) -> std::process::Output {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    let mut command = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"));
+    command
+        .args(["budget"])
+        .args(args)
+        .env_remove("DATABASE_URL");
+    if let Some(url) = url {
+        command.env("DATABASE_URL", url);
+    }
+    let mut child = command
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(input).ok();
+    child.wait_with_output().unwrap()
+}
+
+async fn host_budget_command_preserves_usage_and_stop_intents() {
+    let pool = fixture().await;
+    let original = call("first", "unresolved", 60);
+    assert_eq!(
+        budget_store::reserve(&pool, &original).await.unwrap(),
+        Admission::Reserved
+    );
+    budget_store::settle(
+        &pool,
+        &original.key,
+        "unresolved",
+        "partial",
+        &usage(105, 5, 3, false),
+    )
+    .await
+    .unwrap();
+    sqlx::raw_sql("UPDATE requirement SET paused=true; UPDATE execution_control SET paused=true; UPDATE agent_run SET stop_requested=true,quiescent=true,state='Interrupted'").execute(&pool).await.unwrap();
+    let before = budget_store::inspect(&pool, 1).await.unwrap();
+    assert!(before.exhausted);
+    let request = json!({"request_id":"host-budget-increase","requirement_id":1,"expected_version":1,"actor":"local-user","reason":"explicit operator authorization after preserving stopped work","delta":{"tokens":200,"turns":0,"model_seconds":100}});
+    let url = std::env::var("TEST_DATABASE_URL").unwrap();
+    let args = ["increase", "--stdin-json"];
+    for _ in 0..2 {
+        let result = host_budget_command(Some(&url), &args, request.to_string().as_bytes());
+        assert!(
+            result.status.success(),
+            "budget command failed: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+    }
+    let after = budget_store::inspect(&pool, 1).await.unwrap();
+    assert_eq!(after.limits, amount(300, 10, 200));
+    assert_eq!(after.used, before.used);
+    assert_eq!(after.exposure, before.exposure);
+    assert_eq!(after.unresolved_calls, 1);
+    assert!(!after.exhausted);
+    let facts: (i64, i64, i64, bool, bool, bool) = sqlx::query_as("SELECT (SELECT count(*) FROM agent_run),(SELECT count(*) FROM model_call),(SELECT count(*) FROM budget_authorization),(SELECT paused FROM requirement WHERE id=1),(SELECT paused FROM execution_control WHERE id=1),(SELECT stop_requested FROM agent_run WHERE id='first')").fetch_one(&pool).await.unwrap();
+    assert_eq!(facts, (1, 1, 2, true, true, true));
+    for change in [
+        json!({"request_id":"stale-budget-request"}),
+        json!({"delta":{"tokens":201,"turns":0,"model_seconds":100}}),
+        json!({"extra":"not supported"}),
+    ] {
+        let mut invalid = request.clone();
+        invalid
+            .as_object_mut()
+            .unwrap()
+            .extend(change.as_object().unwrap().clone());
+        assert!(
+            !host_budget_command(Some(&url), &args, invalid.to_string().as_bytes())
+                .status
+                .success()
+        );
+    }
+    for input in [b"invalid".as_slice(), b"{}", &[b'x'; 8193]] {
+        assert!(
+            !host_budget_command(Some(&url), &args, input)
+                .status
+                .success()
+        );
+    }
+    assert!(
+        !host_budget_command(None, &args, request.to_string().as_bytes())
+            .status
+            .success()
+    );
+    let unavailable = "postgres://example-user:example-password@127.0.0.1:1/unavailable";
+    let rejected = host_budget_command(Some(unavailable), &args, request.to_string().as_bytes());
+    assert!(!rejected.status.success());
+    assert!(!String::from_utf8_lossy(&rejected.stderr).contains("example"));
+    assert!(
+        !host_budget_command(Some(&url), &["increase"], b"")
+            .status
+            .success()
+    );
+    assert_eq!(
+        budget_store::inspect(&pool, 1).await.unwrap().limits,
+        after.limits
+    );
     pool.close().await;
 }
 

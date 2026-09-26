@@ -109,4 +109,49 @@ class Retention(unittest.TestCase):
             prs=[{'number':n,'head':{'ref':branch},'base':{'repo':{'full_name':r.REPOSITORY}}} for n,branch in [(39,'symphony/GH-18'),(40,'followup')]]
             value=r.context(Path(tmp),receipt,lookup=lambda path:prs if path.endswith('/pulls') else run)
             self.assertEqual(value['pr'],39)
+
+    def test_migrated_winner_preserves_archive_and_does_not_block_other_pr(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'cold').mkdir()
+            old_failed,_=self.fixture(root,'10/1','FAIL',pr=39,age=1200)
+            old_success,receipt=self.fixture(root,'11/1','PASS',pr=39,age=1000)
+            run=Path(receipt['run']);archived=root/'cold'/run.name
+            run.rename(archived);run.symlink_to(archived)
+            failed,_=self.fixture(root,'12/1','FAIL',pr=40,age=900)
+            self.fixture(root,'13/1','PASS',pr=40,age=600)
+            self.run_policy(root)
+            self.assertTrue(run.is_symlink())
+            self.assertTrue((archived/'large-binary').exists())
+            self.assertTrue((old_failed/'source').exists())
+            self.assertTrue((old_success/'source').exists())
+            self.assertFalse((failed/'source').exists())
+
+    def test_missing_and_dangling_archived_run_never_authorize_retirement(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);job=root/'job';job.mkdir()
+            self.assertIsNone(r.linked_run(root,job,{}))
+            run=root/'gate-host/runs/run-000000000001'
+            run.parent.mkdir(parents=True)
+            self.assertIsNone(r.local_run(root,run))
+            run.symlink_to(root/'missing-cold-archive')
+            self.assertIsNone(r.local_run(root,run))
+            self.assertTrue(run.is_symlink())
+            for bad in [root/'elsewhere'/run.name,run.parent/'unexpected']:
+                with self.assertRaises(ValueError):r.local_run(root,bad)
+
+    def test_recorded_run_from_log_and_identity_checks_remain_strict(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);job,receipt=self.fixture(root,'10/1','PASS')
+            run=Path(receipt['run'])
+            (job/'gate.stdout').write_text('Retaining complete gate run: '+str(run)+'\n')
+            self.assertEqual(r.recorded_run(job,{}),run)
+            with patch.object(r.subprocess,'run',return_value=Mock(returncode=0,stdout='b'*40)):
+                with self.assertRaisesRegex(ValueError,'commit mismatch'):
+                    r.linked_run(root,job,receipt)
+            marker=run/'superseded-attempt.json'
+            marker.write_text(json.dumps({'identity':'10/1','source_sha':'a'*40}))
+            self.assertEqual(r.linked_run(root,job,receipt),run)
+            marker.write_text(json.dumps({'identity':'11/1','source_sha':'a'*40}))
+            with self.assertRaisesRegex(ValueError,'identity mismatch'):
+                r.linked_run(root,job,receipt)
 if __name__=='__main__':unittest.main()

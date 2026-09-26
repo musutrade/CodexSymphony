@@ -230,8 +230,9 @@ pub async fn start_runtime(
         Path::new(&launch.workspace),
     )
     .await?;
-    sqlx::query("SELECT plugin_scope_admit('agent:codex',id,requirement_id,revision,plugin_scope_repository(requirement_id,revision)) FROM agent_run WHERE id=$1")
-        .bind(&launch.key.run_id).execute(pool).await?;
+    // Admission failure has not dispatched a Runtime. Open the durable session
+    // only after admission, still before any supervisor spawn can occur.
+    crate::runtime_store::open(pool, &launch.key, crate::runtime_client::now()).await?;
     let directory = process::run_directory(root, &launch.key.run_id)?;
     let child = process::spawn_with_transport(supervisor, &directory, launch, Some(config))?;
     finish_launch(pool, &directory, launch, child).await

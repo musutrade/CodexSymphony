@@ -1,0 +1,32 @@
+{
+  "root": "/home/gem/.local/share/codexsymphony/gh122-acceptance",
+  "files": {
+    "github/facts-before-plan-recovery.json": "bda51e0d9ef36add2db184e7bca6b6100743d4b5460660a880be76dd64cd7b75",
+    "github/facts-after-plan-recovery.json": "c8029eff30f38ef506cbd5e99e0ee2b057ecad3001f9004086ea62883b74a0c2",
+    "github/facts-before-storage-recovery.json": "c06c6dd0fd69833eb40907ca6476a22d6444f063b534a2d7c90217a0d2ab81a3",
+    "github/plan-recovery-accepted.json": "febfcfdd422dda8193207aab60752979e552f8d29dfac7496fbdfe2b9226f8f7",
+    "github/operator/plan-recovery-approved.json": "078c5cba791c0d034c58e760609b52d44c41d756137f10c6964dd24edc61063b",
+    "github/service-plan-recovery.json": "9bbbe3cd5b8cea6eb2a8d3500322b02165aa861a51fd0617c39024d31ed84bea",
+    "github/configuration-history/plan-recovery-01/proposal.json": "a4907cc61c91f9e4d23e46edb66a60c693e04022a217f7dfd005cf44fcc7a816",
+    "github/control-recovery-accepted.json": "410109e2aec0532b5a3d809d83bbd4a4504f6157f13e56050410d35106e532ea",
+    "github/operator/control-recovery-approved.json": "2550bb923113d140126bb2c06c9448f110e44e29dd9cf5afc441e6127b77d09a",
+    "github/facts-after-control-recovery.json": "304ceac84153959f2908acf751be001c331edfc8339447504438e3b3534a8e00",
+    "github/running-binary-control-recovery.json": "5da7f40ec9fb734d453494d01bb431c0554f95084c79385b6d4d3a01f52198fe",
+    "github/quiescence-before-control-recovery.json": "7809a28bf321e3067594b7b622c5747ffb84faaebad9d711a74d489426d75140",
+    "local-r2/durability-source16.json": "18b902288b1f1c4cd3d2f85dbf34052789d9943d6d31c99ced390dcee79c9aff",
+    "github/protection-after-recovery.json": "15457eda2d094d53e4d9e6d470cd4045de99def4de8ea99814400222efd90140",
+    "github/workflow-after-recovery.json": "8d8ab9ba9cf5a1dcfabc512fc7e4c1be23cc78e048ef936fbf158134a7da51af",
+    "github/delivery-after-source16.json": "8596d086199f93ef657d1f469651cf9a5b2cd44466a591aac4183b667ce6f9fd",
+    "github/checkpoint-before-final-evidence.json": "9a3ced38c02d280efed768769cb97fa3786d340e8901e9940afc9de03e40f841",
+    "github/facts-done-before-restart.json": "c4952aabd33ef3603f20f8628036e33f1cd2720a986f31b9ca0db50495d8c726",
+    "github/post-merge-diagnostic.json": "92fee535a5229b4f603abad6fabb87e405ea18d079bb645936cff8da3f1daa70",
+    "github/operations-final-durability.json": "c5bc6cb6dcecdf92f19a8e9d8afdc5beb53cd186dc62667b5fb76b122dba2dce",
+    "github/delivery-final-durability.json": "aeeba33d58361b930bc36a14e658b0d0f83eee12deb7c5f7eef647c1eec5bbc8",
+    "github/extension-recovery-final-durability.json": "844da70f6956677d1d03e2d479d590b44c4898fa6df56e4298fbfdd8bcc7486e",
+    "github/durability-final.json": "9076872a269e6fe73531be83b925d6269bbaf4b9c2d78d9a39835a2d746e07bc",
+    "github/service-before-final-restart-stop.json": "8e9695506ec375f943d63527695630044fcd1d6e729b23817bec219ecd5dbe7b",
+    "github/service-final-durability.json": "f27c02652ccb63279879bc767f6e3489267a15d51618dac2111c81fd4d2b010b",
+    "github/service-final-stop.json": "517cbf9ea12f452d7c7405e3721774aa9837a82e7abb9489bcd91a04789b4d20"
+  },
+  "note": "Originals remain private on the host; this manifest does not publish credentials, capability responses or database dumps."
+}

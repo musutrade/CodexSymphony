@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "/home/gem/.local/share/codexsymphony/gate-host/releases/f84a468359982cc0/run.py", line 161, in <module>
+    if __name__=='__main__': main()
+                             ~~~~^^
+  File "/home/gem/.local/share/codexsymphony/gate-host/releases/f84a468359982cc0/run.py", line 89, in main
+    policy=contract.load(repo)
+  File "/home/gem/.local/share/codexsymphony/gate-host/releases/f84a468359982cc0/environment_contract.py", line 36, in load
+    raise ValueError('environment drift: workspace contract differs from installed host release')
+ValueError: environment drift: workspace contract differs from installed host release

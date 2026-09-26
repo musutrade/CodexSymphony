@@ -1,0 +1,102 @@
+{
+  "at": "2026-09-26T12:31:42.587783+00:00",
+  "cause": "Correct pause invalidation has no existing authorized fresh-proof path for a never-sent pending delivery. Resume cannot revive old validation.",
+  "facts": {
+    "calls": 1,
+    "delivery": [
+      {
+        "state": "pending",
+        "attempts": 0,
+        "pr_number": null,
+        "action_key": "d6053d8d8f2ab9652cdd195a1a58f051fd7fc3d1c40f8c4c6db87663315c09e4",
+        "validation_id": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      }
+    ],
+    "requirement": {
+      "state": "Running",
+      "paused": true,
+      "version": 11
+    },
+    "validations": [
+      {
+        "id": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "result": "blocked",
+        "superseded_by": "revalidate-385ef724-3676-4077-834c-ae7774687211",
+        "hook_invalidated": true
+      },
+      {
+        "id": "revalidate-385ef724-3676-4077-834c-ae7774687211",
+        "result": "succeeded",
+        "superseded_by": null,
+        "hook_invalidated": true
+      }
+    ],
+    "attempt_rows": 0
+  },
+  "backup_sha256": "7c813cddd3d8650a016397401b5e02681494115eceb5da03ba2c85e43821fc39",
+  "bounded_fix": "Explicit revalidate_delivery only; unchanged candidate/task/account/operation; zero attempts and no PR/merge; retain original validations and record proof-rebinding observation.",
+  "source14": "STOPPED: static review tightened action-specific eligibility before completing capture",
+  "source15": "Full capture/test execution PASS; exact CRAP FAIL in prepare_pending and eligible; no ordinary checks executed",
+  "source16": "RUNNING: cohesive authorization/pending-delivery/fault-record functions; preliminary approved inventory checked, not a measurement PASS",
+  "final_source_measurements": {
+    "at": "2026-09-26T13:16:37.735475+00:00",
+    "status": "PASS",
+    "functions": 2223,
+    "minimum_line_coverage": 0.8,
+    "minimum_region_coverage": 0.8,
+    "maximum_crap": 10.0,
+    "evidence": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+    "measurements_sha256": "6958f377a111c8092ba21d618ba4897f1a8df2b4ab61bb9c70ebe2b2f8f46088",
+    "threshold_failures": 0,
+    "tests": 373,
+    "suites": 41,
+    "source_inputs": 287
+  },
+  "final_binary": {
+    "at": "2026-09-26T13:17:53.622350+00:00",
+    "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/57887784dd747647/codexsymphony-server",
+    "sha256": "57887784dd747647cf7cdc1197ed99e9823f9ddc075c2fb2c26ab42e03389ae1",
+    "source_measurements": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+    "source_input_digest": "00e46d092603a758ed9dd5545415326dd88962a028945376262a02df9bf4d565",
+    "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r10/results.json"
+  },
+  "actual_recovery": {
+    "calls": 1,
+    "deliveries": [
+      {
+        "pr": null,
+        "key": "d6053d8d8f2ab9652cdd195a1a58f051fd7fc3d1c40f8c4c6db87663315c09e4",
+        "state": "unknown",
+        "attempts": 1,
+        "validation": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      }
+    ],
+    "recoveries": [
+      {
+        "event": "extension:validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a:legacy:marker",
+        "state": "complete",
+        "successor": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      },
+      {
+        "event": "extension:revalidate-385ef724-3676-4077-834c-ae7774687211:control",
+        "state": "complete",
+        "successor": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      }
+    ],
+    "requirement": {
+      "state": "Running",
+      "paused": false,
+      "version": 13
+    },
+    "proof_rebinding": [
+      {
+        "validation": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45",
+        "recovery_event": "extension:revalidate-385ef724-3676-4077-834c-ae7774687211:control",
+        "external_attempts": 0,
+        "previous_validation": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      }
+    ]
+  },
+  "status": "PASS: original task Done; same delivery completed protected merge and actual-version acceptance",
+  "final_result": "github-acceptance.json"
+}

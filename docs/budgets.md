@@ -41,6 +41,19 @@ Runtime 的协议解析和实际模型发送仍由后续 Issue 接入。本接�
 清空未知模型调用预留。`increase` 要求显式平台用户授权、原因、幂等 ID 和
 账户版本，以追加授权增加额度；不清除用户暂停、不重启已停止进程。
 
+受控宿主入口为 `codexsymphony-server budget increase --stdin-json`，使用宿主的
+`DATABASE_URL` 连接已迁移的控制面。仅在取得上述授权后执行；不把数据库凭据放入
+命令行或提供给编码 Agent。标准输入是 `budget_store::Increase`，例如：
+
+```json
+{"request_id":"operator-budget-20260926-01","requirement_id":1,"expected_version":1,"actor":"local-user","reason":"用户明确批准的额度追加","delta":{"tokens":180000,"turns":0,"model_seconds":600}}
+```
+
+`delta` 是追加量；实际需求、版本、原因和增量必须来自本次批准，不能照抄示例。
+命令复用原有事务和幂等检查，拒绝未知字段、冲突请求及过期版本，不建立新账户、
+不迁移数据库，也不清除已用额度或未知调用预留。成功退出只证明追加授权已保存；
+继续执行仍须走原任务的恢复接口及准入检查，不能直接改 Run 或调用结算记录。
+
 人工、暂停、CI、网络等待通过 `record_waiting` 单独累计，重复报告采用高水位；
 这些值不扣模型工作时间。模型工作时间必须由 Runtime 的活动计时提供，可
 在 token 未知时单独持续结算。Run 的数据库创建时间始终用于八小时绝对寿命，
