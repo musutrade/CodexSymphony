@@ -586,6 +586,8 @@ async fn stop_run_for_allocation_excess(tx: &mut Tx<'_>, run: &str, request: &st
         .await?;
     sqlx::query("UPDATE integration_validation SET state='unknown',blocker='storage allocation exceeded; retain originals' WHERE id=$1 AND NOT quiescent")
         .bind(run).execute(&mut **tx).await?;
+    sqlx::query("UPDATE delivery SET local_storage_blocked=true WHERE mode='local_git' AND NOT released AND (local_acceptance_job->>'invocation'=$1 OR 'local-checkout-'||action_key=$1)")
+        .bind(run).execute(&mut **tx).await?;
     Ok(())
 }
 

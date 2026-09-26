@@ -218,5 +218,14 @@ pub mod extension_revalidation;
 pub mod validation_legacy;
 
 pub mod lifecycle_api;
+pub mod local_git;
+pub mod local_repair;
 
 pub mod plugin_scope;
+
+pub mod local_acceptance;
+pub mod local_acceptance_process;
+pub mod local_delivery;
+pub mod local_delivery_store;
+
+pub mod delivered_version;

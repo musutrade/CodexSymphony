@@ -13,7 +13,7 @@ struct Routes {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Route {
-    pub github_repository_id: i64,
+    pub github_repository_id: Option<i64>,
     pub remote: String,
     pub base_branch: String,
     pub version: i64,
@@ -71,7 +71,10 @@ impl Deployment {
 }
 impl Route {
     fn validate(&self, id: i64) -> Result<()> {
-        if id <= 0 || self.github_repository_id <= 0 || self.version <= 0 {
+        if id <= 0
+            || matches!(self.github_repository_id, Some(github) if github <= 0)
+            || self.version <= 0
+        {
             return Err("invalid Runtime repository identity".into());
         }
         self.runtime.launcher()?;
@@ -79,7 +82,7 @@ impl Route {
     }
 
     async fn matches(&self, pool: &PgPool, requirement: i64, repository: i64) -> Result<bool> {
-        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement r JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN repository p ON p.id=(v.document->>'repository_id')::bigint WHERE r.id=$1 AND p.id=$2 AND p.version=$3 AND (v.document->>'repository_version')::bigint=$3 AND (p.document->>'github_repository_id')::bigint=$4 AND p.document->>'remote'=$5 AND p.document->>'base_branch'=$6 AND v.document->'repository'=p.document)")
-            .bind(requirement).bind(repository).bind(self.version).bind(self.github_repository_id).bind(&self.remote).bind(&self.base_branch).fetch_one(pool).await?)
+        Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement r JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=r.revision JOIN repository p ON p.id=(v.document->>'repository_id')::bigint WHERE r.id=$1 AND p.id=$2 AND p.version=$3 AND (v.document->>'repository_version')::bigint=$3 AND COALESCE((p.document->>'github_repository_id')::bigint,0)=$4 AND (($4=0 AND p.document->>'delivery'='local_git') OR ($4>0 AND COALESCE(p.document->>'delivery','github_pr')='github_pr')) AND p.document->>'remote'=$5 AND p.document->>'base_branch'=$6 AND v.document->'repository'=p.document)")
+            .bind(requirement).bind(repository).bind(self.version).bind(self.github_repository_id.unwrap_or(0)).bind(&self.remote).bind(&self.base_branch).fetch_one(pool).await?)
     }
 }

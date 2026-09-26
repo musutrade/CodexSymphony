@@ -27,8 +27,7 @@ pub enum Selection {
     Fixed { sha: String },
     CompletedDependencies,
 }
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Version {
     pub repository_id: i64,
     pub github_repository_id: i64,
@@ -120,4 +119,35 @@ pub fn verify(binding: &Binding, versions: &[Version], evidence: &ValidationEvid
 }
 fn hex(value: &str, size: usize) -> bool {
     value.len() == size && value.bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+impl Serialize for Version {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut value = serde_json::json!({"repository_id":self.repository_id,"repository_version":self.repository_version,"candidate":self.candidate,"artifacts":self.artifacts});
+        if self.github_repository_id > 0 {
+            value["github_repository_id"] = serde_json::json!(self.github_repository_id);
+        }
+        value.serialize(serializer)
+    }
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct VersionWire {
+    repository_id: i64,
+    repository_version: i64,
+    github_repository_id: Option<i64>,
+    candidate: Candidate,
+    artifacts: Vec<String>,
+}
+impl<'de> Deserialize<'de> for Version {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let wire = VersionWire::deserialize(deserializer)?;
+        Ok(Self {
+            repository_id: wire.repository_id,
+            repository_version: wire.repository_version,
+            github_repository_id: wire.github_repository_id.unwrap_or(0),
+            candidate: wire.candidate,
+            artifacts: wire.artifacts,
+        })
+    }
 }

@@ -95,7 +95,7 @@ stop 是停止请求，不等于静止完成；由核心监督器确认子进程
 
 逻辑接口统一为 delivery.capability_check、delivery.submit、delivery.observe、delivery.reconcile（见 P9）；旧草案 reconcile_cancel 归入 reconcile 的取消原因，不是新生命周期 Hook。核心持久化意图与操作身份，适配器执行后返回类型明确的事实；失败/超时/结果未知必须区分。
 github_pr 复用现有 Broker、PR/CI 精确身份及合并对账；保留全部已有授权和独立验收语义。
-local_git 的实际执行由独立 #105 实现（#128 不将其视为已接入）：固定本地仓库身份、目标分支、候选提交和已验收交付提交。仅在预期基线一致时条件快进目标引用；响应丢失读取实际引用对账，分支漂移不得覆盖或强推。交付提交及依赖材料按核心保留策略可恢复。
+local_git 的实际执行和部署约束见 [本地交付](local-delivery.md)（GH-105）：固定本地仓库身份、目标分支、候选提交和已验收交付提交。仅在预期基线一致时条件快进目标引用；响应丢失读取实际引用对账，分支漂移不得覆盖或强推。交付提交及依赖材料按核心保留策略可恢复。
 本地交付不推送，不产生 PR/CI/merged 事实。目标引用更新后仍完成适用业务验收；失败后的关联修复沿用原授权与预算，不自动回滚用户新提交。GitHub 的“前置已合并”在本地模式对应“前置交付且验收完成的精确版本可用”，不能仅以 commit 存在满足依赖。
 父组记录每个仓库的真实版本组合；三类事实保持分离，第三类可包含非 GitHub 的交付观察，不为不同模式制造虚假字段。
 取消已发生的交付不伪造回滚；适配器只提供实际结果，核心决定收尾与队列释放。
@@ -172,7 +172,7 @@ GitHub before_publish/before_merge 位于适配器实际写操作边界，可使
 | `extension_contract.rs`、`project_hooks.rs::register/event/after_run/before_remove` | 已实现 v1 冻结配置和四类 Hook；#118 保持格式/事件兼容，不令 after_run 承担验收 |
 | `environment_service.rs`、`preparation_service.rs`、`coordinator.rs::start_runtime/recover` | #119 已接入可选冻结环境绑定；启用、服务启动、准备/恢复/修复及 Agent 启动前核验 |
 | `validation_runner.rs::execute_cancellable`、`validation.rs::verify`、`validation_store.rs` | GH-120 复用候选/步骤账本，环境绑定任务经 validation_context / validation_hook / validation_supervisor 执行完整 P9 validate，核对结果来源，不用 Agent 自报 |
-| `delivery_worker.rs::tick/reconcile/publish`、`delivery_control.rs`、`github_delivery.rs` | GitHub outbox/对账经 GH-121 通用调用边界及原生适配器；#105 实现 local_git |
+| `delivery_worker.rs::tick/reconcile/publish`、`delivery_control.rs`、`github_delivery.rs` | GitHub outbox/对账经 GH-121 通用调用边界及原生适配器；`local_delivery` 实现 local_git |
 | `merge_prevalidation.rs`、`merge_dispatch.rs`、`merge_validation.rs`、`merge_acceptance.rs` | GitHub 合并前检查及合并后验收；GH-121 适配器写边界复核 Hook 后身份，post_delivery_validate 复用原精确合并后验证，不移入通用必填 PR/CI |
 | `controlled_contract.rs`、`environment_probe.rs` | #118 通用类型与校验；#119 补齐资源级封装和受审环境探测监督、任务 Call/Evaluation、环境观测迁移，GH-120 已接入候选 validate；GH-121 的 delivery_extension 接入交付调度 |
 
@@ -234,7 +234,7 @@ semantic_valid；前两者匹配安装摘要，中间两者匹配批准配置摘
 [交付扩展](delivery-extensions.md) 记录通用调用边界、GitHub 旧入口迁移、附加阻断
 Hook、部署凭据提供方、未知写恢复及无 GitHub 的配置接口。P9 操作名及版本不变。
 附加 Hook 的适用阶段由受审配置决定，不改变 P3 的四类生命周期事件。
-原合并后验证继续消费独立观察到的合并事实；local_git 实际执行仍由 #105 提供。
+原合并后验证继续消费独立观察到的合并事实；local_git 实际执行见 [本地交付](local-delivery.md)。
 
 
 ## P14 固定生命周期、恢复与通知（GH-128）

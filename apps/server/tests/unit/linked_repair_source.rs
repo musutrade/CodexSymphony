@@ -25,6 +25,51 @@ impl Remote for Local {
 fn scope() -> String {
     json!({"schema":"linked-repair/v1","checks":{"test":["source"]}}).to_string()
 }
+struct NeverRemote;
+impl Remote for NeverRemote {
+    async fn baseline(&mut self, _: &crate::github::Policy) -> Result<String> {
+        panic!("local repair must not read a GitHub baseline")
+    }
+    async fn fetch(&mut self, _: &crate::github::Policy, _: &Path, _: &str) -> Result<()> {
+        panic!("local repair must not fetch through GitHub")
+    }
+}
+#[tokio::test]
+async fn local_source_failure_never_falls_back_to_github_transport() {
+    let _serial = crate::linked_repair_worker::tests::SERIAL.lock().await;
+    let (pool, root, _, _, id) = setup().await;
+    sqlx::query("UPDATE linked_failure SET baseline=NULL")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let f: Failure = sqlx::query_as("SELECT * FROM linked_failure WHERE id=$1")
+        .bind(&id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    let input = json!({"child":{"kind":"code_change","repository_id":1},"review":{"repository_version":1,"repair_scope":scope()}});
+    let target = target(&pool, &f, &input).await.unwrap();
+    sqlx::query("UPDATE repository SET document=jsonb_set(document,'{delivery}','\"local_git\"') WHERE id=1")
+        .execute(&pool)
+        .await
+        .unwrap();
+    // The disabled local scope must fail closed, even with a usable GitHub policy.
+    assert!(
+        freeze(&pool, &mut NeverRemote, &root, &f, target)
+            .await
+            .is_err()
+    );
+    let (baseline, evidence): (Option<String>, Value) =
+        sqlx::query_as("SELECT baseline,evidence FROM linked_failure WHERE id=$1")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(baseline, None);
+    assert_eq!(evidence, f.evidence);
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
 #[tokio::test]
 async fn current_target_is_frozen_without_reusing_failed_candidate_and_retries_are_finite() {
     let _serial = crate::linked_repair_worker::tests::SERIAL.lock().await;

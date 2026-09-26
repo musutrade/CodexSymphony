@@ -50,7 +50,10 @@ async fn bind(tx: &mut Tx<'_>, fact: &Fact) -> Result<()> {
     require(merged, "confirmed exact merge observation required")
 }
 
-pub(crate) async fn dependencies(tx: &mut Tx<'_>, id: i64) -> Result<Option<Vec<Fact>>> {
+pub(crate) async fn dependencies(
+    tx: &mut Tx<'_>,
+    id: i64,
+) -> Result<Option<Vec<crate::delivered_version::Completion>>> {
     let input: Option<(String, Value, i64)> =
         sqlx::query_as("SELECT draft_id,input,COALESCE(queue_order,(input#>>'{child,order}')::bigint) FROM group_execution_item WHERE requirement_id=$1")
             .bind(id)
@@ -82,7 +85,10 @@ async fn validation_dependency(tx: &mut Tx<'_>, fact: &Value) -> Result<bool> {
         .bind(fact["validation_id"].as_str()).fetch_one(&mut **tx).await
 }
 
-async fn dependency_fact(tx: &mut Tx<'_>, fact: Value) -> Result<Option<Fact>> {
+async fn dependency_fact(
+    tx: &mut Tx<'_>,
+    fact: Value,
+) -> Result<Option<crate::delivered_version::Completion>> {
     if fact["source"] == "platform-integration-validation/v1" {
         require(
             validation_dependency(tx, &fact).await?,
@@ -90,5 +96,5 @@ async fn dependency_fact(tx: &mut Tx<'_>, fact: Value) -> Result<Option<Fact>> {
         )?;
         return Ok(None);
     }
-    Ok(Some(decode(fact)?))
+    Ok(Some(crate::delivered_version::decode(tx, fact).await?))
 }

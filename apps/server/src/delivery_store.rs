@@ -7,6 +7,39 @@ type Result<T> = std::result::Result<T, sqlx::Error>;
 pub async fn enqueue(tx: &mut Transaction<'_, Postgres>, validation: &str) -> Result<()> {
     let (requirement, revision, head, document, manifest): (i64,i64,String,Value,Value) = sqlx::query_as("SELECT v.requirement_id,v.revision,v.candidate_sha,COALESCE(i.document,r.document),s.manifest FROM candidate_validation v JOIN execution_revision r ON r.requirement_id=v.requirement_id AND r.revision=v.revision JOIN workspace_snapshot s ON s.run_id=v.source_run_id LEFT JOIN linked_run_input i ON i.run_id=v.source_run_id WHERE v.id=$1 AND v.result='succeeded' AND s.candidate AND s.manifest->>'head'=v.candidate_sha")
         .bind(validation).fetch_one(&mut **tx).await?;
+    if document["repository"]["delivery"] == "local_git" {
+        return crate::local_delivery_store::enqueue(
+            tx,
+            validation,
+            requirement,
+            revision,
+            &document,
+            &manifest,
+        )
+        .await
+        .map_err(local_error);
+    }
+    enqueue_github(
+        tx,
+        validation,
+        requirement,
+        revision,
+        head,
+        document,
+        manifest,
+    )
+    .await
+}
+#[allow(clippy::too_many_arguments)]
+async fn enqueue_github(
+    tx: &mut Transaction<'_, Postgres>,
+    validation: &str,
+    requirement: i64,
+    revision: i64,
+    head: String,
+    document: Value,
+    manifest: Value,
+) -> Result<()> {
     let previous: Option<(String,String,String,i64)> = sqlx::query_as("WITH RECURSIVE lineage(id,depth) AS (SELECT $1::text,0 UNION ALL SELECT p.source_validation_id,l.depth+1 FROM lineage l JOIN candidate_validation v ON v.id=l.id JOIN repair_reservation p ON p.repair_run_id=v.source_run_id WHERE p.event_key IS NOT NULL AND l.depth<3) SELECT COALESCE(d.original_action_key,d.action_key),d.branch,d.head_sha,d.pr_number FROM lineage l JOIN delivery d ON d.validation_id=l.id WHERE l.depth>0 AND d.pr_number IS NOT NULL AND d.superseded_by IS NULL AND NOT EXISTS(SELECT 1 FROM merge_operation m WHERE m.delivery_key=d.action_key AND m.merged_sha IS NOT NULL) ORDER BY l.depth LIMIT 1")
         .bind(validation).fetch_optional(&mut **tx).await?;
     let identity = delivery_identity(
@@ -15,7 +48,7 @@ pub async fn enqueue(tx: &mut Transaction<'_, Postgres>, validation: &str) -> Re
         head,
         &document,
         &manifest,
-        previous.as_ref().map(|p| p.1.clone()),
+        previous.as_ref().map(previous_branch),
     )?;
     let key = identity.action_key();
     sqlx::query("INSERT INTO delivery(action_key,validation_id,requirement_id,revision,repository_id,repository,branch,base_branch,head_sha,manifest,policy) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(action_key) DO NOTHING")
@@ -116,7 +149,7 @@ impl Pending {
     }
 }
 pub async fn due(pool: &PgPool, now: i64) -> Result<Vec<Pending>> {
-    sqlx::query_as("SELECT d.*,a.kind,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) WHERE a.state IN ('pending','unknown','blocked') AND a.next_attempt_at<=$1 AND NOT EXISTS(SELECT 1 FROM merge_operation m WHERE m.delivery_key=d.action_key AND (m.state IN ('unknown','merged') OR (m.state='prepared' AND m.pre_validation_started AND m.pre_validation IS NULL) OR (m.state='blocked' AND (m.merge_started OR m.pre_validation_started) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.merge_key=m.action_key AND m.merged_sha IS NOT NULL AND m.acceptance IS NOT NULL)))) ORDER BY d.requirement_id,a.kind LIMIT 1").bind(now).fetch_all(pool).await
+    sqlx::query_as("SELECT d.*,a.kind,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) WHERE d.mode='github_pr' AND a.state IN ('pending','unknown','blocked') AND a.next_attempt_at<=$1 AND NOT EXISTS(SELECT 1 FROM merge_operation m WHERE m.delivery_key=d.action_key AND (m.state IN ('unknown','merged') OR (m.state='prepared' AND m.pre_validation_started AND m.pre_validation IS NULL) OR (m.state='blocked' AND (m.merge_started OR m.pre_validation_started) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.merge_key=m.action_key AND m.merged_sha IS NOT NULL AND m.acceptance IS NOT NULL)))) ORDER BY d.requirement_id,a.kind LIMIT 1").bind(now).fetch_all(pool).await
 }
 
 /// Persist an unknown outcome before the external call, under the control lock.
@@ -313,4 +346,11 @@ async fn terminal(
 
 fn nonempty(value: &&str) -> bool {
     !value.is_empty()
+}
+
+fn previous_branch(previous: &(String, String, String, i64)) -> String {
+    previous.1.clone()
+}
+fn local_error(error: Box<dyn std::error::Error + Send + Sync>) -> sqlx::Error {
+    sqlx::Error::Protocol(error.to_string())
 }

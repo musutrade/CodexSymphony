@@ -117,7 +117,9 @@ pub(crate) async fn queued(tx: &mut Tx<'_>) -> Result<Option<(i64, i64)>> {
     };
     if !group_ready(tx, id).await?
         || !authorized(tx, id, revision).await?
-        || !crate::github_store::claim_ready(tx, id, revision).await?
+        || !crate::local_delivery_store::claim_ready(tx, id, revision)
+            .await
+            .map_err(local_error)?
     {
         return Ok(None);
     }
@@ -307,4 +309,8 @@ pub async fn archive_event(
         .execute(&mut *tx).await?;
     tx.commit().await?;
     Ok(accepted)
+}
+
+fn local_error(error: Box<dyn std::error::Error + Send + Sync>) -> sqlx::Error {
+    sqlx::Error::Protocol(error.to_string())
 }

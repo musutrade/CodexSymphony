@@ -121,15 +121,14 @@ pub(crate) async fn context(
     let version = document["repository_version"]
         .as_i64()
         .ok_or("environment repository version missing")?;
-    if !repository
-        .environment
-        .as_ref()
-        .is_some_and(|plan| plan.matches_repository(id, version))
-    {
+    if !repository_matches(&repository, id, version) {
         return Err("environment repository binding changed".into());
     }
     let extension = ExtensionConfig::from_legacy_repository(&repository);
     let mut capabilities = Capabilities::legacy_codex(repository.model.clone());
+    capabilities
+        .deliveries
+        .push(crate::extension_contract::DeliveryMode::LocalGit);
     // Reconstruct the immutable review identity only. This does not dispatch or
     // authorize any lifecycle Hook; project_hooks checks its host allowlist.
     capabilities.hooks = repository.hooks.clone();
@@ -147,8 +146,15 @@ pub(crate) async fn context(
     })
 }
 
+fn repository_matches(repository: &crate::contract::Repository, id: i64, version: i64) -> bool {
+    matches!(&repository.environment, Some(plan) if plan.matches_repository(id,version))
+}
+
 pub fn role(stage: &str) -> &'static str {
-    if matches!(stage, "validation" | "delivery" | "ci") {
+    if matches!(
+        stage,
+        "validation" | "delivery" | "post_delivery_validate" | "ci"
+    ) {
         "test"
     } else {
         "dev"

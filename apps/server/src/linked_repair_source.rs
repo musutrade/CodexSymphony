@@ -14,6 +14,7 @@ pub(crate) struct Failure {
     pub revision: i64,
     pub merge_key: Option<String>,
     pub integration_id: Option<String>,
+    pub local_delivery: Option<String>,
     pub evidence: Value,
     pub required_steps: Value,
 }
@@ -68,6 +69,15 @@ async fn attempt_source(
 async fn target(pool: &PgPool, f: &Failure, input: &Value) -> Result<Target> {
     let evidence: ValidationEvidence = serde_json::from_value(f.evidence.clone())?;
     let required: Vec<String> = serde_json::from_value(f.required_steps.clone())?;
+    if let Some(key) = &f.local_delivery {
+        let repository: i64 = sqlx::query_scalar(
+            "SELECT internal_repository_id FROM delivery WHERE action_key=$1 AND mode='local_git'",
+        )
+        .bind(key)
+        .fetch_one(pool)
+        .await?;
+        return merged_target(repository, input, &evidence, &required);
+    }
     if let Some(key) = &f.merge_key {
         let repository: i64 = sqlx::query_scalar("SELECT r.id::bigint FROM merge_operation m JOIN repository r ON (r.document->>'github_repository_id')::bigint=(m.intent#>>'{policy,repository_id}')::bigint WHERE m.action_key=$1").bind(key).fetch_one(pool).await?;
         return merged_target(repository, input, &evidence, &required);
@@ -174,6 +184,7 @@ fn select_integration_target(
         .ok_or_else(|| "failure outside authorized repair checks".into())
 }
 struct Frozen {
+    local_binding: Option<crate::local_git::Binding>,
     target: Target,
     repository: Value,
     baseline: String,
@@ -240,6 +251,9 @@ async fn freeze(
     f: &Failure,
     target: Target,
 ) -> Result<()> {
+    if local_target(pool, &target).await? {
+        return freeze_local(pool, root, f, target).await;
+    }
     let (repository, policy) = repository_policy(pool, &target).await?;
     let (source, manifest) = previous_source(pool, &policy).await?;
     let baseline = remote.baseline(&policy).await?;
@@ -252,6 +266,7 @@ async fn freeze(
         &broker,
         f,
         Frozen {
+            local_binding: None,
             target,
             repository,
             baseline,
@@ -354,8 +369,8 @@ async fn preserve_source(
 ) -> Result<()> {
     broker.prepare(workspace, true)?;
     let preserved = broker.preserve(workspace)?;
-    sqlx::query("UPDATE linked_failure SET repository_id=$2,document=$3,paths=$4,baseline=$5,manifest=$6,source_run=$7,blocker=NULL WHERE id=$1 AND state='observed' AND baseline IS NULL")
-        .bind(&f.id).bind(frozen.target.repository).bind(document).bind(json!(frozen.target.paths)).bind(&frozen.baseline).bind(json!(preserved)).bind(&frozen.source).execute(&mut **tx).await?;
+    sqlx::query("UPDATE linked_failure SET repository_id=$2,document=$3,paths=$4,baseline=$5,manifest=$6,source_run=$7,local_binding=$8,blocker=NULL WHERE id=$1 AND state='observed' AND baseline IS NULL")
+        .bind(&f.id).bind(frozen.target.repository).bind(document).bind(json!(frozen.target.paths)).bind(&frozen.baseline).bind(json!(preserved)).bind(&frozen.source).bind(json!(frozen.local_binding)).execute(&mut **tx).await?;
 
     Ok(())
 }
@@ -388,3 +403,58 @@ async fn source_attempt(pool: &PgPool, id: &str, now: i64) -> Result<bool> {
 #[cfg(test)]
 #[path = "../tests/unit/linked_repair_source.rs"]
 mod tests;
+
+async fn local_target(pool: &PgPool, target: &Target) -> Result<bool> {
+    Ok(sqlx::query_scalar("SELECT COALESCE(document->>'delivery','github_pr')='local_git' FROM repository WHERE id=$1").bind(target.repository).fetch_one(pool).await?)
+}
+
+pub(crate) async fn tick_local(pool: &PgPool, root: &Path) -> Result<()> {
+    let now = crate::runtime_client::now();
+    let failure: Option<Failure> = sqlx::query_as("SELECT f.* FROM linked_failure f JOIN execution_control c ON c.requirement_id=f.requirement_id JOIN requirement r ON r.id=f.requirement_id WHERE f.state='observed' AND f.baseline IS NULL AND f.next_source_at<=$1 AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete ORDER BY f.created_at LIMIT 1").bind(now).fetch_optional(pool).await?;
+    let Some(f) = failure else {
+        return Ok(());
+    };
+    let target = match reviewed_target(pool, &f).await {
+        Ok(target) => target,
+        Err(error) => return block(pool, &f.id, &error.to_string()).await,
+    };
+    local_attempt(pool, root, now, &f, target).await
+}
+async fn local_attempt(
+    pool: &PgPool,
+    root: &Path,
+    now: i64,
+    f: &Failure,
+    target: Target,
+) -> Result<()> {
+    if !local_target(pool, &target).await? || !source_attempt(pool, &f.id, now).await? {
+        return Ok(());
+    }
+    if let Err(error) = freeze_local(pool, root, f, target).await {
+        block(pool, &f.id, &error.to_string()).await?;
+    }
+    Ok(())
+}
+async fn freeze_local(pool: &PgPool, root: &Path, f: &Failure, target: Target) -> Result<()> {
+    let repository: Value = sqlx::query_scalar("SELECT document FROM repository WHERE id=$1 AND version=$2 AND NOT (document->>'revoked')::boolean AND version>revoked_through_version AND plugin_scope_allows('delivery:local_git',id)").bind(target.repository).bind(target.version).fetch_one(pool).await?;
+    let document = json!({"repository_id":target.repository,"repository_version":target.version,"repository":repository});
+    let binding = crate::local_delivery_store::resolve_document(&document)?;
+    let baseline = crate::local_git::head(&binding)?;
+    let broker = GitBroker::open(&root.join("workspaces"))?;
+    broker.import_local(&binding.target.path, &baseline)?;
+    let (source,manifest): (String,Value) = sqlx::query_as("SELECT v.source_run_id,d.manifest FROM delivery d JOIN candidate_validation v ON v.id=d.validation_id JOIN agent_run a ON a.id=v.source_run_id WHERE d.internal_repository_id=$1 AND d.mode='local_git' AND (d.released OR d.local_acceptance IS NOT NULL) ORDER BY a.run_sequence DESC,v.id DESC LIMIT 1").bind(target.repository).fetch_one(pool).await?;
+    freeze_fetched(
+        pool,
+        &broker,
+        f,
+        Frozen {
+            local_binding: Some(binding),
+            target,
+            repository,
+            baseline,
+            source,
+            manifest: serde_json::from_value(manifest)?,
+        },
+    )
+    .await
+}

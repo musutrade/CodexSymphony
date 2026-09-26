@@ -117,11 +117,9 @@ async fn repository(
     )
     .fetch_all(&pool)
     .await?;
-    let repositories = decode_all(rows)?;
-    let repository_ready = !repositories.is_empty()
-        && repositories
-            .iter()
-            .all(|entry| entry["delivery_ready"] == true);
+    let mut repositories = decode_all(rows)?;
+    crate::local_delivery_store::project_repositories(&pool, &mut repositories).await?;
+    let repository_ready = repositories_ready(&repositories);
     let runtime_ready = matches!(runtime, Some(task) if !task.is_finished());
     Ok(Json(
         json!({"repositories": repositories, "deployment_network": [], "network_status": "not_configured", "runtime_ready": runtime_ready, "repository_ready": repository_ready}),
@@ -481,4 +479,16 @@ async fn unready(tx: &mut Tx<'_>, id: i64, input: &ControlRequest) -> Result<Val
     )
     .await?;
     read_requirement(tx, id).await
+}
+
+fn repositories_ready(repositories: &[Value]) -> bool {
+    if repositories.is_empty() {
+        return false;
+    }
+    for repository in repositories {
+        if repository["delivery_ready"] != true {
+            return false;
+        }
+    }
+    true
 }

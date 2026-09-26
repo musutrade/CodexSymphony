@@ -21,7 +21,7 @@ struct Input {
     revision: i64,
     authorization: i64,
     input: Value,
-    facts: Vec<crate::group_dependency::Fact>,
+    facts: Vec<crate::delivered_version::Completion>,
 }
 pub(crate) async fn claim(
     pool: &PgPool,
@@ -222,9 +222,9 @@ async fn checkout(
     requirement: i64,
     revision: i64,
     repository: &crate::integration::Repository,
-    facts: &[crate::group_dependency::Fact],
+    facts: &[crate::delivered_version::Completion],
 ) -> Result<(Version, std::path::PathBuf)> {
-    let github: i64 = sqlx::query_scalar("SELECT (document->>'github_repository_id')::bigint FROM repository WHERE id=$1 AND version=$2 AND NOT (document->>'revoked')::boolean AND version>revoked_through_version")
+    let github: i64 = sqlx::query_scalar("SELECT COALESCE((document->>'github_repository_id')::bigint,0) FROM repository WHERE id=$1 AND version=$2 AND NOT (document->>'revoked')::boolean AND version>revoked_through_version")
         .bind(repository.repository_id).bind(repository.repository_version).fetch_one(&mut **tx).await?;
     let (sha, artifacts) = select_version(broker, repository, github, facts)?;
     let identity = format!("{}-repo-{}", key.run_id, repository.repository_id);
@@ -269,32 +269,36 @@ fn select_version(
     broker: &GitBroker,
     repository: &crate::integration::Repository,
     github: i64,
-    facts: &[crate::group_dependency::Fact],
+    facts: &[crate::delivered_version::Completion],
 ) -> Result<(String, Vec<String>)> {
-    let relevant: Vec<_> = facts
-        .iter()
-        .filter(|f| f.repository_id == repository.repository_id)
-        .collect();
+    let mut relevant = Vec::new();
+    for fact in facts {
+        if fact.repository_id() == repository.repository_id {
+            relevant.push(fact);
+        }
+    }
     let sha = match &repository.selection {
         Selection::Fixed { sha } => sha.clone(),
         Selection::CompletedDependencies => relevant
             .last()
             .ok_or("required repository dependency has no completed version")?
-            .merged_sha
-            .clone(),
+            .commit()
+            .to_owned(),
     };
-    for fact in &relevant {
+    let mut artifacts = Vec::new();
+    for fact in relevant {
         require(
-            fact.github_repository_id == github && broker.contains_commit(&sha, &fact.merged_sha),
+            fact.github_id() == github && broker.contains_commit(&sha, fact.commit()),
             "same-repository version must include completed dependencies",
         )?;
+        artifacts.push(fact.artifact().to_owned());
     }
-    Ok((sha, relevant.iter().map(|f| f.artifact.clone()).collect()))
+    Ok((sha, artifacts))
 }
 async fn prior(
     tx: &mut Tx<'_>,
     requirement: i64,
-) -> Result<Option<Vec<crate::group_dependency::Fact>>> {
+) -> Result<Option<Vec<crate::delivered_version::Completion>>> {
     if crate::group_completion::dependencies(tx, requirement)
         .await?
         .is_none()
@@ -309,7 +313,7 @@ async fn prior(
             return Ok(None);
         };
         if fact["source"] != "platform-integration-validation/v1" {
-            facts.push(serde_json::from_value(fact)?);
+            facts.push(crate::delivered_version::decode(tx, fact).await?);
         }
     }
     Ok(Some(facts))
