@@ -114,6 +114,18 @@ async fn start(
     Ok(())
 }
 async fn begin_start(pool: &PgPool, saved: &Saved, job: &Job) -> Result<bool> {
+    for version in &job.binding.versions {
+        sqlx::query("SELECT plugin_scope_admit('validation:native',$1,$2,$3,$4)")
+            .bind(format!(
+                "{}:repository:{}",
+                job.invocation, version.repository_id
+            ))
+            .bind(job.binding.requirement)
+            .bind(job.binding.revision)
+            .bind(version.repository_id)
+            .execute(pool)
+            .await?;
+    }
     let mut tx = run_store::lock(pool).await?;
     if !store::allowed(&mut tx, job).await? {
         return Ok(false);

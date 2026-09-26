@@ -96,7 +96,7 @@ fn fixture(root: &Path, name: &str, language: &str, cached: bool) -> (Plan, Prof
         id: name.into(),
         implementation_digest: sha256(fs::read(&executable).unwrap()),
         operations: vec![Operation::EnvironmentCheck],
-        scope_ref: name.into(),
+        scope_ref: "all".into(),
         config_ref: format!("{name}-config"),
         credential_provider_ref: None,
     };
@@ -119,7 +119,7 @@ fn fixture(root: &Path, name: &str, language: &str, cached: bool) -> (Plan, Prof
         controlled: ControlledConfig {
             protocol_version: 1,
             environment: EnvironmentBinding {
-                repository_revision: format!("{name}@1"),
+                repository_revision: "repository:1@1".into(),
                 contract_digest: "0".repeat(64),
                 host_profile_ref: name.into(),
                 role: "test".into(),

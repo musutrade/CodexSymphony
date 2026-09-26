@@ -45,11 +45,14 @@ async fn replay(
     Path(id): Path<i64>,
     Json(input): Json<Replay>,
 ) -> Result<Json<Value>> {
-    let changed = sqlx::query("UPDATE notification_delivery d SET state='pending',attempt_limit=6,next_attempt_at=clock_timestamp(),deadline=clock_timestamp()+interval '10 minutes',last_result='operator_replay' FROM lifecycle_event e,notification_plugin p WHERE e.id=d.event_id AND e.requirement_id=$1 AND d.event_id=$2 AND d.plugin_id=$3 AND p.id=d.plugin_id AND p.enabled AND d.state='failed' AND d.attempt_limit=3")
-        .bind(id).bind(input.event_id).bind(&input.plugin_id).execute(&pool).await.map_err(error)?;
-    Ok(Json(
-        json!({"accepted":changed.rows_affected()==1,"started":false}),
-    ))
+    let changed: bool = sqlx::query_scalar("SELECT notification_replay($1,$2,$3)")
+        .bind(id)
+        .bind(input.event_id)
+        .bind(&input.plugin_id)
+        .fetch_one(&pool)
+        .await
+        .map_err(error)?;
+    Ok(Json(json!({"accepted":changed,"started":false})))
 }
 fn error(_: sqlx::Error) -> (StatusCode, Json<Value>) {
     (

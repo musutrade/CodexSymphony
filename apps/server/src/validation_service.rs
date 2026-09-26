@@ -21,6 +21,7 @@ pub struct Request<'a> {
 }
 
 pub async fn validate(pool: &PgPool, r: Request<'_>) -> Result<bool> {
+    crate::plugin_scope::admit(pool, "validation:native", r.id, r.requirement, r.revision).await?;
     crate::environment_service::admit(
         pool,
         r.requirement,
@@ -34,13 +35,21 @@ pub async fn validate(pool: &PgPool, r: Request<'_>) -> Result<bool> {
     create(pool, &r, &trusted).await?;
     let context = crate::validation_context::prepare(pool, &r).await?;
     if !pending(pool, &r, &trusted).await? {
-        if !accepted(pool, &r).await? {
-            return Ok(false);
-        }
-        return reconcile(pool, r, context).await;
+        return reconcile_accepted(pool, r, context).await;
     }
     execute(pool, r, &trusted, &required, context).await
 }
+async fn reconcile_accepted(
+    pool: &PgPool,
+    r: Request<'_>,
+    context: Option<crate::validation_context::Context>,
+) -> Result<bool> {
+    if !accepted(pool, &r).await? {
+        return Ok(false);
+    }
+    reconcile(pool, r, context).await
+}
+
 async fn accepted(pool: &PgPool, r: &Request<'_>) -> Result<bool> {
     if !store::status(pool, r.id).await?.is_some_and(succeeded) {
         return Ok(false);
@@ -163,6 +172,7 @@ async fn collect(
     context: Option<&crate::validation_context::Context>,
     claimed: bool,
 ) -> Result<Vec<StepEvidence>> {
+    crate::plugin_scope::admit(pool, "validation:native", r.id, r.requirement, r.revision).await?;
     let limit = crate::storage_service::entry_limit(pool).await?;
     if let Some(context) = context {
         return crate::validation_supervisor::execute(

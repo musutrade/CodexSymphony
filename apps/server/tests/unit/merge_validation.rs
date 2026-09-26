@@ -96,3 +96,20 @@ async fn checkout_reuse_checks_head_and_invalid_fetch_never_certifies_source() {
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[tokio::test]
+async fn scope_revocation_stops_merge_validation_permission_without_removing_intent() {
+    let (pool, _root, intent, _) = fixture::fixture().await;
+    assert!(execution_allowed(&pool, &intent).await.unwrap());
+    sqlx::query("UPDATE plugin_scope SET enabled=false WHERE plugin_id='validation:native'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(!execution_allowed(&pool, &intent).await.unwrap());
+    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM requirement WHERE id=$1)")
+        .bind(intent.requirement)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(exists);
+}

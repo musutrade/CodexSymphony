@@ -255,3 +255,35 @@ async fn final_capability_plan_and_pr_changes_never_send_merge() {
         pool.close().await;
     }
 }
+
+#[tokio::test]
+async fn repository_scope_and_missing_phase_evidence_never_prepare_a_merge() {
+    let (pool, root, _, mut remote) = fixture().await;
+    for phases in [None, Some(Vec::new())] {
+        remote.observation.phases = phases;
+        merge_worker::tick(&pool, &mut remote, 100).await.unwrap();
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM merge_operation")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
+        assert_eq!(remote.merged, 0);
+    }
+    sqlx::query("UPDATE plugin_scope SET enabled=false WHERE plugin_id='delivery:github'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let error = merge_worker::tick(&pool, &mut remote, 100)
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("scope unavailable"));
+    assert_eq!(remote.merged, 0);
+    let retained: String =
+        sqlx::query_scalar("SELECT result FROM candidate_validation WHERE id='validation'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(retained, "succeeded");
+    std::fs::remove_dir_all(root).unwrap();
+    pool.close().await;
+}

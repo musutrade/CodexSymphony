@@ -175,6 +175,7 @@ fn scoped_constraints_have_provenance_and_explicit_release_conditions() {
 #[tokio::test]
 async fn lifecycle_commits_all_transitions_and_dispatches_with_durable_ack() {
     let pool = database().await;
+    sqlx::query("INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('notification:bark','all','{}',true)").execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO notification_plugin VALUES('bark',session_user,true)")
         .execute(&pool)
         .await
@@ -767,6 +768,7 @@ async fn concurrent_notifications_are_isolated_by_requirement_and_plugin_role() 
             .replace('-', "")
     );
     sqlx::raw_sql(&format!("CREATE ROLE {role} LOGIN PASSWORD 'synthetic-notification-only'; GRANT USAGE ON SCHEMA {schema} TO {role}; GRANT EXECUTE ON FUNCTION notification_claim(text), notification_ack(text,bigint,integer,text) TO {role};")).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('notification:isolated','all','{}',true)").execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO notification_plugin VALUES('isolated',$1,true)")
         .bind(&role)
         .execute(&pool)
@@ -784,6 +786,13 @@ async fn concurrent_notifications_are_isolated_by_requirement_and_plugin_role() 
         )
         .await
         .unwrap();
+    for forbidden in [
+        "SELECT * FROM plugin_scope",
+        "UPDATE plugin_scope SET kind='all',repository_ids='{}'",
+        "SELECT plugin_scope_admit('agent:codex','forged',1,0,1)",
+    ] {
+        assert!(sqlx::query(forbidden).execute(&login).await.is_err());
+    }
     let (a, b) = tokio::join!(
         sqlx::query_scalar::<_, Value>("SELECT notification_claim('isolated')").fetch_one(&login),
         sqlx::query_scalar::<_, Value>("SELECT notification_claim('isolated')").fetch_one(&login)
@@ -823,6 +832,23 @@ async fn concurrent_notifications_are_isolated_by_requirement_and_plugin_role() 
         .await
         .unwrap();
     assert!(ack);
+    let mut spoof = login.acquire().await.unwrap();
+    sqlx::raw_sql("CREATE TEMP TABLE plugin_scope(plugin_id text,kind text,repository_ids bigint[],enabled boolean,version bigint); INSERT INTO plugin_scope VALUES('notification:isolated','all','{}',true,1);")
+        .execute(&mut *spoof).await.unwrap();
+    sqlx::query("UPDATE plugin_scope SET enabled=false WHERE plugin_id='notification:isolated'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let denied: Option<Value> = sqlx::query_scalar("SELECT notification_claim('isolated')")
+        .fetch_one(&mut *spoof)
+        .await
+        .unwrap();
+    assert!(denied.is_none());
+    drop(spoof);
+    sqlx::query("UPDATE plugin_scope SET enabled=true WHERE plugin_id='notification:isolated'")
+        .execute(&pool)
+        .await
+        .unwrap();
     let next: Value = sqlx::query_scalar("SELECT notification_claim('isolated')")
         .fetch_one(&login)
         .await
@@ -1167,6 +1193,7 @@ async fn notification_replay_extends_once_without_resetting_attempt_history_or_b
     };
     use tower::ServiceExt;
     let pool = database().await;
+    sqlx::query("INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('notification:bark','all','{}',true)").execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO notification_plugin VALUES('bark',session_user,true)")
         .execute(&pool)
         .await
@@ -1318,4 +1345,232 @@ fn serialization_failures<T: serde::Serialize>(value: &T) {
             "truncated output at {limit} must not be accepted"
         );
     }
+}
+
+#[test]
+fn repository_scopes_reject_ambiguous_references() {
+    use codexsymphony_server::plugin_scope::{contains, repository_revision};
+    for scope in ["all", "repository:42", "repositories:1,42"] {
+        assert!(contains(scope, 42));
+        assert!(!contains(scope, 0));
+    }
+    for scope in [
+        "",
+        "repository:01",
+        "repository:2",
+        "repositories:",
+        "repositories:42,42",
+        "repositories:0,42",
+        "repositories:-1,42",
+        "repositories:42,",
+        "repositories:42,x",
+        "repositories:01,42",
+        "workspace:a",
+    ] {
+        assert!(!contains(scope, 42), "{scope}");
+    }
+    assert_eq!(repository_revision("repository:42@3"), Some((42, 3)));
+    for value in [
+        "",
+        "x@1",
+        "repository:1",
+        "repository:x@1",
+        "repository:1@x",
+        "repository:0@1",
+        "repository:1@0",
+    ] {
+        assert_eq!(repository_revision(value), None);
+    }
+}
+
+#[tokio::test]
+async fn repository_scopes_filter_before_outbox_and_recheck_revocation() {
+    let pool = database().await;
+    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(1,1,'{}'),(42,1,'{}');
+        INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('notification:A','all','{}',true),('notification:B','repositories','{42}',true);
+        INSERT INTO notification_plugin VALUES('A','unused_scope_a',true),('B',session_user,true);
+        INSERT INTO requirement(version,state,contract,repository_id) VALUES(1,'Draft','{}',1),(1,'Draft','{}',42),(1,'Draft','{}',42);")
+        .execute(&pool).await.unwrap();
+    let deliveries: Vec<(String,i64)> = sqlx::query_as("SELECT d.plugin_id,e.requirement_id FROM notification_delivery d JOIN lifecycle_event e ON e.id=d.event_id ORDER BY 1,2").fetch_all(&pool).await.unwrap();
+    assert_eq!(
+        deliveries,
+        vec![
+            ("A".into(), 1),
+            ("A".into(), 2),
+            ("A".into(), 3),
+            ("B".into(), 2),
+            ("B".into(), 3)
+        ]
+    );
+    let event: Value = sqlx::query_scalar("SELECT notification_claim('B')")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(event["repository_id"], 42);
+    assert_eq!(event["scope_version"], 1);
+    let id = event["event_id"].as_i64().unwrap();
+    sqlx::query("SELECT notification_ack('B',$1,1,'failed')")
+        .bind(id)
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE plugin_scope SET repository_ids='{1}' WHERE plugin_id='notification:B'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let blocked: Option<Value> = sqlx::query_scalar("SELECT notification_claim('B')")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(blocked.is_none());
+    let replay: bool = sqlx::query_scalar("SELECT notification_replay(2,$1,'B')")
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert!(!replay);
+    let unchanged: (i32,i32,i64)=sqlx::query_as("SELECT attempts,attempt_limit,scope_version FROM notification_delivery WHERE plugin_id='B' AND event_id=$1").bind(id).fetch_one(&pool).await.unwrap();
+    assert_eq!(unchanged, (1, 3, 1));
+    // Expansion never backfills old events. all also applies to future repositories.
+    sqlx::raw_sql("UPDATE plugin_scope SET kind='all',repository_ids='{}' WHERE plugin_id='notification:B'; INSERT INTO repository VALUES(77,1,'{}',0); INSERT INTO requirement(version,state,contract,repository_id) VALUES(1,'Draft','{}',77);").execute(&pool).await.unwrap();
+    let old: i64=sqlx::query_scalar("SELECT count(*) FROM notification_delivery d JOIN lifecycle_event e ON e.id=d.event_id WHERE plugin_id='B' AND e.requirement_id=1").fetch_one(&pool).await.unwrap();
+    assert_eq!(old, 0);
+    let future: i64=sqlx::query_scalar("SELECT count(*) FROM notification_delivery d JOIN lifecycle_event e ON e.id=d.event_id WHERE e.repository_id=77").fetch_one(&pool).await.unwrap();
+    assert_eq!(future, 2);
+    for statement in [
+        "INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('bad','repositories','{}',true)",
+        "INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('bad','repositories','{42,42}',true)",
+        "INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('bad','repositories','{999}',true)",
+        "INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('bad','repositories','{NULL}',true)",
+        "INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('bad','all','{42}',true)",
+        "INSERT INTO notification_plugin VALUES('missing','missing_scope_role',true)",
+        "UPDATE plugin_scope SET plugin_id='renamed' WHERE plugin_id='notification:B'",
+    ] {
+        assert!(
+            sqlx::query(statement).execute(&pool).await.is_err(),
+            "{statement}"
+        );
+    }
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn execution_scope_freezes_repository_and_version_across_runs() {
+    use codexsymphony_server::plugin_scope::admit;
+    let pool = database().await;
+    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(1,1,'{}'),(42,1,'{}'); INSERT INTO requirement(version,state,contract,repository_id) VALUES(1,'Draft','{}',1),(1,'Draft','{}',42); UPDATE plugin_scope SET kind='repositories',repository_ids='{42}' WHERE plugin_id='agent:codex';").execute(&pool).await.unwrap();
+    assert!(admit(&pool, "agent:codex", "run-a", 1, 0).await.is_err());
+    for run in ["run-a", "run-b"] {
+        admit(&pool, "agent:codex", run, 2, 0).await.unwrap();
+    }
+    admit(&pool, "agent:codex", "run-a", 2, 0).await.unwrap();
+    assert!(admit(&pool, "missing", "run-c", 2, 0).await.is_err());
+    assert!(admit(&pool, "agent:codex", "run-a", 2, 1).await.is_err());
+    sqlx::query(
+        "UPDATE plugin_scope SET kind='all',repository_ids='{}' WHERE plugin_id='agent:codex'",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert!(admit(&pool, "agent:codex", "run-a", 1, 0).await.is_err());
+    admit(&pool, "agent:codex", "run-c", 1, 0).await.unwrap();
+    let frozen: Vec<i64>=sqlx::query_scalar("SELECT scope_version FROM plugin_scope_invocation WHERE invocation_id IN ('run-a','run-b') ORDER BY invocation_id").fetch_all(&pool).await.unwrap();
+    assert_eq!(frozen, vec![2, 2]);
+    sqlx::query("UPDATE plugin_scope SET enabled=false WHERE plugin_id='agent:codex'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(admit(&pool, "agent:codex", "run-a", 2, 0).await.is_err());
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM plugin_scope_invocation")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 3);
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn scope_migration_preserves_existing_global_subscriptions_and_frozen_hooks() {
+    let options: PgConnectOptions = std::env::var("TEST_DATABASE_URL").unwrap().parse().unwrap();
+    let admin = PgPoolOptions::new()
+        .connect_with(options.clone())
+        .await
+        .unwrap();
+    let schema = format!(
+        "scope_upgrade_{}",
+        codexsymphony_server::process::new_identity()
+            .unwrap()
+            .replace('-', "")
+    );
+    sqlx::query(&format!("CREATE SCHEMA {schema}"))
+        .execute(&admin)
+        .await
+        .unwrap();
+    admin.close().await;
+    let pool = PgPoolOptions::new()
+        .connect_with(options.options([("search_path", schema)]))
+        .await
+        .unwrap();
+    for migration in sqlx::migrate!("../../migrations").iter() {
+        if migration.version >= 37 {
+            break;
+        }
+        sqlx::raw_sql(&migration.sql).execute(&pool).await.unwrap();
+    }
+    sqlx::raw_sql("INSERT INTO notification_plugin VALUES('legacy',session_user,true);
+        INSERT INTO repository(id,version,document) VALUES(42,1,'{\"hooks\":[{\"name\":\"installed\"}]}');
+        INSERT INTO requirement(version,state,contract,repository_id) VALUES(1,'Draft','{}',42);
+        INSERT INTO requirement_revision VALUES(1,1,'{\"repository_id\":42,\"repository\":{\"hooks\":[{\"name\":\"retained\"}]}}');").execute(&pool).await.unwrap();
+    sqlx::raw_sql(include_str!(
+        "../../../migrations/0037_plugin_repository_scope.sql"
+    ))
+    .execute(&pool)
+    .await
+    .unwrap();
+    let scopes:Vec<(String,String)>=sqlx::query_as("SELECT plugin_id,kind FROM plugin_scope WHERE plugin_id LIKE 'hook:%' OR plugin_id='notification:legacy' ORDER BY 1").fetch_all(&pool).await.unwrap();
+    assert_eq!(
+        scopes,
+        vec![
+            ("hook:installed".into(), "all".into()),
+            ("hook:retained".into(), "all".into()),
+            ("notification:legacy".into(), "all".into())
+        ]
+    );
+    let event: Value = sqlx::query_scalar("SELECT notification_claim('legacy')")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(event["repository_id"], 42);
+    assert_eq!(event["scope_version"], 1);
+    assert_eq!(event["attempt"], 1);
+    pool.close().await;
+}
+
+#[tokio::test]
+async fn controlled_scope_registration_rejects_unknown_and_duplicate_repository_ids() {
+    let pool = database().await;
+    sqlx::query("INSERT INTO repository(id,version,document) VALUES(1,1,'{}'),(42,1,'{}')")
+        .execute(&pool)
+        .await
+        .unwrap();
+    for (scope, valid) in [
+        ("all", true),
+        ("repository:42", true),
+        ("repositories:1,42", true),
+        ("repositories:42,42", false),
+        ("repositories:42,999", false),
+        ("", false),
+        ("repositories:", false),
+        ("repository:01", false),
+    ] {
+        let plan = json!({"controlled":{"extensions":[{"scope_ref":scope}]}}).to_string();
+        let result = sqlx::query(
+            "UPDATE repository SET document=jsonb_build_object('environment',$1::text) WHERE id=42",
+        )
+        .bind(plan)
+        .execute(&pool)
+        .await;
+        assert_eq!(result.is_ok(), valid, "{scope}: {result:?}");
+    }
+    pool.close().await;
 }

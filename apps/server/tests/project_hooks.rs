@@ -57,6 +57,8 @@ async fn fixture(repo: &Value) -> PgPool {
         .execute(&pool)
         .await
         .unwrap();
+    sqlx::query("INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) SELECT 'hook:'||(h->>'name'),'all','{}'::bigint[],true FROM jsonb_array_elements($1::jsonb) h ON CONFLICT DO NOTHING")
+        .bind(&repo["hooks"]).execute(&pool).await.unwrap();
     sqlx::query("INSERT INTO requirement(id,version,state,contract,revision) OVERRIDING SYSTEM VALUE VALUES(1,1,'Running','{}',1)")
         .execute(&pool).await.unwrap();
     sqlx::query(
@@ -1351,4 +1353,50 @@ async fn after_run_requires_quiescence_and_preserved_snapshot_but_auxiliary_fail
             .to_string()
             .contains("project hook preservation check")
     );
+}
+
+#[tokio::test]
+async fn repository_scope_denies_real_hook_before_process_or_intent() {
+    let root = temp();
+    let script_path = root.join("hook.py");
+    let counter = root.join("calls.txt");
+    let digest = script(&script_path);
+    let reviewed = hook(
+        HookEvent::BeforeRun,
+        "scoped",
+        &script_path,
+        &counter,
+        &digest,
+        "ok",
+        ReplayPolicy::Never,
+        10,
+    );
+    let pool = fixture(&repository(json!([reviewed]))).await;
+    let (launch, workspace) = identities(&root);
+    project_hooks::register(
+        &pool,
+        &launch,
+        &workspace,
+        HookRole::Coding,
+        &json!({"hook_allowlist":[reviewed]}),
+    )
+    .await
+    .unwrap();
+    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(42,1,'{}'); UPDATE plugin_scope SET kind='repositories',repository_ids='{42}' WHERE plugin_id='hook:scoped';").execute(&pool).await.unwrap();
+    let result =
+        project_hooks::event(&pool, &root, &launch.key.run_id, HookEvent::BeforeRun, None).await;
+    assert!(
+        result
+            .unwrap_err()
+            .to_string()
+            .contains("scope unavailable")
+    );
+    assert!(!counter.exists());
+    let intents: i64 = sqlx::query_scalar("SELECT count(*) FROM project_hook_invocation")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(intents, 0);
+    pool.close().await;
+    fs::remove_dir_all(root).unwrap();
 }

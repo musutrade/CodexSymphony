@@ -23,17 +23,17 @@ fn installed() -> Installed {
 fn registry_resolution_rejects_scope_and_registration_substitution() {
     let entries = [installed()];
     let registration = &entries[0].registration;
-    assert!(installed_entry(&entries, registration, "repository:1").is_ok());
-    assert!(installed_entry(&entries, registration, "repository:2").is_err());
+    assert!(installed_entry(&entries, registration, "repository:1@1").is_ok());
+    assert!(installed_entry(&entries, registration, "repository:2@1").is_err());
     let mut changed = registration.clone();
     changed.config_ref = "different".into();
-    assert!(installed_entry(&entries, &changed, "repository:1").is_err());
+    assert!(installed_entry(&entries, &changed, "repository:1@1").is_err());
     let mut environment: crate::environment::Plan = serde_json::from_value(json!({
         "controlled":{"protocol_version":1,"environment":{"repository_revision":"repository:1@1",
             "contract_digest":"digest","host_profile_ref":"host","role":"test"},"extensions":[registration]},
         "host_profile_digest":"host","extension_id":"reviewed","lockfiles":[],"roles":{},"ci":false,"cache":null
     })).unwrap();
-    assert_eq!(environment_scope(&environment).unwrap(), "repository:1");
+    assert_eq!(environment_scope(&environment).unwrap(), "repository:1@1");
     environment.extension_id = "missing".into();
     assert!(environment_scope(&environment).is_err());
 }

@@ -458,6 +458,7 @@ async fn reviewed_hook_failures_are_recorded_at_each_preparation_boundary() {
         } else {
             HookEvent::AfterCreate
         };
+        sqlx::query("INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('hook:guard','all','{}',true)").execute(&pool).await.unwrap();
         let hook = HookConfig {
             name: "guard".into(),
             event,

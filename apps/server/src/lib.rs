@@ -218,3 +218,5 @@ pub mod extension_revalidation;
 pub mod validation_legacy;
 
 pub mod lifecycle_api;
+
+pub mod plugin_scope;

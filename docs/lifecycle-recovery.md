@@ -50,3 +50,27 @@ Bark 以 `--event` 接收，持久化自己的 SQLite inbox 后确认；原 Bark
 ## 验证范围
 
 extension_lifecycle 集成测试使用真实 PostgreSQL、Git 工作区、验证脚本及实际 Codex app-server；模型响应来自受控本地 SSE fixture，验证适配、提交、保全和新候选检查链路，不宣称线上模型质量或真实 GitHub 发布。通知测试覆盖实际子进程、数据库权限、并发领取与真实回环 HTTP；没有向真实 Bark 用户发送消息。完整源码绑定 Gate 结果另随开发记录保留。
+
+## 仓库作用域
+
+作用域由核心准入执行，以稳定的内部 `repository.id` 标识仓库；不使用 GitHub ID、目录、分支或长期工作区身份。同一仓库的多个 Run、保留工作区共用授权。作用域只有 `all` 和非空仓库 ID 列表；`all` 包含之后注册的仓库，但不代表自动选择所有执行插件。
+
+管理员通过部署数据库的 `plugin_scope` 注册原生适配器与项目 Hook 的授权。固定身份为 `agent:codex`、`validation:native`、`delivery:github`，项目 Hook 为 `hook:<受审 name>`，通知为 `notification:<id>`。实现选择仍取自已有阶段合同、固定适配器和受审 Hook 配置，不能通过此表选择另一实现。通知登录及 Agent 均无此表权限。
+
+```sql
+-- 必须先登记作用域，再登记通知登录；没有隐式全局默认值。
+INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled)
+VALUES ('notification:A','all','{}',true),
+       ('notification:B','repositories','{42}',true);
+INSERT INTO notification_plugin(id,database_role,enabled)
+VALUES ('A','notifier_a',true),('B','notifier_b',true);
+-- 收窄/禁用会递增版本，保留历史；不会删除原事件或重置预算。
+UPDATE plugin_scope SET kind='repositories',repository_ids='{42}'
+WHERE plugin_id='agent:codex';
+```
+
+仓库列表拒绝空值、重复、非正数、不存在的 ID。迁移显式将旧通知、原生适配器和已受审 Hook 登记为 all；新插件必须显式登记。执行准入保存插件、调用、需求修订、仓库与作用域版本；开始、恢复和重试都复查当前授权，缺失或越界失败关闭。集成验证逐一检查所有输入仓库。收窄授权不会抹去已发生副作用；已有停止、保全和对账规则继续适用。
+
+受控环境、验证扩展及交付 Hook 继续使用宿主受审 Registration，`scope_ref` 支持 `all`、`repositories:1,42` 和兼容的单仓库 `repository:42`。范围随原配置摘要冻结；实际调用按 `repository_revision` 校验所有选中扩展，宿主登记改变后原摘要失效，须通过已有显式恢复流程重新审核。作用域不能扩大资源根、凭据或操作权限。
+
+生命周期事件在工作区建立前从需求/冻结修订取得仓库身份，写入事件快照。核心在创建 outbox 前筛选；领取、重试与手动重放检查当前授权及原作用域版本。插件收到 `repository_id` 和 `scope_version` 后仍自行选择通知内容和渠道。扩大范围不补投旧事件，也不改变已冻结的执行插件。收窄后保留投递历史与已用次数，越界事件不再返回给插件。
