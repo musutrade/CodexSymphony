@@ -465,3 +465,124 @@ async fn competing_confirmations_create_one_authorization() {
     assert_eq!(counts(&pool).await["authorizations"], 1);
     assert_eq!(counts(&pool).await["queue"], 1);
 }
+
+#[tokio::test]
+async fn fixed_models_are_reviewed_per_child_and_invalidated_before_authorization() {
+    use codexsymphony_server::{model_review, model_selection, runtime_routes};
+    let (pool, _, root) = fixture().await;
+    std::fs::create_dir_all(&root).unwrap();
+    let path = root.join("runtime.json");
+    let selected = json!({"config":{"provider":"openai","model":"fixture-a","effort":"low"},"reason":"project default"});
+    let override_model = json!({"config":{"provider":"openai","model":"fixture-b","effort":"high"},"reason":"complex child"});
+    let registration = json!({"version":"v1","repositories":[1],"agent":{"name":"codex","models":[selected["config"],override_model["config"]],"reliable_stop":true,"resume":true,"cancel":true,"structured_events":true,"usage_reporting":true}});
+    let config = json!({"settings":{"model_capabilities":registration,"startup_seconds":5,"response_seconds":5,"stall_seconds":5,"reservation":{"tokens":100,"turns":1,"model_seconds":30},"codex_config":""},"preparation_adapter":"/bin/true","preparation":{"launcher":["/bin/true"]}});
+    let mut repo = repository();
+    repo["model_selection"] = selected.clone();
+    sqlx::query("UPDATE repository SET document=$1 WHERE id=1")
+        .bind(&repo)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let parsed_repo = serde_json::from_value(repo.clone()).unwrap();
+    assert!(
+        model_review::freeze(
+            Some(&serde_json::from_value::<model_selection::Selection>(selected.clone()).unwrap()),
+            1,
+            1,
+            &parsed_repo
+        )
+        .is_err()
+    );
+    std::fs::write(&path, "invalid").unwrap();
+    unsafe {
+        std::env::set_var("RUNTIME_CONFIG", &path);
+    }
+    assert!(model_review::freeze(None, 1, 1, &parsed_repo).is_err());
+    std::fs::write(&path, config.to_string()).unwrap();
+    let deployed = runtime_routes::Deployment::load(&path).unwrap();
+    model_review::freeze(None, 1, 1, &parsed_repo).unwrap();
+    assert!(model_review::registration(&deployed, 2, 1, &parsed_repo).is_err());
+    let routes = json!({"repositories":{"1":{"github_repository_id":123,"remote":"test/group","base_branch":"main","version":1,"runtime":config}}});
+    std::fs::write(&path, routes.to_string()).unwrap();
+    let deployed = runtime_routes::Deployment::load(&path).unwrap();
+    model_review::registration(&deployed, 1, 1, &parsed_repo).unwrap();
+    assert!(model_review::registration(&deployed, 1, 2, &parsed_repo).is_err());
+    assert!(model_review::registration(&deployed, 2, 1, &parsed_repo).is_err());
+    let router = app(&pool);
+    let draft = request(&router, "POST", "/api/drafts", body(sample(), 0), 200).await;
+    let id = draft["id"].as_str().unwrap();
+    let review_path = format!("/api/drafts/{id}/review");
+    let authorize = format!("/api/drafts/{id}/authorize");
+    let mut reviewed = review();
+    reviewed["items"][1]["model_selection"] = override_model.clone();
+    let saved = save_review(&router, &review_path, 0, 1, reviewed.clone()).await;
+    assert_eq!(
+        saved["review"]["items"][0]["frozen_model"]["selection"],
+        selected
+    );
+    assert_eq!(
+        saved["review"]["items"][1]["frozen_model"]["selection"],
+        override_model
+    );
+    let mut bad = reviewed.clone();
+    bad["items"][0]["model_selection"] = json!({"config":{"provider":"unapproved","model":"fixture-a","effort":"low"},"reason":"bad"});
+    request(
+        &router,
+        "PUT",
+        &review_path,
+        json!({"version":1,"draft_revision":1,"review":bad}),
+        422,
+    )
+    .await;
+    let mut changed = routes.clone();
+    changed["repositories"]["1"]["runtime"]["settings"]["model_capabilities"]["version"] =
+        json!("v2");
+    std::fs::write(&path, changed.to_string()).unwrap();
+    let confirmation = json!({"request_id":"models","version":1,"draft_revision":1});
+    request(&router, "POST", &authorize, confirmation.clone(), 422).await;
+    std::fs::write(&path, routes.to_string()).unwrap();
+    request(&router, "POST", &authorize, confirmation.clone(), 200).await;
+    request(&router, "POST", &authorize, confirmation, 200).await;
+    codexsymphony_server::group_queue_store::materialize(&pool)
+        .await
+        .unwrap();
+    let snapshots: Vec<Value> =
+        sqlx::query_scalar("SELECT document FROM requirement_revision ORDER BY requirement_id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(snapshots[0]["frozen_model"]["selection"], selected);
+    assert_eq!(snapshots[1]["frozen_model"]["selection"], override_model);
+    // Changing defaults cannot mutate the already frozen execution inputs.
+    repo["model_selection"] = json!({"config":{"provider":"openai","model":"new-default","effort":"low"},"reason":"new default"});
+    sqlx::query("UPDATE repository SET document=$1,version=2 WHERE id=1")
+        .bind(repo)
+        .execute(&pool)
+        .await
+        .unwrap();
+    let after: Vec<Value> =
+        sqlx::query_scalar("SELECT document FROM requirement_revision ORDER BY requirement_id")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+    assert_eq!(after, snapshots);
+    let mut invalid_review: group_review::Review = serde_json::from_value(reviewed).unwrap();
+    invalid_review.items[1].child_id = "missing".into();
+    let repositories = vec![group_review::RepositorySnapshot {
+        id: 1,
+        version: 1,
+        repository: parsed_repo,
+    }];
+    assert!(
+        model_review::group(
+            &serde_json::from_value(sample()).unwrap(),
+            &mut invalid_review,
+            &repositories
+        )
+        .is_err()
+    );
+    unsafe {
+        std::env::remove_var("RUNTIME_CONFIG");
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}

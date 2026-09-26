@@ -460,6 +460,7 @@ async fn cold_start_barrier_reconciles_unstarted_intent_without_new_ordinal() {
     let config = Config {
         validation: None,
         settings: codexsymphony_server::runtime_client::Settings {
+            model_capabilities: None,
             startup_seconds: 5,
             response_seconds: 5,
             stall_seconds: 5,

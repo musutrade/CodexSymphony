@@ -889,6 +889,7 @@ async fn approved_adaptation_uses_real_codex_runtime_and_preserves_fault_identit
     let port = listener.local_addr().unwrap().port();
     let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
     let settings = runtime_client::Settings {
+        model_capabilities: None,
         startup_seconds: 30,
         response_seconds: 30,
         stall_seconds: 30,

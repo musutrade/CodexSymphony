@@ -62,6 +62,8 @@ async fn validate(tx: &mut Tx<'_>, id: &str, pending: &Pending) -> Result<crate:
             "repository policy changed after difference review; propose again",
         ));
     }
+    crate::model_review::verify_group(&pending.document, &pending.review, &repositories)
+        .map_err(store::invalid)?;
     let total = crate::group_review::validate(
         &pending.document,
         pending.review.parent_revision,

@@ -3330,6 +3330,33 @@
           }
         }
       }
+    },
+    "/api/requirements/{id}/models": {
+      "get": {
+        "operationId": "getRequirementModels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Frozen configuration, Runtime acknowledgement and retained usage; unavailable identity remains null.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRuns"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3413,6 +3440,9 @@
               "$ref": "#/components/schemas/DevelopmentConstraint"
             },
             "nullable": true
+          },
+          "model_selection": {
+            "$ref": "#/components/schemas/ModelSelection"
           }
         }
       },
@@ -3557,6 +3587,9 @@
             "type": "string",
             "nullable": true,
             "description": "Strict environment::Plan serialized as JSON text; approved host identity required."
+          },
+          "model_selection": {
+            "$ref": "#/components/schemas/ModelSelection"
           }
         }
       },
@@ -4302,6 +4335,12 @@
               "$ref": "#/components/schemas/DevelopmentConstraint"
             },
             "nullable": true
+          },
+          "model_selection": {
+            "$ref": "#/components/schemas/ModelSelection"
+          },
+          "frozen_model": {
+            "$ref": "#/components/schemas/FrozenModel"
           }
         }
       },
@@ -5656,6 +5695,210 @@
         "required": [
           "events"
         ]
+      },
+      "ModelSelection": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "config",
+          "reason"
+        ],
+        "properties": {
+          "config": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "provider",
+              "model",
+              "effort"
+            ],
+            "properties": {
+              "provider": {
+                "type": "string"
+              },
+              "model": {
+                "type": "string",
+                "nullable": true
+              },
+              "effort": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "FrozenModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "selection",
+          "source",
+          "repository_id",
+          "repository_version",
+          "capability_version"
+        ],
+        "properties": {
+          "selection": {
+            "$ref": "#/components/schemas/ModelSelection"
+          },
+          "source": {
+            "type": "string"
+          },
+          "repository_id": {
+            "type": "integer"
+          },
+          "repository_version": {
+            "type": "integer"
+          },
+          "capability_version": {
+            "type": "string"
+          }
+        }
+      },
+      "ModelRuns": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "runs"
+        ],
+        "properties": {
+          "runs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "run_id",
+                "revision",
+                "frozen",
+                "actual",
+                "matched",
+                "usage"
+              ],
+              "properties": {
+                "run_id": {
+                  "type": "string"
+                },
+                "revision": {
+                  "type": "integer"
+                },
+                "frozen": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "selection",
+                    "source",
+                    "repository_id",
+                    "repository_version",
+                    "capability_version"
+                  ],
+                  "properties": {
+                    "selection": {
+                      "$ref": "#/components/schemas/ModelSelection"
+                    },
+                    "source": {
+                      "type": "string"
+                    },
+                    "repository_id": {
+                      "type": "integer"
+                    },
+                    "repository_version": {
+                      "type": "integer"
+                    },
+                    "capability_version": {
+                      "type": "string"
+                    }
+                  },
+                  "nullable": true
+                },
+                "actual": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "model",
+                    "provider",
+                    "effort"
+                  ],
+                  "properties": {
+                    "model": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "provider": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "effort": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "nullable": true
+                },
+                "matched": {
+                  "type": "boolean",
+                  "nullable": true
+                },
+                "usage": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "call_id",
+                      "usage",
+                      "reserved"
+                    ],
+                    "properties": {
+                      "call_id": {
+                        "type": "string"
+                      },
+                      "usage": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "input",
+                          "cached",
+                          "output",
+                          "model_seconds",
+                          "complete"
+                        ],
+                        "properties": {
+                          "input": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "cached": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "output": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "model_seconds": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "complete": {
+                            "type": "boolean"
+                          }
+                        }
+                      },
+                      "reserved": {
+                        "$ref": "#/components/schemas/GroupAmount"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

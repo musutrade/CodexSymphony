@@ -96,6 +96,7 @@ pub(crate) async fn setup() -> (PgPool, std::path::PathBuf, GitBroker, Config, S
     let config = Config {
         validation: Some(plan),
         settings: crate::runtime_client::Settings {
+            model_capabilities: None,
             startup_seconds: 5,
             response_seconds: 5,
             stall_seconds: 5,

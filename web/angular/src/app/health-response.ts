@@ -1,4 +1,4 @@
-// harness-contract-sha256: 1a626e3337b288747c12df35a5fe4bcf8e6b4ad0f9ac1379cc52650a4994410e
+// harness-contract-sha256: 7a3decf930dfb797b580cd580511b626a95300c30459121f63e6f8cc9052ce03
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -22,6 +22,10 @@ export interface GetRepositoryResponse {
         timeout_seconds: number;
       }[];
       model?: string | null;
+      model_selection?: {
+        config: { effort: string | null; model: string | null; provider: string };
+        reason: string;
+      };
       policy: {
         allowed_checks: string[];
         gate_recovery_policy: string;
@@ -57,6 +61,10 @@ export type ConfigureRepositoryResponse =
           timeout_seconds: number;
         }[];
         model?: string | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
+          reason: string;
+        };
         policy: {
           allowed_checks: string[];
           gate_recovery_policy: string;
@@ -89,6 +97,10 @@ export interface ConfigureRepositoryRequest {
       timeout_seconds: number;
     }[];
     model?: string | null;
+    model_selection?: {
+      config: { effort: string | null; model: string | null; provider: string };
+      reason: string;
+    };
     policy: {
       allowed_checks: string[];
       gate_recovery_policy: string;
@@ -106,13 +118,7 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: {
-    id: number;
-    revision: number;
-    state: string;
-    title: string;
-    version: number;
-  }[];
+  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -120,16 +126,22 @@ export type CreateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -149,16 +161,22 @@ export type CreateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -184,6 +202,10 @@ export type CreateRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -209,16 +231,22 @@ export interface CreateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
-    development_constraints?: {
-      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-      id: string;
-      instruction: string;
-      paths: string[];
+    development_constraints?:
+      | {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[]
+      | null;
+    model_selection?: {
+      config: { effort: string | null; model: string | null; provider: string };
       reason: string;
-      release_condition: string;
-      source: string;
-      version: string;
-    }[] | null;
+    };
     network_access: string[];
     title: string;
     validation_plan: {
@@ -238,16 +266,22 @@ export type GetRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -267,16 +301,22 @@ export type GetRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -302,6 +342,10 @@ export type GetRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -329,16 +373,22 @@ export type UpdateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -358,16 +408,22 @@ export type UpdateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -393,6 +449,10 @@ export type UpdateRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -418,16 +478,22 @@ export interface UpdateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
-    development_constraints?: {
-      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-      id: string;
-      instruction: string;
-      paths: string[];
+    development_constraints?:
+      | {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[]
+      | null;
+    model_selection?: {
+      config: { effort: string | null; model: string | null; provider: string };
       reason: string;
-      release_condition: string;
-      source: string;
-      version: string;
-    }[] | null;
+    };
     network_access: string[];
     title: string;
     validation_plan: {
@@ -447,16 +513,22 @@ export type ReadyRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -476,16 +548,22 @@ export type ReadyRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -511,6 +589,10 @@ export type ReadyRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -543,16 +625,22 @@ export type WithdrawRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -572,16 +660,22 @@ export type WithdrawRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -607,6 +701,10 @@ export type WithdrawRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -641,9 +739,13 @@ export interface ExecutionStatusResponse {
   requirement_id: number | null;
 }
 export type PauseExecutionResponse = { paused: true } | { error: string };
-export interface PauseExecutionRequest { pause: true }
+export interface PauseExecutionRequest {
+  pause: true;
+}
 export type PauseRequirementResponse = { paused: true } | { error: string };
-export interface PauseRequirementRequest { pause: true }
+export interface PauseRequirementRequest {
+  pause: true;
+}
 export type GetOperationsResponse =
   | {
       environments?: { observed_at: string; report: string; stage: string }[];
@@ -796,7 +898,9 @@ export interface ControlOperationsRequest {
   version: number;
 }
 export type GetEvidenceResponse = { preview_only: boolean; text: string } | { error: string };
-export interface GetInboxResponse { requirement_ids: number[] }
+export interface GetInboxResponse {
+  requirement_ids: number[];
+}
 export type AnswerOperatorQuestionResponse = { saved: boolean } | { error: string };
 export interface AnswerOperatorQuestionRequest {
   answers: { id: string; text: string }[];
@@ -828,6 +932,10 @@ export interface MultiGetRepositoryResponse {
         timeout_seconds: number;
       }[];
       model?: string | null;
+      model_selection?: {
+        config: { effort: string | null; model: string | null; provider: string };
+        reason: string;
+      };
       policy: {
         allowed_checks: string[];
         gate_recovery_policy: string;
@@ -864,6 +972,10 @@ export type MultiConfigureRepositoryResponse =
           timeout_seconds: number;
         }[];
         model?: string | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
+          reason: string;
+        };
         policy: {
           allowed_checks: string[];
           gate_recovery_policy: string;
@@ -896,6 +1008,10 @@ export interface MultiConfigureRepositoryRequest {
       timeout_seconds: number;
     }[];
     model?: string | null;
+    model_selection?: {
+      config: { effort: string | null; model: string | null; provider: string };
+      reason: string;
+    };
     policy: {
       allowed_checks: string[];
       gate_recovery_policy: string;
@@ -929,16 +1045,22 @@ export type MultiCreateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -959,16 +1081,22 @@ export type MultiCreateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -994,6 +1122,10 @@ export type MultiCreateRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -1020,16 +1152,22 @@ export interface MultiCreateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
-    development_constraints?: {
-      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-      id: string;
-      instruction: string;
-      paths: string[];
+    development_constraints?:
+      | {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[]
+      | null;
+    model_selection?: {
+      config: { effort: string | null; model: string | null; provider: string };
       reason: string;
-      release_condition: string;
-      source: string;
-      version: string;
-    }[] | null;
+    };
     network_access: string[];
     title: string;
     validation_plan: {
@@ -1050,16 +1188,22 @@ export type MultiGetRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -1080,16 +1224,22 @@ export type MultiGetRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -1115,6 +1265,10 @@ export type MultiGetRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -1143,16 +1297,22 @@ export type MultiUpdateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -1173,16 +1333,22 @@ export type MultiUpdateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -1208,6 +1374,10 @@ export type MultiUpdateRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -1234,16 +1404,22 @@ export interface MultiUpdateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
-    development_constraints?: {
-      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-      id: string;
-      instruction: string;
-      paths: string[];
+    development_constraints?:
+      | {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[]
+      | null;
+    model_selection?: {
+      config: { effort: string | null; model: string | null; provider: string };
       reason: string;
-      release_condition: string;
-      source: string;
-      version: string;
-    }[] | null;
+    };
     network_access: string[];
     title: string;
     validation_plan: {
@@ -1264,16 +1440,22 @@ export type MultiReadyRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -1294,16 +1476,22 @@ export type MultiReadyRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -1329,6 +1517,10 @@ export type MultiReadyRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -1362,16 +1554,22 @@ export type MultiWithdrawRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
           reason: string;
-          release_condition: string;
-          source: string;
-          version: string;
-        }[] | null;
+        };
         network_access: string[];
         title: string;
         validation_plan: {
@@ -1392,16 +1590,22 @@ export type MultiWithdrawRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
             reason: string;
-            release_condition: string;
-            source: string;
-            version: string;
-          }[] | null;
+          };
           network_access: string[];
           title: string;
           validation_plan: {
@@ -1427,6 +1631,10 @@ export type MultiWithdrawRequirementResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -1719,6 +1927,10 @@ export type GetGroupReviewResponse =
                 timeout_seconds: number;
               }[];
               model?: string | null;
+              model_selection?: {
+                config: { effort: string | null; model: string | null; provider: string };
+                reason: string;
+              };
               policy: {
                 allowed_checks: string[];
                 gate_recovery_policy: string;
@@ -1747,16 +1959,28 @@ export type GetGroupReviewResponse =
             items: {
               budget: { model_seconds: number; tokens: number; turns: number };
               child_id: string;
-              development_constraints?: {
-                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-                id: string;
-                instruction: string;
-                paths: string[];
-                reason: string;
-                release_condition: string;
+              development_constraints?:
+                | {
+                    code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                    id: string;
+                    instruction: string;
+                    paths: string[];
+                    reason: string;
+                    release_condition: string;
+                    source: string;
+                    version: string;
+                  }[]
+                | null;
+              frozen_model?: {
+                capability_version: string;
+                repository_id: number;
+                repository_version: number;
+                selection: {
+                  config: { effort: string | null; model: string | null; provider: string };
+                  reason: string;
+                };
                 source: string;
-                version: string;
-              }[] | null;
+              };
               integration?: {
                 configuration_sha256: string;
                 repositories: {
@@ -1767,6 +1991,10 @@ export type GetGroupReviewResponse =
                 }[];
               } | null;
               merged_baseline_review: string;
+              model_selection?: {
+                config: { effort: string | null; model: string | null; provider: string };
+                reason: string;
+              };
               repair_scope: string;
               repository_version: number;
               revision: number;
@@ -1876,6 +2104,10 @@ export type GetGroupReviewResponse =
               timeout_seconds: number;
             }[];
             model?: string | null;
+            model_selection?: {
+              config: { effort: string | null; model: string | null; provider: string };
+              reason: string;
+            };
             policy: {
               allowed_checks: string[];
               gate_recovery_policy: string;
@@ -1904,16 +2136,28 @@ export type GetGroupReviewResponse =
           items: {
             budget: { model_seconds: number; tokens: number; turns: number };
             child_id: string;
-            development_constraints?: {
-              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-              id: string;
-              instruction: string;
-              paths: string[];
-              reason: string;
-              release_condition: string;
+            development_constraints?:
+              | {
+                  code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                  id: string;
+                  instruction: string;
+                  paths: string[];
+                  reason: string;
+                  release_condition: string;
+                  source: string;
+                  version: string;
+                }[]
+              | null;
+            frozen_model?: {
+              capability_version: string;
+              repository_id: number;
+              repository_version: number;
+              selection: {
+                config: { effort: string | null; model: string | null; provider: string };
+                reason: string;
+              };
               source: string;
-              version: string;
-            }[] | null;
+            };
             integration?: {
               configuration_sha256: string;
               repositories: {
@@ -1924,6 +2168,10 @@ export type GetGroupReviewResponse =
               }[];
             } | null;
             merged_baseline_review: string;
+            model_selection?: {
+              config: { effort: string | null; model: string | null; provider: string };
+              reason: string;
+            };
             repair_scope: string;
             repository_version: number;
             revision: number;
@@ -1961,6 +2209,10 @@ export type GetGroupReviewResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -1989,16 +2241,28 @@ export type GetGroupReviewResponse =
         items: {
           budget: { model_seconds: number; tokens: number; turns: number };
           child_id: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
-            reason: string;
-            release_condition: string;
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          frozen_model?: {
+            capability_version: string;
+            repository_id: number;
+            repository_version: number;
+            selection: {
+              config: { effort: string | null; model: string | null; provider: string };
+              reason: string;
+            };
             source: string;
-            version: string;
-          }[] | null;
+          };
           integration?: {
             configuration_sha256: string;
             repositories: {
@@ -2009,6 +2273,10 @@ export type GetGroupReviewResponse =
             }[];
           } | null;
           merged_baseline_review: string;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           repair_scope: string;
           repository_version: number;
           revision: number;
@@ -2076,6 +2344,10 @@ export type SaveGroupReviewResponse =
                 timeout_seconds: number;
               }[];
               model?: string | null;
+              model_selection?: {
+                config: { effort: string | null; model: string | null; provider: string };
+                reason: string;
+              };
               policy: {
                 allowed_checks: string[];
                 gate_recovery_policy: string;
@@ -2104,16 +2376,28 @@ export type SaveGroupReviewResponse =
             items: {
               budget: { model_seconds: number; tokens: number; turns: number };
               child_id: string;
-              development_constraints?: {
-                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-                id: string;
-                instruction: string;
-                paths: string[];
-                reason: string;
-                release_condition: string;
+              development_constraints?:
+                | {
+                    code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                    id: string;
+                    instruction: string;
+                    paths: string[];
+                    reason: string;
+                    release_condition: string;
+                    source: string;
+                    version: string;
+                  }[]
+                | null;
+              frozen_model?: {
+                capability_version: string;
+                repository_id: number;
+                repository_version: number;
+                selection: {
+                  config: { effort: string | null; model: string | null; provider: string };
+                  reason: string;
+                };
                 source: string;
-                version: string;
-              }[] | null;
+              };
               integration?: {
                 configuration_sha256: string;
                 repositories: {
@@ -2124,6 +2408,10 @@ export type SaveGroupReviewResponse =
                 }[];
               } | null;
               merged_baseline_review: string;
+              model_selection?: {
+                config: { effort: string | null; model: string | null; provider: string };
+                reason: string;
+              };
               repair_scope: string;
               repository_version: number;
               revision: number;
@@ -2233,6 +2521,10 @@ export type SaveGroupReviewResponse =
               timeout_seconds: number;
             }[];
             model?: string | null;
+            model_selection?: {
+              config: { effort: string | null; model: string | null; provider: string };
+              reason: string;
+            };
             policy: {
               allowed_checks: string[];
               gate_recovery_policy: string;
@@ -2261,16 +2553,28 @@ export type SaveGroupReviewResponse =
           items: {
             budget: { model_seconds: number; tokens: number; turns: number };
             child_id: string;
-            development_constraints?: {
-              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-              id: string;
-              instruction: string;
-              paths: string[];
-              reason: string;
-              release_condition: string;
+            development_constraints?:
+              | {
+                  code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                  id: string;
+                  instruction: string;
+                  paths: string[];
+                  reason: string;
+                  release_condition: string;
+                  source: string;
+                  version: string;
+                }[]
+              | null;
+            frozen_model?: {
+              capability_version: string;
+              repository_id: number;
+              repository_version: number;
+              selection: {
+                config: { effort: string | null; model: string | null; provider: string };
+                reason: string;
+              };
               source: string;
-              version: string;
-            }[] | null;
+            };
             integration?: {
               configuration_sha256: string;
               repositories: {
@@ -2281,6 +2585,10 @@ export type SaveGroupReviewResponse =
               }[];
             } | null;
             merged_baseline_review: string;
+            model_selection?: {
+              config: { effort: string | null; model: string | null; provider: string };
+              reason: string;
+            };
             repair_scope: string;
             repository_version: number;
             revision: number;
@@ -2318,6 +2626,10 @@ export type SaveGroupReviewResponse =
             timeout_seconds: number;
           }[];
           model?: string | null;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           policy: {
             allowed_checks: string[];
             gate_recovery_policy: string;
@@ -2346,16 +2658,28 @@ export type SaveGroupReviewResponse =
         items: {
           budget: { model_seconds: number; tokens: number; turns: number };
           child_id: string;
-          development_constraints?: {
-            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-            id: string;
-            instruction: string;
-            paths: string[];
-            reason: string;
-            release_condition: string;
+          development_constraints?:
+            | {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[]
+            | null;
+          frozen_model?: {
+            capability_version: string;
+            repository_id: number;
+            repository_version: number;
+            selection: {
+              config: { effort: string | null; model: string | null; provider: string };
+              reason: string;
+            };
             source: string;
-            version: string;
-          }[] | null;
+          };
           integration?: {
             configuration_sha256: string;
             repositories: {
@@ -2366,6 +2690,10 @@ export type SaveGroupReviewResponse =
             }[];
           } | null;
           merged_baseline_review: string;
+          model_selection?: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           repair_scope: string;
           repository_version: number;
           revision: number;
@@ -2402,16 +2730,28 @@ export interface SaveGroupReviewRequest {
     items: {
       budget: { model_seconds: number; tokens: number; turns: number };
       child_id: string;
-      development_constraints?: {
-        code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-        id: string;
-        instruction: string;
-        paths: string[];
-        reason: string;
-        release_condition: string;
+      development_constraints?:
+        | {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[]
+        | null;
+      frozen_model?: {
+        capability_version: string;
+        repository_id: number;
+        repository_version: number;
+        selection: {
+          config: { effort: string | null; model: string | null; provider: string };
+          reason: string;
+        };
         source: string;
-        version: string;
-      }[] | null;
+      };
       integration?: {
         configuration_sha256: string;
         repositories: {
@@ -2422,6 +2762,10 @@ export interface SaveGroupReviewRequest {
         }[];
       } | null;
       merged_baseline_review: string;
+      model_selection?: {
+        config: { effort: string | null; model: string | null; provider: string };
+        reason: string;
+      };
       repair_scope: string;
       repository_version: number;
       revision: number;
@@ -2449,9 +2793,12 @@ export type AuthorizeGroupResponse =
       state: string;
     }
   | { error: string };
-export interface AuthorizeGroupRequest { draft_revision: number; request_id: string; version: number }
-export type EditGroupQueueResponse =
-  { affected: string[]; version: number } | { error: string };
+export interface AuthorizeGroupRequest {
+  draft_revision: number;
+  request_id: string;
+  version: number;
+}
+export type EditGroupQueueResponse = { affected: string[]; version: number } | { error: string };
 export interface EditGroupQueueRequest {
   change: {
     document?: {
@@ -2490,16 +2837,28 @@ export interface EditGroupQueueRequest {
       items: {
         budget: { model_seconds: number; tokens: number; turns: number };
         child_id: string;
-        development_constraints?: {
-          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
-          id: string;
-          instruction: string;
-          paths: string[];
-          reason: string;
-          release_condition: string;
+        development_constraints?:
+          | {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[]
+          | null;
+        frozen_model?: {
+          capability_version: string;
+          repository_id: number;
+          repository_version: number;
+          selection: {
+            config: { effort: string | null; model: string | null; provider: string };
+            reason: string;
+          };
           source: string;
-          version: string;
-        }[] | null;
+        };
         integration?: {
           configuration_sha256: string;
           repositories: {
@@ -2510,6 +2869,10 @@ export interface EditGroupQueueRequest {
           }[];
         } | null;
         merged_baseline_review: string;
+        model_selection?: {
+          config: { effort: string | null; model: string | null; provider: string };
+          reason: string;
+        };
         repair_scope: string;
         repository_version: number;
         revision: number;
@@ -2531,10 +2894,16 @@ export interface EditGroupQueueRequest {
   request_id: string;
   version: number;
 }
-export interface AuthCsrfResponse { csrf_token: string; username: string | null }
+export interface AuthCsrfResponse {
+  csrf_token: string;
+  username: string | null;
+}
 export type AuthLoginResponse =
   { csrf_token: string; username: string | null } | { message: string } | undefined;
-export interface AuthLoginRequest { password: string; username: string }
+export interface AuthLoginRequest {
+  password: string;
+  username: string;
+}
 export type AuthSessionResponse = { csrf_token: string; username: string | null } | undefined;
 export type AuthLogoutResponse = undefined;
 export interface GetExtensionRecoveryResponse {
@@ -2589,7 +2958,7 @@ export interface GetExtensionRecoveryResponse {
             source: string;
             version: string;
           }[];
-          kind: 'adapt_code' | 'revalidate' | 'revalidate_delivery';
+          kind: 'adapt_code' | 'revalidate_delivery' | 'revalidate';
           plan_digest?: string;
           policy_digest?: string;
           resume_condition?: string;
@@ -2627,7 +2996,7 @@ export interface ResolveExtensionRecoveryRequest {
       source: string;
       version: string;
     }[];
-    kind: 'adapt_code' | 'revalidate' | 'revalidate_delivery';
+    kind: 'adapt_code' | 'revalidate_delivery' | 'revalidate';
     plan_digest?: string;
     policy_digest?: string;
     resume_condition?: string;
@@ -2733,5 +3102,40 @@ export interface GetLifecycleHistoryResponse {
     source_id?: string;
   }[];
 }
-export interface ReplayNotificationResponse { accepted: boolean; started: boolean }
-export interface ReplayNotificationRequest { event_id: number; plugin_id: string }
+export interface ReplayNotificationResponse {
+  accepted: boolean;
+  started: boolean;
+}
+export interface ReplayNotificationRequest {
+  event_id: number;
+  plugin_id: string;
+}
+export interface GetRequirementModelsResponse {
+  runs: {
+    actual: { effort: string | null; model: string | null; provider: string | null } | null;
+    frozen: {
+      capability_version: string;
+      repository_id: number;
+      repository_version: number;
+      selection: {
+        config: { effort: string | null; model: string | null; provider: string };
+        reason: string;
+      };
+      source: string;
+    } | null;
+    matched: boolean | null;
+    revision: number;
+    run_id: string;
+    usage: {
+      call_id: string;
+      reserved: { model_seconds: number; tokens: number; turns: number };
+      usage: {
+        cached: number | null;
+        complete: boolean;
+        input: number | null;
+        model_seconds: number | null;
+        output: number | null;
+      };
+    }[];
+  }[];
+}

@@ -1,0 +1,3 @@
+{"phase": "dependency-cache-copy", "started_at": "2026-09-26T15:42:05.350576+00:00", "status": "PASS", "duration_ms": 18031}
+{"phase": "checkout-readiness", "started_at": "2026-09-26T15:42:23.382923+00:00", "status": "PASS", "duration_ms": 53}
+{"phase": "backend-capture", "started_at": "2026-09-26T15:42:25.691805+00:00", "status": "FAIL", "duration_ms": 789521}

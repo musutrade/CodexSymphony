@@ -20,6 +20,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Settings {
+    pub model_capabilities: Option<crate::model_selection::Registration>,
     pub startup_seconds: u64,
     pub response_seconds: u64,
     pub stall_seconds: u64,
@@ -54,6 +55,7 @@ pub fn now() -> i64 {
 }
 
 struct Client<'a> {
+    frozen_model: Option<crate::model_selection::Frozen>,
     pool: &'a PgPool,
     launch: &'a Launch,
     broker: &'a GitBroker,
@@ -81,6 +83,9 @@ pub async fn execute(
     settings: &Settings,
 ) -> Result<()> {
     settings.validate()?;
+    let frozen_model =
+        crate::model_runtime::prepare(pool, &launch.key, settings.model_capabilities.as_ref())
+            .await?;
     let mut child =
         crate::coordinator::start_runtime(pool, root, supervisor, launch, &settings.codex_config)
             .await?;
@@ -92,6 +97,7 @@ pub async fn execute(
     let result = match transport {
         Ok(transport) => {
             let mut client = Client {
+                frozen_model,
                 pool,
                 launch,
                 broker,
@@ -183,7 +189,27 @@ impl Client<'_> {
             .bind(&self.launch.key.run_id)
             .fetch_one(self.pool)
             .await?;
-        let params = wire::ThreadStartParams {
+        let params = self.thread_params(model);
+        let started = self
+            .rpc("thread/start", &params, self.settings.startup_seconds)
+            .await?;
+        runtime_store::require(
+            started["cwd"] == self.launch.workspace
+                && started["thread"]["cwd"] == self.launch.workspace,
+            "thread cwd differs from worktree",
+        )?;
+        if let Some(frozen) = &self.frozen_model {
+            crate::model_runtime::record(self.pool, &self.launch.key, frozen, &started).await?;
+        }
+        self.thread = started["thread"]["id"]
+            .as_str()
+            .ok_or("missing thread id")?
+            .to_owned();
+        runtime_store::thread(self.pool, &self.launch.key, &self.thread, now()).await?;
+        Ok(())
+    }
+    fn thread_params(&self, model: String) -> wire::ThreadStartParams {
+        let mut params = wire::ThreadStartParams {
             cwd: Some(self.launch.workspace.clone()),
             model: Some(model),
             approval_policy: Some(json!("never")),
@@ -193,20 +219,12 @@ impl Client<'_> {
             allow_provider_model_fallback: Some(false),
             ..Default::default()
         };
-        let started = self
-            .rpc("thread/start", &params, self.settings.startup_seconds)
-            .await?;
-        runtime_store::require(
-            started["cwd"] == self.launch.workspace
-                && started["thread"]["cwd"] == self.launch.workspace,
-            "thread cwd differs from worktree",
-        )?;
-        self.thread = started["thread"]["id"]
-            .as_str()
-            .ok_or("missing thread id")?
-            .to_owned();
-        runtime_store::thread(self.pool, &self.launch.key, &self.thread, now()).await?;
-        Ok(())
+        if let Some(frozen) = &self.frozen_model {
+            params.model = frozen.selection.config.model.clone();
+            params.model_provider = Some(frozen.selection.config.provider.clone());
+            params.config = Some(json!({"model_reasoning_effort":frozen.selection.config.effort}));
+        }
+        params
     }
     async fn start_turn(&mut self, input: String) -> Result<()> {
         let (call, id) = self.dispatch_turn(input).await?;
@@ -249,14 +267,29 @@ impl Client<'_> {
             runtime_store::allowed(&mut tx, &self.launch.key).await?,
             "authorization changed before dispatch",
         )?;
-        let params = wire::TurnStartParams {
+        let params = self.turn_params(input).await?;
+        let id = self.transport.request("turn/start", &params).await?;
+        tx.commit().await?;
+        Ok((call, id))
+    }
+    async fn turn_params(&self, input: String) -> Result<wire::TurnStartParams> {
+        let mut params = wire::TurnStartParams {
             thread_id: self.thread.clone(),
             input: Vec::from([json!({"type":"text","text":input,"text_elements":[]})]),
             ..Default::default()
         };
-        let id = self.transport.request("turn/start", &params).await?;
-        tx.commit().await?;
-        Ok((call, id))
+        if let Some(frozen) = &self.frozen_model {
+            crate::model_runtime::admit(
+                self.pool,
+                &self.launch.key,
+                frozen,
+                self.settings.model_capabilities.as_ref(),
+            )
+            .await?;
+            params.model = frozen.selection.config.model.clone();
+            params.effort = Some(json!(frozen.selection.config.effort));
+        }
+        Ok(params)
     }
     async fn rpc(&mut self, method: &str, params: &impl Serialize, seconds: u64) -> Result<Value> {
         let id = self.transport.request(method, params).await?;

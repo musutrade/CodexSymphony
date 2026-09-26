@@ -26,6 +26,8 @@ pub struct Verification {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Item {
+    pub model_selection: Option<crate::model_selection::Selection>,
+    pub frozen_model: Option<crate::model_selection::Frozen>,
     pub development_constraints: Option<Vec<crate::development_constraints::Constraint>>,
     pub integration: Option<crate::integration::Authorization>,
     pub child_id: String,
@@ -45,11 +47,15 @@ impl Serialize for Item {
         use serde::ser::SerializeStruct;
         let mut value = serializer.serialize_struct(
             "Item",
-            8 + usize::from(self.development_constraints.is_some()),
+            8 + usize::from(self.development_constraints.is_some())
+                + usize::from(self.model_selection.is_some())
+                + usize::from(self.frozen_model.is_some()),
         )?;
         if let Some(constraints) = &self.development_constraints {
             value.serialize_field("development_constraints", constraints)?;
         }
+        crate::model_selection::serialize_selection(&mut value, self.model_selection.as_ref())?;
+        self.serialize_model(&mut value)?;
         value.serialize_field("integration", &self.integration)?;
         value.serialize_field("child_id", &self.child_id)?;
         self.serialize_scope(&mut value)?;
@@ -58,6 +64,16 @@ impl Serialize for Item {
 }
 
 impl Item {
+    fn serialize_model<S: serde::ser::SerializeStruct>(
+        &self,
+        value: &mut S,
+    ) -> std::result::Result<(), S::Error> {
+        if let Some(frozen) = &self.frozen_model {
+            value.serialize_field("frozen_model", frozen)?;
+        }
+        Ok(())
+    }
+
     fn serialize_scope<S: serde::ser::SerializeStruct>(
         &self,
         value: &mut S,
@@ -229,6 +245,7 @@ pub(crate) fn verification_contract(child: &draft::Child, item: &Item) -> Result
         "every child AC requires a machine verification step",
     )?;
     Ok(Contract {
+        model_selection: item.model_selection.clone(),
         development_constraints: item.development_constraints.clone(),
         title: child.goal.clone(),
         description: child.validation_plan.clone(),

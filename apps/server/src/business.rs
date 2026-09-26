@@ -412,16 +412,15 @@ async fn review(tx: &mut Tx<'_>, id: i64, input: &ControlRequest) -> Result<Valu
     let contract: Contract = serde_json::from_value(row["contract"].clone())?;
     authorize_review(tx, id, &contract, &repository).await?;
     let revision = row["revision"].as_i64().ok_or("invalid stored revision")? + 1;
-    let ac_ids: Vec<String> = (1..=contract.acceptance_criteria.len())
-        .map(|n| format!("AC-{id}-{revision}-{n}"))
-        .collect();
-    let snapshot = json!({"repository_id":repository_id,"revision":revision,"contract":contract,"ac_ids":ac_ids,"repository_version":policy_version,"repository":repository,"reviewer":"local-user"});
-    sqlx::query("INSERT INTO requirement_revision(requirement_id,revision,document) VALUES ($1,$2,$3::jsonb)").bind(id).bind(revision).bind(snapshot.to_string()).execute(&mut **tx).await?;
-    sqlx::query("UPDATE requirement SET state='Ready',version=version+1,revision=$2 WHERE id=$1")
-        .bind(id)
-        .bind(revision)
-        .execute(&mut **tx)
-        .await?;
+    let snapshot = reviewed_snapshot(
+        repository_id,
+        policy_version,
+        revision,
+        id,
+        &contract,
+        &repository,
+    )?;
+    persist_ready_revision(tx, id, revision, &snapshot).await?;
     event(
         tx,
         &format!("requirement:{id}"),
@@ -430,6 +429,20 @@ async fn review(tx: &mut Tx<'_>, id: i64, input: &ControlRequest) -> Result<Valu
     )
     .await?;
     read_requirement(tx, id).await
+}
+async fn persist_ready_revision(
+    tx: &mut Tx<'_>,
+    id: i64,
+    revision: i64,
+    snapshot: &Value,
+) -> Result<()> {
+    sqlx::query("INSERT INTO requirement_revision(requirement_id,revision,document) VALUES ($1,$2,$3::jsonb)").bind(id).bind(revision).bind(snapshot.to_string()).execute(&mut **tx).await?;
+    sqlx::query("UPDATE requirement SET state='Ready',version=version+1,revision=$2 WHERE id=$1")
+        .bind(id)
+        .bind(revision)
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
 }
 async fn review_repository(
     tx: &mut Tx<'_>,
@@ -491,4 +504,29 @@ fn repositories_ready(repositories: &[Value]) -> bool {
         }
     }
     true
+}
+
+fn reviewed_snapshot(
+    repository_id: i64,
+    policy_version: i64,
+    revision: i64,
+    id: i64,
+    contract: &Contract,
+    repository: &Repository,
+) -> Result<Value> {
+    let mut ac_ids = Vec::new();
+    for n in 1..=contract.acceptance_criteria.len() {
+        ac_ids.push(format!("AC-{id}-{revision}-{n}"));
+    }
+    let frozen_model = crate::model_review::freeze(
+        contract.model_selection.as_ref(),
+        repository_id,
+        policy_version,
+        repository,
+    )?;
+    let mut snapshot = json!({"repository_id":repository_id,"revision":revision,"contract":contract,"ac_ids":ac_ids,"repository_version":policy_version,"repository":repository,"reviewer":"local-user"});
+    if let Some(frozen) = frozen_model {
+        snapshot["frozen_model"] = json!(frozen);
+    }
+    Ok(snapshot)
 }

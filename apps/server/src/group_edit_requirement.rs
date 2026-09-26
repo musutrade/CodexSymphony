@@ -74,12 +74,14 @@ async fn revise(
         crate::group_review::verification_contract(child, item).map_err(store::invalid)?;
     let revision: i64 = sqlx::query_scalar("UPDATE requirement SET version=version+1,revision=revision+1,contract=$2 WHERE id=$1 RETURNING revision")
         .bind(id).bind(json!(contract)).fetch_one(&mut **tx).await.map_err(store::db)?;
-    let ac_ids: Vec<_> = child
-        .acceptance_criteria
-        .iter()
-        .map(|a| a.id.as_str())
-        .collect();
-    let snapshot = json!({"repository_id":repository.id,"revision":revision,"contract":contract,"ac_ids":ac_ids,"repository_version":repository.version,"repository":repository.repository,"reviewer":"local-user","group_authorization_id":authorization,"child_revision":item.revision});
+    let mut ac_ids = Vec::new();
+    for ac in &child.acceptance_criteria {
+        ac_ids.push(ac.id.as_str());
+    }
+    let mut snapshot = json!({"repository_id":repository.id,"revision":revision,"contract":contract,"ac_ids":ac_ids,"repository_version":repository.version,"repository":repository.repository,"reviewer":"local-user","group_authorization_id":authorization,"child_revision":item.revision});
+    if let Some(frozen) = &item.frozen_model {
+        snapshot["frozen_model"] = json!(frozen);
+    }
     sqlx::query("INSERT INTO requirement_revision VALUES($1,$2,$3)")
         .bind(id)
         .bind(revision)

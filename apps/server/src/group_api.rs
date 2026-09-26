@@ -73,7 +73,7 @@ async fn write_review(
     let next = version
         .checked_add(1)
         .ok_or(store::invalid("review version exhausted"))?;
-    let review = json!(input.review);
+    let review = reviewed_document(tx, id, input).await?;
     sqlx::query("INSERT INTO group_review(draft_id,version,draft_revision,document) VALUES($1,$2,$3,$4) ON CONFLICT(draft_id) DO UPDATE SET version=excluded.version,draft_revision=excluded.draft_revision,document=excluded.document")
         .bind(id).bind(next).bind(revision).bind(&review).execute(&mut **tx).await.map_err(store::db)?;
     sqlx::query("INSERT INTO group_review_revision(draft_id,version,draft_revision,document) VALUES($1,$2,$3,$4)")
@@ -163,23 +163,16 @@ async fn prepare_snapshot(
     review: &Review,
 ) -> Result<Value> {
     let repositories = store::repositories(tx).await?;
+    crate::model_review::verify_group(document, review, &repositories).map_err(store::invalid)?;
     let total = group_review::validate(document, revision, review, &repositories)
         .map_err(store::invalid)?;
     store::balances(tx, id, review, total).await?;
-    let used_repositories: Vec<_> = repositories
-        .into_iter()
-        .filter(|r| {
-            document
-                .children
-                .iter()
-                .any(|c| c.repository_id == Some(r.id))
-                || review
-                    .items
-                    .iter()
-                    .filter_map(|i| i.integration.as_ref())
-                    .any(|a| a.repositories.iter().any(|p| p.repository_id == r.id))
-        })
-        .collect();
+    let mut used_repositories = Vec::new();
+    for repository in repositories {
+        if uses_repository(document, review, repository.id) {
+            used_repositories.push(repository);
+        }
+    }
     let snapshot = json!({"parent_revision":revision,"document":document,"review_version":version,"review":review,"repositories":used_repositories,"group_budget":total,"reviewer":"local-user","scheduler_available":true,"business_complete":false});
     Ok(snapshot)
 }
@@ -205,3 +198,33 @@ async fn replay(tx: &mut store::Tx<'_>, key: &str, input: &Value) -> Result<Opti
 fn review_version((version, _): (i64, Review)) -> i64 {
     version
 }
+
+fn uses_repository(document: &crate::draft::Document, review: &Review, id: i64) -> bool {
+    for child in &document.children {
+        if child.repository_id == Some(id) {
+            return true;
+        }
+    }
+    for item in &review.items {
+        if let Some(integration) = &item.integration {
+            for repository in &integration.repositories {
+                if repository.repository_id == id {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+async fn reviewed_document(tx: &mut store::Tx<'_>, id: &str, input: &Write) -> Result<Value> {
+    let mut reviewed = input.review.clone();
+    let (_, document) = store::draft(tx, id).await?;
+    let repositories = store::repositories(tx).await?;
+    crate::model_review::group(&document, &mut reviewed, &repositories).map_err(store::invalid)?;
+    Ok(json!(reviewed))
+}
+
+#[cfg(test)]
+#[path = "../tests/unit/group_api.rs"]
+mod tests;

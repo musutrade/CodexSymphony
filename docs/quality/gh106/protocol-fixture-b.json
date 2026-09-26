@@ -1,0 +1,63 @@
+{
+  "boundary": "scripted_runtime_protocol",
+  "facts": {
+    "runs": [
+      {
+        "actual": {
+          "effort": "high",
+          "model": "fixture-b",
+          "provider": "openai"
+        },
+        "frozen": {
+          "capability_version": "fixture-v1",
+          "repository_id": 1,
+          "repository_version": 1,
+          "selection": {
+            "config": {
+              "effort": "high",
+              "model": "fixture-b",
+              "provider": "openai"
+            },
+            "reason": "reviewed fixture"
+          },
+          "source": "requirement_override"
+        },
+        "matched": true,
+        "revision": 1,
+        "run_id": "runtime-test",
+        "usage": [
+          {
+            "call_id": "2c48251c-7b34-479b-a8fa-900d30946005",
+            "reserved": {
+              "model_seconds": 30,
+              "tokens": 100,
+              "turns": 1
+            },
+            "usage": {
+              "cached": 5,
+              "complete": true,
+              "input": 20,
+              "model_seconds": 0,
+              "output": 10
+            }
+          },
+          {
+            "call_id": "49f792c3-f7dd-4c51-aa1d-99a76d0fab34",
+            "reserved": {
+              "model_seconds": 30,
+              "tokens": 100,
+              "turns": 1
+            },
+            "usage": {
+              "cached": 0,
+              "complete": false,
+              "input": 0,
+              "model_seconds": 1,
+              "output": 0
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

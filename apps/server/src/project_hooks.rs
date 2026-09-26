@@ -55,15 +55,16 @@ async fn frozen_review(
     workspace: &Workspace,
     allowlist: &Value,
 ) -> Result<FrozenConfig> {
-    let reviewed: Value = sqlx::query_scalar(
-        "SELECT document->'repository' FROM execution_revision WHERE requirement_id=$1 AND revision=$2",
+    let snapshot: Value = sqlx::query_scalar(
+        "SELECT document FROM execution_revision WHERE requirement_id=$1 AND revision=$2",
     )
     .bind(workspace.requirement)
     .bind(workspace.revision)
     .fetch_one(pool)
     .await?;
+    let reviewed = snapshot["repository"].clone();
     let reviewed_hooks = reviewed.get("hooks").is_some_and(has_hooks);
-    let extension = if reviewed_hooks {
+    let mut extension = if reviewed_hooks {
         ExtensionConfig::from_legacy_repository(&serde_json::from_value::<Repository>(reviewed)?)
     } else {
         // Historical review snapshots may contain only the fields used by the
@@ -71,6 +72,7 @@ async fn frozen_review(
         legacy_extension(&reviewed)
     };
     let mut capabilities = Capabilities::legacy_codex(extension.model.model.clone());
+    bind_model(&snapshot, &mut extension, &mut capabilities)?;
     capabilities.deliveries.push(DeliveryMode::LocalGit);
     if reviewed_hooks {
         capabilities.hooks = serde_json::from_value(
@@ -847,6 +849,29 @@ async fn record_reconciled(
 ) -> Result<()> {
     sqlx::query("UPDATE project_hook_invocation SET status=$2,stop_confirmed=$3,diagnostic=$4 WHERE invocation_id=$1")
         .bind(id).bind(status).bind(stopped).bind(diagnostic).execute(pool).await?;
+    Ok(())
+}
+
+fn bind_model(
+    snapshot: &Value,
+    extension: &mut ExtensionConfig,
+    capabilities: &mut Capabilities,
+) -> Result<()> {
+    let Some(value) = snapshot.get("frozen_model") else {
+        return Ok(());
+    };
+    let frozen: crate::model_selection::Frozen = serde_json::from_value(value.clone())?;
+    let repository: Repository = serde_json::from_value(snapshot["repository"].clone())?;
+    let id = snapshot["repository_id"]
+        .as_i64()
+        .ok_or("model repository identity absent")?;
+    let registration = crate::model_review::runtime_registration(id, &repository)?;
+    if registration.version != frozen.capability_version {
+        return Err("model capability version changed; review again".into());
+    }
+    registration.admit(id, &frozen.selection.config)?;
+    extension.model = frozen.selection.config;
+    capabilities.agents = Vec::from([registration.agent]);
     Ok(())
 }
 

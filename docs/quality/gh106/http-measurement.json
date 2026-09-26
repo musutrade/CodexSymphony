@@ -1,0 +1,14 @@
+{
+  "contract.breaking_changes": {
+    "type": "count",
+    "value": 0
+  },
+  "contract.client_drift": {
+    "type": "boolean",
+    "value": false
+  },
+  "contract.compatible": {
+    "type": "boolean",
+    "value": true
+  }
+}
