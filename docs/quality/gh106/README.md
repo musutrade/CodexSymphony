@@ -4,6 +4,8 @@
 起点为 main `f29052fbcb4834cbfb1565a4f32a60c83ba00951`；#105、#122 已合入，
 原工作区的未提交修改保持原样。范围、API、迁移及回退见[固定任务模型选择](../../fixed-model-selection.md)。
 
+当前发布状态：完整 Gate 在宿主前置检查被拒绝，未推送或创建 PR；详见[具体阻断与恢复条件](publication-blocker.md)。
+
 ## 源码验证
 
 [测量摘要](measurements.json)对应 `/home/gem/gh106-measurements/source-05` 和 `frontend-02`：
