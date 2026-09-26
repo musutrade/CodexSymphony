@@ -156,24 +156,34 @@ impl Registry {
             .into());
         }
         plan.validate(&profile.registrations())?;
-        if profile.registration.id != plan.extension_id
-            || !profile.approved_plans.contains(&plan.digest())
-        {
-            return Err("environment plan has not been approved on host".into());
+        let (repository, version) = crate::plugin_scope::repository_revision(
+            &plan.controlled.environment.repository_revision,
+        )
+        .ok_or("environment repository identity missing")?;
+        if !plan.matches_repository(repository, version) {
+            return Err("selected extension repository scope denied".into());
         }
-        if plan
-            .cache
-            .as_ref()
-            .is_some_and(|cache| cache.scope != plan.controlled.environment.host_profile_ref)
-        {
-            return Err("cache scope differs from approved repository profile".into());
-        }
+        profile.require_plan(plan)?;
         profile.verify_installation()?;
         Ok(profile)
     }
 }
 
 impl Profile {
+    fn require_plan(&self, plan: &Plan) -> Result<()> {
+        if self.registration.id != plan.extension_id
+            || !self.approved_plans.contains(&plan.digest())
+        {
+            return Err("environment plan has not been approved on host".into());
+        }
+        if let Some(cache) = &plan.cache
+            && cache.scope != plan.controlled.environment.host_profile_ref
+        {
+            return Err("cache scope differs from approved repository profile".into());
+        }
+        Ok(())
+    }
+
     pub fn registrations(&self) -> Vec<Registration> {
         let mut registrations = Vec::from([self.registration.clone()]);
         registrations.extend(self.extensions.clone());

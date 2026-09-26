@@ -17,13 +17,15 @@ pub(crate) fn require(condition: bool, message: &str) -> Result<()> {
 
 /// Called while holding the same advisory lock as pause, revocation and Broker.
 pub(crate) async fn allowed(tx: &mut Tx<'_>, key: &RunKey) -> Result<bool> {
-    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND r.state='Running' AND r.revision=a.revision AND NOT a.stop_requested AND NOT a.quiescent AND a.blocker IS NULL AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>p.revoked_through_version AND p.id=COALESCE((v.document->>'repository_id')::bigint,1) AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM runtime_session s WHERE s.run_id=a.id AND s.end_kind IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run old ON old.id=b.run_id WHERE old.requirement_id=r.id AND NOT b.resolved))")
+    sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM agent_run a JOIN requirement r ON r.id=a.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision v ON v.requirement_id=r.id AND v.revision=a.revision CROSS JOIN repository p WHERE a.id=$1 AND a.request_id=$2 AND a.incarnation=$3 AND c.incarnation=a.incarnation AND c.recovery_complete AND NOT c.paused AND NOT r.paused AND r.state='Running' AND r.revision=a.revision AND NOT a.stop_requested AND NOT a.quiescent AND a.blocker IS NULL AND a.state IN ('Created','Running') AND NOT (p.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>p.revoked_through_version AND p.id=COALESCE((v.document->>'repository_id')::bigint,1) AND plugin_scope_allows('agent:codex',plugin_scope_repository(a.requirement_id,a.revision)) AND NOT (SELECT blocked FROM storage_guard WHERE id=1) AND NOT EXISTS(SELECT 1 FROM runtime_session s WHERE s.run_id=a.id AND s.end_kind IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM runtime_blocker b JOIN agent_run old ON old.id=b.run_id WHERE old.requirement_id=r.id AND NOT b.resolved))")
         .bind(&key.run_id).bind(&key.request_id).bind(&key.incarnation).fetch_one(&mut **tx).await
 }
 
 pub async fn open(pool: &PgPool, key: &RunKey, now: i64) -> Result<()> {
     let mut tx = run_store::lock(pool).await?;
     require(allowed(&mut tx, key).await?, "Run unavailable")?;
+    sqlx::query("SELECT plugin_scope_admit('agent:codex',id,requirement_id,revision,plugin_scope_repository(requirement_id,revision)) FROM agent_run WHERE id=$1")
+        .bind(&key.run_id).execute(&mut *tx).await?;
     sqlx::query("INSERT INTO runtime_session(run_id,created_at,last_progress) SELECT id,extract(epoch FROM created_at)::bigint,$2 FROM agent_run WHERE id=$1")
         .bind(&key.run_id).bind(now).execute(&mut *tx).await?;
     tx.commit().await
@@ -251,7 +253,8 @@ pub async fn input(pool: &PgPool, key: &RunKey) -> Result<String> {
             .bind(&key.run_id)
             .fetch_optional(pool)
             .await?;
-    Ok(json!({"reviewed_requirement":document,"confirmed_answers":answers,"repair_context":repair,"instruction":"Implement only the reviewed contract. Do not ask answered questions again. Use create_local_commit, then report_completion; report_blocker when unable to proceed. External delivery is platform-owned."}).to_string())
+    let constraints = crate::extension_recovery::constraints(pool, &key.run_id).await?;
+    Ok(json!({"approved_adaptation_constraints":constraints,"reviewed_requirement":document,"confirmed_answers":answers,"repair_context":repair,"instruction":"Implement only the reviewed contract. Do not ask answered questions again. Use create_local_commit, then report_completion; report_blocker when unable to proceed. External delivery is platform-owned."}).to_string())
 }
 
 async fn ending_allowed(tx: &mut Tx<'_>, key: &RunKey, kind: &str, payload: &Value) -> Result<()> {

@@ -3158,6 +3158,178 @@
           }
         }
       }
+    },
+    "/api/requirements/{id}/extension-recovery": {
+      "get": {
+        "operationId": "getExtensionRecovery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persisted result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionFailures"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "resolveExtensionRecovery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persisted result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtensionDecisionResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity or authorization changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExtensionDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/lifecycle": {
+      "get": {
+        "operationId": "getLifecycleHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persisted result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleHistory"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/notifications/replay": {
+      "post": {
+        "operationId": "replayNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persisted result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationReplayResult"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationReplay"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3234,6 +3406,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "development_constraints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DevelopmentConstraint"
+            },
+            "nullable": true
           }
         }
       },
@@ -4116,6 +4295,13 @@
               }
             },
             "nullable": true
+          },
+          "development_constraints": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DevelopmentConstraint"
+            },
+            "nullable": true
           }
         }
       },
@@ -4763,6 +4949,709 @@
             }
           }
         }
+      },
+      "DevelopmentConstraint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "version",
+          "source",
+          "reason",
+          "instruction",
+          "release_condition",
+          "paths",
+          "code_scope"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "instruction": {
+            "type": "string"
+          },
+          "release_condition": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "code_scope": {
+            "type": "string",
+            "enum": [
+              "changed_production",
+              "changed_tests",
+              "specified_files"
+            ]
+          }
+        }
+      },
+      "ExtensionDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "version",
+          "revision",
+          "validation_id",
+          "reason",
+          "action"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "validation_id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "action": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "revalidate",
+                  "adapt_code"
+                ]
+              },
+              "plan_digest": {
+                "type": "string"
+              },
+              "resume_condition": {
+                "type": "string"
+              },
+              "constraints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/DevelopmentConstraint"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ExtensionDecisionResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "accepted",
+          "started",
+          "version",
+          "event_key",
+          "resolution_state"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "started": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "event_key": {
+            "type": "string"
+          },
+          "resolution_state": {
+            "type": "string"
+          }
+        }
+      },
+      "NotificationReplay": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "event_id",
+          "plugin_id"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "integer"
+          },
+          "plugin_id": {
+            "type": "string"
+          }
+        }
+      },
+      "NotificationReplayResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "accepted",
+          "started"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "started": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ExtensionFailures": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "failures": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "event_key": {
+                  "type": "string"
+                },
+                "validation_id": {
+                  "type": "string"
+                },
+                "decision": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "facts": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "phase": {
+                      "type": "string"
+                    },
+                    "step": {
+                      "type": "string"
+                    },
+                    "candidate_sha": {
+                      "type": "string"
+                    },
+                    "input_identity": {
+                      "type": "string"
+                    },
+                    "environment_identity": {
+                      "type": "string"
+                    },
+                    "log_ref": {
+                      "type": "string"
+                    },
+                    "raw": {
+                      "type": "string"
+                    },
+                    "native_code": {
+                      "type": "string"
+                    },
+                    "fingerprint": {
+                      "type": "string"
+                    },
+                    "pr_head": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "command": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "exit_code": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "authorized_code_check": {
+                      "type": "boolean"
+                    },
+                    "retry_after_seconds": {
+                      "type": "integer",
+                      "nullable": true
+                    },
+                    "feedback": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "check_id": {
+                          "type": "string"
+                        },
+                        "verdict": {
+                          "type": "string"
+                        },
+                        "log_ref": {
+                          "type": "string"
+                        },
+                        "output_sha256": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string"
+                        },
+                        "fault": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "class": {
+                              "type": "string"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "owner": {
+                              "type": "string"
+                            },
+                            "resume_condition": {
+                              "type": "string"
+                            },
+                            "scope": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [],
+                          "nullable": true
+                        },
+                        "exit_code": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "authorized_code_check": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": []
+                    }
+                  },
+                  "required": []
+                },
+                "resolution": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "actor": {
+                      "type": "string"
+                    },
+                    "command": {
+                      "$ref": "#/components/schemas/ExtensionDecision"
+                    }
+                  },
+                  "required": [],
+                  "nullable": true
+                },
+                "resolution_state": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "successor_validation": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": []
+            }
+          }
+        },
+        "required": [
+          "failures"
+        ]
+      },
+      "LifecycleHistory": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "event_id": {
+                  "type": "integer"
+                },
+                "revision": {
+                  "type": "integer"
+                },
+                "sequence": {
+                  "type": "integer"
+                },
+                "phase": {
+                  "type": "string"
+                },
+                "source_id": {
+                  "type": "string"
+                },
+                "occurred_at": {
+                  "type": "string"
+                },
+                "facts": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "status": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "phase": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resume_state": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "stage": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "result": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "retry_of": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "superseded_by": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "decision": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resolution_state": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "successor_validation": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "event": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "candidate_sha": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "kind": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "version": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "attempts": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "paused": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "cancel_requested": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "cleanup_complete": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "ready": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "quiescent": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "stop_requested": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "hook_invalidated": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "released": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "pre_validation_started": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "merge_started": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "acceptance_started": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "stop_confirmed": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "candidate": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "todo": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "code": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resolved": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "passed": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "actual_digest": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": []
+                    },
+                    "previous": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "phase": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resume_state": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "stage": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "result": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "retry_of": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "superseded_by": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "decision": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resolution_state": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "successor_validation": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "event": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "status": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "candidate_sha": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "kind": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "version": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "attempt": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "attempts": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "paused": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "cancel_requested": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "cleanup_complete": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "ready": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "quiescent": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "stop_requested": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "hook_invalidated": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "released": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "pre_validation_started": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "merge_started": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "acceptance_started": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "stop_confirmed": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "candidate": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "todo": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "code": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "resolved": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "passed": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "actual_digest": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "required": []
+                    },
+                    "transition": {
+                      "type": "string"
+                    }
+                  },
+                  "required": []
+                },
+                "deliveries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "plugin_id": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "attempts": {
+                        "type": "integer"
+                      },
+                      "last_result": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": []
+                  }
+                }
+              },
+              "required": []
+            }
+          }
+        },
+        "required": [
+          "events"
+        ]
       }
     }
   }

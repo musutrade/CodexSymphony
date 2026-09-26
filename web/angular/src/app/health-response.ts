@@ -1,4 +1,4 @@
-// harness-contract-sha256: feb49ee0737abccd74864c3e43f01891669139a491636babddffe401eaef341f
+// harness-contract-sha256: 9ae60b02d37e8da3029026c0c37a1fece7808ddd93613a1bc055655837c9e907
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -120,6 +120,16 @@ export type CreateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -139,6 +149,16 @@ export type CreateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -189,6 +209,16 @@ export interface CreateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
+    development_constraints?: {
+      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+      id: string;
+      instruction: string;
+      paths: string[];
+      reason: string;
+      release_condition: string;
+      source: string;
+      version: string;
+    }[] | null;
     network_access: string[];
     title: string;
     validation_plan: {
@@ -208,6 +238,16 @@ export type GetRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -227,6 +267,16 @@ export type GetRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -279,6 +329,16 @@ export type UpdateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -298,6 +358,16 @@ export type UpdateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -348,6 +418,16 @@ export interface UpdateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
+    development_constraints?: {
+      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+      id: string;
+      instruction: string;
+      paths: string[];
+      reason: string;
+      release_condition: string;
+      source: string;
+      version: string;
+    }[] | null;
     network_access: string[];
     title: string;
     validation_plan: {
@@ -367,6 +447,16 @@ export type ReadyRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -386,6 +476,16 @@ export type ReadyRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -443,6 +543,16 @@ export type WithdrawRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -462,6 +572,16 @@ export type WithdrawRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -809,6 +929,16 @@ export type MultiCreateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -829,6 +959,16 @@ export type MultiCreateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -880,6 +1020,16 @@ export interface MultiCreateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
+    development_constraints?: {
+      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+      id: string;
+      instruction: string;
+      paths: string[];
+      reason: string;
+      release_condition: string;
+      source: string;
+      version: string;
+    }[] | null;
     network_access: string[];
     title: string;
     validation_plan: {
@@ -900,6 +1050,16 @@ export type MultiGetRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -920,6 +1080,16 @@ export type MultiGetRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -973,6 +1143,16 @@ export type MultiUpdateRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -993,6 +1173,16 @@ export type MultiUpdateRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -1044,6 +1234,16 @@ export interface MultiUpdateRequirementRequest {
   contract: {
     acceptance_criteria: { description: string; verification_ref: string }[];
     description: string;
+    development_constraints?: {
+      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+      id: string;
+      instruction: string;
+      paths: string[];
+      reason: string;
+      release_condition: string;
+      source: string;
+      version: string;
+    }[] | null;
     network_access: string[];
     title: string;
     validation_plan: {
@@ -1064,6 +1264,16 @@ export type MultiReadyRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -1084,6 +1294,16 @@ export type MultiReadyRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -1142,6 +1362,16 @@ export type MultiWithdrawRequirementResponse =
       contract: {
         acceptance_criteria: { description: string; verification_ref: string }[];
         description: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         network_access: string[];
         title: string;
         validation_plan: {
@@ -1162,6 +1392,16 @@ export type MultiWithdrawRequirementResponse =
         contract: {
           acceptance_criteria: { description: string; verification_ref: string }[];
           description: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           network_access: string[];
           title: string;
           validation_plan: {
@@ -1507,6 +1747,16 @@ export type GetGroupReviewResponse =
             items: {
               budget: { model_seconds: number; tokens: number; turns: number };
               child_id: string;
+              development_constraints?: {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[] | null;
               integration?: {
                 configuration_sha256: string;
                 repositories: {
@@ -1654,6 +1904,16 @@ export type GetGroupReviewResponse =
           items: {
             budget: { model_seconds: number; tokens: number; turns: number };
             child_id: string;
+            development_constraints?: {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[] | null;
             integration?: {
               configuration_sha256: string;
               repositories: {
@@ -1729,6 +1989,16 @@ export type GetGroupReviewResponse =
         items: {
           budget: { model_seconds: number; tokens: number; turns: number };
           child_id: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           integration?: {
             configuration_sha256: string;
             repositories: {
@@ -1834,6 +2104,16 @@ export type SaveGroupReviewResponse =
             items: {
               budget: { model_seconds: number; tokens: number; turns: number };
               child_id: string;
+              development_constraints?: {
+                code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+                id: string;
+                instruction: string;
+                paths: string[];
+                reason: string;
+                release_condition: string;
+                source: string;
+                version: string;
+              }[] | null;
               integration?: {
                 configuration_sha256: string;
                 repositories: {
@@ -1981,6 +2261,16 @@ export type SaveGroupReviewResponse =
           items: {
             budget: { model_seconds: number; tokens: number; turns: number };
             child_id: string;
+            development_constraints?: {
+              code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+              id: string;
+              instruction: string;
+              paths: string[];
+              reason: string;
+              release_condition: string;
+              source: string;
+              version: string;
+            }[] | null;
             integration?: {
               configuration_sha256: string;
               repositories: {
@@ -2056,6 +2346,16 @@ export type SaveGroupReviewResponse =
         items: {
           budget: { model_seconds: number; tokens: number; turns: number };
           child_id: string;
+          development_constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[] | null;
           integration?: {
             configuration_sha256: string;
             repositories: {
@@ -2102,6 +2402,16 @@ export interface SaveGroupReviewRequest {
     items: {
       budget: { model_seconds: number; tokens: number; turns: number };
       child_id: string;
+      development_constraints?: {
+        code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+        id: string;
+        instruction: string;
+        paths: string[];
+        reason: string;
+        release_condition: string;
+        source: string;
+        version: string;
+      }[] | null;
       integration?: {
         configuration_sha256: string;
         repositories: {
@@ -2180,6 +2490,16 @@ export interface EditGroupQueueRequest {
       items: {
         budget: { model_seconds: number; tokens: number; turns: number };
         child_id: string;
+        development_constraints?: {
+          code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+          id: string;
+          instruction: string;
+          paths: string[];
+          reason: string;
+          release_condition: string;
+          source: string;
+          version: string;
+        }[] | null;
         integration?: {
           configuration_sha256: string;
           repositories: {
@@ -2217,3 +2537,199 @@ export type AuthLoginResponse =
 export interface AuthLoginRequest { password: string; username: string }
 export type AuthSessionResponse = { csrf_token: string; username: string | null } | undefined;
 export type AuthLogoutResponse = undefined;
+export interface GetExtensionRecoveryResponse {
+  failures: {
+    decision?: string;
+    event_key?: string;
+    facts?: {
+      authorized_code_check?: boolean;
+      candidate_sha?: string;
+      command?: string[];
+      environment_identity?: string;
+      exit_code?: number | null;
+      feedback?: {
+        authorized_code_check?: boolean;
+        check_id?: string;
+        exit_code?: number | null;
+        fault?: {
+          class?: string;
+          code?: string;
+          message?: string;
+          owner?: string;
+          resume_condition?: string;
+          scope?: string[];
+        } | null;
+        log_ref?: string;
+        output_sha256?: string;
+        source?: string;
+        verdict?: string;
+      };
+      fingerprint?: string;
+      input_identity?: string;
+      log_ref?: string;
+      native_code?: string;
+      phase?: string;
+      pr_head?: string | null;
+      raw?: string;
+      retry_after_seconds?: number | null;
+      step?: string;
+    };
+    reason?: string;
+    resolution?: {
+      actor?: string;
+      command?: {
+        action: {
+          constraints?: {
+            code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+            id: string;
+            instruction: string;
+            paths: string[];
+            reason: string;
+            release_condition: string;
+            source: string;
+            version: string;
+          }[];
+          kind: 'adapt_code' | 'revalidate';
+          plan_digest?: string;
+          resume_condition?: string;
+        };
+        reason: string;
+        request_id: string;
+        revision: number;
+        validation_id: string;
+        version: number;
+      };
+    } | null;
+    resolution_state?: string | null;
+    successor_validation?: string | null;
+    validation_id?: string;
+  }[];
+}
+export type ResolveExtensionRecoveryResponse =
+  | {
+      accepted: boolean;
+      event_key: string;
+      resolution_state: string;
+      started: boolean;
+      version: number;
+    }
+  | { error: string };
+export interface ResolveExtensionRecoveryRequest {
+  action: {
+    constraints?: {
+      code_scope: 'changed_production' | 'changed_tests' | 'specified_files';
+      id: string;
+      instruction: string;
+      paths: string[];
+      reason: string;
+      release_condition: string;
+      source: string;
+      version: string;
+    }[];
+    kind: 'adapt_code' | 'revalidate';
+    plan_digest?: string;
+    resume_condition?: string;
+  };
+  reason: string;
+  request_id: string;
+  revision: number;
+  validation_id: string;
+  version: number;
+}
+export interface GetLifecycleHistoryResponse {
+  events: {
+    deliveries?: {
+      attempts?: number;
+      last_result?: string | null;
+      plugin_id?: string;
+      state?: string;
+    }[];
+    event_id?: number;
+    facts?: {
+      previous?: {
+        acceptance_started?: boolean | null;
+        actual_digest?: string | null;
+        attempt?: number | null;
+        attempts?: number | null;
+        cancel_requested?: boolean | null;
+        candidate?: boolean | null;
+        candidate_sha?: string | null;
+        cleanup_complete?: boolean | null;
+        code?: string | null;
+        decision?: string | null;
+        event?: string | null;
+        hook_invalidated?: boolean | null;
+        kind?: string | null;
+        merge_started?: boolean | null;
+        passed?: boolean | null;
+        paused?: boolean | null;
+        phase?: string | null;
+        pre_validation_started?: boolean | null;
+        quiescent?: boolean | null;
+        ready?: boolean | null;
+        released?: boolean | null;
+        resolution_state?: string | null;
+        resolved?: boolean | null;
+        result?: string | null;
+        resume_state?: string | null;
+        retry_of?: string | null;
+        revision?: number | null;
+        stage?: string | null;
+        state?: string | null;
+        status?: string | null;
+        stop_confirmed?: boolean | null;
+        stop_requested?: boolean | null;
+        successor_validation?: string | null;
+        superseded_by?: string | null;
+        todo?: boolean | null;
+        version?: number | null;
+      };
+      status?: {
+        acceptance_started?: boolean | null;
+        actual_digest?: string | null;
+        attempt?: number | null;
+        attempts?: number | null;
+        cancel_requested?: boolean | null;
+        candidate?: boolean | null;
+        candidate_sha?: string | null;
+        cleanup_complete?: boolean | null;
+        code?: string | null;
+        decision?: string | null;
+        event?: string | null;
+        hook_invalidated?: boolean | null;
+        kind?: string | null;
+        merge_started?: boolean | null;
+        passed?: boolean | null;
+        paused?: boolean | null;
+        phase?: string | null;
+        pre_validation_started?: boolean | null;
+        quiescent?: boolean | null;
+        ready?: boolean | null;
+        released?: boolean | null;
+        resolution_state?: string | null;
+        resolved?: boolean | null;
+        result?: string | null;
+        resume_state?: string | null;
+        retry_of?: string | null;
+        revision?: number | null;
+        stage?: string | null;
+        state?: string | null;
+        status?: string | null;
+        stop_confirmed?: boolean | null;
+        stop_requested?: boolean | null;
+        successor_validation?: string | null;
+        superseded_by?: string | null;
+        todo?: boolean | null;
+        version?: number | null;
+      };
+      transition?: string;
+    };
+    occurred_at?: string;
+    phase?: string;
+    revision?: number;
+    sequence?: number;
+    source_id?: string;
+  }[];
+}
+export interface ReplayNotificationResponse { accepted: boolean; started: boolean }
+export interface ReplayNotificationRequest { event_id: number; plugin_id: string }

@@ -416,6 +416,8 @@ async fn material(
 }
 
 async fn before_remove_hook(pool: &PgPool, run_id: &str, path: &Path, script: &Path, mode: &str) {
+    sqlx::query("INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) VALUES('hook:remove-check','all','{}',true) ON CONFLICT DO NOTHING")
+        .execute(pool).await.unwrap();
     let hook = HookConfig {
         name: "remove-check".into(),
         event: HookEvent::BeforeRemove,

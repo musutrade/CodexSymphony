@@ -102,7 +102,7 @@ fn checked_entry<'a>(
 fn environment_scope(environment: &crate::environment::Plan) -> Result<&str> {
     for entry in &environment.controlled.extensions {
         if entry.id == environment.extension_id {
-            return Ok(&entry.scope_ref);
+            return Ok(&environment.controlled.environment.repository_revision);
         }
     }
     Err("environment scope registration missing".into())
@@ -113,7 +113,9 @@ fn installed_entry<'a>(
     registration: &Registration,
     scope: &str,
 ) -> Result<&'a Installed> {
-    if registration.scope_ref != scope {
+    let (repository, _) = crate::plugin_scope::repository_revision(scope)
+        .ok_or("delivery repository identity missing")?;
+    if !crate::plugin_scope::contains(&registration.scope_ref, repository) {
         return Err("delivery hook repository scope differs".into());
     }
     for entry in installed {

@@ -11,7 +11,7 @@ M2 受控集成已通过；真实公网、实体手机 Bark 和离机备份的�
 | 需求录入与队列 | [M1 使用与迁移](docs/m1-delivery.md)、[导入草稿](docs/import-drafts.md)、[自然语言生成](docs/draft-generation.md) |
 | 整组授权与变更 | [父 AC 覆盖评审](docs/group-review.md)、[依赖队列](docs/group-queue.md)、[变化部分评审](docs/queue-editing.md) |
 | 登录与远程部署 | [账号与会话](docs/platform-authentication.md)、[HTTPS 与执行隔离](docs/m2-deployment.md) |
-| 手机与通知 | [手机接续与隔夜回答](docs/mobile-continuation.md)、[Bark 行动通知](docs/bark-notifications.md) |
+| 手机与通知 | [手机接续与隔夜回答](docs/mobile-continuation.md)、[Bark 行动通知](docs/bark-notifications.md)、[生命周期通知与插件恢复](docs/lifecycle-recovery.md) |
 | 备份、升级与恢复 | [日常恢复](docs/daily-recovery.md)、[工作保全](docs/workspaces.md)、[存储生命周期](docs/storage-lifecycle.md) |
 | 执行与交付 | [执行控制](docs/execution-control.md)、[累计预算](docs/budgets.md)、[PR 交接](docs/delivery.md)、[GitHub 观察](docs/github-observation.md) |
 | 环境与操作 | [环境预检](docs/preparation.md)、[每仓库环境与可选缓存](docs/repository-environments.md)、[操作与待办](docs/operations.md) |

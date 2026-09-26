@@ -1,0 +1,10 @@
+[Unit]
+Description=Dispatch committed lifecycle events
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=15s
+Unit=codexsymphony-notifications.service
+
+[Install]
+WantedBy=timers.target

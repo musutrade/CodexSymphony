@@ -60,6 +60,22 @@ pub(crate) async fn checkout(
     sha: &str,
     now: i64,
 ) -> Result<PathBuf> {
+    crate::plugin_scope::admit(
+        pool,
+        "validation:native",
+        &intent.action_key(),
+        intent.requirement,
+        intent.revision,
+    )
+    .await?;
+    crate::plugin_scope::admit(
+        pool,
+        "delivery:github",
+        &intent.delivery_key,
+        intent.requirement,
+        intent.revision,
+    )
+    .await?;
     let broker = GitBroker::open(&root.join("workspaces"))?;
     fetch_source(pool, client, &broker, intent, sha, now).await?;
     let id = format!("merge-{}-{}", intent.action_key(), sha);
@@ -167,7 +183,14 @@ pub(crate) async fn collect(
 }
 async fn execution_allowed(pool: &PgPool, intent: &Intent) -> Result<bool> {
     let mut tx = crate::run_store::lock(pool).await?;
-    Ok(crate::merge_store::allowed(&mut tx, intent).await?)
+    let scoped: bool = sqlx::query_scalar(
+        "SELECT plugin_scope_allows('validation:native',plugin_scope_repository($1,$2))",
+    )
+    .bind(intent.requirement)
+    .bind(intent.revision)
+    .fetch_one(&mut *tx)
+    .await?;
+    Ok(scoped && crate::merge_store::allowed(&mut tx, intent).await?)
 }
 struct StopOnDrop(Arc<AtomicBool>);
 impl Drop for StopOnDrop {

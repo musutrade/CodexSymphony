@@ -21,6 +21,7 @@ pub struct Request<'a> {
 }
 
 pub async fn validate(pool: &PgPool, r: Request<'_>) -> Result<bool> {
+    crate::plugin_scope::admit(pool, "validation:native", r.id, r.requirement, r.revision).await?;
     crate::environment_service::admit(
         pool,
         r.requirement,
@@ -34,13 +35,21 @@ pub async fn validate(pool: &PgPool, r: Request<'_>) -> Result<bool> {
     create(pool, &r, &trusted).await?;
     let context = crate::validation_context::prepare(pool, &r).await?;
     if !pending(pool, &r, &trusted).await? {
-        if !accepted(pool, &r).await? {
-            return Ok(false);
-        }
-        return reconcile(pool, r, context).await;
+        return reconcile_accepted(pool, r, context).await;
     }
     execute(pool, r, &trusted, &required, context).await
 }
+async fn reconcile_accepted(
+    pool: &PgPool,
+    r: Request<'_>,
+    context: Option<crate::validation_context::Context>,
+) -> Result<bool> {
+    if !accepted(pool, &r).await? {
+        return Ok(false);
+    }
+    reconcile(pool, r, context).await
+}
+
 async fn accepted(pool: &PgPool, r: &Request<'_>) -> Result<bool> {
     if !store::status(pool, r.id).await?.is_some_and(succeeded) {
         return Ok(false);
@@ -163,6 +172,7 @@ async fn collect(
     context: Option<&crate::validation_context::Context>,
     claimed: bool,
 ) -> Result<Vec<StepEvidence>> {
+    crate::plugin_scope::admit(pool, "validation:native", r.id, r.requirement, r.revision).await?;
     let limit = crate::storage_service::entry_limit(pool).await?;
     if let Some(context) = context {
         return crate::validation_supervisor::execute(
@@ -181,10 +191,14 @@ async fn collect(
     let directory = r.directory.to_owned();
     let candidate = r.candidate.clone();
     let plan = r.plan.clone();
-    tokio::task::spawn_blocking(move || {
-        validation_runner::execute_limited(&checkout, &directory, &candidate, &plan, limit)
-    })
-    .await?
+    let job = crate::validation_legacy::Job {
+        checkout,
+        directory,
+        candidate,
+        plan,
+        limit,
+    };
+    crate::validation_legacy::execute(job).await
 }
 async fn finish(
     pool: &PgPool,
@@ -207,7 +221,9 @@ async fn finish(
         required,
     )
     .await?;
-    if !passed {
+    if passed {
+        crate::extension_failure::record(pool, r.id, steps).await?;
+    } else {
         reserve(pool, &r, steps).await?;
     }
     Ok(passed)
@@ -216,20 +232,20 @@ fn step_id(step: &validation_runner::Step) -> String {
     step.id.clone()
 }
 fn step_status(step: &StepEvidence) -> &'static str {
-    match step.exit_code {
-        Some(0) => "succeeded",
-        Some(_) => "failed",
-        None => "unknown",
-    }
+    crate::extension_feedback::status(step)
 }
+
 async fn reserve(pool: &PgPool, r: &Request<'_>, steps: &[StepEvidence]) -> Result<()> {
+    crate::extension_failure::record(pool, r.id, steps).await?;
     let v1: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repair_authorization WHERE requirement_id=$1 AND policy='bounded_v1')")
         .bind(r.requirement).fetch_one(pool).await?;
     if v1 {
         return record_failures(pool, r, steps).await;
     }
     for step in steps {
-        if step_status(step) == "failed" && step.code_failure {
+        if !crate::extension_feedback::negotiated(step)
+            && crate::extension_feedback::code_failure(step)
+        {
             let failure = serde_json::json!({"candidate":r.candidate,"step":step,"remaining_acceptance":r.plan.steps});
             store::reserve_repair(pool, r.requirement, 1, r.id, &failure, FailureKind::Code)
                 .await?;
@@ -240,7 +256,10 @@ async fn reserve(pool: &PgPool, r: &Request<'_>, steps: &[StepEvidence]) -> Resu
 }
 
 async fn record_failures(pool: &PgPool, r: &Request<'_>, steps: &[StepEvidence]) -> Result<()> {
-    for step in steps.iter().filter(|step| step.exit_code != Some(0)) {
+    for step in steps {
+        if crate::extension_feedback::negotiated(step) || step_status(step) == "succeeded" {
+            continue;
+        }
         let failure = crate::bounded_recovery::Failure {
             phase: "local".into(),
             step: step.id.clone(),

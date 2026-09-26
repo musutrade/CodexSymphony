@@ -87,6 +87,14 @@ impl Control<Input, Value> for Admission<'_> {
         Ok(())
     }
     async fn admit(&mut self, input: &Input) -> Result<()> {
+        crate::plugin_scope::admit(
+            self.pool,
+            "delivery:github",
+            &input.job.action_key,
+            input.job.requirement_id,
+            input.job.revision,
+        )
+        .await?;
         if !crate::storage::permit(self.pool, self.root).await {
             return Err("delivery storage unavailable".into());
         }
@@ -210,6 +218,14 @@ pub async fn observe(
     job: &Pending,
     now: i64,
 ) -> Result<Option<Value>> {
+    crate::plugin_scope::admit(
+        pool,
+        "delivery:github",
+        &job.action_key,
+        job.requirement_id,
+        job.revision,
+    )
+    .await?;
     let input = Input {
         job: job.clone(),
         operation: "observe".into(),

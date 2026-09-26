@@ -1605,3 +1605,41 @@ mod server_auth;
 
 #[path = "support/auth.rs"]
 mod auth_client;
+
+#[tokio::test]
+async fn repository_scope_blocks_start_and_stops_continuation_without_resetting_session() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
+    let root = temporary();
+    let pool = fixture(&root).await;
+    sqlx::query("UPDATE plugin_scope SET enabled=false WHERE plugin_id='agent:codex'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(store::open(&pool, &key(), 100).await.is_err());
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM runtime_session")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+    sqlx::query("UPDATE plugin_scope SET enabled=true WHERE plugin_id='agent:codex'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    store::open(&pool, &key(), 100).await.unwrap();
+    store::thread(&pool, &key(), "scope-thread", 101)
+        .await
+        .unwrap();
+    assert!(store::can_continue(&pool, &key(), 102).await.unwrap());
+    sqlx::query("UPDATE plugin_scope SET enabled=false WHERE plugin_id='agent:codex'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(!store::can_continue(&pool, &key(), 103).await.unwrap());
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM runtime_session")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}

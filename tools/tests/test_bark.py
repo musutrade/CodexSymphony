@@ -68,6 +68,35 @@ class BarkTests(unittest.TestCase):
         self.path.write_text(json.dumps(self.cfg))
         self.path.chmod(0o600)
 
+    def test_lifecycle_actionability_includes_environment_preparation_and_blockers(self):
+        for phase, status in [('environment', {'passed': False}), ('preparation', {'todo': True}),
+                              ('blocker', {'resolved': False}), ('hook', {'status': 'unknown'})]:
+            self.assertEqual(bark.event_kind({'phase': phase, 'facts': {'status': status}}), 'failed')
+        self.assertEqual(bark.event_kind({'phase': 'environment', 'facts': {'status': {'passed': True}}}), 'progress')
+
+    def test_lifecycle_ingress_is_durable_and_channel_policy_is_plugin_owned(self):
+        self.cfg['event_policy'] = 'actionable'
+        del self.cfg['database']
+        del self.cfg['psql_program']
+        self.save()
+        event = dict(protocol_version=1, event_id=1, attempt=1, requirement_id=74,
+                     phase='requirement', facts={'status': {'state': 'Done'}})
+        self.assertEqual(bark.receive_event(self.cfg, event)['status'], 'ignored')
+        self.cfg['event_policy'] = 'all'
+        self.save()
+        # A received event retains its original disposition after policy changes.
+        self.assertEqual(bark.receive_event(self.cfg, dict(event, attempt=2))['status'], 'ignored')
+        event['event_id'] = 2
+        self.assertEqual(bark.receive_event(self.cfg, event)['status'], 'accepted')
+        self.assertEqual(bark.receive_event(self.cfg, dict(event, attempt=2))['status'], 'accepted')
+        bark.tick_events(self.path, self.cfg)
+        bark.tick_events(self.path, self.cfg)
+        self.assertEqual(len(self.server.received), 1)
+        self.assertEqual(self.server.received[0][2]['body'], '需求业务验收已完成')
+        with self.assertRaises(ValueError):
+            bark.receive_event(self.cfg, dict(event, requirement_id=75))
+        self.assertNotIn(self.cfg['device_key'].encode(), (self.root/'delivery.sqlite3').read_bytes())
+
     def test_disabled_and_invalid_configuration(self):
         result = subprocess.run(['python3', '-I', str(SCRIPT)], capture_output=True, text=True, check=True)
         self.assertEqual(result.stdout.strip(), 'disabled')

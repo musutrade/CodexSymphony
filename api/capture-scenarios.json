@@ -2173,6 +2173,95 @@
     "status": 200
   },
   {
+    "id": "extension-recovery-history",
+    "method": "GET",
+    "path": "/api/requirements/{id}/extension-recovery",
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "status": 200
+  },
+  {
+    "id": "lifecycle-history",
+    "method": "GET",
+    "path": "/api/requirements/{id}/lifecycle",
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "status": 200
+  },
+  {
+    "id": "notification-replay-missing",
+    "method": "POST",
+    "path": "/api/requirements/{id}/notifications/replay",
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "body": {
+      "event_id": 922337,
+      "plugin_id": "absent"
+    },
+    "status": 200
+  },
+  {
+    "id": "recovery-accepted-replay",
+    "method": "POST",
+    "path": "/api/requirements/{id}/extension-recovery",
+    "path_parameters": {
+      "id": 900001
+    },
+    "status": 200,
+    "body": {
+      "request_id": "capture-extension-recovery",
+      "version": 1,
+      "revision": 1,
+      "validation_id": "capture-validation",
+      "reason": "Retained HTTP recovery replay",
+      "action": {
+        "kind": "revalidate",
+        "plan_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "resume_condition": "Reviewed implementation available"
+      }
+    }
+  },
+  {
+    "id": "recovery-stale-decision",
+    "method": "POST",
+    "path": "/api/requirements/{id}/extension-recovery",
+    "path_parameters": {
+      "id": 900001
+    },
+    "status": 409,
+    "body": {
+      "request_id": "capture-extension-stale",
+      "version": 1,
+      "revision": 1,
+      "validation_id": "capture-validation",
+      "reason": "Retained HTTP recovery replay",
+      "action": {
+        "kind": "revalidate",
+        "plan_digest": "1111111111111111111111111111111111111111111111111111111111111111",
+        "resume_condition": "Reviewed implementation available"
+      }
+    }
+  },
+  {
+    "id": "recovery-invalid-decision",
+    "method": "POST",
+    "path": "/api/requirements/{id}/extension-recovery",
+    "path_parameters": {
+      "id": 900001
+    },
+    "status": 422,
+    "body": {}
+  },
+  {
     "id": "auth-session",
     "method": "GET",
     "path": "/api/auth/session",

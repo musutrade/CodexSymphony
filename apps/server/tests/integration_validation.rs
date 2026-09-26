@@ -1056,3 +1056,38 @@ async fn integration_supervisor_growth_uses_its_preallocated_hot_budget() {
     assert_eq!(allocations, vec!["workspace"]);
     assert_eq!(counts(&f).await, (0, 0, 0));
 }
+
+#[tokio::test]
+async fn repository_scope_checks_every_integration_input_before_start() {
+    let f = fixture("", true).await;
+    tick(&f).await;
+    sqlx::query("UPDATE plugin_scope SET kind='repositories',repository_ids='{1}' WHERE plugin_id='validation:native'").execute(&f.pool).await.unwrap();
+    let error = integration_worker::tick(
+        &f.pool,
+        &f.root,
+        Path::new(env!("CARGO_BIN_EXE_codexsymphony-server")),
+        &f.broker,
+        "boot",
+        &f.plan,
+    )
+    .await
+    .unwrap_err();
+    assert!(error.to_string().contains("scope unavailable"));
+    let state: String = sqlx::query_scalar("SELECT state FROM integration_validation")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(state, "prepared");
+    assert_eq!(counts(&f).await, (0, 0, 0));
+    // Restoring explicit authorization resumes the same saved job, with both
+    // repository bindings retained, without replacing its input combination.
+    sqlx::query(
+        "UPDATE plugin_scope SET repository_ids='{1,2}' WHERE plugin_id='validation:native'",
+    )
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    complete(&f, "passed").await;
+    let bindings:Vec<i64>=sqlx::query_scalar("SELECT repository_id FROM plugin_scope_invocation WHERE plugin_id='validation:native' ORDER BY repository_id").fetch_all(&f.pool).await.unwrap();
+    assert_eq!(bindings, vec![1, 2]);
+}

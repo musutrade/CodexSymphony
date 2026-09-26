@@ -79,6 +79,14 @@ impl Control<Intent, Value> for Admission<'_> {
         Ok(())
     }
     async fn admit(&mut self, intent: &Intent) -> Result<()> {
+        crate::plugin_scope::admit(
+            self.pool,
+            "delivery:github",
+            &intent.action_key(),
+            intent.requirement,
+            intent.revision,
+        )
+        .await?;
         crate::environment_service::admit(
             self.pool,
             intent.requirement,

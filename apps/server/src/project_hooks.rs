@@ -288,6 +288,14 @@ async fn one(
     workspace: &str,
     hook: &HookConfig,
 ) -> Result<bool> {
+    crate::plugin_scope::admit(
+        pool,
+        &format!("hook:{}", hook.name),
+        &format!("{run_id}:{resource}:{:?}", hook.event),
+        saved.requirement,
+        saved.revision,
+    )
+    .await?;
     match begin_invocation(pool, root, run_id, resource, hook).await? {
         StartDecision::Done(value) => Ok(value),
         StartDecision::Recover(id, directory) => Ok(reconcile(pool, &id, &directory, hook)

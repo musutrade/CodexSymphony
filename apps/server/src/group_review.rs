@@ -23,9 +23,10 @@ pub struct Verification {
     pub ac_id: String,
     pub step: Step,
 }
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Item {
+    pub development_constraints: Option<Vec<crate::development_constraints::Constraint>>,
     pub integration: Option<crate::integration::Authorization>,
     pub child_id: String,
     pub revision: i64,
@@ -35,6 +36,42 @@ pub struct Item {
     pub merged_baseline_review: String,
     pub verification: Vec<Verification>,
 }
+
+impl Serialize for Item {
+    fn serialize<S: serde::Serializer>(
+        &self,
+        serializer: S,
+    ) -> std::result::Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut value = serializer.serialize_struct(
+            "Item",
+            8 + usize::from(self.development_constraints.is_some()),
+        )?;
+        if let Some(constraints) = &self.development_constraints {
+            value.serialize_field("development_constraints", constraints)?;
+        }
+        value.serialize_field("integration", &self.integration)?;
+        value.serialize_field("child_id", &self.child_id)?;
+        self.serialize_scope(&mut value)?;
+        value.end()
+    }
+}
+
+impl Item {
+    fn serialize_scope<S: serde::ser::SerializeStruct>(
+        &self,
+        value: &mut S,
+    ) -> std::result::Result<(), S::Error> {
+        value.serialize_field("revision", &self.revision)?;
+        value.serialize_field("repository_version", &self.repository_version)?;
+        value.serialize_field("budget", &self.budget)?;
+        value.serialize_field("repair_scope", &self.repair_scope)?;
+        value.serialize_field("merged_baseline_review", &self.merged_baseline_review)?;
+        value.serialize_field("verification", &self.verification)?;
+        Ok(())
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Review {
@@ -171,30 +208,36 @@ fn validate_item(child: &draft::Child, item: &Item, repository: &Repository) -> 
 pub(crate) fn verification_contract(child: &draft::Child, item: &Item) -> Result<Contract> {
     let mut acs = BTreeSet::new();
     let mut criteria = Vec::new();
+    let mut steps = Vec::new();
     for check in &item.verification {
         require(acs.insert(&check.ac_id), "duplicate AC verification")?;
-        let ac = child
-            .acceptance_criteria
-            .iter()
-            .find(|a| a.id == check.ac_id)
-            .ok_or("dangling verification AC")?;
+        let mut description = None;
+        for ac in &child.acceptance_criteria {
+            if ac.id == check.ac_id {
+                description = Some(ac.description.clone());
+                break;
+            }
+        }
         criteria.push(Criterion {
-            description: ac.description.clone(),
+            description: description.ok_or("dangling verification AC")?,
             verification_ref: check.step.id.clone(),
         });
+        steps.push(check.step.clone());
     }
     require(
         acs.len() == child.acceptance_criteria.len(),
         "every child AC requires a machine verification step",
     )?;
     Ok(Contract {
+        development_constraints: item.development_constraints.clone(),
         title: child.goal.clone(),
         description: child.validation_plan.clone(),
         acceptance_criteria: criteria,
-        validation_plan: item.verification.iter().map(|v| v.step.clone()).collect(),
+        validation_plan: steps,
         network_access: Vec::new(),
     })
 }
+
 fn validate_coverage(document: &Document, revision: i64, review: &Review) -> Result<()> {
     let mut covered = BTreeSet::new();
     for mapping in &review.coverage {

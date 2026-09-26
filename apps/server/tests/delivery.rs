@@ -928,3 +928,35 @@ async fn cancelled_unknown_delivery_hook_retains_ownership_even_after_process_st
     assert_eq!(state(&pool).await, ("Cancelled".into(), Some(1), false));
     pool.close().await;
 }
+
+#[tokio::test]
+async fn repository_scope_blocks_publication_and_reconciliation_before_remote_access() {
+    let _serial = DATABASE_TEST.lock().await;
+    let pool = database().await;
+    let pending = job(&pool).await;
+    let mut remote = Fake::default();
+    sqlx::raw_sql("INSERT INTO repository(id,version,document) VALUES(42,1,'{}'); UPDATE plugin_scope SET kind='repositories',repository_ids='{42}' WHERE plugin_id='delivery:github';").execute(&pool).await.unwrap();
+    let error = codexsymphony_server::github_publication_adapter::submit(
+        &pool,
+        &std::env::temp_dir(),
+        &mut remote,
+        &pending,
+        0,
+        "push",
+    )
+    .await
+    .unwrap_err();
+    assert!(error.to_string().contains("scope unavailable"));
+    assert!(
+        codexsymphony_server::github_publication_adapter::observe(&pool, &mut remote, &pending, 0)
+            .await
+            .is_err()
+    );
+    assert!(remote.calls.is_empty());
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM delivery_attempt")
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 0);
+    pool.close().await;
+}

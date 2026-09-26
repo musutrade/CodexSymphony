@@ -230,6 +230,7 @@ pub async fn unknown(pool: &PgPool, context: &Context, error: &str) -> Result<()
     let failure = json!({"class":"external_result_unknown","phase":"validation","detail":crate::operator_view::redact_text(error),"evidence":context.directory,"resume":"reconcile original supervisor and retain all evidence before an authorized new attempt"});
     sqlx::query("UPDATE candidate_validation SET result='blocked',hook_evaluation=$2,failure=$3 WHERE id=$1 AND hook_context=$4 AND result='pending'")
         .bind(&context.call.identity.invocation_id).bind(json!(evaluation)).bind(failure.to_string()).bind(json!(context)).execute(pool).await?;
+    crate::extension_failure::crashed(pool, &context.call.identity.invocation_id).await?;
     Ok(())
 }
 
@@ -257,7 +258,7 @@ pub async fn admit(
     revision: i64,
     expected: &SourceIdentity,
 ) -> Result<()> {
-    let (context, evaluation, plan, required): (Option<Value>, Option<Value>, Option<Value>, bool) = sqlx::query_as("SELECT hook_context,hook_evaluation,approved_plan,hook_required FROM candidate_validation WHERE id=$1 AND requirement_id=$2 AND revision=$3 AND candidate_sha=$4 AND candidate_tree=$5 AND result='succeeded'")
+    let (context, evaluation, plan, required): (Option<Value>, Option<Value>, Option<Value>, bool) = sqlx::query_as("SELECT hook_context,hook_evaluation,approved_plan,hook_required FROM candidate_validation WHERE id=$1 AND requirement_id=$2 AND revision=$3 AND candidate_sha=$4 AND candidate_tree=$5 AND result='succeeded' AND superseded_by IS NULL")
         .bind(validation).bind(requirement).bind(revision).bind(&expected.commit).bind(&expected.tree).fetch_one(pool).await?;
     let Some(context) = context else {
         if required {

@@ -60,16 +60,22 @@ pub struct Difference {
 
 impl Plan {
     pub fn matches_repository(&self, id: i64, version: i64) -> bool {
-        let scope = format!("repository:{id}");
-        id > 0
-            && version > 0
-            && self.controlled.environment.repository_revision == format!("{scope}@{version}")
-            && self
-                .controlled
-                .extensions
-                .iter()
-                .any(|extension| extension.id == self.extension_id && extension.scope_ref == scope)
+        if crate::plugin_scope::repository_revision(
+            &self.controlled.environment.repository_revision,
+        ) != Some((id, version))
+        {
+            return false;
+        }
+        let mut found = false;
+        for extension in &self.controlled.extensions {
+            if !crate::plugin_scope::contains(&extension.scope_ref, id) {
+                return false;
+            }
+            found |= extension.id == self.extension_id;
+        }
+        found
     }
+
     pub fn validate(&self, approved: &[Registration]) -> Result<(), String> {
         self.controlled.validate(approved).map_err(protocol)?;
         self.controlled

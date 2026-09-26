@@ -106,24 +106,39 @@ async fn admit_candidate(pool: &PgPool, remote: &mut impl Remote, now: i64) -> R
     let Some(mut intent) = store::candidate(pool).await? else {
         return Ok(());
     };
+    crate::plugin_scope::admit(
+        pool,
+        "delivery:github",
+        &intent.delivery_key,
+        intent.requirement,
+        intent.revision,
+    )
+    .await?;
     let observation = remote.observe(&intent).await?;
     let now = remote.current_time(now);
     intent.base = observation.base.clone();
-    intent.checkout_sha = observation
-        .phases
-        .as_ref()
-        .and_then(|phases| phases.first())
-        .and_then(|phase| phase.expected_checkout_sha.clone());
+    intent.checkout_sha = observed_checkout(&observation);
     let (evidence, required) = store::validation(pool, &intent).await?;
-    let test_merge = intent.policy.delivery.as_ref().is_some_and(|delivery| {
-        delivery.pre_merge.checkout == crate::github_contract::PreMergeSource::TestMerge
-    });
+    let test_merge = uses_test_merge(&intent);
     if automatic_merge::admit(&intent, &observation, &evidence, &required, now)
         || (test_merge && automatic_merge::eligible(&intent, &observation, now))
     {
         store::prepare(pool, &intent, now).await?;
     }
     Ok(())
+}
+
+fn observed_checkout(observation: &Observation) -> Option<String> {
+    let phases = observation.phases.as_ref()?;
+    phases.first()?.expected_checkout_sha.clone()
+}
+fn uses_test_merge(intent: &Intent) -> bool {
+    match &intent.policy.delivery {
+        Some(delivery) => {
+            delivery.pre_merge.checkout == crate::github_contract::PreMergeSource::TestMerge
+        }
+        None => false,
+    }
 }
 
 async fn advance(
@@ -133,11 +148,15 @@ async fn advance(
     state: &str,
     now: i64,
 ) -> Result<()> {
-    let observation = if state == "prepared" {
-        remote.observe(intent).await?
-    } else {
-        remote.reconcile(intent).await?
-    };
+    crate::plugin_scope::admit(
+        pool,
+        "delivery:github",
+        &intent.delivery_key,
+        intent.requirement,
+        intent.revision,
+    )
+    .await?;
+    let observation = observe_intent(remote, intent, state).await?;
     let now = remote.current_time(now);
     if let Some(sha) = automatic_merge::confirmed(intent, &observation) {
         store::merged(pool, intent, &sha, &observation).await?;
@@ -150,6 +169,17 @@ async fn advance(
     }
     crate::github_store::save_observation(pool, &observation).await?;
     prepare_send(pool, remote, intent, observation, now).await
+}
+
+async fn observe_intent(
+    remote: &mut impl Remote,
+    intent: &Intent,
+    state: &str,
+) -> Result<Observation> {
+    if state == "prepared" {
+        return Ok(remote.observe(intent).await?);
+    }
+    Ok(remote.reconcile(intent).await?)
 }
 
 async fn prepare_send(
