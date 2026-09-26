@@ -99,6 +99,7 @@ async fn tick_selected(
     config: &Config,
     selected: Option<(i64, i64)>,
 ) -> Result<()> {
+    crate::linked_repair_source::tick_local(pool, root).await?;
     crate::linked_integration::tick(pool, root, supervisor, broker, incarnation).await?;
     if let Some(plan) = &config.validation
         && crate::integration_worker::tick(pool, root, supervisor, broker, incarnation, plan)
@@ -126,10 +127,33 @@ async fn runtime_pipeline(
     config: &Config,
     selected: Option<(i64, i64)>,
 ) -> Result<()> {
+    if crate::local_delivery::tick_with_hooks(pool, root, broker, &config.preparation).await? {
+        return Ok(());
+    }
     if let Some(launch) = reserved(pool, incarnation).await? {
         return runtime_client::execute(pool, root, supervisor, broker, &launch, &config.settings)
             .await;
     }
+    continue_pipeline(
+        pool,
+        root,
+        supervisor,
+        broker,
+        incarnation,
+        config,
+        selected,
+    )
+    .await
+}
+async fn continue_pipeline(
+    pool: &PgPool,
+    root: &Path,
+    supervisor: &Path,
+    broker: &GitBroker,
+    incarnation: &str,
+    config: &Config,
+    selected: Option<(i64, i64)>,
+) -> Result<()> {
     if let Some(plan) = &config.validation
         && crate::validation_worker::tick_with_hooks(pool, root, broker, plan, &config.preparation)
             .await?

@@ -39,7 +39,7 @@ async fn repositories_allowed(
     versions: &[crate::integration::Version],
 ) -> Result<bool> {
     for v in versions {
-        let valid: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repository WHERE id=$1 AND version=$2 AND plugin_scope_allows('validation:native',id) AND (document->>'github_repository_id')::bigint=$3 AND NOT (document->>'revoked')::boolean AND version>revoked_through_version)")
+        let valid: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repository WHERE id=$1 AND version=$2 AND plugin_scope_allows('validation:native',id) AND COALESCE((document->>'github_repository_id')::bigint,0)=$3 AND NOT (document->>'revoked')::boolean AND version>revoked_through_version)")
             .bind(v.repository_id).bind(v.repository_version).bind(v.github_repository_id).fetch_one(&mut **tx).await?;
         if !valid {
             return Ok(false);

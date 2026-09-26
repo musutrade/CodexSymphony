@@ -207,7 +207,7 @@
     } @empty {
       <p>暂无验证证据。</p>
     }
-    <h3>GitHub / CI 观察</h3>
+    <h3>交付 / 验收观察</h3>
     @for (external of item.external; track $index) {
       <p>
         修订 {{ external.revision }} · {{ external.head_sha }} ·
@@ -218,9 +218,9 @@
           >查看关联 PR #{{ external.pr_number }}</a
         >
       }
-      <pre>{{ external.observation ?? '尚无远端观察' }}</pre>
+      <pre>{{ external.observation ?? '尚无交付观察' }}</pre>
     } @empty {
-      <p>尚无 PR 交接。</p>
+      <p>尚无交付记录。</p>
     }
     <h3>跨 Run 消耗</h3>
     <p>

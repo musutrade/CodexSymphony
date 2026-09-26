@@ -150,8 +150,8 @@ pub(crate) async fn dependency_baseline(
     };
     let mut baseline = configured.to_owned();
     for fact in facts {
-        if fact.repository_id == repository && broker.contains_commit(&fact.merged_sha, &baseline) {
-            baseline = fact.merged_sha;
+        if fact.repository_id() == repository && broker.contains_commit(fact.commit(), &baseline) {
+            baseline = fact.commit().to_owned();
         }
     }
     Ok(baseline)
@@ -160,11 +160,11 @@ fn repository_baseline_matches(
     broker: &crate::git_broker::GitBroker,
     repository: i64,
     baseline: &str,
-    facts: &[crate::group_dependency::Fact],
+    facts: &[crate::delivered_version::Completion],
 ) -> bool {
     for fact in facts {
         // Cross-repository versions/artifacts are bound separately, never by ancestry.
-        if fact.repository_id == repository && !broker.contains_commit(baseline, &fact.merged_sha) {
+        if fact.repository_id() == repository && !broker.contains_commit(baseline, fact.commit()) {
             return false;
         }
     }

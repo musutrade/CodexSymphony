@@ -19,6 +19,25 @@ pub struct GitBroker {
 }
 
 impl GitBroker {
+    pub fn import_local(&self, path: &Path, commit: &str) -> Result<()> {
+        valid_oid(commit)?;
+        let path = fs::canonicalize(path)?;
+        let path = path.to_str().ok_or("local repository path is not UTF-8")?;
+        self.git(
+            None,
+            &[
+                "fetch",
+                "--no-tags",
+                "--no-write-fetch-head",
+                "--",
+                path,
+                commit,
+            ],
+            b"",
+        )?;
+        Ok(())
+    }
+
     pub fn changed_paths(
         &self,
         workspace: &Workspace,

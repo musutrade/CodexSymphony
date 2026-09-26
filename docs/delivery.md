@@ -1,5 +1,7 @@
 # Phase 0a 可靠交接（GH-21）
 
+本页保留 GitHub 交付语义；无 GitHub 项目的配置、原子更新和交付后验收见 [本地 Git 交付](local-delivery.md)。
+
 有效候选完成验证时，同一个 PostgreSQL 事务写入 `candidate_validation` 的结果、
 `delivery` 的不可变产物清单和 `delivery_action` 的发布意图。稳定 action_key 绑定
 Requirement/revision、仓库数字身份/名称、目标分支、base 与 SHA。验证 ID、源 Run、

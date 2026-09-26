@@ -139,6 +139,11 @@ async fn save_initial(
     selected: (i64, i64),
 ) -> Result<Option<(Launch, Workspace)>> {
     let (requirement, revision) = selected;
+    let local_binding =
+        crate::local_delivery_store::configured(&mut tx, requirement, revision).await?;
+    let selected_baseline = initial_baseline(broker, local_binding.as_ref(), baseline)?;
+    let baseline = selected_baseline.as_str();
+
     let baseline =
         crate::group_queue_store::dependency_baseline(&mut tx, broker, requirement, baseline)
             .await?;
@@ -154,16 +159,30 @@ async fn save_initial(
         requirement,
         revision,
     )?;
-    sqlx::query("INSERT INTO initial_run VALUES($1,$2,$3,$4)")
+    sqlx::query("INSERT INTO initial_run(requirement_id,revision,launch,workspace,local_binding) VALUES($1,$2,$3,$4,$5)")
         .bind(requirement)
         .bind(revision)
         .bind(json!(launch))
         .bind(json!(workspace))
+        .bind(local_binding.map(binding_json))
         .execute(&mut *tx)
         .await?;
     tx.commit().await?;
     Ok(Some((launch, workspace)))
 }
+fn initial_baseline(
+    broker: &GitBroker,
+    local: Option<&crate::local_git::Binding>,
+    configured: &str,
+) -> Result<String> {
+    if let Some(binding) = local {
+        let baseline = crate::local_git::head(binding)?;
+        broker.import_local(&binding.target.path, &baseline)?;
+        return Ok(baseline);
+    }
+    Ok(configured.to_owned())
+}
+
 fn allocate(
     broker: &GitBroker,
     incarnation: &str,
@@ -233,4 +252,8 @@ async fn saved(
         return Ok(Some((launch, serde_json::from_value(workspace)?)));
     }
     Ok(None)
+}
+
+fn binding_json(binding: crate::local_git::Binding) -> Value {
+    json!(binding)
 }

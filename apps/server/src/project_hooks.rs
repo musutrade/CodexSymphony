@@ -62,42 +62,55 @@ async fn frozen_review(
     .bind(workspace.revision)
     .fetch_one(pool)
     .await?;
-    let reviewed_hooks = reviewed
-        .get("hooks")
-        .is_some_and(|hooks| !hooks.as_array().is_some_and(Vec::is_empty));
+    let reviewed_hooks = reviewed.get("hooks").is_some_and(has_hooks);
     let extension = if reviewed_hooks {
         ExtensionConfig::from_legacy_repository(&serde_json::from_value::<Repository>(reviewed)?)
     } else {
         // Historical review snapshots may contain only the fields used by the
         // old Runtime. Do not make their no-hook path depend on new parsing.
-        ExtensionConfig {
-            protocol_version: PROTOCOL_VERSION,
-            agent: "codex".into(),
-            model: ModelConfig {
-                provider: "codex".into(),
-                model: reviewed
-                    .get("model")
-                    .and_then(Value::as_str)
-                    .map(str::to_owned),
-                effort: None,
-            },
-            delivery: DeliveryMode::GithubPr,
-            hooks: Vec::new(),
-            decision: None,
-        }
+        legacy_extension(&reviewed)
     };
     let mut capabilities = Capabilities::legacy_codex(extension.model.model.clone());
+    capabilities.deliveries.push(DeliveryMode::LocalGit);
     if reviewed_hooks {
         capabilities.hooks = serde_json::from_value(
             allowlist
                 .get("hook_allowlist")
                 .cloned()
-                .unwrap_or_else(|| json!([])),
+                .unwrap_or(json!([])),
         )?;
     }
-    extension
-        .freeze(&capabilities)
-        .map_err(|error| format!("reviewed hook is not deployed: {error:?}").into())
+    extension.freeze(&capabilities).map_err(hook_error)
+}
+
+fn has_hooks(hooks: &Value) -> bool {
+    !hooks.as_array().is_some_and(Vec::is_empty)
+}
+fn hook_error(
+    error: crate::extension_contract::ProtocolError,
+) -> Box<dyn std::error::Error + Send + Sync> {
+    format!("reviewed hook is not deployed: {error:?}").into()
+}
+fn legacy_extension(reviewed: &Value) -> ExtensionConfig {
+    ExtensionConfig {
+        protocol_version: PROTOCOL_VERSION,
+        agent: "codex".into(),
+        model: ModelConfig {
+            provider: "codex".into(),
+            model: reviewed
+                .get("model")
+                .and_then(Value::as_str)
+                .map(str::to_owned),
+            effort: None,
+        },
+        delivery: if reviewed["delivery"] == "local_git" {
+            DeliveryMode::LocalGit
+        } else {
+            DeliveryMode::GithubPr
+        },
+        hooks: Vec::new(),
+        decision: None,
+    }
 }
 
 async fn save_run(
