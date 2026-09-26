@@ -46,6 +46,7 @@ pub(crate) async fn freeze(tx: &mut Tx<'_>, id: i64, policy: &Policy) -> Result<
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Increase {
     pub request_id: String,
     pub requirement_id: i64,

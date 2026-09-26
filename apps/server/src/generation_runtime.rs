@@ -173,7 +173,7 @@ impl Session<'_> {
         let agent = initialized["userAgent"]
             .as_str()
             .ok_or("missing Runtime identity")?;
-        if !agent.contains("/0.156.1 ") {
+        if !agent.contains("/0.157.1 ") {
             return Err("Runtime version does not match codex-version.lock".into());
         }
         self.evidence["runtime_user_agent"] = json!(agent);

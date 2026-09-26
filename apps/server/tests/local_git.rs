@@ -288,6 +288,9 @@ async fn product() -> Product {
     product_group(false).await
 }
 async fn product_group(grouped: bool) -> Product {
+    product_checked(grouped, None).await
+}
+async fn product_checked(grouped: bool, javascript_check: Option<&str>) -> Product {
     use codexsymphony_server::{
         execution::RunKey,
         validation::sha256,
@@ -327,6 +330,18 @@ async fn product_group(grouped: bool) -> Product {
     };
     broker.prepare(&workspace, true).unwrap();
     fs::write(Path::new(&workspace.path).join("value"), "after\n").unwrap();
+    if javascript_check.is_some() {
+        fs::write(
+            Path::new(&workspace.path).join("value.mjs"),
+            "export function value() { return 'after'; }\n",
+        )
+        .unwrap();
+        fs::write(
+            Path::new(&workspace.path).join("check.mjs"),
+            "import assert from 'node:assert/strict';\nimport { value } from './value.mjs';\nassert.equal(value(), 'after');\nconsole.log('behavior passed');\n",
+        )
+        .unwrap();
+    }
     broker
         .commit(&workspace, "Implement local fixture")
         .unwrap();
@@ -338,9 +353,10 @@ async fn product_group(grouped: bool) -> Product {
     unsafe { std::env::set_var("LOCAL_GIT_TARGETS", &registry) };
     let entry = root.path().join("validate");
     let script = "#!/bin/sh\ncat value\nif [ -f \"$(dirname \"$0\")/post-fail\" ] && ! grep -q repaired value; then echo 'AssertionError: local delivered check'; exit 1; fi\ntest \"$(head -n1 value)\" = after\n";
+    let script = javascript_check.unwrap_or(script);
     fs::write(&entry, script).unwrap();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o755)).unwrap();
-    let plan = Plan {
+    let mut plan = Plan {
         entry,
         entry_sha256: sha256(script),
         steps: vec![Step {
@@ -360,6 +376,17 @@ async fn product_group(grouped: bool) -> Product {
     let mut repository = groups::repository();
     repository["delivery"] = json!("local_git");
     repository["remote"] = json!("fixture");
+    if javascript_check.is_some() {
+        repository["project"] = json!("JavaScript project without dependencies or services");
+        repository["policy"]["allowed_checks"] = json!(["npm_test"]);
+        plan.steps[0].command.push("behavior".into());
+        plan.steps.push(Step {
+            id: "syntax".into(),
+            command: vec!["/gate-entry".into(), "syntax".into()],
+            timeout_seconds: 2,
+            code_failure: true,
+        });
+    }
     if grouped {
         repository["policy"]["gate_recovery_policy"] = json!("bounded_v1");
     }
@@ -367,7 +394,11 @@ async fn product_group(grouped: bool) -> Product {
         .as_object_mut()
         .unwrap()
         .remove("github_repository_id");
-    let contract = json!({"title":"local fixture","description":"update value","acceptance_criteria":[{"description":"value is after","verification_ref":"test"}],"validation_plan":[{"id":"test","check":"cargo_test","selector":"fixture","expected_result":"pass","timeout_seconds":30}],"network_access":[]});
+    let mut contract = json!({"title":"local fixture","description":"update value","acceptance_criteria":[{"description":"value is after","verification_ref":"test"}],"validation_plan":[{"id":"test","check":"cargo_test","selector":"fixture","expected_result":"pass","timeout_seconds":30}],"network_access":[]});
+    if javascript_check.is_some() {
+        contract["validation_plan"][0]["check"] = json!("npm_test");
+        contract["validation_plan"].as_array_mut().unwrap().push(json!({"id":"syntax","check":"npm_test","selector":"syntax","expected_result":"pass","timeout_seconds":30}));
+    }
     let document = json!({"repository_id":1,"repository_version":1,"repository":repository,"contract":contract});
     sqlx::query("INSERT INTO repository(id,version,document) VALUES(1,1,$1)")
         .bind(&repository)
@@ -504,6 +535,65 @@ async fn product_validation_delivers_and_accepts_without_any_github_records() {
     assert_eq!(attempts, 1);
     p.pool.close().await;
     unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
+}
+
+#[tokio::test]
+async fn javascript_local_delivery_accepts_two_reviewed_check_implementations() {
+    use codexsymphony_server::validation::sha256;
+    let implementations = [
+        "#!/bin/sh\nset -eu\ncase \"$1\" in behavior) node check.mjs;; syntax) node --check value.mjs; echo 'syntax passed';; *) exit 2;; esac\n",
+        "#!/bin/sh\nset -eu\ncase \"$1\" in behavior) node --input-type=module -e \"import {value} from './value.mjs'; if (value() !== 'after') process.exit(1); console.log('behavior passed')\";; syntax) node --check value.mjs; echo 'syntax passed';; *) exit 2;; esac\n",
+    ];
+    let mut identities = Vec::new();
+    for script in implementations {
+        let p = product_checked(false, Some(script)).await;
+        let checkout = Path::new(&p.manifest.workspace.path);
+        for absent in ["Cargo.toml", "package.json", ".github", ".harness-gate"] {
+            assert!(!checkout.join(absent).exists());
+        }
+        identities.push(p.plan.identity().unwrap().protected_entry_sha256);
+        assert!(validate_product(&p).await);
+        product_tick(&p).await;
+        product_tick(&p).await;
+        let state: String = sqlx::query_scalar("SELECT state FROM requirement WHERE id=1")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+        assert_eq!(state, "Done");
+        let facts: serde_json::Value = sqlx::query_scalar("SELECT local_acceptance FROM delivery")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+        assert_eq!(facts["passed"], true);
+        assert_eq!(facts["evidence"]["candidate"]["sha"], p.manifest.head);
+        assert_eq!(
+            facts["evidence"]["trusted"]["protected_entry_sha256"],
+            sha256(script)
+        );
+        let steps = facts["evidence"]["steps"].as_array().unwrap();
+        assert_eq!(steps.len(), 2);
+        for (step, id, output) in [
+            (&steps[0], "test", "behavior passed"),
+            (&steps[1], "syntax", "syntax passed"),
+        ] {
+            assert_eq!(step["id"], id);
+            assert_eq!(step["exit_code"], 0);
+            assert!(step["output"].as_str().unwrap().contains(output));
+        }
+        let counts: (i64, i64, i64) = sqlx::query_as("SELECT (SELECT count(*) FROM github_repository),(SELECT count(*) FROM github_pr),(SELECT count(*) FROM delivery_attempt)")
+            .fetch_one(&p.pool).await.unwrap();
+        assert_eq!(counts, (0, 0, 1));
+        // Reopen the target and reconcile the original receipt, without another delivery.
+        assert_eq!(local_git::head(&p.binding).unwrap(), p.manifest.head);
+        assert!(
+            !codexsymphony_server::local_delivery::tick(&p.pool, p.root.path(), &p.broker)
+                .await
+                .unwrap()
+        );
+        p.pool.close().await;
+        unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
+    }
+    assert_ne!(identities[0], identities[1]);
 }
 
 #[tokio::test]

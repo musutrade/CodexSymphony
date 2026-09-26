@@ -1,0 +1,111 @@
+{
+  "at": "2026-09-26T11:41:59.343146+00:00",
+  "cause": "storage_inventory::summaries scalar candidate_validation subquery has two rows for one source_run after retained revalidation",
+  "database_backup_sha256": "bb7f83b0a0e3f5c0fea7329c05b4525dba2f10d16ee1137563292b2334b97217",
+  "facts": {
+    "calls": 1,
+    "deliveries": 1,
+    "requirement": {
+      "state": "Running",
+      "paused": true,
+      "version": 9
+    },
+    "validations": [
+      {
+        "id": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "stage": "validation",
+        "result": "blocked",
+        "retry_of": null,
+        "source_run": "451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "superseded_by": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      },
+      {
+        "id": "revalidate-385ef724-3676-4077-834c-ae7774687211",
+        "stage": "handoff",
+        "result": "succeeded",
+        "retry_of": "validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "source_run": "451834dd-3ced-4d7c-bb6f-52269a7ca43a",
+        "superseded_by": null
+      }
+    ],
+    "publish_attempts": 0
+  },
+  "recovery": "Retain all validations in bounded summary; bind active candidate and PR deterministically. Source 12 measurements required before deployment.",
+  "source12_measurements": {
+    "at": "2026-09-26T12:00:57.263978+00:00",
+    "status": "PASS",
+    "functions": 2217,
+    "minimum_line_coverage": 0.8,
+    "minimum_region_coverage": 0.8,
+    "maximum_crap": 10.0,
+    "evidence": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-12",
+    "measurements_sha256": "0ea20c0a10ac312b813459a11a0fa46cf7bbdb884b338df6dc4cf4985752ea40",
+    "threshold_failures": 0,
+    "tests": 373,
+    "suites": 41,
+    "source_inputs": 287
+  },
+  "source12_format_check": "FAIL: new test formatting only; originals retained in checks-r6",
+  "source13_change": "rustfmt edit of apps/server/tests/storage.rs only; production file bytes unchanged; complete approved recapture required and started",
+  "final_source_measurements": {
+    "at": "2026-09-26T13:16:37.735475+00:00",
+    "status": "PASS",
+    "functions": 2223,
+    "minimum_line_coverage": 0.8,
+    "minimum_region_coverage": 0.8,
+    "maximum_crap": 10.0,
+    "evidence": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+    "measurements_sha256": "6958f377a111c8092ba21d618ba4897f1a8df2b4ab61bb9c70ebe2b2f8f46088",
+    "threshold_failures": 0,
+    "tests": 373,
+    "suites": 41,
+    "source_inputs": 287
+  },
+  "final_binary": {
+    "at": "2026-09-26T13:17:53.622350+00:00",
+    "path": "/home/gem/.local/share/codexsymphony/gh122-acceptance/releases/57887784dd747647/codexsymphony-server",
+    "sha256": "57887784dd747647cf7cdc1197ed99e9823f9ddc075c2fb2c26ab42e03389ae1",
+    "source_measurements": "/home/gem/.local/share/codexsymphony/gh122-acceptance/measurements/full-source-16",
+    "source_input_digest": "00e46d092603a758ed9dd5545415326dd88962a028945376262a02df9bf4d565",
+    "checks": "/home/gem/CodexSymphony-gh122/.harness-gate/reports/gh122/checks-r10/results.json"
+  },
+  "actual_recovery": {
+    "calls": 1,
+    "deliveries": [
+      {
+        "pr": null,
+        "key": "d6053d8d8f2ab9652cdd195a1a58f051fd7fc3d1c40f8c4c6db87663315c09e4",
+        "state": "unknown",
+        "attempts": 1,
+        "validation": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      }
+    ],
+    "recoveries": [
+      {
+        "event": "extension:validation-451834dd-3ced-4d7c-bb6f-52269a7ca43a:legacy:marker",
+        "state": "complete",
+        "successor": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      },
+      {
+        "event": "extension:revalidate-385ef724-3676-4077-834c-ae7774687211:control",
+        "state": "complete",
+        "successor": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45"
+      }
+    ],
+    "requirement": {
+      "state": "Running",
+      "paused": false,
+      "version": 13
+    },
+    "proof_rebinding": [
+      {
+        "validation": "revalidate-fc1bc400-6b20-48d2-a6aa-deee92b8dc45",
+        "recovery_event": "extension:revalidate-385ef724-3676-4077-834c-ae7774687211:control",
+        "external_attempts": 0,
+        "previous_validation": "revalidate-385ef724-3676-4077-834c-ae7774687211"
+      }
+    ]
+  },
+  "status": "PASS: original task Done; same delivery completed protected merge and actual-version acceptance",
+  "final_result": "github-acceptance.json"
+}

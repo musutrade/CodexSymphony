@@ -51,6 +51,7 @@ async fn enqueue_github(
         previous.as_ref().map(previous_branch),
     )?;
     let key = identity.action_key();
+    crate::extension_delivery_recovery::rebind_pending(tx, validation, &key).await?;
     sqlx::query("INSERT INTO delivery(action_key,validation_id,requirement_id,revision,repository_id,repository,branch,base_branch,head_sha,manifest,policy) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(action_key) DO NOTHING")
         .bind(&key).bind(validation).bind(requirement).bind(revision).bind(identity.repository_id as i64).bind(&identity.repository).bind(&identity.branch).bind(&identity.base_branch).bind(&identity.head).bind(manifest).bind(document).execute(&mut **tx).await?;
     sqlx::query("UPDATE linked_failure f SET repair_delivery=$2 FROM candidate_validation v JOIN linked_run_input i ON i.run_id=v.source_run_id WHERE v.id=$1 AND f.id=i.failure_id AND f.state='reserved'")

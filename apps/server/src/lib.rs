@@ -4,6 +4,7 @@ pub mod auth_admin;
 pub mod auth_api;
 pub mod auth_store;
 pub mod automatic_merge;
+pub mod budget_admin;
 mod merge_acceptance;
 mod merge_dispatch;
 mod merge_prevalidation;
@@ -212,6 +213,7 @@ pub mod development_constraints;
 pub mod extension_feedback;
 
 pub mod extension_api;
+mod extension_delivery_recovery;
 pub mod extension_failure;
 pub mod extension_recovery;
 pub mod extension_revalidation;

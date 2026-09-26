@@ -74,6 +74,65 @@ async fn session(pool: &PgPool) {
         .await
         .unwrap();
 }
+
+#[tokio::test]
+async fn prelaunch_rejection_preserves_original_run_without_opening_session() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
+    let root = temporary();
+    let pool = fixture(&root).await;
+    let launch = Launch {
+        key: key(),
+        workspace: root.to_string_lossy().into_owned(),
+        workspace_identity: "fixture".into(),
+        program: "/usr/bin/true".into(),
+        args: vec![],
+    };
+    sqlx::query("UPDATE agent_run SET launch=$1 WHERE id='runtime-test'")
+        .bind(json!(launch))
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE requirement_revision SET document=jsonb_set(document,'{repository,environment}','\"invalid frozen environment\"')")
+        .execute(&pool).await.unwrap();
+    let supervisor = Path::new(env!("CARGO_BIN_EXE_codexsymphony-server"));
+    assert!(
+        codexsymphony_server::coordinator::start_runtime(&pool, &root, supervisor, &launch, "")
+            .await
+            .is_err()
+    );
+    let counts: (i64, i64, i64) = sqlx::query_as("SELECT (SELECT count(*) FROM agent_run),(SELECT count(*) FROM runtime_session),(SELECT count(*) FROM model_call)")
+        .fetch_one(&pool).await.unwrap();
+    assert_eq!(counts, (1, 0, 0));
+    assert!(!root.join("runtime-test").exists());
+    let budget: Value =
+        sqlx::query_scalar("SELECT limits FROM requirement_budget WHERE requirement_id=1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    // Repair the controlled fixture's configuration, without replacing its Run.
+    sqlx::query("UPDATE requirement_revision SET document=document #- '{repository,environment}'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut child =
+        codexsymphony_server::coordinator::start_runtime(&pool, &root, supervisor, &launch, "")
+            .await
+            .unwrap();
+    assert!(child.wait().unwrap().success());
+    assert!(root.join("runtime-test/quiescent.json").is_file());
+    let counts: (i64, i64, i64) = sqlx::query_as("SELECT (SELECT count(*) FROM agent_run),(SELECT count(*) FROM runtime_session),(SELECT count(*) FROM model_call)")
+        .fetch_one(&pool).await.unwrap();
+    assert_eq!(counts, (1, 1, 0));
+    let after: Value =
+        sqlx::query_scalar("SELECT limits FROM requirement_budget WHERE requirement_id=1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(budget, after);
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 fn tool(id: i64, kind: &str, args: Value) -> Value {
     json!({"id":id,"method":"item/tool/call","params":{"threadId":"thread","turnId":"turn","callId":format!("call-{id}"),"tool":kind,"arguments":args}})
 }
@@ -679,7 +738,7 @@ for line in sys.stdin:
  if m=='initialize':
   print('separate stderr diagnostic',file=sys.stderr,flush=True)
   send({'method':'fixture/queued','params':{'threadId':'unrelated'}})
-  send({'id':r['id'],'result':{'userAgent':'fixture/0.156.1 (test)'}})
+  send({'id':r['id'],'result':{'userAgent':'fixture/0.157.1 (test)'}})
  elif m=='thread/start':send({'id':r['id'],'result':{'cwd':os.getcwd(),'thread':{'id':'thread','cwd':os.getcwd()}}})
  elif m=='turn/start':
   Path('received-input').write_text(json.dumps(p['input']))
@@ -1378,9 +1437,11 @@ async fn failed_protocol_sessions(git: &GitBroker) {
     let premature = client_code().replace("send({'id':77,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'call','tool':'report_blocker','arguments':{'reason':'fixture stop','requires_permission':False}}})", "send({'id':'q','method':'item/tool/requestUserInput','params':{'threadId':'thread','turnId':'turn','itemId':'q','isBlocking':True,'questions':[{'id':'choice','question':'Still answerable?'}]}})\n  send({'method':'turn/completed','params':{'threadId':'thread','turn':{'id':'turn','status':'interrupted'}}})");
     for code in [
         client_code().replace(
-            "'result':{'userAgent':'fixture/0.156.1 (test)'}",
+            "'result':{'userAgent':'fixture/0.157.1 (test)'}",
             "'error':{'code':-1,'message':'fixture rejection'}",
         ),
+        client_code().replace("fixture/0.157.1 (test)", "fixture/0.156.1 (test)"),
+        client_code().replace("'userAgent':'fixture/0.157.1 (test)'", "'userAgent':None"),
         client_code().replace(
             "'result':{'turn':{'id':'turn'}}",
             "'error':{'code':-1,'message':'fixture turn rejection'}",

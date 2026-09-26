@@ -1948,3 +1948,63 @@ async fn merged_and_test_merge_material_is_inventoried_without_losing_originals(
     }
     pool.close().await;
 }
+
+#[tokio::test]
+async fn revalidation_inventory_preserves_history_and_binds_successor_delivery() {
+    let pool = merge_storage_database::database().await;
+    let tree = Tree::new();
+    let config = deployment(&tree);
+    store::install(&pool, &config).await.unwrap();
+    sqlx::raw_sql(r#"
+UPDATE delivery SET pr_number=42;
+INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result,retry_of,superseded_by)
+SELECT 'original',requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,'validation','blocked',id,id FROM candidate_validation WHERE id='validation';
+INSERT INTO validation_step(validation_id,step_id,command,status,exit_code,output,output_sha256)
+VALUES('original','marker','[]','unknown',0,'','retained-output-hash');
+"#).execute(&pool).await.unwrap();
+    let original: serde_json::Value =
+        sqlx::query_scalar("SELECT to_jsonb(v) FROM candidate_validation v WHERE id='original'")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    for now in [100, 101] {
+        let mut tx = pool.begin().await.unwrap();
+        codexsymphony_server::storage_inventory::discover(&mut tx, &config, now)
+            .await
+            .unwrap();
+        let (identity, summary): (serde_json::Value, serde_json::Value) =
+            sqlx::query_as("SELECT identity,summary FROM storage_attempt WHERE run_id='run'")
+                .fetch_one(&mut *tx)
+                .await
+                .unwrap();
+        assert_eq!(identity["pr"], 42);
+        assert_eq!(identity["candidate"], "candidate");
+        assert_eq!(summary["validation"]["id"], "validation");
+        let history = summary["validations"].as_array().unwrap();
+        assert_eq!(history.len(), 2);
+        assert_eq!(history[0]["id"], "original");
+        assert_eq!(history[0]["result"], "blocked");
+        assert_eq!(history[1]["result"], "succeeded");
+        assert!(
+            history
+                .iter()
+                .all(|v| v.get("trusted").is_none() && v.get("required_steps").is_none())
+        );
+        let preserved: serde_json::Value = sqlx::query_scalar(
+            "SELECT to_jsonb(v) FROM candidate_validation v WHERE id='original'",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+        assert_eq!(original, preserved);
+        let evidence: (String, String) = sqlx::query_as(
+            "SELECT status,output_sha256 FROM validation_step WHERE validation_id='original'",
+        )
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+        assert_eq!(evidence, ("unknown".into(), "retained-output-hash".into()));
+        tx.commit().await.unwrap();
+    }
+    pool.close().await;
+}

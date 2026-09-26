@@ -8,8 +8,10 @@ use sqlx::{
     postgres::{PgConnectOptions, PgPoolOptions},
 };
 use std::{fs, path::Path, process::Command};
-#[path = "support/validation_runner.rs"]
-mod runner;
+#[allow(dead_code)]
+#[path = "support/automatic_merge.rs"]
+mod delivery_fixture;
+use delivery_fixture::source as runner;
 
 async fn database() -> PgPool {
     let options: PgConnectOptions = std::env::var("TEST_DATABASE_URL").unwrap().parse().unwrap();
@@ -487,6 +489,272 @@ async fn same_candidate_plugin_upgrade_revalidates_without_erasing_failure_or_bu
         .unwrap();
     assert_eq!(deliveries, 1);
     pool.close().await;
+}
+
+#[tokio::test]
+async fn silent_legacy_check_recovers_same_candidate_and_explicit_post_merge_plan() {
+    let (root, repo, mut plan) = runner::fixture();
+    // The command really completes, but legacy evidence requires output.
+    let script = "#!/bin/sh\ntest -f source || exit 1\nif [ \"$1\" = report ]; then printf 'source verified\\n'; fi\n";
+    fs::write(&plan.entry, script).unwrap();
+    plan.entry_sha256 = sha256(script);
+    let (broker, manifest) = broker(&root, &repo);
+    let candidate = validation_runner::candidate(&repo).unwrap();
+    let pool = database().await;
+    seed(&pool, &candidate, &json!(manifest)).await;
+    let policy = delivery_fixture::policy(&plan, &root.join("original-plan.json"));
+    fs::write(
+        root.join("original-plan.json"),
+        serde_json::to_vec(&plan).unwrap(),
+    )
+    .unwrap();
+    sqlx::query("UPDATE repository SET document=document||'{\"github_repository_id\":7}'::jsonb")
+        .execute(&pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO github_repository(repository_id,repository_version,policy,probe_pr) VALUES(7,1,$1,1)")
+        .bind(json!(policy)).execute(&pool).await.unwrap();
+    let directory = root.join("silent");
+    assert!(
+        !validation_service::validate(
+            &pool,
+            validation_service::Request {
+                id: "silent",
+                source_run: "source",
+                requirement: 1,
+                revision: 1,
+                checkout: &repo,
+                directory: &directory,
+                candidate: &candidate,
+                plan: &plan,
+            }
+        )
+        .await
+        .unwrap()
+    );
+    let retained: Value = sqlx::query_scalar(
+        "SELECT to_jsonb(s) FROM validation_step s WHERE validation_id='silent'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(retained["exit_code"], 0);
+    assert_eq!(retained["output"], "");
+    assert_eq!(retained["status"], "unknown");
+    let before: Value =
+        sqlx::query_scalar("SELECT to_jsonb(b) FROM requirement_budget b WHERE requirement_id=1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    plan.steps[0].command.push("report".into());
+    let mut decision = recovery::Decision {
+        request_id: "recover-silent".into(),
+        version: 1,
+        revision: 1,
+        validation_id: "silent".into(),
+        reason: "reviewed script reports actual successful assertion".into(),
+        action: recovery::Action::RevalidateDelivery {
+            plan_digest: plan.identity().unwrap().config_sha256,
+            resume_condition: "same required assertion emits verified evidence".into(),
+            policy_digest: sha256(serde_json::to_vec(&policy).unwrap()),
+        },
+    };
+    let mut wrong = decision.clone();
+    if let recovery::Action::RevalidateDelivery { policy_digest, .. } = &mut wrong.action {
+        *policy_digest = "0".repeat(64);
+    }
+    assert!(recovery::decide(&pool, 1, &wrong).await.is_err());
+    sqlx::query("UPDATE requirement SET paused=true")
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(recovery::decide(&pool, 1, &decision).await.is_err());
+    sqlx::query("UPDATE requirement SET paused=false")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let accepted = recovery::decide(&pool, 1, &decision).await.unwrap();
+    assert_eq!(accepted["started"], false);
+    assert_eq!(
+        accepted,
+        recovery::decide(&pool, 1, &decision).await.unwrap()
+    );
+    decision.request_id = "stale-silent".into();
+    assert!(recovery::decide(&pool, 1, &decision).await.is_err());
+    assert!(
+        codexsymphony_server::extension_revalidation::tick(
+            &pool,
+            &root,
+            &broker,
+            &plan,
+            &Value::Null
+        )
+        .await
+        .unwrap()
+    );
+    let recovered = recovery::view(&pool, 1).await.unwrap();
+    let event = recovered["failures"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["event_key"] == accepted["event_key"])
+        .unwrap();
+    assert_eq!(event["resolution_state"], "complete", "{recovered}");
+    let preserved: Value = sqlx::query_scalar(
+        "SELECT to_jsonb(s) FROM validation_step s WHERE validation_id='silent'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(retained, preserved);
+    let after: Value =
+        sqlx::query_scalar("SELECT to_jsonb(b) FROM requirement_budget b WHERE requirement_id=1")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(before, after);
+    let (runs, calls): (i64, i64) =
+        sqlx::query_as("SELECT (SELECT count(*) FROM agent_run),(SELECT count(*) FROM model_call)")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!((runs, calls), (1, 0));
+    let saved_policy: Value =
+        sqlx::query_scalar("SELECT policy FROM github_repository WHERE repository_id=7")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(saved_policy, json!(policy));
+    let (sha, tree): (String, String) = sqlx::query_as(
+        "SELECT candidate_sha,candidate_tree FROM candidate_validation WHERE retry_of='silent'",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!((sha, tree), (candidate.sha, candidate.tree));
+    recover_invalidated_pending_delivery(
+        &pool,
+        &root,
+        &broker,
+        &plan,
+        &decision,
+        event["successor_validation"].as_str().unwrap(),
+    )
+    .await;
+    pool.close().await;
+}
+
+async fn recover_invalidated_pending_delivery(
+    pool: &PgPool,
+    root: &Path,
+    broker: &codexsymphony_server::git_broker::GitBroker,
+    plan: &validation_runner::Plan,
+    first: &recovery::Decision,
+    prior: &str,
+) {
+    // Persisted output of a control interruption; never clear this old flag.
+    sqlx::query("UPDATE candidate_validation SET hook_invalidated=true WHERE id=$1")
+        .bind(prior)
+        .execute(pool)
+        .await
+        .unwrap();
+    let original: Value =
+        sqlx::query_scalar("SELECT to_jsonb(d) FROM delivery d WHERE validation_id=$1")
+            .bind(prior)
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    let mut decision = first.clone();
+    decision.request_id = "recover-before-first-send".into();
+    decision.version = 2;
+    decision.validation_id = prior.into();
+    let mut ordinary = decision.clone();
+    ordinary.action = recovery::Action::Revalidate {
+        plan_digest: plan.identity().unwrap().config_sha256,
+        resume_condition: "ordinary revalidation cannot rebind delivery".into(),
+    };
+    assert!(recovery::decide(pool, 1, &ordinary).await.is_err());
+    for (change, restore) in [
+        (
+            "UPDATE delivery_action SET attempts=1",
+            "UPDATE delivery_action SET attempts=0",
+        ),
+        (
+            "UPDATE delivery_action SET state='unknown'",
+            "UPDATE delivery_action SET state='pending'",
+        ),
+        (
+            "UPDATE delivery SET pr_number=42",
+            "UPDATE delivery SET pr_number=NULL",
+        ),
+        (
+            "INSERT INTO delivery_attempt(action_key,kind,ordinal,operation) SELECT action_key,'publish',1,'push' FROM delivery",
+            "DELETE FROM delivery_attempt",
+        ),
+    ] {
+        sqlx::query(change).execute(pool).await.unwrap();
+        assert!(recovery::decide(pool, 1, &decision).await.is_err());
+        sqlx::query(restore).execute(pool).await.unwrap();
+    }
+    let accepted = recovery::decide(pool, 1, &decision).await.unwrap();
+    assert_eq!(
+        accepted,
+        recovery::decide(pool, 1, &decision).await.unwrap()
+    );
+    assert!(
+        codexsymphony_server::extension_revalidation::tick(pool, root, broker, plan, &Value::Null)
+            .await
+            .unwrap()
+    );
+    let (successor, state): (String, String) = sqlx::query_as(
+        "SELECT successor_validation,resolution_state FROM recovery_failure WHERE event_key=$1",
+    )
+    .bind(accepted["event_key"].as_str().unwrap())
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(state, "complete");
+    assert_ne!(successor, prior);
+    let current: Value = sqlx::query_scalar("SELECT to_jsonb(d) FROM delivery d")
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    let mut expected = original;
+    expected["validation_id"] = json!(successor);
+    assert_eq!(current, expected, "only current proof binding may change");
+    let preserved: (String, bool, Option<String>) = sqlx::query_as(
+        "SELECT result,hook_invalidated,superseded_by FROM candidate_validation WHERE id=$1",
+    )
+    .bind(prior)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        preserved,
+        ("succeeded".into(), true, Some(successor.clone()))
+    );
+    let fact: Value =
+        sqlx::query_scalar("SELECT fact FROM delivery_observation WHERE kind='validation_rebound'")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(fact["previous_validation"], prior);
+    assert_eq!(fact["validation"], successor);
+    assert_eq!(fact["recovery_event"], accepted["event_key"]);
+    let mut tx = pool.begin().await.unwrap();
+    codexsymphony_server::delivery_store::enqueue(&mut tx, &successor)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let facts: (i64,i64,i64,i64,i64) = sqlx::query_as("SELECT (SELECT count(*) FROM delivery),(SELECT count(*) FROM delivery_attempt),(SELECT count(*) FROM delivery_observation WHERE kind='validation_rebound'),(SELECT count(*) FROM agent_run),(SELECT count(*) FROM model_call)")
+        .fetch_one(pool).await.unwrap();
+    assert_eq!(facts, (1, 0, 1, 1, 0));
+    let budget: i64 =
+        sqlx::query_scalar("SELECT version FROM requirement_budget WHERE requirement_id=1")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(budget, 1);
 }
 
 #[tokio::test]

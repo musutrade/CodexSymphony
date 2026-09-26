@@ -19,6 +19,9 @@ use std::{
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 pub(crate) async fn plan(pool: &PgPool, intent: &Intent) -> Result<Plan> {
+    if let Some(plan) = crate::extension_delivery_recovery::replacement(pool, intent).await? {
+        return Ok(plan);
+    }
     let contract = intent
         .policy
         .delivery

@@ -1,0 +1,18 @@
+{
+  "previous_codex": "0.156.1",
+  "codex": "0.157.1",
+  "binary_sha256": "3e2584f3f3829a43a0495011a1cecb2facbe64a2403e2b682351fd9c2983f970",
+  "consumed_schema_change": "InitializeCapabilities.explicitGatewayOauth: optional boolean; other nine consumed schemas identical",
+  "additional_identical_schemas": [
+    "CommandExecParams",
+    "CommandExecResponse",
+    "InitializeResponse",
+    "ThreadStartResponse",
+    "TurnStartResponse",
+    "ConfigReadParams",
+    "ConfigReadResponse"
+  ],
+  "measurement_run": "/home/gem/.cache/codex-01571-coverage-ond5g7ex",
+  "installed_gate_status": "FAIL: environment drift: workspace contract differs from installed host release",
+  "policy_changes": false
+}

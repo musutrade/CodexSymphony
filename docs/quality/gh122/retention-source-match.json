@@ -1,0 +1,13 @@
+{
+  "source_files": {
+    "tools/retire_pr_attempts.py": "62175e61356a3d050076f9e3d61cc90a42c7e01a74712074a58edab2d9b6c72d",
+    "tools/cache_retention.py": "8b495fcbf3c3c0f00caa8d5fafb5d7870651219bac3a783a4617ae7d2f677eba",
+    "tools/install_evidence_archive.py": "bef5ef7826e9eeaacea3a73be15930722d67968b3f1a7d9cd1e99c0269bf52a1",
+    "tools/tests/test_cache_retention.py": "7488c57010682d5da307768e2b40231a4b8b479d9549d439f749163abd7a98c0",
+    "tools/tests/test_retention_install.py": "446ecac0d379c829783dd064c50bc901acb326ddd7bdd7d5a94411e47b5d7670",
+    "tools/tests/test_pr_retention.py": "d5b36b8607c78a5486c4299333108ecab342d7e5d274a8837b16162b01c98cec"
+  },
+  "previous_measurements": "/home/gem/CodexSymphony-storage-retention/.harness-gate/reports/storage-retention/python-01/measurements.json",
+  "exact_file_bytes_match": true,
+  "combined_tree_gate": "still required"
+}

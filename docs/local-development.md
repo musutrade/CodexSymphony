@@ -1,5 +1,7 @@
 # 本机开发与验证
 
+开发顺序唯一维护在根目录 [AGENTS.md：Development procedure](../AGENTS.md#development-procedure-single-source-of-truth)。每次开工、恢复、验证及发布前读取；本文只说明环境和操作入口，历史验收记录不定义当前步骤或版本。
+
 当前骨架：Rust 1.97.1，Axum 0.8，SQLx 0.8，PostgreSQL 16；Node 24.18.0，
 Angular 22，Material 22，TypeScript 6.0.2。精确依赖见 Cargo.lock 与前端 package-lock.json。
 
@@ -81,8 +83,9 @@ PostgreSQL 只在空卷第一次启动时使用 POSTGRES_* 初始化；修改 .e
 ```sh
 docker compose -f docker-compose.yml up -d --wait postgres
 export TEST_DATABASE_URL=postgres://codexsymphony_test:codexsymphony_test@127.0.0.1:54329/codexsymphony_test
-cargo test --workspace --locked
 ```
+
+以上只准备测试环境；测量和测试按 [AGENTS.md](../AGENTS.md#development-procedure-single-source-of-truth) 执行，命令参数读取当前 Gate 配置。
 
 测试只读取 TEST_DATABASE_URL，绝不从 DATABASE_URL 回退。不要把开发或真实用户库赋给
 TEST_DATABASE_URL。原测试 compose 保持 tmpfs；重建容器即丢弃数据。
@@ -98,22 +101,9 @@ GH-71 的受控 E2E 使用 `tools/auth_browser_acceptance.py`，在专用一次�
 
 ## 验证
 
-根目录：
+严格执行 [AGENTS.md 的开发流程](../AGENTS.md#development-procedure-single-source-of-truth)。需要执行的检查和完整参数读取 [Gate flow](../.harness-gate/flow.toml)、[前端 package scripts](../web/angular/package.json)及本任务验收条件；这里不再复制一套命令顺序。原始采集成功不等于覆盖率和 CRAP 已通过，普通测试及 Clippy 必须遵守该流程的测量前置条件。
 
-```sh
-cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
-TEST_DATABASE_URL=postgres://codexsymphony_test:codexsymphony_test@127.0.0.1:54329/codexsymphony_test cargo test --workspace --locked
-```
-
-前端目录：
-
-```sh
-npm run lint
-npm test -- --watch=false
-npm run build
-npx playwright install chromium
-```
+完整宿主门禁入口见本文“完整本机门禁”和 [门禁说明](../.harness-gate/QUALITY.md)。运行前按 AGENTS.md 核对验证目录的 Git 元数据可达性；linked worktree 不能自动视为隔离环境内可用的独立 clone。
 
 分配环境中先构建 Rust 与前端，再在仓库根运行
 `python3 /opt/symphony-env/run.py python3 tools/auth_browser_acceptance.py`。

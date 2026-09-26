@@ -37,6 +37,12 @@ fn main() -> Result<(), StartupError> {
 
 #[tokio::main]
 async fn serve() -> Result<(), StartupError> {
+    if std::env::args().nth(1).as_deref() == Some("budget") {
+        return codexsymphony_server::budget_admin::run(
+            &std::env::args().skip(2).collect::<Vec<_>>(),
+        )
+        .await;
+    }
     if std::env::args().nth(1).as_deref() == Some("--environment-check") {
         return codexsymphony_server::environment_cli::run(
             &std::env::args().skip(2).collect::<Vec<_>>(),
@@ -55,9 +61,11 @@ async fn serve() -> Result<(), StartupError> {
             .await;
     }
     initialize_logging();
-    if let Some(path) = std::env::args_os().nth(2).filter(|_| {
-        std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("--github-inspect"))
-    }) {
+    let inspect_path = match std::env::args().nth(1).as_deref() {
+        Some("--github-inspect") => std::env::args_os().nth(2),
+        _ => None,
+    };
+    if let Some(path) = inspect_path {
         return codexsymphony_server::github_service::inspect(std::path::Path::new(&path)).await;
     }
     run_service(Config::from_env()?).await

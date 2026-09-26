@@ -50,7 +50,7 @@ Runtime 仍使用现有受审 launcher、准备适配器、验证 Plan 和 GitBr
 
 `apps/server/tests/local_git.rs` 使用临时裸仓库和独立 PostgreSQL schema，覆盖原子条件更新、目标/源码替换、丢失响应、取消、预算、scope、HTTP 登记、真实 Codex 进程编码、候选保全、本地交付、独立验收、父组版本组合和关联修复。真实 Runtime 测试的模型响应来自本机受控服务，准备准入使用独立 fixture；它不声称调用了线上模型、完成生产部署或代替 #122 的双路径现场验收。
 
-质量要求仍是批准的 source-bound LLVM coverage/CRAP 先通过，再运行其余检查，最终精确源码树完整 Gate 通过后才发布。原始采集和 Gate 结果以本次开发保留的报告为准。
+质量要求仍是批准的 source-bound LLVM coverage/CRAP 先通过，再运行其余检查，最终精确源码树完整 Gate 通过后才发布。原始采集和 Gate 结果以本次开发保留的报告为准。#122 的组合回归、真实执行范围与尚缺证据见[双路径小任务验收](dual-path-acceptance.md)。
 
 ## AC 与验收入口
 

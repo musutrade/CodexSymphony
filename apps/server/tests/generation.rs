@@ -349,7 +349,7 @@ async fn pinned_runtime_success_invalid_output_token_limit_and_timeout() {
                 record["evidence"]["runtime_user_agent"]
                     .as_str()
                     .unwrap()
-                    .contains("0.156.1")
+                    .contains("0.157.1")
             );
         }
         server.abort();

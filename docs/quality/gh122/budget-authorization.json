@@ -1,0 +1,20 @@
+{
+  "at": "2026-09-26T09:42:01.493706+00:00",
+  "user_reply": "1",
+  "approved_option": "each of two logical acceptance tasks total 200000 tokens, 10 turns, 1200 model seconds",
+  "applied": false,
+  "local_increment": {
+    "request_id": "gh122-local-budget-increase-01",
+    "requirement_id": 1,
+    "expected_version": 1,
+    "actor": "local-user",
+    "reason": "User selected option 1: each logical GH122 acceptance task total 200000 tokens, 10 turns, 1200 model seconds; preserve prior actual usage and all unknown reservations",
+    "delta": {
+      "tokens": 180000,
+      "turns": 0,
+      "model_seconds": 600
+    }
+  },
+  "old_attempts_preserved": true,
+  "unknown_exposure_preserved": true
+}

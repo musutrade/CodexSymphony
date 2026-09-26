@@ -1,0 +1,56 @@
+{
+  "functions": [
+    {
+      "source": "tools/generate_runtime_protocol.py",
+      "source_sha256": "21945ddb2e3a4f79c42d2951822234a851397a4505d2dba423ab16f022846c09",
+      "function": "generate",
+      "coverage.line": {
+        "numerator": 15,
+        "denominator": 15
+      },
+      "complexity": 4,
+      "risk.crap": {
+        "numerator": 4,
+        "denominator": 1
+      },
+      "passes_thresholds": true
+    },
+    {
+      "source": "tools/preparation/environment_probe.py",
+      "source_sha256": "85af24fadd0aed60edeed179a551ea730add57b4401a70c113cf34eaa320a3e7",
+      "function": "tools",
+      "coverage.line": {
+        "numerator": 15,
+        "denominator": 15
+      },
+      "complexity": 7,
+      "risk.crap": {
+        "numerator": 7,
+        "denominator": 1
+      },
+      "passes_thresholds": true
+    },
+    {
+      "source": "tools/fixtures/mobile_runtime.py",
+      "source_sha256": "d093430f1d2c635e552007fe9fdbcff2e1e0750a8efdcd8a53aa43c68d6f4115",
+      "function": "main",
+      "coverage.line": {
+        "numerator": 24,
+        "denominator": 24
+      },
+      "complexity": 9,
+      "risk.crap": {
+        "numerator": 9,
+        "denominator": 1
+      },
+      "passes_thresholds": true
+    }
+  ],
+  "tests": 3,
+  "source_inputs_match": true,
+  "tools": {
+    "coverage": "7.16.1",
+    "radon": "6.0.1"
+  },
+  "authorization": "task-scoped upgrade approval required; not permanent collector policy"
+}

@@ -168,6 +168,46 @@ async fn check(registry: &Registry, plan: &Plan, stage: &str) -> environment_pro
 }
 
 #[tokio::test]
+async fn concurrent_launch_and_recovery_keep_independent_probe_receipts() {
+    let root = temporary();
+    let (mut plan, mut profile) = fixture(&root, "concurrent", "python3", false);
+    let script = fs::read_to_string(&profile.executable).unwrap().replace(
+        "request = json.load(sys.stdin)",
+        "request = json.load(sys.stdin)\nimport time\ntime.sleep(0.1)",
+    );
+    fs::write(&profile.executable, script).unwrap();
+    profile.registration.implementation_digest = sha256(fs::read(&profile.executable).unwrap());
+    plan.controlled.extensions = vec![profile.registration.clone()];
+    plan.host_profile_digest = profile.identity(&root.join("evidence"));
+    let mut registry = registry(&root, vec![("concurrent".into(), profile)]);
+    approve(&mut registry, &mut plan);
+    unsafe {
+        std::env::set_var(
+            "SYMPHONY_SUPERVISOR",
+            env!("CARGO_BIN_EXE_codexsymphony-server"),
+        );
+    }
+    let (launch, recovery) = tokio::join!(
+        environment_probe::check(&registry, &plan, "launch", "dev", None),
+        environment_probe::check(&registry, &plan, "recovery", "test", None),
+    );
+    let launch = launch.unwrap();
+    let recovery = recovery.unwrap();
+    assert!(launch.passed(), "{launch:?}");
+    assert!(recovery.passed(), "{recovery:?}");
+    assert_ne!(launch.request.invocation_id, recovery.request.invocation_id);
+    for report in [launch, recovery] {
+        let started = fs::read(report.evidence.join("identity.json")).unwrap();
+        assert_eq!(
+            started,
+            fs::read(report.evidence.join("quiescent.json")).unwrap()
+        );
+        assert!(report.evidence.join("actual.json").is_file());
+    }
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
 async fn real_two_project_admission_detects_drift_and_preserves_isolation() {
     // This test binary alone owns this environment variable, before any supervisor spawn.
     unsafe {
