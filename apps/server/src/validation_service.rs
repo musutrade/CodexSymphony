@@ -155,7 +155,9 @@ async fn collect_recorded(
     context: Option<&crate::validation_context::Context>,
     claimed: bool,
 ) -> Result<Vec<StepEvidence>> {
-    match collect(pool, r, context, claimed).await {
+    let collected = collect(pool, r, context, claimed).await;
+    crate::diagnostic_service::validation(pool, r, context).await?;
+    match collected {
         Ok(steps) => Ok(steps),
         Err(error) => {
             if let Some(context) = context {

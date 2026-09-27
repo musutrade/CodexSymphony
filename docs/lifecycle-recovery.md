@@ -10,10 +10,10 @@
 
 ## 门禁反馈
 
-旧验证脚本保持退出码协议。部署批准的 step.command 第二个元素为 `--symphony-feedback-v1` 时启用结构化反馈；它属于被冻结的计划身份，候选代码不能自行切换。当前 runner 合并 stdout/stderr，故合并输出必须是一个不超过 64 KiB 的 JSON 文档，诊断详情写受控日志，不在协议输出夹杂文字：
+普通退出码检查必须由批准的计划显式选择。step.command 第二个元素为 `--symphony-feedback-v2` 时选择结构化反馈；旧反馈选择器及旧版本明确拒绝。它属于被冻结的计划身份，候选代码不能自行切换。当前 runner 合并 stdout/stderr，故合并输出必须是一个不超过 64 KiB 的 JSON 文档，诊断详情写受控日志，不在协议输出夹杂文字：
 
 ```json
-{"protocol_version":1,"check_id":"quality","verdict":"unknown","fault":{"class":"unsupported","code":"collector.closure","message":"当前采集器无法完整测量此类闭包","owner":"plugin_maintainer","scope":["quality"],"resume_condition":"批准支持该源码的采集器后，对同一候选重新验证"}}
+{"protocol_version":2,"check_id":"quality","verdict":"unknown","artifacts":[],"fault":{"class":"unsupported","code":"collector.closure","message":"当前采集器无法完整测量此类闭包","owner":"plugin_maintainer","scope":["quality"],"resume_condition":"批准支持该源码的采集器后，对同一候选重新验证"}}
 ```
 
 verdict 为 pass/fail/unknown。pass 和 fail 都要求执行完整退出 0 且 fault 为空；fail 表示完成检查后判定代码不符合要求。能力不足、协议矛盾、证据缺失是 unknown，不自动归因代码。原始退出码、输出摘要、日志引用与 verdict 分开保存。fault.class 支持 input/resource/internal/dependency/unsupported/protocol/unknown。未知执行先确认原进程停止，不能直接再启动一份。

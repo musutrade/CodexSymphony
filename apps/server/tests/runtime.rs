@@ -592,6 +592,9 @@ async fn full_client_scenario(
     model: Option<(&str, &str)>,
 ) {
     let pool = fixture(root).await;
+    if code.contains("diagnostic-transcript") {
+        diagnostic_client_seed(&pool, root).await;
+    }
     if turns == 1 {
         // A real DB write longer than the idle receive poll must not swallow
         // the already consumed ending RPC. This is not a model timeout.
@@ -1886,4 +1889,66 @@ async fn model_identity_mismatch_and_corrupt_snapshots_fail_without_spending() {
 
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[path = "support/diagnostics.rs"]
+mod diagnostic_producer;
+async fn diagnostic_client_seed(pool: &PgPool, root: &Path) {
+    let producer = root.join("diagnostic-producer");
+    std::fs::create_dir(&producer).unwrap();
+    let (repo, plan) = diagnostic_producer::subprocess(&producer);
+    let candidate = codexsymphony_server::validation_runner::candidate(&repo).unwrap();
+    let directory = producer.join("output");
+    codexsymphony_server::validation_runner::execute(&repo, &directory, &candidate, &plan).unwrap();
+    let mut binding = diagnostic_producer::binding("runtime-diagnostics", 1);
+    binding.identity.run_id = Some(key().run_id);
+    binding.candidate = Some(candidate);
+    codexsymphony_server::diagnostic_service::plan(
+        pool,
+        &key().run_id,
+        &directory,
+        &binding,
+        &plan,
+    )
+    .await
+    .unwrap();
+}
+#[tokio::test]
+async fn real_runtime_stdio_client_reads_entire_retained_diagnostics_and_verifies_digest() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
+    let root = temporary();
+    let git = broker(&root.join("broker"));
+    let blocker = "send({'id':77,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'call','tool':'report_blocker','arguments':{'reason':'fixture stop','requires_permission':False}}})";
+    let code=client_code().replace(blocker,"send({'id':100,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'list','tool':'list_diagnostics','arguments':{'after':0}}})")
+ .replace(" elif r.get('id')==77:",r#" elif r.get('id')==100:
+  import hashlib
+  assert r['result']['success']
+  manifest=json.loads(r['result']['contentItems'][0]['text'])
+  artifact=next(a for a in manifest['artifacts'] if a['purpose']=='report.md')
+  data=b'';transcript=[r]
+  request={'id':101,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'read','tool':'read_diagnostic','arguments':{'artifact_id':artifact['artifact_id'],'offset':0,'limit':8192}}}
+  transcript.append(request);send(request)
+ elif r.get('id')==101:
+  assert r['result']['success'];transcript.append(r)
+  chunk=json.loads(r['result']['contentItems'][0]['text'])
+  assert chunk['offset']==len(data);data+=chunk['text'].encode()
+  if chunk['end']:
+   assert len(data)==artifact['export_bytes'] and hashlib.sha256(data).hexdigest()==artifact['export_sha256']
+   assert b'FAIL-FIRST' in data and b'FAIL-LAST' in data
+   Path('diagnostic-transcript.json').write_text(json.dumps({'artifact':artifact,'requests_responses':transcript,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}))
+   send({'id':77,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'call','tool':'report_blocker','arguments':{'reason':'fixture stop','requires_permission':False}}})
+  else:
+   request['params']['arguments']['offset']=chunk['next'];transcript.append(json.loads(json.dumps(request)));send(request)
+ elif r.get('id')==77:"#);
+    full_client_scenario(&root, &git, &code, 1, None).await;
+    let evidence: Value =
+        serde_json::from_slice(&std::fs::read(root.join("diagnostic-transcript.json")).unwrap())
+            .unwrap();
+    assert!(evidence["bytes"].as_u64().unwrap() > 8192);
+    assert_eq!(evidence["sha256"], evidence["artifact"]["export_sha256"]);
+    assert!(evidence["requests_responses"].as_array().unwrap().len() > 4);
+    println!(
+        "GH-126 actual Runtime requests: {}",
+        root.join("diagnostic-transcript.json").display()
+    );
 }

@@ -1,4 +1,4 @@
-// harness-contract-sha256: 7a3decf930dfb797b580cd580511b626a95300c30459121f63e6f8cc9052ce03
+// harness-contract-sha256: d251dc0e92e1b3816da4c6e6d0edcec907b3881fed55c41b7845abae1ebc52e1
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -3139,3 +3139,81 @@ export interface GetRequirementModelsResponse {
     }[];
   }[];
 }
+export type GetDiagnosticsResponse =
+  | {
+      artifacts: {
+        artifact_id: string;
+        availability: 'available' | 'corrupt' | 'expired' | 'missing' | 'partial';
+        binding: {
+          candidate: { immutable: boolean; sha: string; tree: string } | null;
+          environment_digest: string;
+          generation: number;
+          identity: {
+            attempt: number;
+            config_id: string;
+            invocation_id: string;
+            protocol_version: number;
+            requirement_id: number;
+            resource_id: string;
+            revision: number;
+            run_id: string | null;
+          };
+          implementation_digest: string;
+          phase: string;
+          policy_digest: string;
+          validation_id: string | null;
+        };
+        expires_at: number;
+        export_bytes: number;
+        export_sha256: string | null;
+        media_type: string;
+        original_bytes: number | null;
+        purpose: string;
+        raw_sha256: string | null;
+        reason: string | null;
+        retained_bytes: number;
+      }[];
+      next: number | null;
+    }
+  | { error: string };
+export type ReadDiagnosticResponse =
+  | {
+      artifact: {
+        artifact_id: string;
+        availability: 'available' | 'corrupt' | 'expired' | 'missing' | 'partial';
+        binding: {
+          candidate: { immutable: boolean; sha: string; tree: string } | null;
+          environment_digest: string;
+          generation: number;
+          identity: {
+            attempt: number;
+            config_id: string;
+            invocation_id: string;
+            protocol_version: number;
+            requirement_id: number;
+            resource_id: string;
+            revision: number;
+            run_id: string | null;
+          };
+          implementation_digest: string;
+          phase: string;
+          policy_digest: string;
+          validation_id: string | null;
+        };
+        expires_at: number;
+        export_bytes: number;
+        export_sha256: string | null;
+        media_type: string;
+        original_bytes: number | null;
+        purpose: string;
+        raw_sha256: string | null;
+        reason: string | null;
+        retained_bytes: number;
+      };
+      end: boolean;
+      next: number;
+      offset: number;
+      text: string;
+      unit: 'bytes';
+    }
+  | { error: string };

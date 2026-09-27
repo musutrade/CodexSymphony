@@ -137,7 +137,7 @@ fn resource_call(
     let registrations = profile.registrations();
     let approved = registrations.as_slice();
     let mut resource = ResourceCall {
-        protocol_version: 1,
+        protocol_version: crate::extension_contract::PROTOCOL_VERSION,
         invocation_id: invocation_id.into(),
         attempt: 1,
         resource_id: plan.controlled.environment.host_profile_ref.clone(),
@@ -212,7 +212,7 @@ fn task_call(
 ) -> Result<Call> {
     let call = Call {
         identity: crate::extension_contract::InvocationIdentity {
-            protocol_version: 1,
+            protocol_version: crate::extension_contract::PROTOCOL_VERSION,
             requirement_id: context.requirement,
             revision: context.revision,
             // This is the actual infrastructure supervisor Run, not an AgentRun.

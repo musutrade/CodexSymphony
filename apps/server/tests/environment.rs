@@ -117,7 +117,7 @@ fn fixture(root: &Path, name: &str, language: &str, cached: bool) -> (Plan, Prof
     let mut plan = Plan {
         host_profile_digest: String::new(),
         controlled: ControlledConfig {
-            protocol_version: 1,
+            protocol_version: 2,
             environment: EnvironmentBinding {
                 repository_revision: "repository:1@1".into(),
                 contract_digest: "0".repeat(64),
@@ -465,7 +465,7 @@ fn forged_missing_or_failed_evidence_never_passes() {
     use codexsymphony_server::controlled_contract::{CheckResult, EvidenceRef};
     let request = environment_probe::Request {
         resource: codexsymphony_server::controlled_contract::ResourceCall {
-            protocol_version: 1,
+            protocol_version: 2,
             invocation_id: "one".into(),
             attempt: 1,
             resource_id: "python".into(),
@@ -867,7 +867,7 @@ fn resource_envelopes_and_host_profiles_cannot_relabel_approval() {
     let (plan, profile) = fixture(&root, "python", "python3", false);
     let approved = vec![profile.registration.clone()];
     let call = ResourceCall {
-        protocol_version: 1,
+        protocol_version: 2,
         invocation_id: "check".into(),
         attempt: 1,
         resource_id: "python".into(),
@@ -879,7 +879,7 @@ fn resource_envelopes_and_host_profiles_cannot_relabel_approval() {
     };
     call.validate(&plan.controlled, &approved).unwrap();
     let mut wrong = call.clone();
-    wrong.protocol_version = 2;
+    wrong.protocol_version = 1;
     assert!(wrong.validate(&plan.controlled, &approved).is_err());
     let mut wrong = call.clone();
     wrong.attempt = 0;

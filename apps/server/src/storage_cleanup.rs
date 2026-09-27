@@ -87,6 +87,7 @@ async fn scan_registered(pool: &PgPool, now: i64) -> Result<()> {
     let Some((config, ids)) = catalog(pool, now).await? else {
         return Ok(());
     };
+    crate::diagnostic_service::expire(pool, now).await?;
     crate::storage_db::collect(pool, &config, now).await?;
     for id in ids {
         if let Err(error) = cleanup(pool, &config, &id, now).await {

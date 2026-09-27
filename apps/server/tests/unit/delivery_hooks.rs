@@ -29,7 +29,7 @@ fn registry_resolution_rejects_scope_and_registration_substitution() {
     changed.config_ref = "different".into();
     assert!(installed_entry(&entries, &changed, "repository:1@1").is_err());
     let mut environment: crate::environment::Plan = serde_json::from_value(json!({
-        "controlled":{"protocol_version":1,"environment":{"repository_revision":"repository:1@1",
+        "controlled":{"protocol_version":2,"environment":{"repository_revision":"repository:1@1",
             "contract_digest":"digest","host_profile_ref":"host","role":"test"},"extensions":[registration]},
         "host_profile_digest":"host","extension_id":"reviewed","lockfiles":[],"roles":{},"ci":false,"cache":null
     })).unwrap();
@@ -41,7 +41,7 @@ fn registry_resolution_rejects_scope_and_registration_substitution() {
 #[test]
 fn registry_loading_fails_closed_on_missing_or_malformed_inputs() {
     let environment = serde_json::from_value(json!({
-        "controlled":{"protocol_version":1,"environment":{"repository_revision":"repository:1@1",
+        "controlled":{"protocol_version":2,"environment":{"repository_revision":"repository:1@1",
             "contract_digest":"digest","host_profile_ref":"host","role":"test"},"extensions":[]},
         "host_profile_digest":"host","extension_id":"reviewed","lockfiles":[],"roles":{},"ci":false,"cache":null
     })).unwrap();

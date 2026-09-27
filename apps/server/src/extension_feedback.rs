@@ -3,7 +3,7 @@
 use crate::{controlled_contract::Verdict, validation::StepEvidence};
 use serde::{Deserialize, Serialize};
 
-pub const SELECTOR: &str = "--symphony-feedback-v1";
+pub const SELECTOR: &str = "--symphony-feedback-v2";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -35,15 +35,22 @@ pub struct Feedback {
     pub check_id: String,
     pub verdict: Verdict,
     pub fault: Option<Fault>,
+    pub artifacts: Vec<crate::extension_contract::ArtifactRef>,
 }
 
 pub fn negotiated(step: &StepEvidence) -> bool {
-    step.command.get(1).map(String::as_str) == Some(SELECTOR)
+    match step.command.get(1) {
+        Some(selector) => selector.starts_with("--symphony-feedback-"),
+        None => false,
+    }
 }
 
 pub fn decode(step: &StepEvidence) -> Result<Option<Feedback>, &'static str> {
     if !negotiated(step) {
         return Ok(None);
+    }
+    if step.command.get(1).map(String::as_str) != Some(SELECTOR) {
+        return Err("unsupported feedback protocol selector");
     }
     if step.output.len() > 65536 || crate::validation::sha256(&step.output) != step.output_sha256 {
         return Err("feedback bytes missing, oversized or changed");
@@ -58,9 +65,13 @@ fn invalid_json(_: serde_json::Error) -> &'static str {
 }
 
 fn validate(feedback: &Feedback, step: &StepEvidence) -> Result<(), &'static str> {
-    if feedback.protocol_version != 1 || feedback.check_id != step.id {
+    if feedback.protocol_version != crate::extension_contract::PROTOCOL_VERSION
+        || feedback.check_id != step.id
+    {
         return Err("feedback version or check identity differs");
     }
+    crate::extension_contract::validate_artifact_refs(&feedback.artifacts)
+        .map_err(invalid_artifacts)?;
     match (&feedback.verdict, &feedback.fault) {
         (Verdict::Unknown, Some(fault)) => validate_fault(fault)?,
         (Verdict::Pass | Verdict::Fail, None) => {}
@@ -125,4 +136,8 @@ pub fn status(step: &StepEvidence) -> &'static str {
 
 pub fn code_failure(step: &StepEvidence) -> bool {
     step.code_failure && verdict(step) == Verdict::Fail
+}
+
+fn invalid_artifacts(_: crate::extension_contract::ProtocolError) -> &'static str {
+    "invalid diagnostic artifacts"
 }

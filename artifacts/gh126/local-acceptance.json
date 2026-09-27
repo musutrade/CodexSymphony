@@ -1,0 +1,196 @@
+{
+  "schema": "gh126-local-acceptance/v1",
+  "scope": "local controlled producers, pinned actual Runtime with local Responses fixture, protected HTTPS and SQL browser/restart fixture; no deployment or external paid model",
+  "backend_measurement": {
+    "stage": "backend-source-measurement",
+    "capture": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/backend-20260927T072537",
+    "functions": 2303,
+    "measurement": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/backend-20260927T072537/probes/backend/measurement-20260927T074651/measurements.json",
+    "measurement_sha256": "32f8a52bce62e33b53cd9141731f0a5b8224c03722b8ecf4aa511cbc926753ba",
+    "coverage_and_crap": "PASS",
+    "violations": [],
+    "changed_inputs": []
+  },
+  "frontend_measurement": {
+    "stage": "frontend-source-measurement",
+    "capture": "/tmp/codexsymphony-ts-risk-2ybwbp",
+    "response": "/tmp/codexsymphony-ts-risk-2ybwbp/collector-response.json",
+    "response_sha256": "12f50255c08a7ec38d4e35ff0f5844fd63c388734026cb48090e4b399da4fb55",
+    "files": 23,
+    "functions": 202,
+    "declarationFiles": 1,
+    "scope_authority": "installed configure.py uses approved declarationOnly inventory grouping; no added exclusions",
+    "coverage_and_crap": "PASS",
+    "violations": []
+  },
+  "browser": {
+    "all_regressions": 30,
+    "diagnostics_report_stats": {
+      "startTime": "2026-09-27T08:09:14.949Z",
+      "duration": 12921.347,
+      "expected": 2,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "download_identities": [
+      {
+        "source": "disposable persisted browser fixture",
+        "viewport": "desktop",
+        "artifact": {
+          "artifact_id": "browser-diagnostics-desktop-1790496556942-diagnostic",
+          "binding": {
+            "identity": {
+              "protocol_version": 2,
+              "requirement_id": 1790496556943,
+              "revision": 1,
+              "run_id": "browser-diagnostics-desktop-1790496556942-run",
+              "resource_id": "fixture",
+              "invocation_id": "browser-diagnostics-desktop-1790496556942-call",
+              "attempt": 1,
+              "config_id": "fixture"
+            },
+            "phase": "validation",
+            "candidate": null,
+            "validation_id": null,
+            "generation": 1,
+            "implementation_digest": "fixture",
+            "environment_digest": "fixture",
+            "policy_digest": "fixture"
+          },
+          "purpose": "report.md",
+          "media_type": "text/markdown",
+          "availability": "available",
+          "reason": null,
+          "original_bytes": 190021,
+          "retained_bytes": 190021,
+          "raw_sha256": "af8b9374ccb50470f63acc5603aa470d448bf9887fdcb16d2380d61fd3448c16",
+          "export_bytes": 190021,
+          "export_sha256": "af8b9374ccb50470f63acc5603aa470d448bf9887fdcb16d2380d61fd3448c16",
+          "expires_at": 1790500157
+        },
+        "downloaded_bytes": 190021,
+        "downloaded_sha256": "af8b9374ccb50470f63acc5603aa470d448bf9887fdcb16d2380d61fd3448c16"
+      },
+      {
+        "source": "disposable persisted browser fixture",
+        "viewport": "mobile",
+        "artifact": {
+          "artifact_id": "browser-diagnostics-mobile-1790496562585-diagnostic",
+          "binding": {
+            "identity": {
+              "protocol_version": 2,
+              "requirement_id": 1790496562587,
+              "revision": 1,
+              "run_id": "browser-diagnostics-mobile-1790496562585-run",
+              "resource_id": "fixture",
+              "invocation_id": "browser-diagnostics-mobile-1790496562585-call",
+              "attempt": 1,
+              "config_id": "fixture"
+            },
+            "phase": "validation",
+            "candidate": null,
+            "validation_id": null,
+            "generation": 1,
+            "implementation_digest": "fixture",
+            "environment_digest": "fixture",
+            "policy_digest": "fixture"
+          },
+          "purpose": "report.md",
+          "media_type": "text/markdown",
+          "availability": "available",
+          "reason": null,
+          "original_bytes": 190021,
+          "retained_bytes": 190021,
+          "raw_sha256": "af8b9374ccb50470f63acc5603aa470d448bf9887fdcb16d2380d61fd3448c16",
+          "export_bytes": 190021,
+          "export_sha256": "af8b9374ccb50470f63acc5603aa470d448bf9887fdcb16d2380d61fd3448c16",
+          "expires_at": 1790500163
+        },
+        "downloaded_bytes": 190021,
+        "downloaded_sha256": "af8b9374ccb50470f63acc5603aa470d448bf9887fdcb16d2380d61fd3448c16"
+      }
+    ]
+  },
+  "server_restart": {
+    "kind": "controlled-local-real-server-process-restart",
+    "transitions": [
+      {
+        "kind": "started",
+        "pid": 6,
+        "address": "127.0.0.1:35713"
+      },
+      {
+        "kind": "stopped",
+        "pid": 6,
+        "exit": 0
+      },
+      {
+        "kind": "started",
+        "pid": 34,
+        "address": "127.0.0.1:39503"
+      },
+      {
+        "kind": "stopped",
+        "pid": 34,
+        "exit": 0
+      }
+    ],
+    "fixture": "persisted SQL text; not model/Hook producer evidence",
+    "bytes": 204027,
+    "sha256": "9b1f7555f94a1c67eee4043cdea6dada5975aeb8880dc8b5136410bf4e11261e",
+    "chunks": 25,
+    "parallel_reads": 8,
+    "session_survived": true,
+    "same_manifest": true,
+    "first_last_failure_verified": true,
+    "whole_export_verified": true,
+    "credentials_retained": false
+  },
+  "http_client": {
+    "contract.breaking_changes": {
+      "type": "count",
+      "value": 0
+    },
+    "contract.client_drift": {
+      "type": "boolean",
+      "value": false
+    },
+    "contract.compatible": {
+      "type": "boolean",
+      "value": true
+    }
+  },
+  "http_variants": 108,
+  "retained_evidence": [
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T080312/workspace/artifacts/gh126-browser/report.json",
+      "sha256": "7037f8b74271d6acb972454ba5f4e893cc81e2e8da5ef0051a5883a86c18f801"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T080312/workspace/artifacts/gh126-restart/receipt.json",
+      "sha256": "d272a57e0454ccd3103b31a88e4258dc9a9a9941fe2d08ef223c9afbacb7b3d1"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T080312/workspace/artifacts/gh71-product-contract/validation.json",
+      "sha256": "968e24cb8e0c9df35988dc84aac8d6135c78b2c1fec35b2f0c3188c00576d060"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T080312/workspace/artifacts/gh71-product-contract/client-measurement.json",
+      "sha256": "dd7b0a5fffc47c866a6f2eba543eec0a07df76ce0d5ab87537ffc9d2b8ebfdb5"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T080312/timings.jsonl",
+      "sha256": "809354ed7334f3d9a7d062de0f66c62b34471281d3d0af0da64986e25975e68d"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/backend-20260927T072537/measurement-summary.json",
+      "sha256": "bf574f93cb11b53c61db627906473eace081d72ece49b959fe6856c39ccc3d37"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/frontend-20260927T080213/measurement-summary.json",
+      "sha256": "f3359146a4da2d1e9529692c482c4e9d2c8eed6c3b675f1d06cb6c6523d7e89a"
+    }
+  ],
+  "publication_authority": "Installed host receipt is outside this source tree; this diagnostic summary is not Gate admission."
+}

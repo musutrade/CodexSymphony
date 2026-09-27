@@ -5,7 +5,7 @@ use serde::ser::SerializeMap;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-pub const PROTOCOL_VERSION: u32 = 1;
+pub const PROTOCOL_VERSION: u32 = 2;
 pub const MAX_RESULT_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -504,8 +504,13 @@ pub struct HookError {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum HookOutcome {
-    Success { artifacts: Vec<ArtifactRef> },
-    Failed { error: HookError },
+    Success {
+        artifacts: Vec<ArtifactRef>,
+    },
+    Failed {
+        error: HookError,
+        artifacts: Vec<ArtifactRef>,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -581,9 +586,10 @@ fn serialize_result_outcome<M: SerializeMap>(
             map.serialize_entry("status", "success")?;
             map.serialize_entry("artifacts", artifacts)?;
         }
-        HookOutcome::Failed { error } => {
+        HookOutcome::Failed { error, artifacts } => {
             map.serialize_entry("status", "failed")?;
             map.serialize_entry("error", error)?;
+            map.serialize_entry("artifacts", artifacts)?;
         }
     }
     Ok(())
@@ -597,7 +603,9 @@ impl<'de> Deserialize<'de> for HookResult {
         let wire = HookResultWire::deserialize(deserializer)?;
         let outcome = match (wire.status, wire.artifacts, wire.error) {
             (HookStatus::Success, Some(artifacts), None) => HookOutcome::Success { artifacts },
-            (HookStatus::Failed, None, Some(error)) => HookOutcome::Failed { error },
+            (HookStatus::Failed, Some(artifacts), Some(error)) => {
+                HookOutcome::Failed { error, artifacts }
+            }
             _ => return Err(serde::de::Error::custom("inconsistent result status")),
         };
         Ok(Self {
@@ -731,31 +739,41 @@ pub fn parse_hook_result(
 fn validate_result_shape(
     fields: &serde_json::Map<String, serde_json::Value>,
 ) -> Result<(), ProtocolError> {
-    if fields.keys().any(|key| !known_result_field(key)) {
-        return Err(ProtocolError::InvalidResult("unknown result field"));
+    for key in fields.keys() {
+        if !known_result_field(key) {
+            return Err(ProtocolError::InvalidResult("unknown result field"));
+        }
     }
     match fields.get("status").and_then(serde_json::Value::as_str) {
         Some("success") if fields.contains_key("artifacts") && !fields.contains_key("error") => {}
-        Some("failed") if fields.contains_key("error") && !fields.contains_key("artifacts") => {}
+        Some("failed") if fields.contains_key("error") && fields.contains_key("artifacts") => {}
         _ => return Err(ProtocolError::InvalidResult("inconsistent result status")),
     }
     Ok(())
 }
 
 fn validate_result_payload(result: &HookResult) -> Result<(), ProtocolError> {
-    match &result.outcome {
-        HookOutcome::Success { artifacts } => {
-            if artifacts
-                .iter()
-                .any(|a| !valid_relative_path(&a.path) || !nonempty(&a.kind))
-            {
-                return Err(ProtocolError::InvalidResult("invalid artifact reference"));
-            }
-        }
-        HookOutcome::Failed { error } => {
+    let artifacts = match &result.outcome {
+        HookOutcome::Success { artifacts } => artifacts,
+        HookOutcome::Failed { error, artifacts } => {
             if !nonempty(&error.code) || error.message.trim().is_empty() {
                 return Err(ProtocolError::InvalidResult("invalid hook error"));
             }
+            artifacts
+        }
+    };
+    validate_artifact_refs(artifacts)
+}
+
+pub fn validate_artifact_refs(artifacts: &[ArtifactRef]) -> Result<(), ProtocolError> {
+    if artifacts.len() > crate::diagnostics::MAX_FILES {
+        return Err(ProtocolError::InvalidResult(
+            "too many diagnostic artifacts",
+        ));
+    }
+    for artifact in artifacts {
+        if !valid_relative_path(&artifact.path) || !nonempty(&artifact.kind) {
+            return Err(ProtocolError::InvalidResult("invalid artifact reference"));
         }
     }
     Ok(())
@@ -782,10 +800,22 @@ fn known_result_field(key: &str) -> bool {
     FIELDS.contains(&key)
 }
 
-fn valid_relative_path(path: &str) -> bool {
-    !path.is_empty()
-        && !path.starts_with('/')
-        && path.split('/').all(|part| !matches!(part, "" | "." | ".."))
-        && !path.contains('\\')
-        && !path.contains('\0')
+pub fn valid_relative_path(path: &str) -> bool {
+    if invalid_path_surface(path) {
+        return false;
+    }
+    for part in path.split('/') {
+        if matches!(part, "" | "." | "..") {
+            return false;
+        }
+    }
+    true
+}
+
+fn invalid_path_surface(path: &str) -> bool {
+    path.is_empty()
+        || path.len() > 4096
+        || path.starts_with('/')
+        || path.contains('\\')
+        || path.chars().any(char::is_control)
 }
