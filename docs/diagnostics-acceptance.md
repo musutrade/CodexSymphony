@@ -43,3 +43,15 @@
 - 各阶段开始时间、耗时及 PASS/FAIL 在根 `timings.jsonl`；失败和恢复原因在任务证据区 `~/gh126-measurements/readiness/recovery.jsonl`。手工 namespace 的 PATH、输出目录和数据库客户端问题保留了失败日志；生产源码修改后重新测量，没有把失败作为 PASS。
 
 可携带的摘要及对应原始记录 SHA-256 在 [本地实验记录](../artifacts/gh126/local-acceptance.json)。完整原始对象、LLVM 计数器及源文件证据保留在捕获根，完成的缓存依安装宿主登记规则管理。最终 Gate 在所有源码、说明和本记录冻结后执行，结果以宿主持有凭证为准。
+
+## 最终 Gate 前端测试恢复
+
+候选 `980b76e` 的 `run-2369a69b492e` 完整质量测量通过，但 `frontend.tests` 因测试配置缺少 Node 类型而编译失败，故整体 FAIL，未发布。已在测试专用 `tsconfig.spec.json` 引用已锁定的 Node 类型；生产行为、测试断言、依赖和质量策略不变。
+
+修复后，`frontend-20260927T092511` 的原始源码覆盖率与 CRAP 重新测量 PASS（23 个文件、202 个生产函数），后端捕获输入逐项核对未变；`checks-20260927T092552` 的 52 个 Angular 单元测试、lint、生产构建及密钥扫描全部 PASS。失败原件、恢复阶段时间和新测量摘要见 [恢复证据](../artifacts/gh126/frontend-gate-recovery.json)。这些检查不能代替修复后冻结树的新完整 Gate 凭证。
+
+## Python 示例的任务限定测量
+
+用户于 2026-09-27 明确批准 #126 对 `examples/project-hooks/project_hook.py` 使用 coverage.py 与 Radon 的任务限定替代测量；不构成 Python collector 的长期批准，不改变现有策略。工具包按原下载摘要核验后解压至新采集目录，执行完全相同源码的只读副本。全部可执行行及两个函数行覆盖率均为 100%，函数 CRAP 分别为 4、6，6 个采集用例全部通过。涵盖失败附件和调用身份、真实 Git 检查/状态报告、数据库命令边界、四类事件、协议入口成功/失败与旧/未知协议拒绝；数据库边界使用受控替身，没有生产部署或外部写入。
+
+原始 coverage 数据、逐行/分支结果、源码与工具包摘要、授权原文、采集脚本和日志保留在 `gh126-development/measurements/python-20260927T093233`；摘要与精确函数结果见 [Python 测量证据](../artifacts/gh126/python-hook-measurement.json)。此记录仅覆盖本次 Python 修改；最终发布仍要求整个冻结树的新完整 Gate PASS。
