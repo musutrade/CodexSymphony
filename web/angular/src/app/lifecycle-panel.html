@@ -1,0 +1,91 @@
+<section class="ui-panel" aria-label="冻结模型与实际用量">
+  <h3>冻结模型与实际执行</h3>
+  @for (run of models(); track run.run_id) {
+    <article class="ui-panel">
+      <h4>Run {{ run.run_id }} · revision {{ run.revision }}</h4>
+      @if (run.frozen; as frozen) {
+        <p>
+          冻结选择：{{ frozen.selection.config.provider }} /
+          {{ frozen.selection.config.model ?? '未指定' }} / effort
+          {{ frozen.selection.config.effort ?? '未指定' }}
+        </p>
+        <p>
+          来源 {{ frozen.source }} · {{ frozen.selection.reason }} · 能力版本
+          {{ frozen.capability_version }}
+        </p>
+      } @else {
+        <p>无已冻结模型选择。</p>
+      }
+      <p>
+        实际响应：{{ run.actual?.provider ?? '未知' }} / {{ run.actual?.model ?? '未知' }} / effort
+        {{ run.actual?.effort ?? '未知' }}；身份核对：{{
+          run.matched === null ? '未知' : run.matched ? '匹配' : '不匹配'
+        }}
+      </p>
+      @for (call of run.usage; track call.call_id) {
+        <p>
+          调用 {{ call.call_id }}：input {{ call.usage.input ?? '未知' }}，cached
+          {{ call.usage.cached ?? '未知' }}（包含于 input），output
+          {{ call.usage.output ?? '未知' }}，模型秒数 {{ call.usage.model_seconds ?? '未知' }}。{{
+            call.usage.complete ? '已完成' : '用量待结算，保留预留'
+          }}
+        </p>
+        <p>
+          原预留 {{ call.reserved.tokens }} tokens / {{ call.reserved.turns }} turns /
+          {{ call.reserved.model_seconds }} 秒。
+        </p>
+      } @empty {
+        <p>暂无已记录模型调用。</p>
+      }
+    </article>
+  } @empty {
+    <p>暂无实际模型记录。</p>
+  }
+</section>
+<section class="ui-panel" aria-label="生命周期与通知投递">
+  <h3>生命周期与通知</h3>
+  <p>
+    插件 accepted 表示持久接收；不表示渠道已发送或手机已收到。通知失败不重跑业务，待办仍保存在平台。
+  </p>
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p role="status" aria-live="polite">{{ message() }}</p>
+  }
+  <button matButton="outlined" [disabled]="busy()" (click)="refresh()">刷新生命周期与模型</button>
+  @for (event of events(); track event.sequence) {
+    <details>
+      <summary>
+        序号 {{ event.sequence }} · revision {{ event.revision }} · {{ event.phase }} ·
+        {{ event.occurred_at }}
+      </summary>
+      <p>来源 {{ event.source_id }} · 事件 {{ event.event_id }}</p>
+      <pre>{{ event.facts | json }}</pre>
+      @for (delivery of event.deliveries ?? []; track delivery.plugin_id) {
+        <p>
+          通知插件 {{ delivery.plugin_id }}：{{ delivery.state ?? 'unknown' }} · 已尝试
+          {{ delivery.attempts ?? '未知' }} 次 · {{ delivery.last_result ?? '尚无确认' }}
+        </p>
+        @if (delivery.state === 'failed') {
+          <button
+            matButton="outlined"
+            [disabled]="busy() || disabled || !!error()"
+            (click)="replay(event, delivery.plugin_id ?? '')"
+          >
+            补投通知 {{ delivery.plugin_id }}
+          </button>
+        }
+      } @empty {
+        <p>没有此事件的通知投递记录。</p>
+      }
+    </details>
+  } @empty {
+    <p>暂无生命周期事件。</p>
+  }
+  @if (more()) {
+    <button matButton="outlined" [disabled]="busy() || !!error()" (click)="next()">
+      读取后续生命周期事件
+    </button>
+  }
+</section>

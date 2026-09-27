@@ -41,3 +41,10 @@ INSERT INTO diagnostic_artifact(artifact_id,requirement_id,revision,source_run,i
 SELECT 'capture-diagnostic',900001,1,'capture-run','capture-call',1,
 jsonb_build_object('artifact_id','capture-diagnostic','binding',jsonb_build_object('identity',jsonb_build_object('protocol_version',2,'requirement_id',900001,'revision',1,'run_id','capture-run','resource_id','fixture','invocation_id','capture-call','attempt',1,'config_id','fixture'),'phase','validation','candidate',NULL,'validation_id',NULL,'generation',1,'implementation_digest','fixture','environment_digest','fixture','policy_digest','fixture'),'purpose','report','media_type','text/plain; charset=utf-8','availability','available','reason',NULL,'original_bytes',21,'retained_bytes',21,'raw_sha256',encode(sha256(convert_to(E'Fixture-owned output\n','UTF8')),'hex'),'export_bytes',21,'export_sha256',encode(sha256(convert_to(E'Fixture-owned output\n','UTF8')),'hex'),'expires_at',extract(epoch FROM now())::bigint+3600),
 convert_to(E'Fixture-owned output\n','UTF8'),convert_to(E'Fixture-owned output\n','UTF8'),42,extract(epoch FROM now())::bigint+3600;
+
+-- A persisted native failure exercises nullable diagnostic references and the
+-- real recovery projection contract. It authorizes no recovery or model call.
+INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result)
+VALUES('capture-recovery-validation',900001,1,'capture-run','fixture-candidate','fixture-tree','{}','[]','source','source','entry','entry','validation','blocked');
+INSERT INTO recovery_failure(event_key,requirement_id,source_validation_id,phase,facts,fingerprint,decision,reason)
+VALUES('capture-recovery-failure',900001,'capture-recovery-validation','local','{"phase":"local","candidate_sha":"fixture-candidate","feedback":{"verdict":"unknown","fault":{"class":"unknown","code":"fixture_unknown","owner":"operator","resume_condition":"Reconcile retained producer evidence"}}}','fixture-unknown','blocked','Historical fixture fault; no root cause inferred');

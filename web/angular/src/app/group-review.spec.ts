@@ -12,6 +12,7 @@ import {
   editableReview,
   totalBudget,
   repairLimits,
+  reviewPayload,
 } from './group-review-model';
 import { draftExample } from './drafts-example';
 const fixtureView: GroupView = {
@@ -49,6 +50,27 @@ const fixtureView: GroupView = {
   business_complete: false,
 };
 describe('Atomic group review UI', () => {
+  it('preserves per-child model overrides and removes them explicitly without changing frozen identity', () => {
+    const review = initialReview(fixtureView);
+    const explicit = {
+      config: { provider: 'openai', model: 'gpt-6-sol', effort: 'high' },
+      reason: 'reviewed task choice',
+    };
+    review.items[0].model_selection = explicit;
+    const model = editableReview(review);
+    expect(model.items[0].override_model).toBe(true);
+    expect(reviewPayload(model).items[0].model_selection).toEqual(explicit);
+    model.items[0].override_model = false;
+    expect(reviewPayload(model).items[0].model_selection).toBeUndefined();
+    model.items[0].override_model = true;
+    model.items[0].model_id = '';
+    model.items[0].model_effort = '';
+    expect(reviewPayload(model).items[0].model_selection?.config).toEqual({
+      provider: 'openai',
+      model: null,
+      effort: null,
+    });
+  });
   it('shows three repairs for new bounded authorization and preserves frozen legacy limits', () => {
     const current = structuredClone(fixtureView);
     current.repositories[0].repository.policy.gate_recovery_policy = 'bounded_v1';

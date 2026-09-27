@@ -56,7 +56,7 @@
     <p>
       状态：{{
         current.queue?.state === 'waiting_scheduler' ? '已授权 / 依赖队列' : '待评审（不能执行）'
-      }}。父项不占执行槽；validation_only 执行与最终业务验收尚未接通。
+      }}。父项不占执行槽；各子项、集成验证与最终业务验收以持久记录为准。
     </p>
     <p>
       历史授权数 {{ current.authorizations.length }} · 组已用 {{ budget('').used.tokens }} tokens /
@@ -128,6 +128,39 @@
       @for (item of model().items; track item.child_id; let i = $index) {
         <section class="ui-panel" [attr.aria-label]="'评审子项 ' + item.child_id">
           <h2>{{ item.child_id }} · revision {{ item.revision }}</h2>
+          @if (item.frozen_model; as frozen) {
+            <p>
+              已冻结模型：{{ frozen.selection.config.provider }} /
+              {{ frozen.selection.config.model ?? '未指定' }} / effort
+              {{ frozen.selection.config.effort ?? '未指定' }} · 来源 {{ frozen.source }} ·
+              {{ frozen.selection.reason }} · 能力版本 {{ frozen.capability_version }}
+            </p>
+          }
+          <label
+            ><input type="checkbox" [formField]="fields.items[i].override_model" />{{
+              item.child_id
+            }}
+            显式覆盖项目默认模型</label
+          >
+          @if (item.override_model) {
+            <label
+              >{{ item.child_id }} 模型提供方<input [formField]="fields.items[i].model_provider"
+            /></label>
+            <label
+              >{{ item.child_id }} 模型 ID<input [formField]="fields.items[i].model_id"
+            /></label>
+            <label
+              >{{ item.child_id }} 推理 effort<input [formField]="fields.items[i].model_effort"
+            /></label>
+            <label
+              >{{ item.child_id }} 模型选择理由<textarea
+                [formField]="fields.items[i].model_reason"
+              ></textarea>
+            </label>
+          }
+          <p>
+            仅接受部署支持且获授权的组合。保存及授权由后台核对，不静默替换模型；新默认不修改已冻结任务。
+          </p>
           @for (child of current.document.children; track child.id) {
             @if (child.id === item.child_id) {
               <p>
@@ -203,6 +236,13 @@
                     {{ repo.repository.base_branch }} / 模型
                     {{ repo.repository.model || '部署默认模型' }}
                   </p>
+                  @if (repo.repository.model_selection; as selection) {
+                    <p>
+                      项目默认：{{ selection.config.provider }} /
+                      {{ selection.config.model ?? '未指定' }} / effort
+                      {{ selection.config.effort ?? '未指定' }} · {{ selection.reason }}
+                    </p>
+                  }
                   <p>
                     评审策略版本 {{ item.repository_version }} / 当前版本 {{ repo.version }} ·
                     {{ repo.repository.revoked ? '权限已撤销' : '已登记' }}

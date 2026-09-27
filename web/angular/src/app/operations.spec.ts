@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DiagnosticPanel } from './diagnostic-panel/diagnostic-panel';
+import { RecoveryPanel } from './recovery-panel';
+import { LifecyclePanel } from './lifecycle-panel';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
@@ -10,6 +12,24 @@ import { OperationDetail, Operations } from './operations';
 
 @Component({ selector: 'app-diagnostic-panel', template: '' })
 class DiagnosticStub {}
+@Component({
+  selector: 'app-recovery-panel',
+  template: '',
+})
+class RecoveryStub {
+  @Input() item: unknown;
+  @Input() disabled = false;
+  @Output() readonly changed = new EventEmitter<void>();
+}
+@Component({
+  selector: 'app-lifecycle-panel',
+  template: '',
+})
+class LifecycleStub {
+  @Input() requirementId = 0;
+  @Input() version = 0;
+  @Input() disabled = false;
+}
 
 const item: OperationDetail = {
   requirement: {
@@ -74,8 +94,8 @@ describe('Durable operator UI', () => {
       imports: [Operations],
     });
     TestBed.overrideComponent(Operations, {
-      remove: { imports: [DiagnosticPanel] },
-      add: { imports: [DiagnosticStub] },
+      remove: { imports: [DiagnosticPanel, RecoveryPanel, LifecyclePanel] },
+      add: { imports: [DiagnosticStub, RecoveryStub, LifecycleStub] },
     });
     http = TestBed.inject(HttpTestingController);
     return TestBed.createComponent(Operations);
@@ -229,6 +249,9 @@ describe('Durable operator UI', () => {
     expect(component.prLink('owner/repo', 42)).toBe('https://github.com/owner/repo/pull/42');
     expect(component.prLink('javascript:alert(1)', 42)).toBeNull();
     expect(component.prLink('owner/repo', null)).toBeNull();
+    expect(component.observation('{"mode":"local_git"}')?.['mode']).toBe('local_git');
+    expect(component.observation(null)).toBeNull();
+    expect(component.observation('bad')).toBeNull();
   });
   it('polls only while idle and stops all reads when the page closes', async () => {
     vi.useFakeTimers();

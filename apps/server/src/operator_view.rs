@@ -11,9 +11,21 @@ pub async fn detail(pool: &PgPool, id: i64) -> Result<Value> {
     let requirement:Value=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'version',version,'revision',revision,'state',state,'paused',paused,'cancel_requested',cancel_requested,'cleanup_complete',cleanup_complete) FROM requirement WHERE id=$1")
         .bind(id).fetch_one(&mut *tx).await?;
     let mut value = timeline(&mut tx, id).await?;
-    let (preparation, storage, storage_usage) = environment(&mut tx, id).await?;
+    attach_execution_context(&mut tx, id, &mut value).await?;
     tx.commit().await?;
     value["requirement"] = requirement;
+    value["metrics"] = metrics(pool, id).await?;
+    redact(&mut value);
+    Ok(value)
+}
+
+async fn attach_execution_context(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    id: i64,
+    value: &mut Value,
+) -> Result<()> {
+    let (preparation, storage, storage_usage) = environment(tx, id).await?;
+    value["execution"] = crate::operator_execution::detail(tx, id).await?;
     value["preparation"] = json!(preparation);
     value["storage"] = storage;
     value["storage_lifecycle"] = json!(if storage_usage["configured"] == true {
@@ -22,9 +34,7 @@ pub async fn detail(pool: &PgPool, id: i64) -> Result<Value> {
         "not_configured"
     });
     value["storage_usage"] = storage_usage;
-    value["metrics"] = metrics(pool, id).await?;
-    redact(&mut value);
-    Ok(value)
+    Ok(())
 }
 async fn environment(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
@@ -45,7 +55,7 @@ async fn timeline(tx: &mut sqlx::Transaction<'_, sqlx::Postgres>, id: i64) -> Re
     let recoveries = recovery_history(tx, id).await?;
     let runs:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'revision',revision,'state',state,'phase',phase,'blocker',blocker,'quiescent',quiescent,'created_at',created_at,'waiting',waiting::text) FROM agent_run WHERE requirement_id=$1 ORDER BY created_at,id")
         .bind(id).fetch_all(&mut **tx).await?;
-    let validations:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',id,'revision',revision,'source_run_id',source_run_id,'candidate_sha',candidate_sha,'stage',stage,'result',result,'failure',failure) FROM candidate_validation WHERE requirement_id=$1 ORDER BY revision,id")
+    let validations:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('id',v.id,'revision',v.revision,'source_run_id',v.source_run_id,'candidate_sha',v.candidate_sha,'candidate_tree',v.candidate_tree,'stage',v.stage,'result',v.result,'failure',v.failure,'retry_of',v.retry_of,'superseded_by',v.superseded_by,'hook_invalidated',v.hook_invalidated,'generation',(WITH RECURSIVE generations AS (SELECT id,retry_of FROM candidate_validation WHERE id=v.id UNION ALL SELECT p.id,p.retry_of FROM candidate_validation p JOIN generations g ON p.id=g.retry_of) SELECT count(*) FROM generations)) FROM candidate_validation v WHERE requirement_id=$1 ORDER BY revision,id")
         .bind(id).fetch_all(&mut **tx).await?;
     let external:Vec<Value>=sqlx::query_scalar("SELECT jsonb_build_object('repository',d.repository,'pr_number',d.pr_number,'head_sha',d.head_sha,'revision',d.revision,'observation',CASE WHEN d.mode='local_git' THEN jsonb_build_object('mode','local_git','target',d.local_binding->'target'->>'reference','branch',d.base_branch,'delivery_version',CASE WHEN EXISTS(SELECT 1 FROM delivery_observation o WHERE o.action_key=d.action_key AND o.kind='local_git' AND o.fact->>'observation'='delivered' AND o.fact->>'candidate'=d.head_sha) THEN d.head_sha END,'acceptance',d.local_acceptance)::text ELSE g.observation::text END,'stale',CASE WHEN d.mode='local_git' THEN false ELSE COALESCE(g.stale,true) END) FROM delivery d LEFT JOIN github_pr_observation g ON g.repository_id=d.repository_id AND g.number=d.pr_number AND g.requirement_id=d.requirement_id WHERE d.requirement_id=$1 ORDER BY d.revision")
         .bind(id).fetch_all(&mut **tx).await?;

@@ -74,7 +74,10 @@
     </div>
     @if (cancelId() === item.requirement.id) {
       <section class="ui-panel" aria-label="确认取消">
-        <p>取消会停止执行并保全工作，关闭关联 PR；外部结果未知时继续对账，收尾完成前不释放占用。</p>
+        <p>
+          取消会停止执行并保全工作，关闭关联 PR 时只处理尚未合并的
+          PR；已合并或已交付的版本作为历史事实保留。 外部结果未知时继续对账，收尾完成前不释放占用。
+        </p>
         <button
           matButton="filled"
           [disabled]="busy() || !!error()"
@@ -181,6 +184,97 @@
         }
       </section>
     }
+    @if (item.execution; as execution) {
+      <section class="ui-panel" aria-label="冻结输入与仓库作用域">
+        <h3>冻结输入与仓库作用域</h3>
+        @for (revision of execution.revisions; track revision.revision) {
+          <details>
+            <summary>
+              输入修订 {{ revision.revision }} · {{ revision.kind }} · 仓库
+              {{ revision.repository_id }} / 版本 {{ revision.repository_version }}
+            </summary>
+            <p>冻结环境与扩展配置：{{ revision.environment ?? '未配置' }}</p>
+            @for (hook of revision.hooks; track hook.name) {
+              <p>
+                Hook {{ hook.name }} · {{ hook.event }} · 角色 {{ hook.roles.join('、') }} · 实现
+                {{ hook.script_identity }}
+              </p>
+            }
+          </details>
+        } @empty {
+          <p>暂无冻结执行输入。</p>
+        }
+        @for (scope of execution.scopes; track scope.plugin_id + scope.invocation_id) {
+          <p>
+            {{ scope.plugin_id }} · 调用 {{ scope.invocation_id }} · revision {{ scope.revision }} ·
+            仓库 {{ scope.repository_id }}；冻结作用域版本 {{ scope.scope_version }} / 当前
+            {{ scope.current_version ?? '未知' }} ·
+            {{ scope.allowed ? '当前授权允许' : '当前未授权' }}；{{ scope.kind }}
+            {{ scope.repository_ids?.join('、') }}
+          </p>
+        } @empty {
+          <p>暂无已记录插件准入。没有记录不代表授权允许。</p>
+        }
+        @if (execution.budget; as budget) {
+          <p>
+            项预算上限 {{ budget.limits.tokens }} tokens / {{ budget.limits.turns }} turns /
+            {{ budget.limits.model_seconds }} 秒；已知用量下限 {{ budget.used.tokens }} /
+            {{ budget.used.turns }} / {{ budget.used.model_seconds }}。
+          </p>
+          <p>
+            累计敞口（含未结算预留）{{ budget.exposure.tokens }} tokens /
+            {{ budget.exposure.turns }} turns / {{ budget.exposure.model_seconds }} 秒；未知用量调用
+            {{ budget.unresolved_calls }} 个。{{
+              budget.exhausted ? '预算已停止新增调用' : '预算状态未耗尽；执行仍须准入'
+            }}
+          </p>
+        } @else {
+          <p>尚无冻结预算账户。</p>
+        }
+        @if (execution.group; as group) {
+          <p>
+            父组 <a [routerLink]="['/drafts', group.draft_id, 'review']">{{ group.draft_id }}</a> ·
+            父 revision {{ group.parent_revision ?? '未知' }} · 子项 {{ group.child_id }} · 授权
+            {{ group.authorization_id }} / 评审 {{ group.review_version }}
+          </p>
+          @for (ledger of group.budgets; track ledger.item_id) {
+            <p>
+              {{ ledger.item_id || '父组总账户' }}：上限 {{ ledger.limits | json }}；已用
+              {{ ledger.used | json }}；预留 {{ ledger.reserved | json }}。
+            </p>
+          }
+          <p>依赖版本：{{ group.dependencies }}</p>
+          <p>已持久完成事实：{{ group.completion ?? '尚无完成事实' }}</p>
+        }
+      </section>
+    }
+    <section class="ui-panel" aria-label="环境与实际耗时">
+      <h3>环境与实际耗时</h3>
+      @for (environment of item.environments ?? []; track $index) {
+        <details>
+          <summary>{{ environment.stage }} · {{ environment.observed_at }}</summary>
+          <pre>{{ environment.report }}</pre>
+        </details>
+      } @empty {
+        <p>尚无环境观察，不推定就绪。</p>
+      }
+      @for (sample of item.metrics.stage_samples ?? []; track $index) {
+        <p>
+          {{ sample.phase }}：{{ sample.seconds ?? '未知' }} 秒 ·
+          {{ sample.complete ? '已结束' : '进行中' }} · 来源 {{ sample.source }}
+        </p>
+      }
+      <p>
+        编译／测试／覆盖子阶段：{{
+          item.metrics.build_test_coverage_subphases?.status ?? 'unknown'
+        }}；缓存命中率：{{ item.metrics.cache_hit_rate?.status ?? 'unknown' }}；CI 等待：{{
+          item.metrics.ci_wait?.status ?? 'unknown'
+        }}
+        {{ item.metrics.ci_wait?.seconds }} 秒。not_applicable 表示未启用或不适用，unknown
+        表示没有可核对的记录。
+      </p>
+    </section>
+    <app-recovery-panel [item]="item" [disabled]="busy() || !!error()" (changed)="reload()" />
     <h3>执行事实</h3>
     @for (run of item.runs; track run.id) {
       <p>
@@ -194,15 +288,39 @@
     @for (recovery of item.recoveries ?? []; track recovery.event_key) {
       <section class="panel" aria-label="恢复与修复记录">
         <h3>{{ recovery.phase }} · {{ recovery.decision }}</h3>
-        <p>{{ recovery.reason }}</p>
-        <p>候选：{{ recovery.candidate_sha }}；基础设施重试：{{ recovery.attempts }} 次。</p>
-        <p>原始日志：{{ recovery.log_ref }}</p>
+        <p>{{ recovery.reason ?? '尚无已确认原因' }}</p>
+        <p>候选：{{ recovery.candidate_sha ?? '未知' }}；基础设施重试：{{ recovery.attempts }} 次。</p>
+        <p>原始日志：{{ recovery.log_ref ?? '未记录，请核对下方诊断清单' }}</p>
+        <p>
+          原合并 {{ recovery.original_merge ?? '无关联合并' }} · 原集成
+          {{ recovery.original_integration ?? '无关联集成' }} · 修复交付
+          {{ recovery.repair_delivery ?? '尚无关联交付' }}
+        </p>
+        @if (recovery.version_set) {
+          <details>
+            <summary>本次集成的冻结版本组合</summary>
+            <pre>{{ recovery.version_set | json }}</pre>
+          </details>
+        }
+        @if (recovery.final_version) {
+          <details>
+            <summary>修复后的实际版本与验收原件</summary>
+            <pre>{{ recovery.final_version | json }}</pre>
+          </details>
+        }
       </section>
     }
     @for (validation of item.validations; track validation.id) {
       <p>
         {{ validation.candidate_sha }} · {{ validation.result }} · {{ validation.stage }} ·
         {{ validation.failure ?? '无失败记录' }}
+      </p>
+      <p>
+        树 {{ validation.candidate_tree ?? '未知' }} · 验证代次
+        {{ validation.generation ?? '未知' }} · 前代 {{ validation.retry_of ?? '无' }} · 后继
+        {{ validation.superseded_by ?? '无' }} ·
+        {{ validation.hook_invalidated ? 'Hook 证据已失效' : 'Hook 未记录失效' }}。旧 PASS
+        不能用于新候选交付。
       </p>
     } @empty {
       <p>暂无验证证据。</p>
@@ -218,10 +336,24 @@
           >查看关联 PR #{{ external.pr_number }}</a
         >
       }
+      @if (observation(external.observation); as observed) {
+        @if (observed['mode'] === 'local_git') {
+          <p>
+            本地 Git 交付 · 目标引用 {{ observed['target'] }} · 分支 {{ observed['branch'] }} ·
+            已确认交付版本 {{ observed['delivery_version'] ?? '尚未确认' }}
+          </p>
+          <pre>独立验收：{{ observed['acceptance'] | json }}</pre>
+        }
+      }
       <pre>{{ external.observation ?? '尚无交付观察' }}</pre>
     } @empty {
       <p>尚无交付记录。</p>
     }
+    <app-lifecycle-panel
+      [requirementId]="item.requirement.id"
+      [version]="item.requirement.version"
+      [disabled]="busy() || !!error()"
+    />
     <h3>跨 Run 消耗</h3>
     <p>
       input {{ item.metrics.input ?? '未知' }} / cached {{ item.metrics.cached ?? '未知' }} / output

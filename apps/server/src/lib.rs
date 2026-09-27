@@ -63,6 +63,7 @@ pub mod group_review;
 pub mod group_store;
 pub mod operator_api;
 pub mod operator_control;
+pub mod operator_execution;
 pub mod operator_view;
 pub mod preparation;
 pub mod preparation_service;

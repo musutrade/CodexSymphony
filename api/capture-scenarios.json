@@ -2277,7 +2277,7 @@
     },
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2296,7 +2296,7 @@
     "status": 401,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2307,7 +2307,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2318,7 +2318,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2329,7 +2329,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2340,7 +2340,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2351,7 +2351,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2362,7 +2362,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2373,7 +2373,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2384,7 +2384,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2395,7 +2395,7 @@
     "record": false,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {
@@ -2405,7 +2405,7 @@
     "status": 429,
     "body": {
       "username": "unknown-capture",
-      "password": "invalid"
+      "password": "test-password"
     }
   },
   {

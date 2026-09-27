@@ -115,6 +115,11 @@ async fn versioned_operations_and_independent_durable_views() {
     )
     .await;
     let ready = verify_recheck(&pool, &app, id, &path, &ready).await;
+    let facts = ok(&app, "GET", &path, json!(null)).await;
+    assert_eq!(facts["execution"]["revisions"][0]["revision"], 1);
+    assert_eq!(facts["execution"]["budget"]["unresolved_calls"], 0);
+    assert_eq!(facts["execution"]["group"], Value::Null);
+    assert_eq!(facts["execution"]["scopes"], json!([]));
     let pause = json!({"version":ready["version"],"request_id":"operator-pause","action":"pause"});
     let paused = ok(&app, "POST", &path, pause.clone()).await;
     assert_eq!(ok(&app, "POST", &path, pause.clone()).await, paused);
@@ -388,7 +393,7 @@ async fn verify_metrics(pool: &PgPool, app: &Router, id: i64, path: &str) {
         .execute(pool)
         .await
         .unwrap();
-    sqlx::query("INSERT INTO model_call(run_id,turn_id,requirement_id,intent,reserved,usage) VALUES('operator-run','call',$1,'{}','{}','{\"input\":100,\"cached\":20,\"output\":30}'),('metrics-old','call',$1,'{}','{}','{\"input\":50,\"cached\":10,\"output\":null}')")
+    sqlx::query("INSERT INTO model_call(run_id,turn_id,requirement_id,intent,reserved,usage) VALUES('operator-run','call',$1,'{}','{\"tokens\":1000,\"turns\":1,\"model_seconds\":30}','{\"input\":100,\"cached\":20,\"output\":30,\"complete\":false}'),('metrics-old','call',$1,'{}','{\"tokens\":1000,\"turns\":1,\"model_seconds\":30}','{\"input\":50,\"cached\":10,\"output\":null,\"complete\":false}')")
         .bind(id).execute(pool).await.unwrap();
     let metrics = ok(app, "GET", path, json!(null)).await["metrics"].clone();
     assert_eq!(metrics["model_calls"], 2);
@@ -489,4 +494,59 @@ async fn verify_zero_intervention(pool: &PgPool, app: &Router) {
         json!({"phase":"reviewed_to_submitted","denominator":2,"numerator":1})
     );
     assert!(facts["metrics"]["to_pr_seconds"].is_null());
+}
+
+async fn verify_execution_projection(pool: &PgPool, app: &Router, id: i64, path: &str) {
+    sqlx::query("SELECT plugin_scope_admit('agent:codex','operator-scope',$1,1,1)")
+        .bind(id)
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("INSERT INTO model_call(run_id,turn_id,requirement_id,intent,reserved,usage) VALUES('operator-run','unknown-call',$1,'{}','{\"tokens\":500,\"turns\":1,\"model_seconds\":30}','{\"input\":null,\"cached\":null,\"output\":null,\"model_seconds\":null,\"complete\":false}')")
+        .bind(id).execute(pool).await.unwrap();
+    let first = ok(app, "GET", path, json!(null)).await;
+    assert_eq!(first["execution"]["budget"]["unresolved_calls"], 1);
+    assert_eq!(first["execution"]["budget"]["exposure"]["tokens"], 500);
+    assert_eq!(first["metrics"]["input"], Value::Null);
+    assert_eq!(first["execution"]["scopes"][0]["allowed"], true);
+    sqlx::query("UPDATE plugin_scope SET enabled=false WHERE plugin_id='agent:codex'")
+        .execute(pool)
+        .await
+        .unwrap();
+    let revoked = ok(app, "GET", path, json!(null)).await;
+    assert_eq!(revoked["execution"]["scopes"][0]["allowed"], false);
+    assert_eq!(
+        revoked["execution"]["scopes"][0]["scope_version"],
+        first["execution"]["scopes"][0]["scope_version"]
+    );
+    assert_eq!(revoked["execution"]["budget"], first["execution"]["budget"]);
+    assert_eq!(revoked["requirement"], first["requirement"]);
+    sqlx::query("UPDATE plugin_scope SET enabled=true WHERE plugin_id='agent:codex'")
+        .execute(pool)
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn readonly_execution_facts_keep_unknown_exposure_and_historical_scope() {
+    let (pool, app) = fixture().await;
+    ok(&app, "PUT", "/api/repository", repo(0, "projection-repo")).await;
+    let created = ok(
+        &app,
+        "POST",
+        "/api/requirements",
+        json!({"version":0,"request_id":"projection-create","contract":contract()}),
+    )
+    .await;
+    let id = created["id"].as_i64().unwrap();
+    sqlx::query("INSERT INTO requirement_revision(requirement_id,revision,document) SELECT id,1,jsonb_build_object('repository_id',1,'repository_version',1,'repository',(SELECT document FROM repository WHERE id=1),'contract',contract) FROM requirement WHERE id=$1").bind(id).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO requirement_budget(requirement_id,limits) VALUES($1,'{\"tokens\":10000,\"turns\":10,\"model_seconds\":600}')").bind(id).execute(&pool).await.unwrap();
+    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state) VALUES('operator-run',$1,1,'fixture','request','fixture','fixture','{}','Running')").bind(id).execute(&pool).await.unwrap();
+    verify_execution_projection(
+        &pool,
+        &app,
+        id,
+        &format!("/api/requirements/{id}/operations"),
+    )
+    .await;
 }

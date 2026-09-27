@@ -1,4 +1,4 @@
-// harness-contract-sha256: d251dc0e92e1b3816da4c6e6d0edcec907b3881fed55c41b7845abae1ebc52e1
+// harness-contract-sha256: cc57989212db715c67b55e7242ba669b4e3dc908dffbff4066f16977ac9e5fed
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -748,8 +748,92 @@ export interface PauseRequirementRequest {
 }
 export type GetOperationsResponse =
   | {
-      environments?: { observed_at: string; report: string; stage: string }[];
-      events: { created_at: string; kind: string; version: number }[];
+      environments?: {
+        observed_at: string;
+        report: string;
+        stage: string;
+      }[];
+      events: {
+        created_at: string;
+        kind: string;
+        version: number;
+      }[];
+      execution?: {
+        budget: {
+          exhausted: boolean;
+          exposure: {
+            model_seconds: number;
+            tokens: number;
+            turns: number;
+          };
+          limits: {
+            model_seconds: number;
+            tokens: number;
+            turns: number;
+          };
+          unresolved_calls: number;
+          used: {
+            model_seconds: number;
+            tokens: number;
+            turns: number;
+          };
+        } | null;
+        group: {
+          authorization_id: number;
+          budgets: {
+            item_id: string;
+            limits: {
+              model_seconds: number;
+              tokens: number;
+              turns: number;
+            };
+            reserved: {
+              model_seconds: number;
+              tokens: number;
+              turns: number;
+            };
+            used: {
+              model_seconds: number;
+              tokens: number;
+              turns: number;
+            };
+          }[];
+          child_id: string;
+          completion: string | null;
+          dependencies: string;
+          draft_id: string;
+          parent_revision: number | null;
+          review_version: number;
+        } | null;
+        revisions: {
+          environment: string | null;
+          hooks: {
+            argv: string[];
+            event: string;
+            name: string;
+            output_limit_bytes: number;
+            replay?: string;
+            roles: string[];
+            script_identity: string;
+            timeout_seconds: number;
+          }[];
+          kind: string;
+          repository_id: number | null;
+          repository_version: number | null;
+          revision: number;
+        }[];
+        scopes: {
+          allowed: boolean;
+          current_version: number | null;
+          invocation_id: string;
+          kind: string | null;
+          plugin_id: string;
+          repository_id: number;
+          repository_ids: number[] | null;
+          revision: number;
+          scope_version: number;
+        }[];
+      };
       external: {
         head_sha: string;
         observation: string | null;
@@ -766,21 +850,33 @@ export type GetOperationsResponse =
         status: string;
       }[];
       metrics: {
-        build_test_coverage_subphases?: { status: 'not_applicable' | 'unknown' };
-        cache_hit_rate?: { status: 'not_applicable' | 'unknown' };
+        build_test_coverage_subphases?: {
+          status: 'not_applicable' | 'unknown';
+        };
+        cache_hit_rate?: {
+          status: 'not_applicable' | 'unknown';
+        };
         cached: number | null;
         ci_wait?: {
           seconds?: number;
           source?: string;
           status: 'known' | 'not_applicable' | 'unknown';
         };
-        environment_samples?: { elapsed_ms: number; source: string; stage: string }[];
+        environment_samples?: {
+          elapsed_ms: number;
+          source: string;
+          stage: string;
+        }[];
         human_seconds: number | null;
         input: number | null;
         interventions: number;
         model_calls: number;
         output: number | null;
-        phases: { complete: boolean; phase: string; seconds: number }[];
+        phases: {
+          complete: boolean;
+          phase: string;
+          seconds: number;
+        }[];
         reasons: string[];
         repair_count: number;
         stage_samples?: {
@@ -790,7 +886,11 @@ export type GetOperationsResponse =
           source: string;
         }[];
         to_pr_seconds: number | null;
-        zero_intervention: { denominator: number; numerator: number; phase: string };
+        zero_intervention: {
+          denominator: number;
+          numerator: number;
+          phase: string;
+        };
       };
       preparation: {
         attempts: number;
@@ -803,7 +903,11 @@ export type GetOperationsResponse =
       questions: {
         answered: boolean;
         id: string;
-        questions: { id: string; options: string[]; question: string }[];
+        questions: {
+          id: string;
+          options: string[];
+          question: string;
+        }[];
         resume_state: string;
         revision: number;
         run_id: string;
@@ -811,13 +915,124 @@ export type GetOperationsResponse =
       }[];
       recoveries?: {
         attempts: number;
-        candidate_sha: string;
+        candidate_sha: string | null;
         decision: string;
         event_key: string;
-        log_ref: string;
-        next_attempt_at: number | null;
+        final_version?: {
+          binding?: {
+            authorization: number;
+            input_sha256: string;
+            required: string[];
+            requirement: number;
+            revision: number;
+            trusted: {
+              command_sha256: string;
+              config_sha256: string;
+              protected_entry: string;
+              protected_entry_sha256: string;
+              tool: string;
+              tool_version: string;
+            };
+            versions: {
+              artifacts: string[];
+              candidate: {
+                immutable: boolean;
+                sha: string;
+                tree: string;
+              };
+              github_repository_id?: number;
+              repository_id: number;
+              repository_version: number;
+            }[];
+          };
+          candidate?: {
+            immutable: boolean;
+            sha: string;
+            tree: string;
+          };
+          evidence?: {
+            candidate: {
+              immutable: boolean;
+              sha: string;
+              tree: string;
+            };
+            entry_after: string;
+            entry_before: string;
+            source_after: string;
+            source_before: string;
+            steps: {
+              code_failure: boolean;
+              command: string[];
+              consumer: string;
+              exit_code: number | null;
+              id: string;
+              log_ref: string;
+              output: string;
+              output_sha256: string;
+            }[];
+            trusted: {
+              command_sha256: string;
+              config_sha256: string;
+              protected_entry: string;
+              protected_entry_sha256: string;
+              tool: string;
+              tool_version: string;
+            };
+          };
+          failed_evidence?: {
+            candidate: {
+              immutable: boolean;
+              sha: string;
+              tree: string;
+            };
+            entry_after: string;
+            entry_before: string;
+            source_after: string;
+            source_before: string;
+            steps: {
+              code_failure: boolean;
+              command: string[];
+              consumer: string;
+              exit_code: number | null;
+              id: string;
+              log_ref: string;
+              output: string;
+              output_sha256: string;
+            }[];
+            trusted: {
+              command_sha256: string;
+              config_sha256: string;
+              protected_entry: string;
+              protected_entry_sha256: string;
+              tool: string;
+              tool_version: string;
+            };
+          };
+          local_delivery?: string;
+          merge_key?: string;
+          pr?: number;
+          validation_id?: string;
+        } | null;
+        log_ref: string | null;
+        next_attempt_at?: number | null;
+        original_integration?: string | null;
+        original_merge?: string | null;
         phase: string;
-        reason: string;
+        reason: string | null;
+        repair_delivery?: string | null;
+        version_set?:
+          | {
+              artifacts: string[];
+              candidate: {
+                immutable: boolean;
+                sha: string;
+                tree: string;
+              };
+              github_repository_id?: number;
+              repository_id: number;
+              repository_version: number;
+            }[]
+          | null;
       }[];
       requirement: {
         cancel_requested: boolean;
@@ -838,7 +1053,10 @@ export type GetOperationsResponse =
         state: string;
         waiting: string;
       }[];
-      storage: { blocked: boolean; error: string | null };
+      storage: {
+        blocked: boolean;
+        error: string | null;
+      };
       storage_lifecycle: string;
       storage_usage?: {
         actual_bytes: number | null;
@@ -882,15 +1100,22 @@ export type GetOperationsResponse =
       };
       validations: {
         candidate_sha: string;
+        candidate_tree?: string;
         failure: string | null;
+        generation?: number;
+        hook_invalidated?: boolean;
         id: string;
         result: string;
+        retry_of?: string | null;
         revision: number;
         source_run_id: string;
         stage: string;
+        superseded_by?: string | null;
       }[];
     }
-  | { error: string };
+  | {
+      error: string;
+    };
 export type ControlOperationsResponse = { version: number } | { error: string };
 export interface ControlOperationsRequest {
   action: 'cancel' | 'delivery_recheck' | 'pause' | 'recheck' | 'resume' | 'storage_recheck';

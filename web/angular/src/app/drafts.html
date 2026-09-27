@@ -119,7 +119,7 @@
     <h2 id="draft-detail-title">父目标 · {{ draft.document.parent.id }}</h2>
     <p>Draft · 版本 {{ draft.version }} · {{ draft.id }}</p>
     <p>
-      整组确认后按依赖进入同一队列；未评审草稿不执行。validation_only 执行与最终业务验收尚未接通。
+      整组确认后按依赖进入同一队列；未评审草稿不执行。集成验证与最终业务验收以持久记录为准。
     </p>
     <a matButton="outlined" [routerLink]="['/drafts', draft.id, 'review']"
       >评审覆盖、策略与整组预算</a

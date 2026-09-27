@@ -1,9 +1,15 @@
+:host {
+  display: block;
+}
 pre {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 p,
-dd,
 summary {
   overflow-wrap: anywhere;
+}
+summary {
+  cursor: pointer;
+  padding-block: 12px;
 }

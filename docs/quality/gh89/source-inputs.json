@@ -1,0 +1,144 @@
+{
+  "base": "3060e2851cde64f23fee8399cb6cae85f3570877",
+  "branch": "feat/gh89-mobile-lifecycle",
+  "workspace": "/home/gem/.local/share/codexsymphony/workspaces/GH-89",
+  "git_directory": "standalone accessible .git directory; no linked worktree",
+  "changed_non_evidence_inputs": {
+    "api/capture-fixture.sql": {
+      "sha256": "11a8bc9e4bf0ca372ccebb5ea28c295a77401e8b7c7f957849d5acc9b786a30c",
+      "mode": "100644"
+    },
+    "api/capture-scenarios.json": {
+      "sha256": "fdd3341e2ab77751107b581c2d69f1a3293df4677f12c2a67238e2d234de6463",
+      "mode": "100644"
+    },
+    "api/openapi.json": {
+      "sha256": "cc57989212db715c67b55e7242ba669b4e3dc908dffbff4066f16977ac9e5fed",
+      "mode": "100644"
+    },
+    "apps/server/src/lib.rs": {
+      "sha256": "9f4c845b4e1a78519b013b8106e8451796c0e820f4779abbbdec7617c4ffbb05",
+      "mode": "100644"
+    },
+    "apps/server/src/operator_execution.rs": {
+      "sha256": "8d6ad0d8fb2be8cbb2efd22bc70eebdfc0bbcfd13cc950120b6bc2dd6fcb164d",
+      "mode": "100644"
+    },
+    "apps/server/src/operator_view.rs": {
+      "sha256": "3145fea1684d66d5ae482c2ed7cce6f15c8cd250326ec6f54b605f3d0d48d76d",
+      "mode": "100644"
+    },
+    "apps/server/tests/operators.rs": {
+      "sha256": "81f1bb2e9f184969c80a53cc7784ec2d1b55004db4f4d6671331dc2760ed71c2",
+      "mode": "100644"
+    },
+    "docs/mobile-lifecycle.md": {
+      "sha256": "599f6b4a7badea4c1544ccac0eb5d24c6a395b4bbb03009394d363f28ee70e08",
+      "mode": "100644"
+    },
+    "web/angular/e2e/group-review.spec.ts": {
+      "sha256": "3db05b0ec7df3b70ad44cbec2ff0390ac84ae595cf1e5e8fe38aaf831f157d1c",
+      "mode": "100644"
+    },
+    "web/angular/e2e/operations.spec.ts": {
+      "sha256": "4fda65a34e97cd1ecdd98d6222997241f68f00e2b359bb44fb8c9016b1bed01a",
+      "mode": "100644"
+    },
+    "web/angular/src/app/drafts.html": {
+      "sha256": "229a8973ce0e399b568cf0c5bc6e0b712cc2bd45def11160f0a269732fe996be",
+      "mode": "100644"
+    },
+    "web/angular/src/app/group-review-model.ts": {
+      "sha256": "db8b85e3c227c24bf6521a7cb97d0c68dbe71aec5439bbb857e41e9717dac0f0",
+      "mode": "100644"
+    },
+    "web/angular/src/app/group-review.html": {
+      "sha256": "8425923fed3bda8b42d25022018537673d37bdf9e606f3bea95bf6b2cdd08d02",
+      "mode": "100644"
+    },
+    "web/angular/src/app/group-review.spec.ts": {
+      "sha256": "abc88170611ffa3d21fb1e57ac90449784011454b256bf44d7dac948ccca1b8d",
+      "mode": "100644"
+    },
+    "web/angular/src/app/health-response.ts": {
+      "sha256": "4c1bda66744b3a74c9904c52c5bb946d4d4e31417d2286b125d6e563851006b1",
+      "mode": "100644"
+    },
+    "web/angular/src/app/lifecycle-api.ts": {
+      "sha256": "d5a823752cc9a2d78e4fb1c14cbefcef70650ce514e6e7e9747f0cccf012e518",
+      "mode": "100644"
+    },
+    "web/angular/src/app/lifecycle-panel.html": {
+      "sha256": "c873bf4850d0916e3bda82a3fb4b1fa042f34e4b5d408e2d5f3828a7e768b520",
+      "mode": "100644"
+    },
+    "web/angular/src/app/lifecycle-panel.scss": {
+      "sha256": "897f5e5855922a6b834f534029f2353e818d9df96167ad65f62c84a06787ebab",
+      "mode": "100644"
+    },
+    "web/angular/src/app/lifecycle-panel.spec.ts": {
+      "sha256": "27aee1eb8616c33485d8c19af3fa6615cd16d5c28903790454654bfcc7b12f31",
+      "mode": "100644"
+    },
+    "web/angular/src/app/lifecycle-panel.ts": {
+      "sha256": "27e6c307ed08413efff6567a49f26b6165949cdf40fb0a4680ab9db4917606d3",
+      "mode": "100644"
+    },
+    "web/angular/src/app/operations.html": {
+      "sha256": "6d96ec6f52fa145502f45a6c567423caf410ae5c8ac42b344df614d0a3f01c36",
+      "mode": "100644"
+    },
+    "web/angular/src/app/operations.scss": {
+      "sha256": "5f6d97e97605384f244a52451f8b9108e64f8d97db274077b51ebc322558eeea",
+      "mode": "100644"
+    },
+    "web/angular/src/app/operations.spec.ts": {
+      "sha256": "582134efda3d61248380f3ad22e2b280c37626583dadf4d154f2d40e9a087b24",
+      "mode": "100644"
+    },
+    "web/angular/src/app/operations.ts": {
+      "sha256": "c4c9f16cef399f031e3a7e5dab6487bd18d941f81af66dbd3e04014970a03574",
+      "mode": "100644"
+    },
+    "web/angular/src/app/recovery-panel.html": {
+      "sha256": "fc3977896fa1817286f5e8c9ee1fabab405574a65322c9d07cf8c7b2babff8dd",
+      "mode": "100644"
+    },
+    "web/angular/src/app/recovery-panel.scss": {
+      "sha256": "50a7104fcf1049398dfbc5256eb82f41499f5c7ee1d67780aca27410dc7304ad",
+      "mode": "100644"
+    },
+    "web/angular/src/app/recovery-panel.spec.ts": {
+      "sha256": "6b4a3cd54c5484a7e5afb601746d9719be5345694ba192f706ee3411f3c4578c",
+      "mode": "100644"
+    },
+    "web/angular/src/app/recovery-panel.ts": {
+      "sha256": "6f0af6bcb8926b2ac012f9091c848da02e5112dd909ca5dd6b8345e241f1a198",
+      "mode": "100644"
+    }
+  },
+  "configuration_sha256": {
+    "environment.lock.json": "ffec8c8a60675b67b978f21ccce882e3faecc5fc02fb5291bce389d9d2eece6a",
+    "harness-gate-version.lock": "c4d37d6cf1450ae3e2d20ed3150e364fe8dc44573ce8f720d1971ab063b273be",
+    "Cargo.lock": "d2db56288e9b6dd83844a607dd24cef93c4b6064bb69665cfe5b04bb5e736ad8",
+    "web/angular/package-lock.json": "f1f50f4bb241233ca30e24bdb19363fddf063c68c325b1a9a382e2834fa462a9",
+    ".harness-gate/flow.toml": "b938082b6da710d97ff99d61aa6d5a48a2474043b4fe12108def46ce4b7af15f",
+    ".harness-gate/quality.toml": "a292068f8109c69da596ce1ae19eae01956814b12b64b8fa0999c96ab12254ba",
+    ".harness-gate/packs/backend/policy.json": "c451f17681a7da65b0db7ecd55fc4fcaf8c10113c87e1395c7c19c5d962fba5f",
+    ".harness-gate/packs/frontend/policy.json": "037b19dd266a2b0d9e3692693896ce173caeab2c780f24c9d0c99b01c9392c29",
+    "api/openapi.json": "cc57989212db715c67b55e7242ba669b4e3dc908dffbff4066f16977ac9e5fed",
+    "api/baseline.json": "81743452df36a03dbf026b088d983455a39b07d3ad4b72767aa770c6da2f5952"
+  },
+  "approval_digest": "169fe327c90626f3e3825c53984a2f6abda01338c0cb6a10e0bda1ac2e0aba0a",
+  "helper_sources": {
+    "/home/gem/gh89-measurements/mobile_legacy_acceptance.py": "c63f1b65fe4fe1fa9b96f1fdc2eca28cf85716e44e512633d2b221949acb4a80",
+    "/home/gem/gh89-measurements/measure-frontend.py": "1ef31f78f8c649fd869157495455b122497d171d0c4aaeadc7ddcbc4a286f711",
+    "/home/gem/gh89-measurements/http_diagnostic.py": "bdbaa70e2eb8e27b51c791360a9d188c33c2d0881f179c13074e123e36e4e287",
+    "/home/gem/gh89-measurements/check-stage.py": "83344dfc1c99754122c9a6a9879af68f01ac82eb15be8531799b9ab146b57ba0",
+    "/home/gem/gh89-measurements/measure-stage.py": "5609c2391d8ae8d256d6b250450bdba03fff5c390ee31d94781679081962eb11",
+    "/home/gem/gh89-measurements/capture-stage.py": "d8a9c12883398d63a9a9abca7d9203d90aee6e4933961f930cc2fe269cd8c226",
+    "/home/gem/gh89-measurements/screen.py": "2fbbed9e351edbc46d319e30f4c537763129dbda565984dce48b41aaae8dd1a0",
+    "/home/gem/gh89-measurements/finalize-evidence.py": "4a865134551bd2a09aec7d5fac99be5669451ea93134ad73c7bfe5075cef1e0c"
+  },
+  "final_tree_authority": "external publication/GH-89/receipt.json after this evidence and source are frozen"
+}
