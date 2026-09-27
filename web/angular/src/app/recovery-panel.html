@@ -1,0 +1,92 @@
+<section class="ui-panel" aria-label="扩展故障与恢复决定">
+  <h3>扩展故障与恢复</h3>
+  <p>同候选重验保留源码并产生新验证代次；代码适配建立关联 Run。两者沿用原授权、约束和累计预算。</p>
+  @if (error()) {
+    <p role="alert">{{ error() }}</p>
+  }
+  @if (message()) {
+    <p [id]="'recovery-message-' + detail()?.requirement?.id" role="status" aria-live="polite">
+      {{ message() }}
+    </p>
+  }
+  @for (failure of failures(); track failure.event_key) {
+    <article class="ui-panel">
+      <h4>{{ failure.facts?.phase ?? '阶段未知' }} · {{ failure.decision ?? '决定未知' }}</h4>
+      <p>
+        {{ failure.reason }} · 验证 {{ failure.validation_id }} · 候选
+        {{ failure.facts?.candidate_sha ?? '未知' }}
+      </p>
+      @if (failure.facts?.feedback; as feedback) {
+        <p>
+          检查 {{ feedback.check_id }}：{{ feedback.verdict }}，退出
+          {{ feedback.exit_code ?? '未知' }}
+        </p>
+        @if (feedback.fault; as fault) {
+          <dl>
+            <dt>故障事实</dt>
+            <dd>{{ fault.class }} / {{ fault.code }} · {{ fault.message }}</dd>
+            <dt>责任方</dt>
+            <dd>{{ fault.owner ?? '未知' }}</dd>
+            <dt>影响范围</dt>
+            <dd>{{ fault.scope?.join('、') ?? '未知' }}</dd>
+            <dt>恢复条件</dt>
+            <dd>{{ fault.resume_condition ?? '尚无明确条件' }}</dd>
+          </dl>
+        }
+      }
+      <p>
+        已持久决定：{{ failure.resolution_state ?? '尚无决定' }}；后继验证
+        {{ failure.successor_validation ?? '尚未生成' }}
+      </p>
+      @if (failure.resolution?.command; as decision) {
+        <p>{{ decision.action.kind }} · revision {{ decision.revision }} · {{ decision.reason }}</p>
+        <p>{{ decision.action.resume_condition }}</p>
+        @for (constraint of decision.action.constraints ?? []; track constraint.id) {
+          <p>
+            {{ constraint.instruction }} · 允许路径 {{ constraint.paths.join('、') }} · 解除条件
+            {{ constraint.release_condition }}
+          </p>
+        }
+      }
+      <button matButton="outlined" [disabled]="!eligible(failure)" (click)="choose(failure)">
+        核对并提交恢复决定
+      </button>
+    </article>
+  } @empty {
+    <p>暂无扩展故障记录。</p>
+  }
+  @if (selected(); as failure) {
+    <form
+      (submit)="$event.preventDefault(); submit()"
+      aria-label="恢复决定表单"
+      [attr.aria-describedby]="message() ? 'recovery-message-' + detail()?.requirement?.id : null"
+    >
+      <fieldset [disabled]="!eligible(failure)">
+        <legend>验证 {{ failure.validation_id }} 的恢复决定</legend>
+        <label
+          >恢复路径<select [formField]="fields.kind">
+            <option value="revalidate">补齐能力后，同候选新代次重验</option>
+            <option value="revalidate_delivery">修复交付能力后，同候选重验交付</option>
+            <option value="adapt_code">原批准范围内代码适配</option>
+          </select></label
+        >
+        <label>恢复理由<textarea [formField]="fields.reason"></textarea></label>
+        @if (model().kind === 'adapt_code') {
+          <label>必须遵守的代码约束<textarea [formField]="fields.instruction"></textarea></label>
+          <label
+            >允许修改的相对路径（每行一个）<textarea [formField]="fields.paths"></textarea>
+          </label>
+          <label>约束解除条件<textarea [formField]="fields.release"></textarea></label>
+        } @else {
+          <label>部署批准的计划 SHA-256<input [formField]="fields.plan" /></label>
+          @if (model().kind === 'revalidate_delivery') {
+            <label>部署批准的交付策略 SHA-256<input [formField]="fields.policy" /></label>
+          }
+          <label>已满足的恢复条件<textarea [formField]="fields.condition"></textarea></label>
+        }
+        <p>请求接受后仍须核对授权、静止保全及预算。超出原范围请先完成变化评审。</p>
+        <button matButton="filled" type="submit">保存恢复决定</button>
+      </fieldset>
+    </form>
+  }
+</section>

@@ -1,0 +1,19 @@
+{
+  "inspected_at": "2026-09-27T13:28:23.173754+00:00",
+  "method": "actual retained Chromium screenshots viewed by the interactive reviewer; automated axe and viewport width assertions accompany them",
+  "screenshots": [
+    {
+      "viewport": "desktop",
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/web/angular/test-results/browser-final/operations-recovery-decisi-14983-tent-identities-and-budgets-desktop/recovery-lifecycle.png",
+      "sha256": "d47057f9c96e77bc2c2dbfd95075598cc43bf4e77479c78028cabe117ffe8765",
+      "observed": "shared panels/buttons and readable wrapping; long identities/fault text stay inside cards, no clipped or overlapping controls; accepted vs started and channel receipt remain distinct"
+    },
+    {
+      "viewport": "mobile",
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/web/angular/test-results/browser-final/operations-recovery-decisi-14983-tent-identities-and-budgets-mobile/recovery-lifecycle.png",
+      "sha256": "7d3b073be0faa5804c0a6c87f6481dabad929dad4d3cdf82d7d38b6f8dcfd7eb",
+      "observed": "shared panels/buttons and readable wrapping; long identities/fault text stay inside cards, no clipped or overlapping controls; accepted vs started and channel receipt remain distinct"
+    }
+  ],
+  "other_review": "mobile group review top inspected; focus, forced colors and reduced-motion behavior covered by browser cases; no numerical manual contrast ratio inferred from screenshots"
+}

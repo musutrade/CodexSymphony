@@ -70,6 +70,13 @@ test('reviews three code items plus integration, rejects missing coverage and au
   await expect(page.getByRole('alert')).toContainText('semantic');
   const before = await context.request.get(`/api/drafts/${draft.id}/review`);
   expect(((await before.json()) as GroupView).queue).toBeNull();
+  await page.getByLabel('C1 显式覆盖项目默认模型', { exact: true }).check();
+  await page.getByLabel('C1 模型提供方', { exact: true }).fill('unsupported-fixture-provider');
+  await page.getByLabel('C1 模型 ID', { exact: true }).fill('unavailable-fixture-model');
+  await page.getByLabel('C1 推理 effort', { exact: true }).fill('high');
+  await page
+    .getByLabel('C1 模型选择理由', { exact: true })
+    .fill('Explicit unsupported combination must not fall back');
   await page.getByRole('button', { name: '添加 P-AC1 覆盖映射', exact: true }).click();
   await page.getByRole('combobox', { name: '映射 1 子项 ID', exact: true }).selectOption('C4');
   await page.getByLabel('映射 1 子项 AC ID', { exact: true }).fill('AC1');
@@ -97,8 +104,26 @@ test('reviews three code items plus integration, rejects missing coverage and au
   // Keyboard completes both save and confirmation without pointer-only controls.
   await page.getByRole('button', { name: '保存评审版本', exact: true }).focus();
   await page.keyboard.press('Enter');
+  await expect(page.getByRole('alert')).toContainText(/model|provider|capability|Runtime/);
+  await expect(page.getByLabel('C1 模型 ID', { exact: true })).toHaveValue(
+    'unavailable-fixture-model',
+  );
+  const rejected = (await (
+    await context.request.get(`/api/drafts/${draft.id}/review`)
+  ).json()) as GroupView;
+  expect(rejected.queue).toBeNull();
+  await page.getByLabel('C1 显式覆盖项目默认模型', { exact: true }).uncheck();
+  const savedWithoutOverride = page.waitForResponse(
+    (response) =>
+      response.url().endsWith(`/api/drafts/${draft.id}/review`) &&
+      response.request().method() === 'PUT',
+  );
+  await page.getByRole('button', { name: '保存评审版本', exact: true }).click();
+  expect((await savedWithoutOverride).status()).toBe(200);
   await expect(page.getByRole('status')).toContainText('评审版本已保存');
+  await expect(page.getByRole('button', { name: '一次确认整组授权', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: '一次确认整组授权', exact: true }).focus();
+  await expect(page.getByRole('button', { name: '一次确认整组授权', exact: true })).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('status')).toContainText('依赖队列');
   await page.reload();
@@ -109,9 +134,7 @@ test('reviews three code items plus integration, rejects missing coverage and au
   expect(result.authorizations).toHaveLength(1);
   expect(result.business_complete).toBe(false);
   await expect(page.getByRole('heading', { name: '组依赖队列' })).toBeVisible();
-  await expect(
-    page.getByText('等待评审精确版本验证配置与授权仓库'),
-  ).toBeVisible();
+  await expect(page.getByText('等待评审精确版本验证配置与授权仓库')).toBeVisible();
   expect(result.execution?.owner).toBeNull();
   expect(result.execution?.completed).toBe(0);
   expect(result.execution?.items.map((i) => i.order)).toEqual([1, 2, 3, 4]);

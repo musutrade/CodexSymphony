@@ -876,6 +876,23 @@
                           "failure": {
                             "type": "string",
                             "nullable": true
+                          },
+                          "candidate_tree": {
+                            "type": "string"
+                          },
+                          "generation": {
+                            "type": "integer"
+                          },
+                          "retry_of": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "superseded_by": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "hook_invalidated": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -1501,19 +1518,492 @@
                             "type": "string"
                           },
                           "reason": {
-                            "type": "string"
+                            "type": "string",
+                            "nullable": true
                           },
                           "log_ref": {
-                            "type": "string"
+                            "type": "string",
+                            "nullable": true
                           },
                           "candidate_sha": {
-                            "type": "string"
+                            "type": "string",
+                            "nullable": true
                           },
                           "attempts": {
                             "type": "integer"
                           },
                           "next_attempt_at": {
                             "type": "integer",
+                            "nullable": true
+                          },
+                          "original_merge": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "original_integration": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "repair_delivery": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "version_set": {
+                            "type": "array",
+                            "nullable": true,
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "repository_id": {
+                                  "type": "integer"
+                                },
+                                "repository_version": {
+                                  "type": "integer"
+                                },
+                                "github_repository_id": {
+                                  "type": "integer"
+                                },
+                                "candidate": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "sha": {
+                                      "type": "string"
+                                    },
+                                    "tree": {
+                                      "type": "string"
+                                    },
+                                    "immutable": {
+                                      "type": "boolean"
+                                    }
+                                  },
+                                  "required": [
+                                    "sha",
+                                    "tree",
+                                    "immutable"
+                                  ]
+                                },
+                                "artifacts": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "repository_id",
+                                "repository_version",
+                                "candidate",
+                                "artifacts"
+                              ]
+                            }
+                          },
+                          "final_version": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "candidate": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "sha": {
+                                    "type": "string"
+                                  },
+                                  "tree": {
+                                    "type": "string"
+                                  },
+                                  "immutable": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "sha",
+                                  "tree",
+                                  "immutable"
+                                ]
+                              },
+                              "evidence": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "source_before": {
+                                    "type": "string"
+                                  },
+                                  "source_after": {
+                                    "type": "string"
+                                  },
+                                  "entry_before": {
+                                    "type": "string"
+                                  },
+                                  "entry_after": {
+                                    "type": "string"
+                                  },
+                                  "candidate": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "sha": {
+                                        "type": "string"
+                                      },
+                                      "tree": {
+                                        "type": "string"
+                                      },
+                                      "immutable": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "sha",
+                                      "tree",
+                                      "immutable"
+                                    ]
+                                  },
+                                  "trusted": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "command_sha256": {
+                                        "type": "string"
+                                      },
+                                      "config_sha256": {
+                                        "type": "string"
+                                      },
+                                      "protected_entry": {
+                                        "type": "string"
+                                      },
+                                      "protected_entry_sha256": {
+                                        "type": "string"
+                                      },
+                                      "tool": {
+                                        "type": "string"
+                                      },
+                                      "tool_version": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "command_sha256",
+                                      "config_sha256",
+                                      "protected_entry",
+                                      "protected_entry_sha256",
+                                      "tool",
+                                      "tool_version"
+                                    ]
+                                  },
+                                  "steps": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "output": {
+                                          "type": "string"
+                                        },
+                                        "output_sha256": {
+                                          "type": "string"
+                                        },
+                                        "log_ref": {
+                                          "type": "string"
+                                        },
+                                        "consumer": {
+                                          "type": "string"
+                                        },
+                                        "command": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "exit_code": {
+                                          "type": "integer",
+                                          "nullable": true
+                                        },
+                                        "code_failure": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "output",
+                                        "output_sha256",
+                                        "log_ref",
+                                        "consumer",
+                                        "command",
+                                        "exit_code",
+                                        "code_failure"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "source_before",
+                                  "source_after",
+                                  "entry_before",
+                                  "entry_after",
+                                  "candidate",
+                                  "trusted",
+                                  "steps"
+                                ]
+                              },
+                              "failed_evidence": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "source_before": {
+                                    "type": "string"
+                                  },
+                                  "source_after": {
+                                    "type": "string"
+                                  },
+                                  "entry_before": {
+                                    "type": "string"
+                                  },
+                                  "entry_after": {
+                                    "type": "string"
+                                  },
+                                  "candidate": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "sha": {
+                                        "type": "string"
+                                      },
+                                      "tree": {
+                                        "type": "string"
+                                      },
+                                      "immutable": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "sha",
+                                      "tree",
+                                      "immutable"
+                                    ]
+                                  },
+                                  "trusted": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "command_sha256": {
+                                        "type": "string"
+                                      },
+                                      "config_sha256": {
+                                        "type": "string"
+                                      },
+                                      "protected_entry": {
+                                        "type": "string"
+                                      },
+                                      "protected_entry_sha256": {
+                                        "type": "string"
+                                      },
+                                      "tool": {
+                                        "type": "string"
+                                      },
+                                      "tool_version": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "command_sha256",
+                                      "config_sha256",
+                                      "protected_entry",
+                                      "protected_entry_sha256",
+                                      "tool",
+                                      "tool_version"
+                                    ]
+                                  },
+                                  "steps": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "id": {
+                                          "type": "string"
+                                        },
+                                        "output": {
+                                          "type": "string"
+                                        },
+                                        "output_sha256": {
+                                          "type": "string"
+                                        },
+                                        "log_ref": {
+                                          "type": "string"
+                                        },
+                                        "consumer": {
+                                          "type": "string"
+                                        },
+                                        "command": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "exit_code": {
+                                          "type": "integer",
+                                          "nullable": true
+                                        },
+                                        "code_failure": {
+                                          "type": "boolean"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "output",
+                                        "output_sha256",
+                                        "log_ref",
+                                        "consumer",
+                                        "command",
+                                        "exit_code",
+                                        "code_failure"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "source_before",
+                                  "source_after",
+                                  "entry_before",
+                                  "entry_after",
+                                  "candidate",
+                                  "trusted",
+                                  "steps"
+                                ]
+                              },
+                              "pr": {
+                                "type": "integer"
+                              },
+                              "merge_key": {
+                                "type": "string"
+                              },
+                              "local_delivery": {
+                                "type": "string"
+                              },
+                              "binding": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "input_sha256": {
+                                    "type": "string"
+                                  },
+                                  "requirement": {
+                                    "type": "integer"
+                                  },
+                                  "revision": {
+                                    "type": "integer"
+                                  },
+                                  "authorization": {
+                                    "type": "integer"
+                                  },
+                                  "versions": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "additionalProperties": false,
+                                      "properties": {
+                                        "repository_id": {
+                                          "type": "integer"
+                                        },
+                                        "repository_version": {
+                                          "type": "integer"
+                                        },
+                                        "github_repository_id": {
+                                          "type": "integer"
+                                        },
+                                        "candidate": {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "properties": {
+                                            "sha": {
+                                              "type": "string"
+                                            },
+                                            "tree": {
+                                              "type": "string"
+                                            },
+                                            "immutable": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "sha",
+                                            "tree",
+                                            "immutable"
+                                          ]
+                                        },
+                                        "artifacts": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "repository_id",
+                                        "repository_version",
+                                        "candidate",
+                                        "artifacts"
+                                      ]
+                                    }
+                                  },
+                                  "trusted": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "command_sha256": {
+                                        "type": "string"
+                                      },
+                                      "config_sha256": {
+                                        "type": "string"
+                                      },
+                                      "protected_entry": {
+                                        "type": "string"
+                                      },
+                                      "protected_entry_sha256": {
+                                        "type": "string"
+                                      },
+                                      "tool": {
+                                        "type": "string"
+                                      },
+                                      "tool_version": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "command_sha256",
+                                      "config_sha256",
+                                      "protected_entry",
+                                      "protected_entry_sha256",
+                                      "tool",
+                                      "tool_version"
+                                    ]
+                                  },
+                                  "required": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "input_sha256",
+                                  "requirement",
+                                  "revision",
+                                  "authorization",
+                                  "versions",
+                                  "trusted",
+                                  "required"
+                                ]
+                              },
+                              "validation_id": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [],
                             "nullable": true
                           }
                         },
@@ -1524,8 +2014,7 @@
                           "reason",
                           "log_ref",
                           "candidate_sha",
-                          "attempts",
-                          "next_attempt_at"
+                          "attempts"
                         ]
                       }
                     },
@@ -1551,6 +2040,352 @@
                           "report"
                         ]
                       }
+                    },
+                    "execution": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "revisions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "revision": {
+                                "type": "integer"
+                              },
+                              "repository_id": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "repository_version": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "kind": {
+                                "type": "string"
+                              },
+                              "environment": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "hooks": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "event": {
+                                      "type": "string"
+                                    },
+                                    "roles": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "argv": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "script_identity": {
+                                      "type": "string"
+                                    },
+                                    "timeout_seconds": {
+                                      "type": "integer"
+                                    },
+                                    "output_limit_bytes": {
+                                      "type": "integer"
+                                    },
+                                    "replay": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "event",
+                                    "roles",
+                                    "argv",
+                                    "script_identity",
+                                    "timeout_seconds",
+                                    "output_limit_bytes"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "revision",
+                              "repository_id",
+                              "repository_version",
+                              "kind",
+                              "environment",
+                              "hooks"
+                            ]
+                          }
+                        },
+                        "scopes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "properties": {
+                              "plugin_id": {
+                                "type": "string"
+                              },
+                              "invocation_id": {
+                                "type": "string"
+                              },
+                              "revision": {
+                                "type": "integer"
+                              },
+                              "repository_id": {
+                                "type": "integer"
+                              },
+                              "scope_version": {
+                                "type": "integer"
+                              },
+                              "current_version": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "kind": {
+                                "type": "string",
+                                "nullable": true
+                              },
+                              "repository_ids": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer"
+                                },
+                                "nullable": true
+                              },
+                              "allowed": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "plugin_id",
+                              "invocation_id",
+                              "revision",
+                              "repository_id",
+                              "scope_version",
+                              "current_version",
+                              "kind",
+                              "repository_ids",
+                              "allowed"
+                            ]
+                          }
+                        },
+                        "budget": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "limits": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "tokens": {
+                                  "type": "integer"
+                                },
+                                "turns": {
+                                  "type": "integer"
+                                },
+                                "model_seconds": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "tokens",
+                                "turns",
+                                "model_seconds"
+                              ]
+                            },
+                            "used": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "tokens": {
+                                  "type": "integer"
+                                },
+                                "turns": {
+                                  "type": "integer"
+                                },
+                                "model_seconds": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "tokens",
+                                "turns",
+                                "model_seconds"
+                              ]
+                            },
+                            "exposure": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "tokens": {
+                                  "type": "integer"
+                                },
+                                "turns": {
+                                  "type": "integer"
+                                },
+                                "model_seconds": {
+                                  "type": "integer"
+                                }
+                              },
+                              "required": [
+                                "tokens",
+                                "turns",
+                                "model_seconds"
+                              ]
+                            },
+                            "unresolved_calls": {
+                              "type": "integer"
+                            },
+                            "exhausted": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "limits",
+                            "used",
+                            "exposure",
+                            "unresolved_calls",
+                            "exhausted"
+                          ],
+                          "nullable": true
+                        },
+                        "group": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "draft_id": {
+                              "type": "string"
+                            },
+                            "child_id": {
+                              "type": "string"
+                            },
+                            "authorization_id": {
+                              "type": "integer"
+                            },
+                            "parent_revision": {
+                              "type": "integer",
+                              "nullable": true
+                            },
+                            "review_version": {
+                              "type": "integer"
+                            },
+                            "budgets": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                  "item_id": {
+                                    "type": "string"
+                                  },
+                                  "limits": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "tokens": {
+                                        "type": "integer"
+                                      },
+                                      "turns": {
+                                        "type": "integer"
+                                      },
+                                      "model_seconds": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "tokens",
+                                      "turns",
+                                      "model_seconds"
+                                    ]
+                                  },
+                                  "used": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "tokens": {
+                                        "type": "integer"
+                                      },
+                                      "turns": {
+                                        "type": "integer"
+                                      },
+                                      "model_seconds": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "tokens",
+                                      "turns",
+                                      "model_seconds"
+                                    ]
+                                  },
+                                  "reserved": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "tokens": {
+                                        "type": "integer"
+                                      },
+                                      "turns": {
+                                        "type": "integer"
+                                      },
+                                      "model_seconds": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "tokens",
+                                      "turns",
+                                      "model_seconds"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "item_id",
+                                  "limits",
+                                  "used",
+                                  "reserved"
+                                ]
+                              }
+                            },
+                            "dependencies": {
+                              "type": "string"
+                            },
+                            "completion": {
+                              "type": "string",
+                              "nullable": true
+                            }
+                          },
+                          "required": [
+                            "draft_id",
+                            "child_id",
+                            "authorization_id",
+                            "parent_revision",
+                            "review_version",
+                            "budgets",
+                            "dependencies",
+                            "completion"
+                          ],
+                          "nullable": true
+                        }
+                      },
+                      "required": [
+                        "revisions",
+                        "scopes",
+                        "budget",
+                        "group"
+                      ]
                     }
                   },
                   "required": [

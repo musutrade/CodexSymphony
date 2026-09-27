@@ -1,0 +1,15 @@
+{
+  "stage": "frontend-source-measurement",
+  "capture": "/tmp/codexsymphony-ts-risk-PDXEql",
+  "response": "/tmp/codexsymphony-ts-risk-PDXEql/collector-response.json",
+  "response_sha256": "1fd4c6930ff115e9b8e345bf029203cd263ebcdac61c8271c0ade8f3be6b2f22",
+  "files": 26,
+  "functions": 230,
+  "declarationFiles": 1,
+  "scope_authority": "installed configure.py uses approved declarationOnly inventory grouping; no added exclusions",
+  "coverage_and_crap": "PASS",
+  "violations": [],
+  "retained_root": "/home/gem/.local/share/codexsymphony/gh89-development/measurements/frontend-20260927T131421",
+  "actual_response": "/home/gem/.local/share/codexsymphony/gh89-development/measurements/frontend-20260927T131421/tmp/codexsymphony-ts-risk-PDXEql/collector-response.json",
+  "timings_path": "/home/gem/.local/share/codexsymphony/gh89-development/measurements/frontend-20260927T131421/timings.jsonl"
+}

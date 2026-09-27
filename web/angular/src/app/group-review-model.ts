@@ -70,6 +70,7 @@ export function editableReview(review: Review) {
       return {
         ...item,
         integration_enabled: item.integration != null,
+        ...modelFields(item),
         integration_config: item.integration?.configuration_sha256 ?? '',
         integration_repositories:
           item.integration?.repositories.map((repo) => {
@@ -97,11 +98,30 @@ export function reviewPayload(model: ReturnType<typeof editableReview>): Review 
         integration_config,
         integration_repositories,
         integration: _previous,
+        override_model,
+        model_provider,
+        model_id,
+        model_effort,
+        model_reason,
+        model_selection: _selectionModel,
         ...base
       } = item;
       void _previous;
+      void _selectionModel;
       return {
         ...base,
+        ...(override_model
+          ? {
+              model_selection: {
+                config: {
+                  provider: model_provider,
+                  model: model_id || null,
+                  effort: model_effort || null,
+                },
+                reason: model_reason,
+              },
+            }
+          : {}),
         ...(integration_enabled
           ? {
               integration: {
@@ -123,5 +143,15 @@ export function reviewPayload(model: ReturnType<typeof editableReview>): Review 
           : {}),
       };
     }),
+  };
+}
+
+function modelFields(item: Review['items'][number]) {
+  return {
+    override_model: item.model_selection != null,
+    model_provider: item.model_selection?.config.provider ?? 'openai',
+    model_id: item.model_selection?.config.model ?? '',
+    model_effort: item.model_selection?.config.effort ?? '',
+    model_reason: item.model_selection?.reason ?? '',
   };
 }

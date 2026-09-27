@@ -1,0 +1,243 @@
+{
+  "kind": "index of retained source-bound measurements and execution reports; publication authority stays with host receipt",
+  "run": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002",
+  "timings": {
+    "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/timings.jsonl",
+    "sha256": "570c3372ae0b61d74efd438ed8ecad61227948cce6087014127d320e08c8bb9f"
+  },
+  "required_completed_stages": [
+    "format",
+    "clippy",
+    "secrets-recovery4",
+    "lint-final",
+    "build-final",
+    "server-build",
+    "http-recovery3",
+    "browser-recovery",
+    "browser-final",
+    "restart-legacy",
+    "secrets-candidate2"
+  ],
+  "stages": [
+    {
+      "phase": "format",
+      "started_at": "2026-09-27T12:50:28.313510+00:00",
+      "status": "PASS",
+      "duration_ms": 1383
+    },
+    {
+      "phase": "clippy",
+      "started_at": "2026-09-27T12:50:29.698084+00:00",
+      "status": "PASS",
+      "duration_ms": 42966
+    },
+    {
+      "phase": "secrets",
+      "started_at": "2026-09-27T12:51:12.665580+00:00",
+      "status": "PASS",
+      "duration_ms": 11244
+    },
+    {
+      "phase": "lint",
+      "started_at": "2026-09-27T12:51:23.911206+00:00",
+      "status": "PASS",
+      "duration_ms": 5318
+    },
+    {
+      "phase": "build",
+      "started_at": "2026-09-27T12:51:29.231071+00:00",
+      "status": "PASS",
+      "duration_ms": 10522
+    },
+    {
+      "phase": "server-build",
+      "started_at": "2026-09-27T12:51:39.754140+00:00",
+      "status": "PASS",
+      "duration_ms": 41195
+    },
+    {
+      "phase": "http",
+      "started_at": "2026-09-27T12:52:23.429126+00:00",
+      "status": "FAIL",
+      "duration_ms": 12528
+    },
+    {
+      "phase": "http-diagnostic",
+      "started_at": "2026-09-27T12:54:19.836591+00:00",
+      "status": "FAIL",
+      "duration_ms": 206
+    },
+    {
+      "phase": "http-diagnostic2",
+      "started_at": "2026-09-27T12:54:35.121462+00:00",
+      "status": "FAIL",
+      "duration_ms": 12491
+    },
+    {
+      "phase": "http-diagnostic3",
+      "started_at": "2026-09-27T12:56:21.771326+00:00",
+      "status": "FAIL",
+      "duration_ms": 16642
+    },
+    {
+      "phase": "secrets-recovery2",
+      "started_at": "2026-09-27T12:58:54.360426+00:00",
+      "status": "PASS",
+      "duration_ms": 10845
+    },
+    {
+      "phase": "lint-recovery",
+      "started_at": "2026-09-27T12:59:05.206480+00:00",
+      "status": "PASS",
+      "duration_ms": 3839
+    },
+    {
+      "phase": "build-recovery",
+      "started_at": "2026-09-27T12:59:09.046604+00:00",
+      "status": "PASS",
+      "duration_ms": 7472
+    },
+    {
+      "phase": "http-recovery",
+      "started_at": "2026-09-27T12:59:16.614033+00:00",
+      "status": "FAIL",
+      "duration_ms": 12165
+    },
+    {
+      "phase": "secrets-recovery3",
+      "started_at": "2026-09-27T13:00:46.955564+00:00",
+      "status": "PASS",
+      "duration_ms": 10703
+    },
+    {
+      "phase": "lint-recovery3",
+      "started_at": "2026-09-27T13:00:57.659447+00:00",
+      "status": "PASS",
+      "duration_ms": 3718
+    },
+    {
+      "phase": "build-recovery3",
+      "started_at": "2026-09-27T13:01:01.378765+00:00",
+      "status": "PASS",
+      "duration_ms": 7322
+    },
+    {
+      "phase": "http-recovery3",
+      "started_at": "2026-09-27T13:01:08.815882+00:00",
+      "status": "PASS",
+      "duration_ms": 14194
+    },
+    {
+      "phase": "browser",
+      "started_at": "2026-09-27T13:01:23.012003+00:00",
+      "status": "FAIL",
+      "duration_ms": 149838
+    },
+    {
+      "phase": "secrets-recovery4",
+      "started_at": "2026-09-27T13:07:11.602625+00:00",
+      "status": "PASS",
+      "duration_ms": 10833
+    },
+    {
+      "phase": "lint-recovery4",
+      "started_at": "2026-09-27T13:07:22.437607+00:00",
+      "status": "PASS",
+      "duration_ms": 3684
+    },
+    {
+      "phase": "build-recovery4",
+      "started_at": "2026-09-27T13:07:26.123459+00:00",
+      "status": "PASS",
+      "duration_ms": 7064
+    },
+    {
+      "phase": "browser-recovery",
+      "started_at": "2026-09-27T13:07:33.293388+00:00",
+      "status": "PASS",
+      "duration_ms": 147645
+    },
+    {
+      "phase": "restart",
+      "started_at": "2026-09-27T13:10:00.939998+00:00",
+      "status": "FAIL",
+      "duration_ms": 45008
+    },
+    {
+      "phase": "lint-final",
+      "started_at": "2026-09-27T13:15:29.922031+00:00",
+      "status": "PASS",
+      "duration_ms": 4539
+    },
+    {
+      "phase": "build-final",
+      "started_at": "2026-09-27T13:15:34.462385+00:00",
+      "status": "PASS",
+      "duration_ms": 7488
+    },
+    {
+      "phase": "browser-final",
+      "started_at": "2026-09-27T13:15:42.066300+00:00",
+      "status": "PASS",
+      "duration_ms": 62997
+    },
+    {
+      "phase": "restart-legacy",
+      "started_at": "2026-09-27T13:16:45.065708+00:00",
+      "status": "PASS",
+      "duration_ms": 30091
+    },
+    {
+      "phase": "secrets-candidate",
+      "started_at": "2026-09-27T13:22:16.998642+00:00",
+      "status": "FAIL",
+      "duration_ms": 264
+    },
+    {
+      "phase": "secrets-candidate2",
+      "started_at": "2026-09-27T13:23:25.066629+00:00",
+      "status": "PASS",
+      "duration_ms": 11259
+    }
+  ],
+  "reports": {
+    "http": {
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/artifacts/gh71-product-contract/validation.json",
+      "sha256": "5de2f61d40f22d423b753f8c6bd26910aece22a31b5e61752b784486058c6cbc"
+    },
+    "http-client": {
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/artifacts/gh71-product-contract/client-measurement.json",
+      "sha256": "dd7b0a5fffc47c866a6f2eba543eec0a07df76ce0d5ab87537ffc9d2b8ebfdb5"
+    },
+    "browser-all": {
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/artifacts/gh89/browser-final.json",
+      "sha256": "c395df2a5f9afcffe05e9981a84346bd86fc782ddf7ab290735a9522b64e78a4"
+    },
+    "browser-affected": {
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/artifacts/gh89/browser-affected.json",
+      "sha256": "b4224c791f363e89a3f968a1b93b59cfe76ee58c6134a480d467c13c99988edf"
+    },
+    "restart": {
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/artifacts/gh89/mobile-recovery/result.json",
+      "sha256": "e43ed5bf0e3f38c92ab9c7e13a5a244677da7376dffadfe183ae49e50fdc94fc"
+    },
+    "restart-environment": {
+      "path": "/home/gem/.local/share/codexsymphony/gh89-development/checks-20260927T125002/workspace/artifacts/gh89/mobile-recovery/environment-binding.json",
+      "sha256": "0db7611eed77bc602b3537d7327db5d02af78d8ef664fc0aa987525004faf020"
+    }
+  },
+  "browser_counts": {
+    "complete_desktop_mobile": 34,
+    "affected_after_final_text_changes": 12
+  },
+  "http_variants": 108,
+  "restart": {
+    "service_instances": 3,
+    "runs": 3,
+    "model_calls": 3,
+    "all_quiescent": true,
+    "cleanup_complete": true,
+    "original_account_and_authorizations_preserved": true
+  },
+  "runtime_boundary": "scripted peer; real product service/processes/Git/PostgreSQL/HTTPS/Chromium, no real model or public Bark/GitHub acceptance"
+}

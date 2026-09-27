@@ -8,6 +8,9 @@ import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom, interval } from 'rxjs';
 import { OperationsApi } from './operations-api';
 import { DiagnosticPanel } from './diagnostic-panel/diagnostic-panel';
+import { RecoveryPanel } from './recovery-panel';
+import { LifecyclePanel } from './lifecycle-panel';
+import { JsonPipe } from '@angular/common';
 import { ControlOperationsRequest, GetOperationsResponse } from './health-response';
 
 export type OperationDetail = Extract<GetOperationsResponse, { requirement: unknown }>;
@@ -21,6 +24,9 @@ type Question = OperationDetail['questions'][number];
     MatInputModule,
     ReactiveFormsModule,
     DiagnosticPanel,
+    RecoveryPanel,
+    LifecyclePanel,
+    JsonPipe,
   ],
   templateUrl: './operations.html',
   styleUrl: './operations.scss',
@@ -161,6 +167,13 @@ export class Operations {
     return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) && number !== null && number > 0
       ? `https://github.com/${repository}/pull/${number}`
       : null;
+  }
+  observation(text: string | null): Record<string, unknown> | null {
+    try {
+      return text === null ? null : (JSON.parse(text) as Record<string, unknown>);
+    } catch {
+      return null;
+    }
   }
 }
 
