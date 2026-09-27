@@ -1,4 +1,4 @@
-# 核心与扩展协议 v1
+# 核心与扩展协议 v2
 
 状态：统一规范，2026-09-24。本文唯一维护操作命名、版本和兼容语义。P1–P8 的最小类型与四类生命周期 Hook 已由 #103/#104 合入；P9 为 #118 的受控环境/验证/交付扩展契约。P10 区分实际调用点与待接入能力，不把类型支持当作运行能力已启用；不新建通用 RPC。
 
@@ -34,7 +34,7 @@ stdin 为一个 JSON 对象；stdout 为一个有界 JSON 结果；stderr 为有
 
 ```json
 {
-  "protocol_version": 1,
+  "protocol_version": 2,
   "invocation_id": "hook-42",
   "attempt": 1,
   "requirement_id": 7,
@@ -51,7 +51,7 @@ stdin 为一个 JSON 对象；stdout 为一个有界 JSON 结果；stderr 为有
 }
 ```
 
-成功结果含 protocol_version、invocation_id、attempt、config_id、status=success、artifacts；失败含同样身份、status=failed 和 error（code、可读 message、可选 evidence_ref）。角色枚举为 coding、repair、validation；事件/角色组合须在配置中声明。
+成功结果含 protocol_version、invocation_id、attempt、config_id、status=success、artifacts；失败含同样身份、status=failed、必填 artifacts 和 error（code、可读 message、可选 evidence_ref）。角色枚举为 coding、repair、validation；事件/角色组合须在配置中声明。
 artifacts 每项含输出目录内相对 path 和用途 kind；核心核对路径、文件身份及大小，再保存其引用。拒绝路径穿越和指向受限文件的链接；脚本返回的任意外部 URL 不自动可信或自动下载。
 退出码为 0 且合法成功结果才算成功；非零、格式错误或状态不一致不视为成功。脚本不报告 authoritative timeout/cancelled/unknown，这些由监督器根据实际事实记录；脚本的 retryable 提示即使存在也不授予重试权。
 不规定所有 hook 共享业务错误枚举；核心区分协议、环境、超时、取消及结果未知，保留原始证据。
@@ -109,14 +109,14 @@ local_git 的实际执行和部署约束见 [本地交付](local-delivery.md)（
 ## P8 兼容与协议验证
 
 #103 已提供输入/输出版本、冻结身份、非法能力和旧配置映射契约测试；#104 已验证 P3 生命周期/未知副作用。#118 增加 P9 最小类型与兼容测试；#119/#120/#121 接入环境/验证/交付，#105 验证本地模式，#122 真实组合验收。#106 实际模型传参仍后续排期。
-新增模式必须显式启用；旧运行继续其版本，未知版本拒绝新动作并保留材料。兼容升级优先增加可选字段；不能静默改变已有字段含义。
+新增模式必须显式启用；升级前停止并保全旧执行，旧任务可停止归档。旧版本拒绝新动作；不要求新版继续查询或转换旧记录。不得丢弃累计消耗和未知预留。
 配置与模型凭据替换不等于任务扩大授权。迁移和回退范围、场景责任见改造需求第 5–6 节。
 
 ## P9 受控环境、验证与交付
 
 ### P9.1 版本、登记及环境绑定
 
-协议主版本仍为 `protocol_version=1`。本次是新增可选的受控扩展配置与独立封装，不给旧 P3 JSON 添加必填字段，不改变 success/failed 的生命周期含义。未知操作、未知版本和未知字段拒绝执行；增加可选字段也须能力协商，不能要求旧严格解析器接受新字段。破坏含义或必填字段变化须新主版本，禁止静默降级。版本/操作枚举只在本文维护；脚本和 Rust 适配共享语义。
+协议主版本为 `protocol_version=2`。核心、受审 Hook、受控环境/验证/交付适配器统一使用此版本；成功与失败都必须声明 artifacts。拒绝旧版本、未知操作及未知字段，不解析双版本、不协商能力、不静默退回退出码协议。普通退出码检查仍是显式批准的另一种检查输出形式；带旧 `--symphony-feedback-v1` 选择器的命令会被拒绝。长诊断与小结果封装分离，见[诊断保全与读取](diagnostics.md)。
 
 `ControlledConfig` 是原冻结配置的可选伴随配置：包含 protocol_version、environment 和 extensions。`ControlledConfig::freeze` 核对部署白名单后将全部类型化配置 JSON 的 SHA-256 返回为 controlled_config_digest，随调用一起冻结；既有 config_id 摘要算法保持不变。不能只冻结一个可变配置路径。#118 不更改现有持久化配置格式或自动迁移运行中任务。
 
@@ -169,7 +169,7 @@ GitHub before_publish/before_merge 位于适配器实际写操作边界，可使
 
 | 当前代码入口 | 当前行为 / 后续接入责任 |
 |---|---|
-| `extension_contract.rs`、`project_hooks.rs::register/event/after_run/before_remove` | 已实现 v1 冻结配置和四类 Hook；#118 保持格式/事件兼容，不令 after_run 承担验收 |
+| `extension_contract.rs`、`project_hooks.rs::register/event/after_run/before_remove` | 已统一为 v2 冻结配置和四类 Hook；四类事件保持既有职责，不令 after_run 承担验收 |
 | `environment_service.rs`、`preparation_service.rs`、`coordinator.rs::start_runtime/recover` | #119 已接入可选冻结环境绑定；启用、服务启动、准备/恢复/修复及 Agent 启动前核验 |
 | `validation_runner.rs::execute_cancellable`、`validation.rs::verify`、`validation_store.rs` | GH-120 复用候选/步骤账本，环境绑定任务经 validation_context / validation_hook / validation_supervisor 执行完整 P9 validate，核对结果来源，不用 Agent 自报 |
 | `delivery_worker.rs::tick/reconcile/publish`、`delivery_control.rs`、`github_delivery.rs` | GitHub outbox/对账经 GH-121 通用调用边界及原生适配器；`local_delivery` 实现 local_git |
@@ -239,7 +239,7 @@ Hook、部署凭据提供方、未知写恢复及无 GitHub 的配置接口。P9
 
 ## P14 固定生命周期、恢复与通知（GH-128）
 
-系统固定既有阶段和调用时机，继续通过 P10–P13 的执行适配器调用；不增加任意工作流或插件自动修复框架。门禁可按冻结 step.command 中的 `--symphony-feedback-v1` 协商有界结构化结果；执行事实与 pass/fail/unknown 分开，能力不足不当作代码失败。
+系统固定既有阶段和调用时机，继续通过 P10–P13 的执行适配器调用；不增加任意工作流或插件自动修复框架。门禁可按冻结 step.command 中的 `--symphony-feedback-v2` 选择有界结构化结果；执行事实与 pass/fail/unknown 分开，能力不足不当作代码失败。
 
 经版本化人工决定，可在同一候选上使用批准的新验证计划，或向现有修复 worker 注入有来源、路径范围及解除条件的开发约束。两者保留故障、验收要求、权限和累计预算。所有通知从已提交的生命周期事件出发；核心负责调用和有限重试，插件负责渠道选择、过滤及最终发送。详细请求字段、部署、接口与证据边界见[生命周期与插件恢复](lifecycle-recovery.md)。
 

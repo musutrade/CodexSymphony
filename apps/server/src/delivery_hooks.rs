@@ -262,7 +262,7 @@ async fn prepare_call(
     .await?
     .ok_or("delivery environment binding removed")?;
     let controlled = crate::controlled_contract::ControlledConfig {
-        protocol_version: 1,
+        protocol_version: crate::extension_contract::PROTOCOL_VERSION,
         environment: environment.controlled.environment,
         extensions: Vec::from([entry.registration.clone()]),
     };
@@ -288,6 +288,14 @@ async fn retain(
     job: &Job,
     result: &Result<crate::controlled_contract::Evaluation>,
 ) -> Result<()> {
+    let source = job
+        .call
+        .identity
+        .run_id
+        .as_deref()
+        .ok_or("delivery source Run missing")?;
+    let binding = crate::diagnostic_service::call_binding(&job.call, "delivery");
+    crate::diagnostic_service::plan(pool, source, &job.directory, &binding, &job.plan).await?;
     let (status, value) = match result {
         Ok(evaluation) => {
             let status = match evaluation.verdict {

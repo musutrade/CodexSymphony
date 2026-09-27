@@ -21,7 +21,7 @@ fn registration() -> Registration {
 }
 fn config() -> ControlledConfig {
     ControlledConfig {
-        protocol_version: 1,
+        protocol_version: 2,
         environment: EnvironmentBinding {
             repository_revision: "local@1".into(),
             contract_digest: "b".repeat(64),
@@ -35,7 +35,7 @@ fn frozen() -> FrozenConfig {
     let mut capabilities = Capabilities::legacy_codex(None);
     capabilities.deliveries = vec![DeliveryMode::LocalGit];
     ExtensionConfig {
-        protocol_version: 1,
+        protocol_version: 2,
         agent: "codex".into(),
         model: ModelConfig {
             provider: "codex".into(),
@@ -53,7 +53,7 @@ fn request(operation: Operation) -> Request {
     Request {
         call: Call {
             identity: InvocationIdentity {
-                protocol_version: 1,
+                protocol_version: 2,
                 requirement_id: 1,
                 revision: 2,
                 run_id: Some("run".into()),

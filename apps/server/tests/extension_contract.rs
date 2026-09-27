@@ -53,7 +53,7 @@ fn legacy() -> Repository {
 
 fn identity(config_id: String) -> InvocationIdentity {
     InvocationIdentity {
-        protocol_version: 1,
+        protocol_version: 2,
         requirement_id: 7,
         revision: 2,
         run_id: Some("run-9".into()),
@@ -68,7 +68,7 @@ fn identity(config_id: String) -> InvocationIdentity {
 fn legacy_repository_maps_without_changing_its_execution_or_delivery_choice() {
     let old = legacy();
     let config = ExtensionConfig::from_legacy_repository(&old);
-    assert_eq!(config.protocol_version, 1);
+    assert_eq!(config.protocol_version, 2);
     assert_eq!(config.agent, "codex");
     assert_eq!(config.model.provider, "codex");
     assert_eq!(config.model.model, old.model);
@@ -238,7 +238,7 @@ fn hook_input_is_versioned_and_bound_to_registered_event_role() {
     input.validate(&frozen, &hook).unwrap();
     let encoded = serde_json::to_vec(&input).unwrap();
     let envelope: serde_json::Value = serde_json::from_slice(&encoded).unwrap();
-    assert_eq!(envelope["protocol_version"], 1);
+    assert_eq!(envelope["protocol_version"], 2);
     assert_eq!(envelope["invocation_id"], "hook-42");
     assert!(envelope.get("identity").is_none());
     assert_eq!(
@@ -252,10 +252,10 @@ fn hook_input_is_versioned_and_bound_to_registered_event_role() {
         Err(ProtocolError::UnsupportedCapability("hook event/role"))
     );
     wrong = input;
-    wrong.identity.protocol_version = 2;
+    wrong.identity.protocol_version = 1;
     assert_eq!(
         wrong.validate(&frozen, &hook),
-        Err(ProtocolError::UnsupportedVersion(2))
+        Err(ProtocolError::UnsupportedVersion(1))
     );
 }
 
@@ -278,6 +278,22 @@ fn response_version_identity_shape_and_size_are_checked() {
     assert!(envelope.get("identity").is_none());
     assert!(envelope.get("outcome").is_none());
     assert_eq!(parse_hook_result(&bytes, &expected), Ok(success.clone()));
+    let mut oversized = success.clone();
+    oversized.outcome = HookOutcome::Success {
+        artifacts: vec![
+            codexsymphony_server::extension_contract::ArtifactRef {
+                path: "report.md".into(),
+                kind: "report".into(),
+            };
+            65
+        ],
+    };
+    assert_eq!(
+        parse_hook_result(&serde_json::to_vec(&oversized).unwrap(), &expected),
+        Err(ProtocolError::InvalidResult(
+            "too many diagnostic artifacts"
+        ))
+    );
     let mut mixed: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     mixed["error"] = serde_json::json!({"code":"x","message":"wrong","evidence_ref":null});
     assert_eq!(
@@ -307,10 +323,10 @@ fn response_version_identity_shape_and_size_are_checked() {
         parse_hook_result(&serde_json::to_vec(&late).unwrap(), &expected),
         Err(ProtocolError::IdentityMismatch("result identity"))
     );
-    late.identity.protocol_version = 2;
+    late.identity.protocol_version = 1;
     assert_eq!(
         parse_hook_result(&serde_json::to_vec(&late).unwrap(), &expected),
-        Err(ProtocolError::UnsupportedVersion(2))
+        Err(ProtocolError::UnsupportedVersion(1))
     );
     assert_eq!(
         parse_hook_result(&vec![b'x'; 65_537], &expected),
@@ -456,6 +472,7 @@ fn hook_result_checks_malformed_input_failure_fields_and_artifact_paths() {
     let failure = HookResult {
         identity: expected.clone(),
         outcome: HookOutcome::Failed {
+            artifacts: vec![],
             error: HookError {
                 code: "script_failed".into(),
                 message: "exit 1".into(),
@@ -466,7 +483,7 @@ fn hook_result_checks_malformed_input_failure_fields_and_artifact_paths() {
     let bytes = serde_json::to_vec(&failure).unwrap();
     let envelope: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(envelope["status"], "failed");
-    assert!(envelope.get("artifacts").is_none());
+    assert_eq!(envelope["artifacts"], serde_json::json!([]));
     assert_eq!(parse_hook_result(&bytes, &expected), Ok(failure.clone()));
     for error in [
         HookError {
@@ -482,7 +499,10 @@ fn hook_result_checks_malformed_input_failure_fields_and_artifact_paths() {
     ] {
         let invalid = HookResult {
             identity: expected.clone(),
-            outcome: HookOutcome::Failed { error },
+            outcome: HookOutcome::Failed {
+                error,
+                artifacts: vec![],
+            },
         };
         assert_eq!(
             parse_hook_result(&serde_json::to_vec(&invalid).unwrap(), &expected),
@@ -513,6 +533,7 @@ fn hook_result_serialization_propagates_output_failures() {
         HookResult {
             identity,
             outcome: HookOutcome::Failed {
+                artifacts: vec![],
                 error: HookError {
                     code: "script_failed".into(),
                     message: "exit 1".into(),

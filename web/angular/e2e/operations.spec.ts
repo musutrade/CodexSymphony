@@ -135,3 +135,64 @@ test('disconnect displays stale state and reconnect continues from the database'
   await page.getByRole('button', { name: '刷新状态' }).click();
   await expect(page.getByText('当前内容可能陈旧', { exact: false })).toHaveCount(0);
 });
+
+test('views retained diagnostics and downloads the complete verified export on this viewport', async ({
+  page,
+}, info) => {
+  const suffix = `diagnostics-${info.project.name}-${Date.now()}`;
+  const id = Date.now() + (info.project.name === 'desktop' ? 1 : 2);
+  fixture(id, suffix);
+  const artifact = `browser-${suffix}-diagnostic`;
+  execFileSync('psql', [process.env['TEST_DATABASE_URL']!, '-X', '-v', 'ON_ERROR_STOP=1'], {
+    input: `WITH content AS (SELECT convert_to(E'FAIL-FIRST\\n'||repeat(E'measurement failed\\n',10000)||E'FAIL-LAST\\n','UTF8') AS bytes) UPDATE diagnostic_artifact d SET raw_payload=c.bytes,export_payload=c.bytes,allocated_bytes=octet_length(c.bytes)*2,manifest=d.manifest||jsonb_build_object('purpose','report.md','media_type','text/markdown','original_bytes',octet_length(c.bytes),'retained_bytes',octet_length(c.bytes),'export_bytes',octet_length(c.bytes),'raw_sha256',encode(sha256(c.bytes),'hex'),'export_sha256',encode(sha256(c.bytes),'hex')) FROM content c WHERE d.artifact_id='${artifact}';`,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  await page.goto(`/requirements/${id}`);
+  const panel = page.getByRole('region', { name: '失败诊断与报告' });
+  await panel.getByText('report.md · 完整保留', { exact: false }).click();
+  await panel.getByRole('button', { name: '查看脱敏内容' }).click();
+  const content = page.getByRole('region', { name: '脱敏诊断内容' });
+  await expect(content.locator('pre')).toContainText('FAIL-FIRST');
+  await content.getByRole('button', { name: '下一段' }).click();
+  await expect(content).toContainText('字节 8192');
+  const manifestResponse = await page.request.get(`/api/requirements/${id}/diagnostics/0`);
+  expect(manifestResponse.status()).toBe(200);
+  const manifest = (await manifestResponse.json()).artifacts[0];
+  const downloaded = page.waitForEvent('download');
+  await panel.getByRole('button', { name: '下载已保留内容' }).click();
+  const file = await downloaded;
+  const bytes = readFileSync((await file.path())!);
+  const { createHash } = await import('node:crypto');
+  expect(bytes.byteLength).toBe(manifest.export_bytes);
+  expect(createHash('sha256').update(bytes).digest('hex')).toBe(manifest.export_sha256);
+  expect(bytes.toString()).toContain('FAIL-FIRST');
+  expect(bytes.toString()).toContain('FAIL-LAST');
+  await info.attach('diagnostic-download-identity.json', {
+    body: JSON.stringify(
+      {
+        source: 'disposable persisted browser fixture',
+        viewport: info.project.name,
+        artifact: manifest,
+        downloaded_bytes: bytes.byteLength,
+        downloaded_sha256: createHash('sha256').update(bytes).digest('hex'),
+      },
+      null,
+      2,
+    ),
+    contentType: 'application/json',
+  });
+  expect(
+    (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
+      .violations,
+  ).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: info.outputPath('diagnostics.png'), fullPage: true });
+  execFileSync('psql', [process.env['TEST_DATABASE_URL']!, '-X', '-v', 'ON_ERROR_STOP=1'], {
+    input: `UPDATE diagnostic_artifact SET manifest=manifest||'{"availability":"missing","reason":"storage quota exhausted; producer evidence retained"}'::jsonb,raw_payload=NULL,export_payload=NULL WHERE artifact_id='${artifact}';`,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+  await panel.getByRole('button', { name: '刷新诊断清单' }).click();
+  await expect(panel).toContainText('内容缺失');
+  await expect(panel).toContainText('storage quota exhausted');
+  await expect(panel.getByRole('button', { name: '下载已保留内容' })).toHaveCount(0);
+});

@@ -45,7 +45,7 @@ async fn child_reaping_waits_for_exit() {
 fn launch_intent_rejects_oversize_replay_and_partial_writes() {
     let root = std::env::temp_dir().join(process::new_identity().unwrap());
     let mut job: Job = serde_json::from_value(serde_json::json!({
-        "call": {"identity":{"protocol_version":1,"requirement_id":1,"revision":1,
+        "call": {"identity":{"protocol_version":2,"requirement_id":1,"revision":1,
             "run_id":"run","resource_id":"resource","invocation_id":"invocation","attempt":1,"config_id":"config"},
             "controlled_config_digest":"config","operation":"before_deliver","extension_id":"hook",
             "implementation_digest":"digest","candidate":null,"environment_digest":"environment",

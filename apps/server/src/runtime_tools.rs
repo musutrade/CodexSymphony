@@ -16,6 +16,9 @@ pub async fn handle(
     key: &RunKey,
     request: &Value,
 ) -> runtime_store::Result<Value> {
+    if crate::diagnostic_tools::is_read(request) {
+        return read_diagnostic(pool, key, request).await;
+    }
     if let Some(result) = runtime_store::request(pool, key, request).await? {
         return Ok(result);
     };
@@ -118,4 +121,28 @@ async fn blocker(
     Ok(Some(
         runtime_store::end(pool, key, request, "blocker", arguments).await?,
     ))
+}
+
+async fn read_diagnostic(
+    pool: &PgPool,
+    key: &RunKey,
+    request: &Value,
+) -> runtime_store::Result<Value> {
+    runtime_store::diagnostic_request(pool, key, request).await?;
+    let params: DynamicToolCallParams =
+        serde_json::from_value(request["params"].clone()).map_err(tool_arguments)?;
+    runtime_store::require(
+        params.namespace.is_none(),
+        "unexpected diagnostic namespace",
+    )?;
+    match crate::diagnostic_tools::handle(pool, key, request).await {
+        Ok(value) => Ok(value),
+        Err(_) => Ok(runtime::reply(
+            false,
+            "Diagnostic unavailable, unauthorized, expired or invalid byte range; refresh the manifest. No authority or quality conclusion is implied.",
+        )),
+    }
+}
+fn tool_arguments(_: serde_json::Error) -> sqlx::Error {
+    runtime_store::invalid("invalid diagnostic arguments")
 }

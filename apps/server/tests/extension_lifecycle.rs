@@ -52,7 +52,7 @@ fn step(value: Value) -> StepEvidence {
     }
 }
 fn unsupported() -> Value {
-    json!({"protocol_version":1,"check_id":"test","verdict":"unknown","fault":{"class":"unsupported","code":"fixture.closure","message":"Closure projection cannot be measured","owner":"gate_maintainer","scope":["source"],"resume_condition":"Approved collector supports projection closures"}})
+    json!({"protocol_version":2,"check_id":"test","verdict":"unknown","artifacts":[],"fault":{"class":"unsupported","code":"fixture.closure","message":"Closure projection cannot be measured","owner":"gate_maintainer","scope":["source"],"resume_condition":"Approved collector supports projection closures"}})
 }
 fn constraint() -> codexsymphony_server::development_constraints::Constraint {
     serde_json::from_value(json!({"id":"no-closure","version":"1","source":"reviewed project convention","reason":"collector limitation","instruction":"Use ordinary named functions in changed production functions","paths":["source"],"code_scope":"changed_production","release_condition":"Approved collector regression and complete Gate pass"})).unwrap()
@@ -61,7 +61,9 @@ fn constraint() -> codexsymphony_server::development_constraints::Constraint {
 #[test]
 fn feedback_distinguishes_business_failure_capability_and_execution() {
     for (word, verdict) in [("pass", Verdict::Pass), ("fail", Verdict::Fail)] {
-        let s = step(json!({"protocol_version":1,"check_id":"test","verdict":word,"fault":null}));
+        let s = step(
+            json!({"protocol_version":2,"check_id":"test","verdict":word,"artifacts":[],"fault":null}),
+        );
         assert_eq!(feedback::verdict(&s), verdict);
         assert_eq!(feedback::code_failure(&s), word == "fail");
         let mut crash = s.clone();
@@ -108,18 +110,26 @@ fn malformed_conflicting_feedback_never_authorizes_delivery() {
         json!({"unknown_field":true}),
     ];
     for (pointer, value) in [
-        ("/protocol_version", json!(2)),
+        ("/protocol_version", json!(1)),
         ("/check_id", json!("other")),
         ("/verdict", json!("pass")),
         ("/fault", Value::Null),
         ("/fault/code", json!("")),
         ("/fault/scope", json!([""])),
         ("/fault/class", json!("new_unknown_class")),
+        ("/artifacts", json!([{"kind":"report","path":"../outside"}])),
+        ("/artifacts", json!([{"kind":"","path":"report.md"}])),
     ] {
         let mut v = unsupported();
         *v.pointer_mut(pointer).unwrap() = value;
         cases.push(v);
     }
+    let mut artifact_overflow = unsupported();
+    artifact_overflow["artifacts"] = json!(vec![json!({"kind":"report","path":"report.md"}); 65]);
+    assert_eq!(
+        feedback::decode(&step(artifact_overflow)),
+        Err("invalid diagnostic artifacts")
+    );
     let mut too_many = unsupported();
     too_many["fault"]["scope"] = json!(vec!["file"; 65]);
     cases.push(too_many);
@@ -407,7 +417,7 @@ async fn same_candidate_plugin_upgrade_revalidates_without_erasing_failure_or_bu
     plugin(
         &mut plan,
         "python",
-        json!({"protocol_version":1,"check_id":"test","verdict":"pass","fault":null}),
+        json!({"protocol_version":2,"check_id":"test","verdict":"pass","artifacts":[],"fault":null}),
     );
     assert_ne!(old_plan, plan.identity().unwrap().config_sha256);
     let decision = recovery::Decision {
@@ -761,11 +771,13 @@ async fn recover_invalidated_pending_delivery(
 async fn approved_adaptation_uses_real_codex_runtime_and_preserves_fault_identity() {
     use codexsymphony_server::{budget::Amount, execution::RunKey, runtime_client, runtime_resume};
     let (root, repo, mut plan) = runner::fixture();
-    let failure = unsupported().to_string();
+    let mut feedback = unsupported();
+    feedback["artifacts"] = json!([{"kind":"report","path":"failure-report.md"}]);
+    let failure = feedback.to_string();
     let pass =
-        json!({"protocol_version":1,"check_id":"test","verdict":"pass","fault":null}).to_string();
+        json!({"protocol_version":2,"check_id":"test","verdict":"pass","artifacts":[],"fault":null}).to_string();
     let script = format!(
-        "#!/bin/sh\nif grep -q 'ordinary named function' source; then printf '%s' '{pass}'; else printf '%s' '{failure}'; fi\n"
+        "#!/bin/sh\nif grep -q 'ordinary named function' source; then printf '%s' '{pass}'; else printf 'FAIL-FIRST\\n' > \"$SYMPHONY_DIAGNOSTIC_DIR/failure-report.md\"; i=0; while [ \"$i\" -lt 800 ]; do printf 'failed fixture\\n' >> \"$SYMPHONY_DIAGNOSTIC_DIR/failure-report.md\"; i=$((i+1)); done; printf 'FAIL-LAST\\n' >> \"$SYMPHONY_DIAGNOSTIC_DIR/failure-report.md\"; printf '%s' '{failure}'; fi\n"
     );
     fs::write(&plan.entry, &script).unwrap();
     plan.entry_sha256 = sha256(&script);
@@ -866,16 +878,35 @@ async fn approved_adaptation_uses_real_codex_runtime_and_preserves_fault_identit
         .unwrap();
     assert!(prompt.contains("no-closure"));
     assert!(prompt.contains("approved_adaptation_constraints"));
+    let manifests = codexsymphony_server::diagnostic_tools::context(&pool, &job.launch.key)
+        .await
+        .unwrap();
+    let report = manifests["manifest"]["artifacts"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|a| a["purpose"] == "failure-report.md")
+        .unwrap()
+        .clone();
+    assert!(report["export_bytes"].as_u64().unwrap() > 8192);
+    assert!(prompt.contains(report["artifact_id"].as_str().unwrap()));
     let counter = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let calls = counter.clone();
+    let requests = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Value>::new()));
+    let retained_requests = requests.clone();
     let path = job.workspace.path.clone();
-    let app=axum::Router::new().route("/responses",axum::routing::post(move || {
-        let counter=counter.clone();let path=path.clone();
+    let report_id = report["artifact_id"].as_str().unwrap().to_owned();
+    let app=axum::Router::new().route("/responses",axum::routing::post(move |axum::Json(body):axum::Json<Value>| {
+        let counter=counter.clone();let path=path.clone();let requests=requests.clone();let report_id=report_id.clone();
         async move {
+            requests.lock().unwrap().push(body);
             let index=counter.fetch_add(1,std::sync::atomic::Ordering::SeqCst);
             let (name,args)=match index {
-                0=>("exec_command",json!({"cmd":"printf 'ordinary named function\\n' > source","yield_time_ms":1000,"max_output_tokens":1000})),
-                1=>("create_local_commit",json!({"message":"Adapt fixture to supported named function"})),
+                0=>("list_diagnostics",json!({"after":0})),
+                1=>("read_diagnostic",json!({"artifact_id":report_id,"offset":0,"limit":8192})),
+                2=>("read_diagnostic",json!({"artifact_id":report_id,"offset":8192,"limit":8192})),
+                3=>("exec_command",json!({"cmd":"printf 'ordinary named function\\n' > source","yield_time_ms":1000,"max_output_tokens":1000})),
+                4=>("create_local_commit",json!({"message":"Adapt fixture to supported named function"})),
                 _=>{
                     let sha=String::from_utf8(Command::new("git").arg("-C").arg(path).args(["rev-parse","HEAD"]).output().unwrap().stdout).unwrap();
                     ("report_completion",json!({"candidate_sha":sha.trim(),"summary":"Approved source adaptation completed"}))
@@ -929,7 +960,16 @@ stream_max_retries = 0
     .await;
     server.abort();
     result.unwrap().unwrap();
-    assert!(calls.load(std::sync::atomic::Ordering::SeqCst) >= 3);
+    assert!(calls.load(std::sync::atomic::Ordering::SeqCst) >= 6);
+    let requests = retained_requests.lock().unwrap().clone();
+    let evidence = json!(requests).to_string();
+    assert!(evidence.contains("FAIL-FIRST") && evidence.contains("FAIL-LAST"));
+    assert!(evidence.contains(report["artifact_id"].as_str().unwrap()));
+    fs::write(root.join("authorized-repair-diagnostics.json"),serde_json::to_vec_pretty(&json!({"source":"pinned real Codex with local provider fixture, no paid model","original_candidate":candidate,"artifact":report,"provider_requests_with_tool_outputs":requests})).unwrap()).unwrap();
+    println!(
+        "GH-126 authorized repair evidence: {}",
+        root.join("authorized-repair-diagnostics.json").display()
+    );
     assert_eq!(
         fs::read_to_string(Path::new(&job.workspace.path).join("source")).unwrap(),
         "ordinary named function\n"
@@ -1240,7 +1280,7 @@ async fn real_plugin_crash_timeout_protocol_and_quality_failure_preserve_distinc
             "blocked",
         ),
         (
-            "#!/bin/sh\nprintf '%s' '{\"protocol_version\":1,\"check_id\":\"test\",\"verdict\":\"fail\",\"fault\":null}'\n",
+            "#!/bin/sh\nprintf '%s' '{\"protocol_version\":2,\"check_id\":\"test\",\"verdict\":\"fail\",\"artifacts\":[],\"fault\":null}'\n",
             "fail",
             "code",
             "gate_failed",

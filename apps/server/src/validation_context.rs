@@ -62,7 +62,7 @@ async fn freeze_context(
         credential_provider_ref: None,
     };
     let controlled = ControlledConfig {
-        protocol_version: 1,
+        protocol_version: crate::extension_contract::PROTOCOL_VERSION,
         environment: environment.controlled.environment.clone(),
         extensions: Vec::from([registration.clone()]),
     };
@@ -98,7 +98,7 @@ async fn build_call(
             .await?;
     Ok(Call {
         identity: InvocationIdentity {
-            protocol_version: 1,
+            protocol_version: crate::extension_contract::PROTOCOL_VERSION,
             requirement_id: r.requirement,
             revision: r.revision,
             run_id: Some(r.source_run.into()),

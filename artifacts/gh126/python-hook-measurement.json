@@ -1,0 +1,100 @@
+{
+  "schema": "gh126-python-hook-measurement/v1",
+  "measurement": {
+    "status": "PASS",
+    "authorization": {
+      "issue": 126,
+      "authorized": true,
+      "user_text": "我批准",
+      "scope": "Task-scoped coverage.py and Radon alternative measurement of examples/project-hooks/project_hook.py, all functions and protocol entry; coverage >=80%, CRAP <=10; continue exact-tree full Gate and PR after PASS. Not permanent collector approval.",
+      "recorded_at": "2026-09-27T09:32:33.557654+00:00",
+      "plan_sha256": "555022db37444fed3e47de516a68561c3443b752392b4cdca892a48eb621bdf6"
+    },
+    "source": "/home/gem/CodexSymphony-gh126/examples/project-hooks/project_hook.py",
+    "snapshot": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/source/project_hook.py",
+    "source_sha256": "8192d8aae17404af1d9a03305c7f0df5fd1614d57134a314e87a812b251aa9c2",
+    "tool_versions": {
+      "coverage": "7.16.1",
+      "radon": "6.0.1"
+    },
+    "tests": 6,
+    "capture_success": true,
+    "inputs_match": true,
+    "coverage": {
+      "numerator": 1,
+      "denominator": 1
+    },
+    "missing_lines": [],
+    "functions": [
+      {
+        "function": "result",
+        "line": 10,
+        "complexity": 4,
+        "coverage": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "crap": {
+          "numerator": 4,
+          "denominator": 1
+        },
+        "missing_lines": [],
+        "passed": true
+      },
+      {
+        "function": "run",
+        "line": 21,
+        "complexity": 6,
+        "coverage": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "crap": {
+          "numerator": 6,
+          "denominator": 1
+        },
+        "missing_lines": [],
+        "passed": true
+      }
+    ]
+  },
+  "retained_evidence": [
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/measurements.json",
+      "sha256": "1dd2f0275f8c3c75edcce95869a1d13f1072eb643d6856e1dfaef185b258cb59"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/coverage.json",
+      "sha256": "a133e15099194b717f9fefa2260fdea6f8af272d0142adf20051f798f8caa884"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/coverage.data",
+      "sha256": "6430b10e5b681568e4958b4f94d97c5e472b535a3f26307d1c92ddd50b0c2a11"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/capture.log",
+      "sha256": "25f8f308715c8376ee5f41f381d2562565bb4a6174bf0b7028bc0e1dcff085c1"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/authorization.json",
+      "sha256": "698b83fe617f5dcde7281b874b1f897d7d0867fe9b0d8ab69a92583f37a7b295"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/measurement-plan.json",
+      "sha256": "555022db37444fed3e47de516a68561c3443b752392b4cdca892a48eb621bdf6"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/measurement-tools.json",
+      "sha256": "7f7c15e8bf0e282efedd0935f021813a7d087cd621655ea54e0cbf0ea65088d8"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/source/project_hook.py",
+      "sha256": "8192d8aae17404af1d9a03305c7f0df5fd1614d57134a314e87a812b251aa9c2"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/python-20260927T093233/measure-hook-example.py",
+      "sha256": "a364c103b8125814b9fdfa64b92e675ade292a1d7d53b027ad3cb8575c411ddb"
+    }
+  ],
+  "publication_authority": "Task-scoped approved alternative Python measurement only; new complete installed Gate receipt remains required on the final exact tree."
+}

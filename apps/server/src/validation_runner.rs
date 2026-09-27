@@ -277,6 +277,7 @@ fn run_step(
         .write(true)
         .open(&path)?;
     let mut command = command(root, step, plan);
+    command.env("SYMPHONY_DIAGNOSTIC_DIR", directory);
     command.stdout(Stdio::piped()).stderr(Stdio::piped());
     let mut child = command.spawn()?;
     let mut capture = crate::storage_output::Capture::default();
@@ -288,8 +289,17 @@ fn run_step(
     );
     let exit = wait(&mut child, step.timeout_seconds, &capture, control)?;
     finish_capture(capture, &path, control.limit)?;
-    control.check()?;
+    check_capture_stop(control, directory)?;
     evidence(directory, index, step, exit)
+}
+fn check_capture_stop(control: Control<'_>, directory: &Path) -> Result<()> {
+    if control.stopped() {
+        process::durable_write(
+            &directory.join("stop.json"),
+            &serde_json::json!({"reason":"current control cancellation","complete":false}),
+        )?;
+    }
+    control.check()
 }
 fn finish_capture(capture: crate::storage_output::Capture, path: &Path, limit: u64) -> Result<()> {
     if capture.finish()? {

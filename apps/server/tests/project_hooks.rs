@@ -90,7 +90,8 @@ if mode == 'overflow':
     sys.exit(0)
 if mode == 'fail':
     status = 'failed'
-    extra = {'error': {'code':'project_failure','message':'controlled failure'}}
+    (pathlib.Path(r['output_dir']) / 'failure.md').write_text('HOOK-FIRST\n' + 'hook failure\n' * 6000 + 'HOOK-LAST\n')
+    extra = {'error': {'code':'project_failure','message':'controlled failure'}, 'artifacts': [{'path':'failure.md','kind':'diagnostic'}]}
 else:
     status = 'success'
     extra = {'artifacts': []}
@@ -294,7 +295,7 @@ async fn stopped_hook_reconciliation_preserves_each_recorded_outcome() {
     let mut failure: Value = serde_json::from_slice(&success).unwrap();
     failure["status"] = json!("failed");
     failure["error"] = json!({"code":"project_failure","message":"recorded failure"});
-    failure.as_object_mut().unwrap().remove("artifacts");
+    failure["artifacts"] = json!([]);
 
     for (case, expected, complete) in [
         ("spawn", "failed", false),
@@ -1259,6 +1260,15 @@ async fn after_run_requires_quiescence_and_preserved_snapshot_but_auxiliary_fail
         .unwrap();
     project_hooks::after_run(&pool, &root).await.unwrap();
     assert!(!counter.exists());
+    // A preserved, uncommitted workspace is an observed candidate identity,
+    // but it must not claim the immutable-candidate property.
+    sqlx::query("INSERT INTO run_workspace(run_id,identity,candidate_sha) VALUES($1,$2,$3)")
+        .bind(&id)
+        .bind(json!(workspace))
+        .bind(&manifest.head)
+        .execute(&pool)
+        .await
+        .unwrap();
     sqlx::query("INSERT INTO workspace_snapshot(run_id,manifest,candidate) VALUES($1,$2,false)")
         .bind(&id)
         .bind(json!(manifest))
@@ -1281,6 +1291,60 @@ async fn after_run_requires_quiescence_and_preserved_snapshot_but_auxiliary_fail
         .unwrap();
     assert_eq!(state, "Failed");
     broker.verify(&manifest).unwrap();
+
+    // The actual failing Hook's separately declared report is retained by the
+    // production lifecycle adapter and read through the product endpoint.
+    let saved: Value = sqlx::query_scalar("SELECT manifest FROM diagnostic_artifact WHERE source_run=$1 AND manifest->>'purpose'='failure.md'").bind(&id).fetch_one(&pool).await.unwrap();
+    let artifact: codexsymphony_server::diagnostics::Artifact =
+        serde_json::from_value(saved).unwrap();
+    assert_eq!(
+        artifact.availability,
+        codexsymphony_server::diagnostics::Availability::Available
+    );
+    assert_eq!(artifact.binding.phase, "after_run/hook:auxiliary");
+    let observed = artifact.binding.candidate.as_ref().unwrap();
+    assert_eq!(observed.sha, manifest.head);
+    assert_eq!(observed.tree, manifest.index_tree);
+    assert!(!observed.immutable);
+    let mut exported = Vec::new();
+    let mut offset = 0;
+    let mut transcript = Vec::new();
+    loop {
+        use tower::ServiceExt;
+        let route = format!(
+            "/api/requirements/1/diagnostic-artifacts/{}/{offset}/8192",
+            artifact.artifact_id
+        );
+        let response = codexsymphony_server::diagnostic_api::routes()
+            .with_state(pool.clone())
+            .oneshot(
+                axum::http::Request::builder()
+                    .uri(&route)
+                    .body(axum::body::Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200);
+        let bytes = axum::body::to_bytes(response.into_body(), 65536)
+            .await
+            .unwrap();
+        let chunk: codexsymphony_server::diagnostics::Chunk =
+            serde_json::from_slice(&bytes).unwrap();
+        transcript.push(json!({"path":route,"chunk":chunk}));
+        exported.extend_from_slice(chunk.text.as_bytes());
+        offset = chunk.next;
+        if chunk.end {
+            break;
+        }
+    }
+    assert_eq!(exported.len() as u64, artifact.export_bytes);
+    assert_eq!(
+        Some(codexsymphony_server::validation::sha256(&exported)),
+        artifact.export_sha256
+    );
+    assert!(exported.starts_with(b"HOOK-FIRST\n") && exported.ends_with(b"HOOK-LAST"));
+    fs::write(root.join("failed-hook-diagnostics.json"), serde_json::to_vec_pretty(&json!({"kind":"actual lifecycle Hook subprocess and product read endpoint; no paid model","artifact":artifact,"transcript":transcript})).unwrap()).unwrap();
 
     let directory: String =
         sqlx::query_scalar("SELECT output_dir FROM project_hook_invocation WHERE run_id=$1")

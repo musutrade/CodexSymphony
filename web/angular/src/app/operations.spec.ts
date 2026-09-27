@@ -1,10 +1,15 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component } from '@angular/core';
+import { DiagnosticPanel } from './diagnostic-panel/diagnostic-panel';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { OperationDetail, Operations } from './operations';
+
+@Component({ selector: 'app-diagnostic-panel', template: '' })
+class DiagnosticStub {}
 
 const item: OperationDetail = {
   requirement: {
@@ -67,6 +72,10 @@ describe('Durable operator UI', () => {
         },
       ],
       imports: [Operations],
+    });
+    TestBed.overrideComponent(Operations, {
+      remove: { imports: [DiagnosticPanel] },
+      add: { imports: [DiagnosticStub] },
     });
     http = TestBed.inject(HttpTestingController);
     return TestBed.createComponent(Operations);

@@ -18,7 +18,7 @@ fn registration() -> Registration {
 
 fn config() -> ControlledConfig {
     ControlledConfig {
-        protocol_version: 1,
+        protocol_version: 2,
         environment: EnvironmentBinding {
             repository_revision: "repo-revision-1".into(),
             contract_digest: "b".repeat(64),
@@ -31,7 +31,7 @@ fn config() -> ControlledConfig {
 
 fn frozen() -> FrozenConfig {
     ExtensionConfig {
-        protocol_version: 1,
+        protocol_version: 2,
         agent: "codex".into(),
         model: ModelConfig {
             provider: "codex".into(),
@@ -49,7 +49,7 @@ fn frozen() -> FrozenConfig {
 fn call() -> Call {
     Call {
         identity: InvocationIdentity {
-            protocol_version: 1,
+            protocol_version: 2,
             requirement_id: 1,
             revision: 2,
             run_id: Some("run-1".into()),

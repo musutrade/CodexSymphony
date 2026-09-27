@@ -7,13 +7,21 @@ import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 import { firstValueFrom, interval } from 'rxjs';
 import { OperationsApi } from './operations-api';
+import { DiagnosticPanel } from './diagnostic-panel/diagnostic-panel';
 import { ControlOperationsRequest, GetOperationsResponse } from './health-response';
 
 export type OperationDetail = Extract<GetOperationsResponse, { requirement: unknown }>;
 type Question = OperationDetail['questions'][number];
 @Component({
   selector: 'app-operations',
-  imports: [RouterLink, MatButtonModule, MatFormFieldModule, MatInputModule, ReactiveFormsModule],
+  imports: [
+    RouterLink,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    ReactiveFormsModule,
+    DiagnosticPanel,
+  ],
   templateUrl: './operations.html',
   styleUrl: './operations.scss',
 })

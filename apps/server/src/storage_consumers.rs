@@ -13,27 +13,23 @@ pub async fn protection(
     run: &str,
     kind: &str,
 ) -> Result<Protection> {
-    let facts: (bool,bool,bool,bool,bool) = sqlx::query_as(
+    let consumer = consumer_predicate("s.requirement_id", "s.run_id");
+    let unreconciled = unreconciled_predicate("s.run_id");
+    let query = format!(
         "SELECT
           EXISTS(SELECT 1 FROM agent_run a WHERE a.requirement_id=s.requirement_id AND NOT a.quiescent) OR EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=s.requirement_id AND NOT v.quiescent),
-          EXISTS(SELECT 1 FROM candidate_validation v WHERE v.requirement_id=s.requirement_id AND (v.result='pending' OR (v.result='succeeded' AND v.stage<>'done'))) OR
-          EXISTS(SELECT 1 FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id WHERE v.source_run_id=s.run_id AND p.status IN ('reserved','started')) OR
-          EXISTS(SELECT 1 FROM linked_failure f WHERE (f.requirement_id=s.requirement_id OR f.source_run=s.run_id) AND f.state NOT IN ('complete','cancelled')) OR
-          EXISTS(SELECT 1 FROM delivery d WHERE d.requirement_id=s.requirement_id AND NOT d.released) OR
-          EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id=s.requirement_id AND v.state NOT IN ('passed','cancelled','interrupted')) OR
-          EXISTS(SELECT 1 FROM merge_operation m WHERE m.requirement_id=s.requirement_id AND m.state NOT IN ('complete','cancelled','invalidated')) OR
-          EXISTS(SELECT 1 FROM runtime_resume r WHERE r.source_run=s.run_id AND r.status IN ('restoring','prepared')) OR
-          EXISTS(SELECT 1 FROM runtime_question q WHERE q.run_id=s.run_id AND q.resume_state IN ('waiting','pending')) OR
-          EXISTS(SELECT 1 FROM agent_run paused WHERE paused.id=s.run_id AND (paused.user_paused OR paused.storage_resume_requested) AND NOT EXISTS(SELECT 1 FROM runtime_resume restored WHERE restored.source_run=s.run_id AND restored.status='dispatched')),
-          EXISTS(SELECT 1 FROM workspace_operation o WHERE o.run_id=s.run_id AND o.status<>'complete') OR
-          EXISTS(SELECT 1 FROM preparation_record p WHERE p.run_id=s.run_id AND NOT p.ready AND NOT (p.retry->>'todo')::boolean AND p.retry->'next_attempt_at'='null'::jsonb),
+          {consumer},
+          {unreconciled},
           COALESCE(s.identity->>'repository','')='' OR
           (NOT EXISTS(SELECT 1 FROM agent_run a WHERE a.id=s.run_id) AND
            NOT EXISTS(SELECT 1 FROM integration_validation v WHERE v.id=s.run_id) AND
            NOT EXISTS(SELECT 1 FROM preparation_record p WHERE p.run_id=s.run_id AND (p.retry->>'todo')::boolean)),
           s.resolved_by IS NULL AND EXISTS(SELECT 1 FROM candidate_validation v WHERE v.source_run_id=s.run_id AND v.result='succeeded') OR EXISTS(SELECT 1 FROM integration_validation v WHERE v.id=s.run_id AND v.state='passed')
-         FROM storage_attempt s WHERE s.run_id=$1")
-        .bind(run).fetch_one(&mut **tx).await?;
+         FROM storage_attempt s WHERE s.run_id=$1");
+    let facts: (bool, bool, bool, bool, bool) = sqlx::query_as(&query)
+        .bind(run)
+        .fetch_one(&mut **tx)
+        .await?;
     let mut protection = Protection {
         active: facts.0,
         consumer: facts.1,
@@ -46,6 +42,28 @@ pub async fn protection(
         protection.unique = !rebuildable(tx, config, run).await?;
     }
     Ok(protection)
+}
+
+// Callers supply reviewed SQL column expressions, never report or request values.
+pub(crate) fn consumer_predicate(task: &str, run: &str) -> String {
+    format!(
+        "EXISTS(SELECT 1 FROM candidate_validation v WHERE v.requirement_id={task} AND (v.result='pending' OR (v.result='succeeded' AND v.stage<>'done'))) OR
+          EXISTS(SELECT 1 FROM repair_reservation p JOIN candidate_validation v ON v.id=p.source_validation_id WHERE v.source_run_id={run} AND p.status IN ('reserved','started')) OR
+          EXISTS(SELECT 1 FROM linked_failure f WHERE (f.requirement_id={task} OR f.source_run={run}) AND f.state NOT IN ('complete','cancelled')) OR
+          EXISTS(SELECT 1 FROM delivery d WHERE d.requirement_id={task} AND NOT d.released) OR
+          EXISTS(SELECT 1 FROM integration_validation v WHERE v.requirement_id={task} AND v.state NOT IN ('passed','cancelled','interrupted')) OR
+          EXISTS(SELECT 1 FROM merge_operation m WHERE m.requirement_id={task} AND m.state NOT IN ('complete','cancelled','invalidated')) OR
+          EXISTS(SELECT 1 FROM runtime_resume r WHERE r.source_run={run} AND r.status IN ('restoring','prepared')) OR
+          EXISTS(SELECT 1 FROM runtime_question q WHERE q.run_id={run} AND q.resume_state IN ('waiting','pending')) OR
+          EXISTS(SELECT 1 FROM agent_run paused WHERE paused.id={run} AND (paused.user_paused OR paused.storage_resume_requested) AND NOT EXISTS(SELECT 1 FROM runtime_resume restored WHERE restored.source_run={run} AND restored.status='dispatched'))"
+    )
+}
+
+pub(crate) fn unreconciled_predicate(run: &str) -> String {
+    format!(
+        "EXISTS(SELECT 1 FROM workspace_operation o WHERE o.run_id={run} AND o.status<>'complete') OR
+          EXISTS(SELECT 1 FROM preparation_record p WHERE p.run_id={run} AND NOT p.ready AND NOT (p.retry->>'todo')::boolean AND p.retry->'next_attempt_at'='null'::jsonb)"
+    )
 }
 
 async fn rebuildable(tx: &mut Tx<'_>, config: &Deployment, run: &str) -> Result<bool> {

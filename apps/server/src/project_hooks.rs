@@ -426,10 +426,10 @@ async fn execute_new(
     directory: &Path,
 ) -> Result<bool> {
     let identity = InvocationIdentity {
-        protocol_version: 1,
+        protocol_version: crate::extension_contract::PROTOCOL_VERSION,
         requirement_id: saved.requirement,
         revision: saved.revision,
-        run_id: (hook.event != HookEvent::BeforeRemove).then(|| run_id.to_owned()),
+        run_id: hook_source(hook, run_id),
         resource_id: resource.to_owned(),
         invocation_id: id.to_owned(),
         attempt,
@@ -447,7 +447,7 @@ async fn execute_new(
     };
     invocation
         .validate(&saved.frozen, hook)
-        .map_err(|e| format!("invalid hook invocation: {e:?}"))?;
+        .map_err(invocation_error)?;
     if serde_json::to_vec(&invocation)?.len() > crate::extension_contract::MAX_RESULT_BYTES {
         return Err("hook input exceeds protocol limit".into());
     }
@@ -456,6 +456,7 @@ async fn execute_new(
         Ok(()) => run_script(pool, id, hook, directory, &identity).await,
         Err(error) => Err(error),
     };
+    crate::diagnostic_service::lifecycle(pool, run_id, directory, &identity, hook).await?;
     let (status, diagnostic, result_json) = classify_result(result, directory);
     sqlx::query("UPDATE project_hook_invocation SET status=$2,result=$3,diagnostic=$4,stop_confirmed=$5 WHERE invocation_id=$1 AND status IN ('intent','running')")
         .bind(id).bind(status).bind(result_json).bind(diagnostic)
@@ -686,11 +687,11 @@ fn parse_output(
     hook: &HookConfig,
 ) -> Result<(bool, Value)> {
     let bytes = bounded_output(directory, hook.output_limit_bytes as u64)?;
-    let result =
-        parse_hook_result(&bytes, identity).map_err(|e| format!("invalid hook result: {e:?}"))?;
-    if let HookOutcome::Success { artifacts } = &result.outcome {
-        validate_artifacts(directory, artifacts, hook.output_limit_bytes as u64)?;
-    }
+    let result = parse_hook_result(&bytes, identity).map_err(result_error)?;
+    let artifacts = match &result.outcome {
+        HookOutcome::Success { artifacts } | HookOutcome::Failed { artifacts, .. } => artifacts,
+    };
+    validate_artifacts(directory, artifacts, crate::diagnostics::MAX_FILE)?;
     Ok((
         matches!(result.outcome, HookOutcome::Success { .. }),
         json!(result),
@@ -720,18 +721,11 @@ fn validate_artifacts(
     artifacts: &[crate::extension_contract::ArtifactRef],
     limit: u64,
 ) -> Result<()> {
+    let directory = crate::storage_files::Directory::open(directory)?;
     for artifact in artifacts {
-        let mut path = directory.to_owned();
-        for part in artifact.path.split('/') {
-            path.push(part);
-            let meta = fs::symlink_metadata(&path)?;
-            if meta.file_type().is_symlink() {
-                return Err("hook artifact symlink rejected".into());
-            }
-        }
-        let meta = fs::metadata(&path)?;
-        if !meta.is_file() || meta.len() > limit {
-            return Err("hook artifact invalid or exceeds limit".into());
+        let file = directory.read(Path::new(&artifact.path))?;
+        if file.metadata()?.len() > limit {
+            return Err("hook artifact exceeds limit".into());
         }
     }
     Ok(())
@@ -772,6 +766,12 @@ async fn reconcile_stopped(
     hook: &HookConfig,
     identity: &InvocationIdentity,
 ) -> Result<Option<bool>> {
+    let source: String =
+        sqlx::query_scalar("SELECT run_id FROM project_hook_invocation WHERE invocation_id=$1")
+            .bind(id)
+            .fetch_one(pool)
+            .await?;
+    crate::diagnostic_service::lifecycle(pool, &source, directory, identity, hook).await?;
     let exit: Option<i32> = process::read(&directory.join("exit.json")).unwrap_or(None);
     if directory.join("spawn-error.json").exists() {
         record_reconciled(
@@ -873,6 +873,21 @@ fn bind_model(
     extension.model = frozen.selection.config;
     capabilities.agents = Vec::from([registration.agent]);
     Ok(())
+}
+
+fn result_error(error: crate::extension_contract::ProtocolError) -> String {
+    format!("invalid hook result: {error:?}")
+}
+
+fn hook_source(hook: &HookConfig, run_id: &str) -> Option<String> {
+    if hook.event == HookEvent::BeforeRemove {
+        None
+    } else {
+        Some(run_id.into())
+    }
+}
+fn invocation_error(error: crate::extension_contract::ProtocolError) -> String {
+    format!("invalid hook invocation: {error:?}")
 }
 
 #[cfg(test)]

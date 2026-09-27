@@ -431,7 +431,7 @@ async fn before_remove_hook(pool: &PgPool, run_id: &str, path: &Path, script: &P
     let mut capabilities = Capabilities::legacy_codex(None);
     capabilities.hooks = vec![hook.clone()];
     let frozen = ExtensionConfig {
-        protocol_version: 1,
+        protocol_version: 2,
         agent: "codex".into(),
         model: ModelConfig {
             provider: "codex".into(),
@@ -473,7 +473,7 @@ if sys.argv[1]=='swap':
     path.mkdir()
     (path/'replacement').write_text('new identity')
 base={key:r[key] for key in ('protocol_version','requirement_id','revision','run_id','resource_id','invocation_id','attempt','config_id')}
-if sys.argv[1]=='fail': print(json.dumps(dict(base,status='failed',error={'code':'blocked','message':'controlled failure'})))
+if sys.argv[1]=='fail': print(json.dumps(dict(base,status='failed',artifacts=[],error={'code':'blocked','message':'controlled failure'})))
 else: print(json.dumps(dict(base,status='success',artifacts=[])))
 "##).unwrap();
     fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();

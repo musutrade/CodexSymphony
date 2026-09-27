@@ -7,7 +7,7 @@ fn validation_without_stop_proof_cannot_be_recovered() {
         "recovery-stop-{}",
         crate::process::new_identity().unwrap()
     ));
-    let context = json!({"call":{"identity":{"protocol_version":1,"requirement_id":1,"revision":1,"run_id":"source","resource_id":"workspace","invocation_id":"validation","attempt":1,"config_id":"frozen"},"controlled_config_digest":"frozen","operation":"validate","extension_id":"validator","implementation_digest":"approved","candidate":null,"environment_digest":"environment","policy_digest":"policy","deadline_unix_ms":1,"required_checks":[]},"environment_contract":"contract","checkout":"/unused","directory":directory});
+    let context = json!({"call":{"identity":{"protocol_version":2,"requirement_id":1,"revision":1,"run_id":"source","resource_id":"workspace","invocation_id":"validation","attempt":1,"config_id":"frozen"},"controlled_config_digest":"frozen","operation":"validate","extension_id":"validator","implementation_digest":"approved","candidate":null,"environment_digest":"environment","policy_digest":"policy","deadline_unix_ms":1,"required_checks":[]},"environment_contract":"contract","checkout":"/unused","directory":directory});
     assert!(stopped(Some(context.clone())).is_err());
     std::fs::create_dir(&directory).unwrap();
     std::fs::write(directory.join("identity.json"), "invalid identity").unwrap();

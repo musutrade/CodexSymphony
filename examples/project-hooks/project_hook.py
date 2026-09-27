@@ -12,9 +12,8 @@ def result(request, status, artifacts=None, error=None):
             "resource_id", "invocation_id", "attempt", "config_id")
     response = {key: request[key] for key in keys}
     response["status"] = status
-    if status == "success":
-        response["artifacts"] = artifacts or []
-    else:
+    response["artifacts"] = artifacts or []
+    if status != "success":
         response["error"] = error
     print(json.dumps(response))
 
@@ -48,6 +47,8 @@ def run(request):
 
 if __name__ == "__main__":
     request = json.load(sys.stdin)
+    if request.get("protocol_version") != 2:
+        raise SystemExit("unsupported project hook protocol")
     try:
         artifacts = run(request)
         result(request, "success", artifacts)

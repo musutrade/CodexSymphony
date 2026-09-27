@@ -3357,6 +3357,130 @@
           }
         }
       }
+    },
+    "/api/requirements/{id}/diagnostics/{after}": {
+      "get": {
+        "operationId": "getDiagnostics",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "after",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized redacted diagnostic content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosticPage"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Unavailable, unauthorized or invalid range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requirements/{id}/diagnostic-artifacts/{artifact}/{offset}/{limit}": {
+      "get": {
+        "operationId": "readDiagnostic",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "artifact",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Authorized redacted diagnostic content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiagnosticChunk"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Unavailable, unauthorized or invalid range",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -5897,6 +6021,222 @@
                 }
               }
             }
+          }
+        }
+      },
+      "DiagnosticArtifact": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact_id",
+          "binding",
+          "purpose",
+          "media_type",
+          "availability",
+          "reason",
+          "original_bytes",
+          "retained_bytes",
+          "raw_sha256",
+          "export_bytes",
+          "export_sha256",
+          "expires_at"
+        ],
+        "properties": {
+          "artifact_id": {
+            "type": "string"
+          },
+          "binding": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "identity",
+              "phase",
+              "candidate",
+              "validation_id",
+              "generation",
+              "implementation_digest",
+              "environment_digest",
+              "policy_digest"
+            ],
+            "properties": {
+              "identity": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "protocol_version": {
+                    "type": "integer"
+                  },
+                  "requirement_id": {
+                    "type": "integer"
+                  },
+                  "revision": {
+                    "type": "integer"
+                  },
+                  "run_id": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "resource_id": {
+                    "type": "string"
+                  },
+                  "invocation_id": {
+                    "type": "string"
+                  },
+                  "attempt": {
+                    "type": "integer"
+                  },
+                  "config_id": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "protocol_version",
+                  "requirement_id",
+                  "revision",
+                  "run_id",
+                  "resource_id",
+                  "invocation_id",
+                  "attempt",
+                  "config_id"
+                ]
+              },
+              "phase": {
+                "type": "string"
+              },
+              "candidate": {
+                "type": "object",
+                "nullable": true,
+                "additionalProperties": false,
+                "required": [
+                  "sha",
+                  "tree",
+                  "immutable"
+                ],
+                "properties": {
+                  "sha": {
+                    "type": "string"
+                  },
+                  "tree": {
+                    "type": "string"
+                  },
+                  "immutable": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "validation_id": {
+                "type": "string",
+                "nullable": true
+              },
+              "generation": {
+                "type": "integer"
+              },
+              "implementation_digest": {
+                "type": "string"
+              },
+              "environment_digest": {
+                "type": "string"
+              },
+              "policy_digest": {
+                "type": "string"
+              }
+            }
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "media_type": {
+            "type": "string"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "partial",
+              "missing",
+              "expired",
+              "corrupt"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "original_bytes": {
+            "type": "integer",
+            "nullable": true
+          },
+          "retained_bytes": {
+            "type": "integer"
+          },
+          "raw_sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "export_bytes": {
+            "type": "integer"
+          },
+          "export_sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "expires_at": {
+            "type": "integer"
+          }
+        }
+      },
+      "DiagnosticPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifacts",
+          "next"
+        ],
+        "properties": {
+          "artifacts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticArtifact"
+            }
+          },
+          "next": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "DiagnosticChunk": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "artifact",
+          "offset",
+          "next",
+          "end",
+          "unit",
+          "text"
+        ],
+        "properties": {
+          "artifact": {
+            "$ref": "#/components/schemas/DiagnosticArtifact"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "next": {
+            "type": "integer"
+          },
+          "end": {
+            "type": "boolean"
+          },
+          "unit": {
+            "type": "string",
+            "enum": [
+              "bytes"
+            ]
+          },
+          "text": {
+            "type": "string"
           }
         }
       }

@@ -1,0 +1,87 @@
+{
+  "schema": "gh126-frontend-gate-recovery/v1",
+  "recorded_at": "2026-09-27T09:27:21.118484+00:00",
+  "failed_candidate": "980b76efa2965dae4620fe3188f55f04db42d354",
+  "failed_gate_run": "run-2369a69b492e",
+  "failure": "Only frontend.tests failed: TS2591 for node:crypto/Buffer; complete quality profile PASS does not authorize publication.",
+  "change": "Test-only tsconfig.spec.json now includes existing pinned node types; production sources, unit assertions, dependencies and quality policies unchanged.",
+  "frontend_measurement": {
+    "stage": "frontend-source-measurement",
+    "capture": "/tmp/codexsymphony-ts-risk-n4J8j8",
+    "response": "/tmp/codexsymphony-ts-risk-n4J8j8/collector-response.json",
+    "response_sha256": "a50ecdc77d2b1878c95bedfcc40229396235bf5ee1fddcdb81b5df8fffdc9368",
+    "files": 23,
+    "functions": 202,
+    "declarationFiles": 1,
+    "scope_authority": "installed configure.py uses approved declarationOnly inventory grouping; no added exclusions",
+    "coverage_and_crap": "PASS",
+    "violations": []
+  },
+  "checks": [
+    {
+      "phase": "test",
+      "started_at": "2026-09-27T09:26:12.039465+00:00",
+      "status": "PASS",
+      "duration_ms": 13875
+    },
+    {
+      "phase": "lint",
+      "started_at": "2026-09-27T09:26:25.915798+00:00",
+      "status": "PASS",
+      "duration_ms": 4718
+    },
+    {
+      "phase": "build",
+      "started_at": "2026-09-27T09:26:30.635427+00:00",
+      "status": "PASS",
+      "duration_ms": 11284
+    },
+    {
+      "phase": "secrets",
+      "started_at": "2026-09-27T09:26:41.921097+00:00",
+      "status": "PASS",
+      "duration_ms": 10756
+    }
+  ],
+  "frontend_unit_tests": 52,
+  "backend_inputs": "Verified unchanged against original exact backend capture receipt before recovery checks.",
+  "retained_evidence": [
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-2369a69b492e-failure/receipt.json",
+      "sha256": "6e09a421d53ce05c1ec017192f86c83cefc7d395aca0b12e234b6d109edbe577"
+    },
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-2369a69b492e-failure/test_result.json",
+      "sha256": "44567d94d06ae08d46d84752f2aaf3c0c8d36c13e4df43a6b745205e7cb4ee1e"
+    },
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-2369a69b492e-failure/frontend_tests.log",
+      "sha256": "14e6b0fa57d1ea5ce11ca1854de44e20294f8fbe1ef8c7f829fe176696bcc03a"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/frontend-20260927T092511/measurement-summary.json",
+      "sha256": "6fbd1de7ce3fe04808f31aeae9d58c7c365f92590011f352af304d61dfb3394b"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T092552/timings.jsonl",
+      "sha256": "cc0cfdddbaa493ebae0920f9d10bc3ac4011fe8b5daecfd7b4d848669616652f"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T092552/test.stdout",
+      "sha256": "c95a9c869924554c7539726fe7c3b3e64ea09ff35e51d54676f682f099d6f9d9"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T092552/lint.stdout",
+      "sha256": "b8e85c9119350c4d1fc9258f24919b7d6613994ccc102cba6450a7564779e9c2"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T092552/build.stdout",
+      "sha256": "d6e6b5b5eb50e000e546206a09cb47c73edd4168eea58c135ca80515488d7207"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T092552/secrets.stdout",
+      "sha256": "49fb8eb3f7a3eeae5cf509025b5759003751abf57b629f033cc9ebbb65639151"
+    }
+  ],
+  "publication_authority": "New final complete installed Gate receipt required; this recovery record does not authorize publication."
+}

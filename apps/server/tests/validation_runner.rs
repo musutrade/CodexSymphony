@@ -226,7 +226,7 @@ fn hook_call(
     };
     Call {
         identity: InvocationIdentity {
-            protocol_version: 1,
+            protocol_version: 2,
             requirement_id: 120,
             revision: 1,
             run_id: Some("coding".into()),

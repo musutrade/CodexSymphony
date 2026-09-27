@@ -25,6 +25,12 @@ pub mod delivery_control;
 pub mod delivery_remote;
 pub mod delivery_store;
 pub mod delivery_worker;
+pub mod diagnostic_api;
+pub mod diagnostic_capture;
+pub mod diagnostic_service;
+pub mod diagnostic_store;
+pub mod diagnostic_tools;
+pub mod diagnostics;
 pub mod draft;
 pub mod draft_api;
 pub mod execution;
@@ -122,6 +128,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .merge(operator_api::routes())
             .merge(execution_api::routes())
             .merge(validation_api::routes())
+            .merge(diagnostic_api::routes())
             .merge(extension_api::routes())
             .merge(lifecycle_api::routes())
             .merge(runtime_api::routes())

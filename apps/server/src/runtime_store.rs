@@ -254,7 +254,10 @@ pub async fn input(pool: &PgPool, key: &RunKey) -> Result<String> {
             .fetch_optional(pool)
             .await?;
     let constraints = crate::extension_recovery::constraints(pool, &key.run_id).await?;
-    Ok(json!({"approved_adaptation_constraints":constraints,"reviewed_requirement":document,"confirmed_answers":answers,"repair_context":repair,"instruction":"Implement only the reviewed contract. Do not ask answered questions again. Use create_local_commit, then report_completion; report_blocker when unable to proceed. External delivery is platform-owned."}).to_string())
+    let diagnostics = crate::diagnostic_tools::context(pool, key)
+        .await
+        .map_err(diagnostic_error)?;
+    Ok(json!({"diagnostics":diagnostics,"approved_adaptation_constraints":constraints,"reviewed_requirement":document,"confirmed_answers":answers,"repair_context":repair,"instruction":"Implement only the reviewed contract. Do not ask answered questions again. Use create_local_commit, then report_completion; report_blocker when unable to proceed. External delivery is platform-owned."}).to_string())
 }
 
 async fn ending_allowed(tx: &mut Tx<'_>, key: &RunKey, kind: &str, payload: &Value) -> Result<()> {
@@ -334,4 +337,22 @@ async fn ending_session(tx: &mut Tx<'_>, key: &RunKey, original: &Value) -> Resu
     )?;
     validate_session(tx, key, original).await?;
     Ok(())
+}
+
+pub async fn diagnostic_request(pool: &PgPool, key: &RunKey, request: &Value) -> Result<()> {
+    require(
+        request.to_string().len() <= runtime::MAX_REQUEST,
+        "diagnostic request exceeds limit",
+    )?;
+    require(
+        runtime::rpc_id_valid(&request["id"]),
+        "invalid diagnostic RPC ID",
+    )?;
+    let mut tx = run_store::lock(pool).await?;
+    require(allowed(&mut tx, key).await?, "diagnostic Run unavailable")?;
+    validate_session(&mut tx, key, request).await?;
+    tx.commit().await
+}
+fn diagnostic_error(_: Box<dyn std::error::Error + Send + Sync>) -> sqlx::Error {
+    invalid("diagnostic context unavailable")
 }
