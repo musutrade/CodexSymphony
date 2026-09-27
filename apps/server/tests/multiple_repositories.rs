@@ -106,6 +106,12 @@ async fn registration_review_routing_and_global_ownership() {
         routes.selected(&pool).await.unwrap().unwrap().1.preparation["baseline"],
         "first"
     );
+    sqlx::query("UPDATE requirement_revision SET document=document||jsonb_build_object('frozen_model','{}'::jsonb) WHERE requirement_id=1").execute(&pool).await.unwrap();
+    sqlx::query("UPDATE repository SET version=2,document=jsonb_set(document,'{model}', '\"new-default\"'::jsonb) WHERE id=1").execute(&pool).await.unwrap();
+    assert!(routes.selected(&pool).await.unwrap().is_some());
+    sqlx::query("UPDATE repository SET document=jsonb_set(document,'{remote}','\"other/repository\"'::jsonb) WHERE id=1").execute(&pool).await.unwrap();
+    assert!(routes.selected(&pool).await.unwrap().is_none());
+    sqlx::query("UPDATE repository SET version=1,document=(SELECT document->'repository' FROM requirement_revision WHERE requirement_id=1 AND revision=1) WHERE id=1").execute(&pool).await.unwrap();
     sqlx::query("UPDATE requirement SET state='Submitted',paused=true WHERE id=1")
         .execute(&pool)
         .await

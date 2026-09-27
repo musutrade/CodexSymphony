@@ -872,6 +872,7 @@ async fn registered_local_project_runs_real_codex_and_reaches_done() {
             }],
         }),
         settings: runtime_client::Settings {
+            model_capabilities: None,
             startup_seconds: 30,
             response_seconds: 30,
             stall_seconds: 30,

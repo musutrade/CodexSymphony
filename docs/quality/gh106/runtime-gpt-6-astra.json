@@ -1,0 +1,9 @@
+{
+  "boundary": "locked_runtime_local_scripted_provider",
+  "request_effort": "low",
+  "request_model": "gpt-6-astra",
+  "runtime": "rust-runtime-integration/0.157.1 (Ubuntu 26.4.0; x86_64) unknown (rust-runtime-integration; 1)",
+  "thread_effort": "low",
+  "thread_model": "gpt-6-astra",
+  "thread_provider": "runtime_fixture"
+}

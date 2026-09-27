@@ -67,6 +67,11 @@ async fn call(
 
 #[tokio::test]
 async fn real_runtime_transport_and_supervision() {
+    for (model, effort) in [("gpt-6-astra", "low"), ("gpt-6-sol", "high")] {
+        real_runtime_choice(model, effort).await;
+    }
+}
+async fn real_runtime_choice(model: &str, effort: &str) {
     let root = std::env::current_dir().unwrap();
     let directory =
         std::env::temp_dir().join(format!("real-runtime-{}", process::new_identity().unwrap()));
@@ -182,6 +187,9 @@ print(json.dumps({'cwd':str(root),'ordinary_command':True}))
         &mut saved,
         "thread/start",
         json!(wire::ThreadStartParams {
+            model: Some(model.into()),
+            model_provider: Some("runtime_fixture".into()),
+            config: Some(json!({"model_reasoning_effort":effort})),
             cwd: Some(root.to_string_lossy().into_owned()),
             approval_policy: Some(json!("never")),
             sandbox: Some(json!("danger-full-access")),
@@ -193,12 +201,16 @@ print(json.dumps({'cwd':str(root),'ordinary_command':True}))
     )
     .await;
     assert_eq!(started["cwd"], root.to_str().unwrap());
+    let frozen: codexsymphony_server::model_selection::Frozen=serde_json::from_value(json!({"selection":{"config":{"provider":"runtime_fixture","model":model,"effort":effort},"reason":"controlled real Runtime"},"source":"requirement_override","repository_id":1,"repository_version":1,"capability_version":"fixture-v1"})).unwrap();
+    codexsymphony_server::model_selection::check_response(&frozen, &started).unwrap();
     let thread = started["thread"]["id"].clone();
     let turn = call(
         &mut transport,
         &mut saved,
         "turn/start",
         json!(wire::TurnStartParams {
+            model: Some(model.into()),
+            effort: Some(json!(effort)),
             thread_id: thread.as_str().unwrap().into(),
             input: vec![json!({"type":"text","text":"Deterministic test.","text_elements":[]})],
             ..Default::default()
@@ -210,6 +222,17 @@ print(json.dumps({'cwd':str(root),'ordinary_command':True}))
         v["method"] == "item/tool/call"
     })
     .await;
+    {
+        let values = requests.lock().unwrap();
+        assert_eq!(values[0]["model"], model);
+        assert_eq!(values[0]["reasoning"]["effort"], effort);
+        let proof = json!({"boundary":"locked_runtime_local_scripted_provider","runtime":initialized["userAgent"],"thread_model":started["model"],"thread_provider":started["modelProvider"],"thread_effort":started["reasoningEffort"],"request_model":values[0]["model"],"request_effort":values[0]["reasoning"]["effort"]});
+        std::fs::write(
+            std::env::temp_dir().join(format!("gh106-runtime-selection-{}.json", key.run_id)),
+            serde_json::to_vec_pretty(&proof).unwrap(),
+        )
+        .unwrap();
+    }
     let params: codexsymphony_server::runtime_protocol::DynamicToolCallParams =
         serde_json::from_value(tool["params"].clone()).unwrap();
     assert_eq!(params.tool, "report_blocker");

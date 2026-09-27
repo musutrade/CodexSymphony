@@ -158,6 +158,7 @@ async fn tick(f: &Fixture) {
         &codexsymphony_server::runtime_service::Config {
             validation: Some(f.plan.clone()),
             settings: codexsymphony_server::runtime_client::Settings {
+                model_capabilities: None,
                 startup_seconds: 5,
                 response_seconds: 5,
                 stall_seconds: 5,

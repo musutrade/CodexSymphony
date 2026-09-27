@@ -2409,6 +2409,15 @@
     }
   },
   {
+    "id": "requirement-model-identities",
+    "method": "GET",
+    "path": "/api/requirements/{id}/models",
+    "path_parameters": {
+      "id": 900001
+    },
+    "status": 200
+  },
+  {
     "id": "logout",
     "method": "POST",
     "path": "/api/auth/logout",

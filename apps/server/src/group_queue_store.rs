@@ -66,12 +66,14 @@ pub(crate) async fn project_requirement(
         crate::group_review::verification_contract(child, item).map_err(sqlx::Error::Protocol)?;
     let id: i64 = sqlx::query_scalar("INSERT INTO requirement(version,state,contract,repository_id,revision) VALUES(1,'Ready',$1,$2,1) RETURNING id")
         .bind(json!(contract)).bind(repository.id).fetch_one(&mut **tx).await?;
-    let ac_ids: Vec<_> = child
-        .acceptance_criteria
-        .iter()
-        .map(|ac| ac.id.as_str())
-        .collect();
-    let snapshot = json!({"repository_id":repository.id,"revision":1,"contract":contract,"ac_ids":ac_ids,"repository_version":repository.version,"repository":repository.repository,"reviewer":"local-user","group_authorization_id":authorization,"child_revision":item.revision});
+    let mut ac_ids = Vec::new();
+    for ac in &child.acceptance_criteria {
+        ac_ids.push(ac.id.as_str());
+    }
+    let mut snapshot = json!({"repository_id":repository.id,"revision":1,"contract":contract,"ac_ids":ac_ids,"repository_version":repository.version,"repository":repository.repository,"reviewer":"local-user","group_authorization_id":authorization,"child_revision":item.revision});
+    if let Some(frozen) = &item.frozen_model {
+        snapshot["frozen_model"] = json!(frozen);
+    }
     sqlx::query("INSERT INTO requirement_revision VALUES($1,1,$2)")
         .bind(id)
         .bind(snapshot)

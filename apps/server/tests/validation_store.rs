@@ -658,6 +658,7 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
         let config = runtime_service::Config {
             validation: Some(plan.clone()),
             settings: codexsymphony_server::runtime_client::Settings {
+                model_capabilities: None,
                 startup_seconds: 5,
                 response_seconds: 5,
                 stall_seconds: 5,

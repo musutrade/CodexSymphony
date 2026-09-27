@@ -1,0 +1,42 @@
+{
+  "boundary": "prepublication source-bound measurements; final publication requires separate complete host Gate receipt",
+  "backend": {
+    "raw": "/home/gem/gh106-measurements/source-05",
+    "function_count": 2246,
+    "coverage_line_min": {
+      "numerator": 4,
+      "denominator": 5
+    },
+    "coverage_region_min": {
+      "numerator": 8,
+      "denominator": 10
+    },
+    "crap_max": {
+      "numerator": 10,
+      "denominator": 1
+    },
+    "failures": [],
+    "measurement_sha256": "b55573be5789faa2577cbda22c19aa3beeb33769f38c8454bbd8094dc835881a",
+    "bundle_sha256": "ad1eed808ef48f3f20a787216b871223bb32821556334fd40018f5faef183747",
+    "collector": {
+      "name": "rust-source-risk",
+      "version": "0.1.0-rc.7"
+    }
+  },
+  "frontend": {
+    "raw": "/home/gem/gh106-measurements/frontend-02",
+    "file_count": 23,
+    "function_count": 189,
+    "thresholds": {
+      "status": "PASS",
+      "declaration_inventory": [
+        {
+          "path": "src/app/health-response.ts",
+          "sha256": "fffa869ede603e9b5ab3b8ea73585b3f4d4fdaa91e8d627a9c14d70a0cc85103"
+        }
+      ],
+      "failures": []
+    },
+    "measurement_sha256": "f545b596507329f802c817143a19c193db2858f0d270067ec337c1bdd8a0e464"
+  }
+}

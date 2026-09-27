@@ -12,6 +12,7 @@ type Result<T> = std::result::Result<T, (StatusCode, Json<Value>)>;
 
 pub fn routes() -> Router<PgPool> {
     Router::new()
+        .route("/api/requirements/{id}/models", get(models))
         .route("/api/requirements/{id}/questions", get(list))
         .route("/api/questions/{id}/answer", post(answer))
 }
@@ -50,4 +51,11 @@ async fn answer(
         .await
         .map_err(error)?;
     Ok(Json(json!({"question":question})))
+}
+
+async fn models(State(pool): State<PgPool>, Path(id): Path<i64>) -> Result<Json<Value>> {
+    crate::model_runtime::view(&pool, id)
+        .await
+        .map(Json)
+        .map_err(error)
 }

@@ -1,0 +1,6 @@
+{"phase": "dependency-cache-copy", "started_at": "2026-09-26T16:50:12.345862+00:00", "status": "PASS", "duration_ms": 5406}
+{"phase": "format", "started_at": "2026-09-26T16:50:17.752704+00:00", "status": "PASS", "duration_ms": 1589}
+{"phase": "clippy", "started_at": "2026-09-26T16:50:19.342886+00:00", "status": "PASS", "duration_ms": 156769}
+{"phase": "secrets", "started_at": "2026-09-26T16:52:56.112433+00:00", "status": "FAIL", "duration_ms": 166}
+{"phase": "secrets-retry", "started_at": "2026-09-26T16:54:09.904325+00:00", "status": "FAIL", "duration_ms": 288}
+{"phase": "secrets-output", "started_at": "2026-09-26T16:54:30.888066+00:00", "status": "PASS", "duration_ms": 11582}

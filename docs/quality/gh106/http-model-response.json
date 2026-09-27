@@ -1,0 +1,30 @@
+{
+  "boundary": "isolated HTTPS API with historical database fixture; no model execution",
+  "observations": [
+    {
+      "method": "GET",
+      "path": "/api/requirements/900001/models",
+      "status": 200,
+      "content_type": "application/json",
+      "body": {
+        "runs": [
+          {
+            "actual": null,
+            "frozen": null,
+            "matched": null,
+            "revision": 1,
+            "run_id": "capture-run",
+            "usage": []
+          }
+        ]
+      },
+      "operation_path": "/api/requirements/{id}/models"
+    }
+  ],
+  "inputs": {
+    "api/openapi.json": "7a3decf930dfb797b580cd580511b626a95300c30459121f63e6f8cc9052ce03",
+    "api/capture-scenarios.json": "418c61fd60e03bc220b85a066092abe4bb9e0cf96a786e3c2080f887d2967172",
+    "web/angular/src/app/health-response.ts": "fffa869ede603e9b5ab3b8ea73585b3f4d4fdaa91e8d627a9c14d70a0cc85103"
+  },
+  "raw": "/home/gem/gh106-measurements/http-01"
+}

@@ -1,0 +1,320 @@
+{
+  "schema": "gh106-live-fixed-model/v1",
+  "recorded_at": "2026-09-27T00:03:58.453968+00:00",
+  "status": "PASS: bounded real fixed-model identity acceptance",
+  "boundary": "measured product binary, actual pinned Codex app-server and live openai provider; isolated disposable control-plane and repositories",
+  "production_source_tree": "e5d462eedbbb81d49dc7490c65959f47c5e04ec4",
+  "binary": {
+    "at": "2026-09-27T00:00:42.844702+00:00",
+    "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/codexsymphony-server",
+    "sha256": "ce52f48ea77b9a0969e2a00c59a62a61f42e9b61ee48b8234ce6cb77cce08ae0",
+    "exact_source_gate": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-42e49b67fea9",
+    "source_tree": "e5d462eedbbb81d49dc7490c65959f47c5e04ec4",
+    "codex": "/home/gem/.codex/packages/standalone/releases/0.157.1-x86_64-unknown-linux-musl/bin/codex",
+    "codex_sha256": "3e2584f3f3829a43a0495011a1cecb2facbe64a2403e2b682351fd9c2983f970"
+  },
+  "authorization": {
+    "user_reply": "授权",
+    "per_child": {
+      "tokens": 20000,
+      "turns": 1,
+      "model_seconds": 300
+    },
+    "aggregate_tokens": 40000,
+    "automatic_paid_retry": false
+  },
+  "cases": [
+    {
+      "name": "astra",
+      "database": "gh106_astra",
+      "requirement_id": 1,
+      "run_id": "ae8fedd2-958e-46bd-9bce-7c71482a286a",
+      "result": {
+        "at": "2026-09-27T00:00:37.843797+00:00",
+        "status": "PASS",
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "boundary": "measured_product_runtime_live_openai_provider",
+        "paid_turns": 1,
+        "identity_match": true,
+        "expected_blocker": "GH106_LIVE_IDENTITY_ACCEPTED_ASTRA",
+        "usage": {
+          "input": null,
+          "cached": null,
+          "output": null,
+          "complete": false,
+          "model_seconds": 6
+        },
+        "limits": {
+          "tokens": 20000,
+          "turns": 1,
+          "model_seconds": 300
+        },
+        "quiescent": true,
+        "unknown_usage_reservation_retained": true,
+        "source_gate": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-42e49b67fea9",
+        "binary_sha256": "ce52f48ea77b9a0969e2a00c59a62a61f42e9b61ee48b8234ce6cb77cce08ae0",
+        "reconciliation": "Read original account only; no new model call. Initial validator incorrectly required known token counters despite the approved unknown-usage rule.",
+        "scope": "real fixed configuration request/identity and unknown usage retention; coding delivery and full mobile/parent flow are separate"
+      },
+      "models_api": {
+        "runs": [
+          {
+            "actual": {
+              "effort": "low",
+              "model": "gpt-6-astra",
+              "provider": "openai"
+            },
+            "frozen": {
+              "capability_version": "gh106-live-v1",
+              "repository_id": 1,
+              "repository_version": 2,
+              "selection": {
+                "config": {
+                  "effort": "low",
+                  "model": "gpt-6-astra",
+                  "provider": "openai"
+                },
+                "reason": "bounded live acceptance project default"
+              },
+              "source": "project_default"
+            },
+            "matched": true,
+            "revision": 1,
+            "run_id": "ae8fedd2-958e-46bd-9bce-7c71482a286a",
+            "usage": [
+              {
+                "call_id": "6b9cf09e-2cee-4dfb-87ea-5bb8fa28e85e",
+                "reserved": {
+                  "model_seconds": 300,
+                  "tokens": 20000,
+                  "turns": 1
+                },
+                "usage": {
+                  "cached": null,
+                  "complete": false,
+                  "input": null,
+                  "model_seconds": 6,
+                  "output": null
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "budget": {
+        "limits": {
+          "turns": 1,
+          "tokens": 20000,
+          "model_seconds": 300
+        },
+        "version": 1,
+        "exhausted": false,
+        "requirement_id": 1
+      },
+      "authorization_count": 1,
+      "calls": 1,
+      "evidence": [
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/result.json",
+          "sha256": "a69d44aeb289d3e57b93e39f7d1fa56359d8b1dacb6c2cbf082fe71e37f5d450",
+          "bytes": 1040
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/ready.json",
+          "sha256": "fe2d62625376f05ddee6a75054b294a915e95527623e71e4603691cdbca3c80c",
+          "bytes": 5255
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/models-api.json",
+          "sha256": "0d9c4815f53ab21d06af4fe930b9f2dbf905402156c4846a58b56fd65d496785",
+          "bytes": 1052
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/facts.json",
+          "sha256": "0e3aa030be58692bfba3265c4e20c8cac09f8f196735e308e7fe3491f987bb50",
+          "bytes": 9655
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/facts-after-stop.json",
+          "sha256": "0e3aa030be58692bfba3265c4e20c8cac09f8f196735e308e7fe3491f987bb50",
+          "bytes": 9655
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/protocol.jsonl",
+          "sha256": "d167b6725d65f793e60cafc4fda128785059854c9a79ffbe09129b682b785d40",
+          "bytes": 16967
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/attempt-start.json",
+          "sha256": "5957a28c5d7a7982f1dbe10b170c35d41dc806c96c8224e019bfda6437475360",
+          "bytes": 392
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/service-stop.json",
+          "sha256": "8b81fec1ef530b1080a16980450e36296b956ea457165040a7c87064576447bc",
+          "bytes": 84
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/operator/runtime.json",
+          "sha256": "e250d1ad0133a261f826f1426f336f308d7abe78628b5459078d2cb1b7d1bb93",
+          "bytes": 2884
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/astra/operator/environment-plan.json",
+          "sha256": "9f821edea2854dd2ba0a891737ab0ac5e6adf5938035d5dd1cc5c95654d321e7",
+          "bytes": 1789
+        }
+      ]
+    },
+    {
+      "name": "sol",
+      "database": "gh106_sol",
+      "requirement_id": 1,
+      "run_id": "937271e3-1415-425d-b229-e5240921953e",
+      "result": {
+        "at": "2026-09-27T00:01:04.261763+00:00",
+        "status": "PASS",
+        "model": "gpt-6-sol",
+        "effort": "high",
+        "boundary": "measured_product_runtime_live_openai_provider",
+        "paid_turns": 1,
+        "identity_match": true,
+        "expected_blocker": "GH106_LIVE_IDENTITY_ACCEPTED_SOL",
+        "usage": {
+          "input": null,
+          "cached": null,
+          "output": null,
+          "complete": false,
+          "model_seconds": 5
+        },
+        "limits": {
+          "tokens": 20000,
+          "turns": 1,
+          "model_seconds": 300
+        },
+        "quiescent": true,
+        "unknown_usage_reservation_retained": true,
+        "source_gate": "/home/gem/.local/share/codexsymphony/gate-host/runs/run-42e49b67fea9",
+        "binary_sha256": "ce52f48ea77b9a0969e2a00c59a62a61f42e9b61ee48b8234ce6cb77cce08ae0",
+        "scope": "real fixed configuration request/identity/usage; coding delivery and full mobile/parent flow are separate"
+      },
+      "models_api": {
+        "runs": [
+          {
+            "actual": {
+              "effort": "high",
+              "model": "gpt-6-sol",
+              "provider": "openai"
+            },
+            "frozen": {
+              "capability_version": "gh106-live-v1",
+              "repository_id": 1,
+              "repository_version": 2,
+              "selection": {
+                "config": {
+                  "effort": "high",
+                  "model": "gpt-6-sol",
+                  "provider": "openai"
+                },
+                "reason": "bounded live acceptance explicit override"
+              },
+              "source": "requirement_override"
+            },
+            "matched": true,
+            "revision": 1,
+            "run_id": "937271e3-1415-425d-b229-e5240921953e",
+            "usage": [
+              {
+                "call_id": "213d3ae5-422d-4619-aff0-03ec3eea36ed",
+                "reserved": {
+                  "model_seconds": 300,
+                  "tokens": 20000,
+                  "turns": 1
+                },
+                "usage": {
+                  "cached": null,
+                  "complete": false,
+                  "input": null,
+                  "model_seconds": 5,
+                  "output": null
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "budget": {
+        "limits": {
+          "turns": 1,
+          "tokens": 20000,
+          "model_seconds": 300
+        },
+        "version": 1,
+        "exhausted": false,
+        "requirement_id": 1
+      },
+      "authorization_count": 1,
+      "calls": 1,
+      "evidence": [
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/result.json",
+          "sha256": "37856f387d9f6187b1f4d26d1bc8748ff23fac56e8cacb9908887087065370fe",
+          "bytes": 844
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/ready.json",
+          "sha256": "df17d3a0edb5344fa387593d8590d630c4bf40df17e63d5c1d097231dc697203",
+          "bytes": 5681
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/models-api.json",
+          "sha256": "44f617e4cc493074763cdb4d99122273fd654e7141d679ed83218a92d0ba8f83",
+          "bytes": 1057
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/facts.json",
+          "sha256": "678ad134058f4182fc7edc4efb42a062ac7d194c6c6f67dd63b819eeb25e4faa",
+          "bytes": 9863
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/facts-after-stop.json",
+          "sha256": "ea421b78fb2c80e8c0217bcb9bd2890f9af8f230bb8d3f4b49251b207920ee2b",
+          "bytes": 9862
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/protocol.jsonl",
+          "sha256": "6b184644c6a3841f41986952407bf79d1cd832c509d24c99b452ce7defe5f11b",
+          "bytes": 14744
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/attempt-start.json",
+          "sha256": "efdb70f1db8be5ff2a7d36ed9bd5320b2af2495e0294a6a4e647a73e2efae6a8",
+          "bytes": 387
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/service-stop.json",
+          "sha256": "8fc6a954e281539a672e00b07ae1954c67fcec715411be4d2df7f5d5268bd957",
+          "bytes": 84
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/operator/runtime.json",
+          "sha256": "6b7be1dd15e01cd5271fb07e7047934aa14711d1fc9579554d10d38fc1a8518e",
+          "bytes": 2870
+        },
+        {
+          "path": "/home/gem/.local/share/codexsymphony/gh106-acceptance/live/sol/operator/environment-plan.json",
+          "sha256": "7f484112ef32d3c0353a029d7762cc8ba575ed7a8602548fce257290b0069b5d",
+          "bytes": 1781
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Each child is an independent original Requirement account; the real two-child group review and default/override freeze remain covered by the measured group_review test.",
+    "Expected blocker is a deliberate smoke stopping condition, not a product Done or coding-delivery acceptance.",
+    "thread/start identity is the app-server acknowledgement, not an independent per-turn provider model receipt.",
+    "Token counters did not arrive before stop; input/cached/output stay null and complete remains false. Both complete original reservations remain held; actual token spend cannot be inferred.",
+    "No real resume/repair turns, production deployment, merge or full mobile/parent integration are claimed. Existing measured regression scenarios cover those applicable Runtime code paths."
+  ]
+}

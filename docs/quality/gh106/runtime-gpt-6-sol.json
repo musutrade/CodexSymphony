@@ -1,0 +1,9 @@
+{
+  "boundary": "locked_runtime_local_scripted_provider",
+  "request_effort": "high",
+  "request_model": "gpt-6-sol",
+  "runtime": "rust-runtime-integration/0.157.1 (Ubuntu 26.4.0; x86_64) unknown (rust-runtime-integration; 1)",
+  "thread_effort": "high",
+  "thread_model": "gpt-6-sol",
+  "thread_provider": "runtime_fixture"
+}

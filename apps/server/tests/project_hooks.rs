@@ -1400,3 +1400,57 @@ async fn repository_scope_denies_real_hook_before_process_or_intent() {
     pool.close().await;
     fs::remove_dir_all(root).unwrap();
 }
+
+#[tokio::test]
+async fn hook_configuration_keeps_the_reviewed_model_override() {
+    let _env = SUPERVISOR_ENV.lock().await;
+    let root = temp();
+    let repo = repository(json!([]));
+    let pool = fixture(&repo).await;
+    let (launch, workspace) = identities(&root);
+    let config = json!({"provider":"runtime_fixture","model":"fixture-selected","effort":"high"});
+    let frozen = json!({"selection":{"config":config,"reason":"explicit child"},"source":"requirement_override","repository_id":1,"repository_version":1,"capability_version":"v1"});
+    sqlx::query("UPDATE requirement_revision SET document=document||jsonb_build_object('frozen_model',$1::jsonb)").bind(&frozen).execute(&pool).await.unwrap();
+    assert!(
+        project_hooks::register(&pool, &launch, &workspace, HookRole::Coding, &Value::Null)
+            .await
+            .is_err()
+    );
+    let path = root.join("runtime.json");
+    let settings = json!({"model_capabilities":{"version":"v1","repositories":[1],"agent":{"name":"codex","models":[config],"reliable_stop":true,"resume":true,"cancel":true,"structured_events":true,"usage_reporting":true}},"startup_seconds":5,"response_seconds":5,"stall_seconds":5,"reservation":{"tokens":100,"turns":1,"model_seconds":30},"codex_config":""});
+    let runtime = json!({"settings":settings,"preparation_adapter":"/bin/true","preparation":{"launcher":["/bin/true"]}});
+    fs::write(&path, runtime.to_string()).unwrap();
+    unsafe {
+        std::env::set_var("RUNTIME_CONFIG", &path);
+    }
+    codexsymphony_server::model_review::runtime_registration(
+        1,
+        &serde_json::from_value(repo.clone()).unwrap(),
+    )
+    .unwrap();
+    let routes = json!({"repositories":{"1":{"github_repository_id":123,"remote":"test/project","base_branch":"main","version":2,"runtime":runtime}}});
+    fs::write(&path, routes.to_string()).unwrap();
+    assert!(
+        codexsymphony_server::model_review::runtime_registration(
+            2,
+            &serde_json::from_value(repo).unwrap()
+        )
+        .is_err()
+    );
+    assert!(
+        !project_hooks::register(&pool, &launch, &workspace, HookRole::Coding, &Value::Null)
+            .await
+            .unwrap()
+    );
+    let saved: Value = sqlx::query_scalar("SELECT frozen FROM project_hook_run WHERE run_id=$1")
+        .bind(&launch.key.run_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+    assert_eq!(saved["value"]["model"], config);
+    unsafe {
+        std::env::remove_var("RUNTIME_CONFIG");
+    }
+    pool.close().await;
+    fs::remove_dir_all(root).unwrap();
+}

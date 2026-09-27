@@ -29,6 +29,7 @@ impl Write for FailAfter {
 
 fn legacy() -> Repository {
     Repository {
+        model_selection: None,
         delivery: None,
         environment: None,
         model: Some("reviewed-model".into()),

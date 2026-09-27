@@ -170,7 +170,7 @@ pub(crate) async fn insert_run(
     revision: i64,
     launch: &Launch,
 ) -> Result<()> {
-    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,model) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'Created',(SELECT document#>>'{repository,model}' FROM execution_revision WHERE requirement_id=$2 AND revision=$3))")
+    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,model) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'Created',(SELECT COALESCE(document#>>'{frozen_model,selection,config,model}',document#>>'{repository,model}') FROM execution_revision WHERE requirement_id=$2 AND revision=$3))")
         .bind(&launch.key.run_id).bind(id).bind(revision).bind(&launch.key.incarnation)
         .bind(&launch.key.request_id).bind(&launch.workspace).bind(&launch.workspace_identity)
         .bind(sqlx::types::Json(launch))

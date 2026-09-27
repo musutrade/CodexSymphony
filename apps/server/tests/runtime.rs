@@ -577,14 +577,20 @@ async fn ending_race(root: &Path, git: &GitBroker) {
 }
 
 async fn full_client(root: &Path, git: &GitBroker) {
-    full_client_scenario(root, git, client_code(), 1).await;
+    full_client_scenario(root, git, client_code(), 1, None).await;
     let question_root = temporary();
     let code = client_code().replace("  send({'id':77,'method':'item/tool/call'", "  if int(marker.read_text())==1:\n   send({'id':'q','method':'item/tool/requestUserInput','params':{'threadId':'thread','turnId':'turn','itemId':'q','isBlocking':True,'questions':[{'id':'choice','question':'Choose?'}]}})\n   continue\n  send({'id':77,'method':'item/tool/call'")
         .replace(" elif r.get('id')==77:", " elif r.get('id')=='q':\n  send({'method':'item/agentMessage/delta','params':{'threadId':'thread','turnId':'turn','delta':'accepted'}})\n  send({'method':'turn/completed','params':{'threadId':'thread','turn':{'id':'turn','status':'completed'}}})\n elif r.get('id')==77:");
-    full_client_scenario(&question_root, git, &code, 2).await;
+    full_client_scenario(&question_root, git, &code, 2, None).await;
     std::fs::remove_dir_all(question_root).unwrap();
 }
-async fn full_client_scenario(root: &Path, git: &GitBroker, code: &str, turns: usize) {
+async fn full_client_scenario(
+    root: &Path,
+    git: &GitBroker,
+    code: &str,
+    turns: usize,
+    model: Option<(&str, &str)>,
+) {
     let pool = fixture(root).await;
     if turns == 1 {
         // A real DB write longer than the idle receive poll must not swallow
@@ -604,7 +610,8 @@ async fn full_client_scenario(root: &Path, git: &GitBroker, code: &str, turns: u
         .execute(&pool)
         .await
         .unwrap();
-    let settings = runtime_client::Settings {
+    let mut settings = runtime_client::Settings {
+        model_capabilities: None,
         startup_seconds: 5,
         response_seconds: 5,
         stall_seconds: 5,
@@ -615,6 +622,21 @@ async fn full_client_scenario(root: &Path, git: &GitBroker, code: &str, turns: u
         },
         codex_config: String::new(),
     };
+    if let Some((model, effort)) = model {
+        let selection = json!({"config":{"provider":"openai","model":model,"effort":effort},"reason":"reviewed fixture"});
+        let registration:codexsymphony_server::model_selection::Registration=serde_json::from_value(json!({"version":"fixture-v1","repositories":[1],"agent":{"name":"codex","models":[selection["config"]],"reliable_stop":true,"resume":true,"cancel":true,"structured_events":true,"usage_reporting":true}})).unwrap();
+        let frozen = codexsymphony_server::model_selection::freeze(
+            Some(&serde_json::from_value(selection).unwrap()),
+            None,
+            1,
+            1,
+            Some(&registration),
+        )
+        .unwrap()
+        .unwrap();
+        sqlx::query("UPDATE requirement_revision SET document=document||jsonb_build_object('frozen_model',$1::jsonb)").bind(json!(frozen)).execute(&pool).await.unwrap();
+        settings.model_capabilities = Some(registration);
+    }
     let answering = if turns == 2 {
         let pool = pool.clone();
         Some(tokio::spawn(async move {
@@ -693,6 +715,24 @@ async fn full_client_scenario(root: &Path, git: &GitBroker, code: &str, turns: u
     })
     .await
     .unwrap();
+    if let Some((model, effort)) = model {
+        let facts = codexsymphony_server::model_runtime::view(&pool, 1)
+            .await
+            .unwrap();
+        assert_eq!(facts["runs"][0]["actual"]["model"], model);
+        assert_eq!(facts["runs"][0]["actual"]["effort"], effort);
+        assert_eq!(facts["runs"][0]["matched"], true);
+        assert_eq!(facts["runs"][0]["usage"].as_array().unwrap().len(), turns);
+        let evidence = json!({"boundary":"scripted_runtime_protocol","facts":facts});
+        std::fs::write(
+            std::env::temp_dir().join(format!(
+                "gh106-protocol-selection-{}.json",
+                process::new_identity().unwrap()
+            )),
+            serde_json::to_vec_pretty(&evidence).unwrap(),
+        )
+        .unwrap();
+    }
     pool.close().await;
 }
 
@@ -984,6 +1024,7 @@ print(json.dumps({'deployment_identity':'fixture','execution_identity':'sandbox'
     let mut config = runtime_service::Config {
         validation: None,
         settings: runtime_client::Settings {
+            model_capabilities: None,
             startup_seconds: 5,
             response_seconds: 5,
             stall_seconds: 5,
@@ -1465,6 +1506,7 @@ async fn failed_protocol_sessions(git: &GitBroker) {
             .await
             .unwrap();
         let settings = runtime_client::Settings {
+            model_capabilities: None,
             startup_seconds: 5,
             response_seconds: 5,
             stall_seconds: 5,
@@ -1608,6 +1650,7 @@ async fn pinned_codex_full_client_survives_idle_provider_response() {
         .await
         .unwrap();
     let settings = runtime_client::Settings {
+        model_capabilities: None,
         startup_seconds: 30,
         response_seconds: 30,
         stall_seconds: 30,
@@ -1701,6 +1744,146 @@ async fn repository_scope_blocks_start_and_stops_continuation_without_resetting_
         .await
         .unwrap();
     assert_eq!(count, 1);
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[tokio::test]
+async fn fixed_model_protocol_dispatch_preserves_each_choice_and_identity() {
+    let _scenario = DATABASE_SCENARIO.lock().await;
+    for (model, effort) in [("fixture-a", "low"), ("fixture-b", "high")] {
+        let root = temporary();
+        let git = broker(&root.join("broker"));
+        let code=client_code()
+            .replace("elif m=='thread/start':send({'id':r['id'],'result':{'cwd':os.getcwd(),'thread':{'id':'thread','cwd':os.getcwd()}}})", &format!("elif m=='thread/start':\n  assert p['model']=={model:?} and p['modelProvider']=='openai' and p['config']['model_reasoning_effort']=={effort:?}\n  assert p['allowProviderModelFallback']==False\n  send({{'id':r['id'],'result':{{'cwd':os.getcwd(),'thread':{{'id':'thread','cwd':os.getcwd()}},'model':p['model'],'modelProvider':p['modelProvider'],'reasoningEffort':p['config']['model_reasoning_effort']}}}})"))
+            .replace("elif m=='turn/start':", &format!("elif m=='turn/start':\n  assert p['model']=={model:?} and p['effort']=={effort:?}"));
+        let (code, turns) = if model == "fixture-b" {
+            (code.replace("  send({'id':77", "  if marker.read_text()=='1':\n   send({'id':'question-rpc','method':'item/tool/requestUserInput','params':{'threadId':'thread','turnId':'turn','itemId':'question','isBlocking':True,'questions':[{'id':'choice','question':'Confirm'}]}})\n  else: send({'id':77").replace(" elif r.get('id')==77:", " elif r.get('id')=='question-rpc':\n  send({'method':'turn/completed','params':{'threadId':'thread','turn':{'id':'turn','status':'completed'}}})\n elif r.get('id')==77:"), 2)
+        } else {
+            (code, 1)
+        };
+        full_client_scenario(&root, &git, &code, turns, Some((model, effort))).await;
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[tokio::test]
+async fn model_identity_mismatch_and_corrupt_snapshots_fail_without_spending() {
+    use codexsymphony_server::{model_runtime, model_selection};
+    let _scenario = DATABASE_SCENARIO.lock().await;
+    let root = temporary();
+    let pool = fixture(&root).await;
+    assert!(model_runtime::load(&pool, &key()).await.unwrap().is_none());
+    sqlx::query(
+        "UPDATE requirement_revision SET document=document||'{\"frozen_model\":{}}'::jsonb",
+    )
+    .execute(&pool)
+    .await
+    .unwrap();
+    assert!(model_runtime::load(&pool, &key()).await.is_err());
+    let frozen:model_selection::Frozen=serde_json::from_value(json!({"selection":{"config":{"provider":"openai","model":"fixture-a","effort":"low"},"reason":"fixture"},"source":"requirement_override","repository_id":1,"repository_version":1,"capability_version":"v1"})).unwrap();
+    assert!(
+        model_runtime::admit(&pool, &key(), &frozen, None)
+            .await
+            .is_err()
+    );
+    let registration:model_selection::Registration=serde_json::from_value(json!({"version":"v1","repositories":[2],"agent":{"name":"codex","models":[frozen.selection.config],"reliable_stop":true,"resume":true,"cancel":true,"structured_events":true,"usage_reporting":true}})).unwrap();
+    assert!(
+        model_runtime::admit(&pool, &key(), &frozen, Some(&registration))
+            .await
+            .is_err()
+    );
+    let mut changed = registration.clone();
+    changed.repositories = vec![1];
+    changed.version = "v2".into();
+    assert!(
+        model_runtime::admit(&pool, &key(), &frozen, Some(&changed))
+            .await
+            .is_err()
+    );
+
+    assert!(
+        model_runtime::record(
+            &pool,
+            &key(),
+            &frozen,
+            &json!({"model":"wrong","modelProvider":"openai","reasoningEffort":"low"})
+        )
+        .await
+        .is_err()
+    );
+    let facts = model_runtime::view(&pool, 1).await.unwrap();
+    assert_eq!(facts["runs"][0]["matched"], false);
+    assert_eq!(facts["runs"][0]["usage"], json!([]));
+    sqlx::query("UPDATE requirement_revision SET document=jsonb_set(document,'{frozen_model}',$1)")
+        .bind(json!(frozen))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let mut stale = key();
+    stale.request_id = "obsolete-request".into();
+    assert!(model_runtime::prepare(&pool, &stale, None).await.is_err());
+    assert!(
+        !sqlx::query_scalar::<_, bool>(
+            "SELECT stop_requested FROM agent_run WHERE id='runtime-test'"
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap()
+    );
+    let launch = Launch {
+        key: key(),
+        workspace: root.to_string_lossy().into_owned(),
+        workspace_identity: "fixture".into(),
+        program: "/bin/true".into(),
+        args: vec![],
+    };
+    let settings = runtime_client::Settings {
+        model_capabilities: None,
+        startup_seconds: 5,
+        response_seconds: 5,
+        stall_seconds: 5,
+        reservation: Amount {
+            tokens: 100,
+            turns: 1,
+            model_seconds: 30,
+        },
+        codex_config: String::new(),
+    };
+    let git = broker(&root.join("broker"));
+    assert!(
+        runtime_client::execute(
+            &pool,
+            &root,
+            Path::new(env!("CARGO_BIN_EXE_codexsymphony-server")),
+            &git,
+            &launch,
+            &settings
+        )
+        .await
+        .is_err()
+    );
+    assert!(!root.join("runtime-test").exists());
+    let counts:(i64,i64,bool)=sqlx::query_as("SELECT (SELECT count(*) FROM runtime_session),(SELECT count(*) FROM model_call),stop_requested FROM agent_run WHERE id='runtime-test'").fetch_one(&pool).await.unwrap();
+    assert_eq!(counts, (0, 0, true));
+
+    use tower::ServiceExt;
+    let router = codexsymphony_server::runtime_api::routes().with_state(pool.clone());
+    let response = router
+        .oneshot(
+            axum::http::Request::builder()
+                .uri("/api/requirements/1/models")
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), 200);
+    let bytes = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    assert_eq!(serde_json::from_slice::<Value>(&bytes).unwrap(), facts);
+
     pool.close().await;
     std::fs::remove_dir_all(root).unwrap();
 }

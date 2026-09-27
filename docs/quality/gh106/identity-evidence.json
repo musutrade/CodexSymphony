@@ -1,0 +1,31 @@
+{
+  "source_capture": "/home/gem/gh106-measurements/source-05",
+  "records": [
+    {
+      "path": "protocol-fixture-a.json",
+      "raw_path": "/home/gem/gh106-measurements/source-05/tmp/gh106-protocol-selection-02c71b65-1e73-4fe3-a077-4e7461052e56.json",
+      "sha256": "0b31f37307d81be0f3cfa6fdc1be995ae575391eec0818db75c9a4ff795cccdd",
+      "boundary": "scripted_runtime_protocol"
+    },
+    {
+      "path": "protocol-fixture-b.json",
+      "raw_path": "/home/gem/gh106-measurements/source-05/tmp/gh106-protocol-selection-258dc86a-dee3-4489-a209-88380b7606ba.json",
+      "sha256": "fcfea7de0d2d93faac389d8b7888aa20490fc3a8aa0bafdabca4865e013c18b5",
+      "boundary": "scripted_runtime_protocol"
+    },
+    {
+      "path": "runtime-gpt-6-astra.json",
+      "raw_path": "/home/gem/gh106-measurements/source-05/tmp/gh106-runtime-selection-751e2999-b658-4749-95e8-4211f02b920e.json",
+      "sha256": "df782eb4b3f3c1af2d3c41050fbb52b14b222bcd1202c3e591bf1cd2a204cb98",
+      "boundary": "locked_runtime_local_scripted_provider"
+    },
+    {
+      "path": "runtime-gpt-6-sol.json",
+      "raw_path": "/home/gem/gh106-measurements/source-05/tmp/gh106-runtime-selection-9fcdeddd-eebf-438a-8018-2e377db9678b.json",
+      "sha256": "a0e2846e6ad209685d66b3fe40ad61934e080c8b7c93e25c01244a62e71806f5",
+      "boundary": "locked_runtime_local_scripted_provider"
+    }
+  ],
+  "online_paid_calls": 0,
+  "product_full_chain_acceptance": false
+}

@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Contract {
+    pub model_selection: Option<crate::model_selection::Selection>,
     pub development_constraints: Option<Vec<crate::development_constraints::Constraint>>,
     pub title: String,
     pub description: String,
@@ -17,11 +18,13 @@ impl Serialize for Contract {
         use serde::ser::SerializeStruct;
         let mut value = serializer.serialize_struct(
             "Contract",
-            5 + usize::from(self.development_constraints.is_some()),
+            5 + usize::from(self.development_constraints.is_some())
+                + usize::from(self.model_selection.is_some()),
         )?;
         if let Some(constraints) = &self.development_constraints {
             value.serialize_field("development_constraints", constraints)?;
         }
+        crate::model_selection::serialize_selection(&mut value, self.model_selection.as_ref())?;
         value.serialize_field("title", &self.title)?;
         value.serialize_field("description", &self.description)?;
         value.serialize_field("acceptance_criteria", &self.acceptance_criteria)?;
@@ -58,6 +61,7 @@ pub struct Policy {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct Repository {
+    pub model_selection: Option<crate::model_selection::Selection>,
     pub delivery: Option<crate::extension_contract::DeliveryMode>,
     pub environment: Option<crate::environment::Plan>,
     pub model: Option<String>,
@@ -74,8 +78,11 @@ pub struct Repository {
 impl Serialize for Repository {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeStruct;
-        let mut value = serializer
-            .serialize_struct("Repository", 9 + usize::from(self.environment.is_some()))?;
+        let mut value = serializer.serialize_struct(
+            "Repository",
+            9 + usize::from(self.environment.is_some())
+                + usize::from(self.model_selection.is_some()),
+        )?;
         if let Some(plan) = &self.environment {
             let text = serde_json::to_string(plan).map_err(serde::ser::Error::custom)?;
             value.serialize_field("environment", &text)?;
@@ -110,6 +117,7 @@ impl Repository {
         &self,
         value: &mut S,
     ) -> Result<(), S::Error> {
+        crate::model_selection::serialize_selection(value, self.model_selection.as_ref())?;
         value.serialize_field("model", &self.model)?;
         value.serialize_field("hooks", &self.hooks)?;
         value.serialize_field("project", &self.project)?;
@@ -124,6 +132,7 @@ impl Repository {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RepositoryWire {
+    model_selection: Option<crate::model_selection::Selection>,
     delivery: Option<crate::extension_contract::DeliveryMode>,
     environment: Option<String>,
     model: Option<String>,
@@ -148,12 +157,9 @@ impl<'de> Deserialize<'de> for Repository {
             serde_json::json!(0),
         )?;
         Ok(Self {
+            model_selection: wire.model_selection,
             delivery: wire.delivery,
-            environment: wire
-                .environment
-                .map(|text| serde_json::from_str(&text))
-                .transpose()
-                .map_err(serde::de::Error::custom)?,
+            environment: decode_environment(wire.environment).map_err(serde::de::Error::custom)?,
             model: wire.model,
             hooks: wire.hooks.unwrap_or_default(),
             project: wire.project,
@@ -356,4 +362,13 @@ pub fn authorize(contract: &Contract, repository: &Repository) -> Result<(), &'s
         )?;
     }
     Ok(())
+}
+
+fn decode_environment(
+    text: Option<String>,
+) -> Result<Option<crate::environment::Plan>, serde_json::Error> {
+    match text {
+        Some(text) => Ok(Some(serde_json::from_str(&text)?)),
+        None => Ok(None),
+    }
 }
