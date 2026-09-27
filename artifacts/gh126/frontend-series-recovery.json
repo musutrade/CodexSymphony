@@ -1,0 +1,104 @@
+{
+  "schema": "gh126-frontend-series-recovery/v1",
+  "recorded_at": "2026-09-27T10:02:04.400612+00:00",
+  "failed_candidate": "0e4504e",
+  "failed_gate_run": "run-c8d8abdde236",
+  "failure": "Raw captures completed; installed host rejected generated quality configuration because tsconfig.spec.json changed frontend measurement pipeline identity. No publication or host/policy update.",
+  "final_change": "Restore original test tsconfig. Unit test uses TextEncoder for UTF-8 byte lengths, independent expected SHA256 fixture, and typed Vitest importActual for real WebCrypto; no Node ambient type configuration change and no weakened assertion.",
+  "frontend_measurement": {
+    "stage": "frontend-source-measurement",
+    "capture": "/tmp/codexsymphony-ts-risk-G9uq3W",
+    "response": "/tmp/codexsymphony-ts-risk-G9uq3W/collector-response.json",
+    "response_sha256": "59b6626ecf7fd24c2e47fc04b38dd0befe3fa8ca6bf5f2c066d2298d8d05636a",
+    "files": 23,
+    "functions": 202,
+    "declarationFiles": 1,
+    "scope_authority": "installed configure.py uses approved declarationOnly inventory grouping; no added exclusions",
+    "coverage_and_crap": "PASS",
+    "violations": []
+  },
+  "preliminary_configuration_check": {
+    "series": "measurement-series/v1:1e1fe9140b2fce23cc071628cf245140cfa5b0e2736c29ee6441e5654c9e10aa",
+    "config_files_match_installed_approval": true,
+    "differences": {},
+    "not_gate_admission": true
+  },
+  "checks": [
+    {
+      "phase": "test",
+      "started_at": "2026-09-27T10:00:24.333834+00:00",
+      "status": "PASS",
+      "duration_ms": 13508
+    },
+    {
+      "phase": "lint",
+      "started_at": "2026-09-27T10:00:37.842979+00:00",
+      "status": "PASS",
+      "duration_ms": 4812
+    },
+    {
+      "phase": "build",
+      "started_at": "2026-09-27T10:00:42.656378+00:00",
+      "status": "PASS",
+      "duration_ms": 9479
+    },
+    {
+      "phase": "secrets",
+      "started_at": "2026-09-27T10:00:52.137140+00:00",
+      "status": "PASS",
+      "duration_ms": 10942
+    }
+  ],
+  "frontend_unit_tests": 52,
+  "retained_evidence": [
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-c8d8abdde236-failure/receipt.json",
+      "sha256": "0197184c82a3152e28e7f6f690f287ff762f516f001afea411fc2e6b5e2cd149"
+    },
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-c8d8abdde236-failure/gate.stdout",
+      "sha256": "695bcbc7bb51055d1c4d67f035202df6a536be65e12c186538ef4f0553631cda"
+    },
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-c8d8abdde236-failure/gate.stderr",
+      "sha256": "a2f2d497634ec2bf2a26160315f127973ddbf606fc062c6df2a8146975e53c97"
+    },
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-c8d8abdde236-failure/timings.jsonl",
+      "sha256": "660cf55c2a97d0f0b0dd1bbf246ea786120c72dfecd24ba98cb2551719dea480"
+    },
+    {
+      "path": "/home/gem/gh126-measurements/readiness/gate-c8d8abdde236-failure/series.json",
+      "sha256": "608d70c07087f7fed1bb3c79f6842e1dd9e93948c2120365c2cbf15dc05f3399"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/frontend-20260927T095904/measurement-summary.json",
+      "sha256": "2405fd92ab475af76c90f75f002289d9ecdf8682c9f26c65d794fc6c2093e2b2"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/measurements/frontend-20260927T095904/approved-series-readiness.json",
+      "sha256": "4fdc668ce9539ac2ce9f2139da3099aa3d171243b0544fbbe60b8353c8120a66"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T100005/timings.jsonl",
+      "sha256": "1f9fa7bae7081ea6094e0551f1b986bfdab4c822f6b3a93cf1b96af8e785196a"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T100005/test.stdout",
+      "sha256": "f5f4d5197676ebcfd4d9191bf35fd51afa480f47cefab60ffe2c15e769a94f53"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T100005/lint.stdout",
+      "sha256": "b8e85c9119350c4d1fc9258f24919b7d6613994ccc102cba6450a7564779e9c2"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T100005/build.stdout",
+      "sha256": "4fb302f2b67eddcf22e848bd75ca6ccbe31c357970ba5cd7aa091f35ad50a120"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh126-development/checks-20260927T100005/secrets.stdout",
+      "sha256": "49fb8eb3f7a3eeae5cf509025b5759003751abf57b629f033cc9ebbb65639151"
+    }
+  ],
+  "publication_authority": "New frozen exact-tree full installed Gate receipt required."
+}

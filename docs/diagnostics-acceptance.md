@@ -46,9 +46,11 @@
 
 ## 最终 Gate 前端测试恢复
 
-候选 `980b76e` 的 `run-2369a69b492e` 完整质量测量通过，但 `frontend.tests` 因测试配置缺少 Node 类型而编译失败，故整体 FAIL，未发布。已在测试专用 `tsconfig.spec.json` 引用已锁定的 Node 类型；生产行为、测试断言、依赖和质量策略不变。
+候选 `980b76e` 的 `run-2369a69b492e` 完整质量测量通过，但 `frontend.tests` 因 Node 类型缺失而编译失败，故整体 FAIL，未发布。首次在测试配置加入已有 Node 类型后，52 个单元测试与手工测量通过；随后 `0e4504e` 的 `run-c8d8abdde236` 完成原始采集，但测试配置变化改变了已批准的前端测量系列，安装宿主在签名前拒绝继续。两次失败原件均保留，未修改批准文件或策略。第一次恢复记录见 [原恢复证据](../artifacts/gh126/frontend-gate-recovery.json)。
 
-修复后，`frontend-20260927T092511` 的原始源码覆盖率与 CRAP 重新测量 PASS（23 个文件、202 个生产函数），后端捕获输入逐项核对未变；`checks-20260927T092552` 的 52 个 Angular 单元测试、lint、生产构建及密钥扫描全部 PASS。失败原件、恢复阶段时间和新测量摘要见 [恢复证据](../artifacts/gh126/frontend-gate-recovery.json)。这些检查不能代替修复后冻结树的新完整 Gate 凭证。
+最终恢复原 `tsconfig.spec.json`，单元测试以 `TextEncoder` 计算 UTF-8 字节长度、独立预期 SHA-256 核验内容，以有类型的 Vitest `importActual` 加载真实 WebCrypto；测试断言与生产代码不变。`frontend-20260927T095904` 的原始源码覆盖率与 CRAP 重新测量 PASS（23 个文件、202 个生产函数）；按安装宿主的既有路径归一化核对，前端系列和全部生成配置摘要与安装批准完全一致。此核对仅为兼容性预检，不充当 Gate PASS。
+
+`checks-20260927T100005` 的 52 个 Angular 单元测试、lint、生产构建及密钥扫描全部 PASS。失败原件、阶段时间、新测量及系列预检记录见 [最终恢复证据](../artifacts/gh126/frontend-series-recovery.json)。最终发布仍要求修复后冻结树的新完整 Gate 凭证。
 
 ## Python 示例的任务限定测量
 

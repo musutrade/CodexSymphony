@@ -3,7 +3,6 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
-import { createHash, webcrypto } from 'node:crypto';
 import { vi } from 'vitest';
 import { DiagnosticPanel } from './diagnostic-panel';
 import { GetDiagnosticsResponse } from '../health-response';
@@ -15,11 +14,11 @@ const artifact: Artifact = {
   media_type: 'text/markdown',
   availability: 'available',
   reason: null,
-  original_bytes: Buffer.byteLength(text),
-  retained_bytes: Buffer.byteLength(text),
+  original_bytes: new TextEncoder().encode(text).byteLength,
+  retained_bytes: new TextEncoder().encode(text).byteLength,
   raw_sha256: 'raw',
-  export_bytes: Buffer.byteLength(text),
-  export_sha256: createHash('sha256').update(text).digest('hex'),
+  export_bytes: new TextEncoder().encode(text).byteLength,
+  export_sha256: '35139bed1973bb5ac04527cb7ba9989db60cbdc8391c0c6b9086f108530f3166',
   expires_at: 100,
   binding: {
     identity: {
@@ -44,7 +43,7 @@ const artifact: Artifact = {
 const page = (offset = 0, end = true, value = text) => ({
   artifact,
   offset,
-  next: end ? artifact.export_bytes : offset + Buffer.byteLength(value),
+  next: end ? artifact.export_bytes : offset + new TextEncoder().encode(value).byteLength,
   end,
   unit: 'bytes',
   text: value,
@@ -161,6 +160,7 @@ describe('Retained diagnostics', () => {
   it('downloads every segment and verifies the export hash before creating a file', async () => {
     const fixture = await setup();
     const component = fixture.componentInstance;
+    const { webcrypto } = await vi.importActual<{ webcrypto: Crypto }>('node:crypto');
     vi.stubGlobal('crypto', webcrypto);
     const created = vi.fn(() => 'blob:fixture');
     const revoked = vi.fn();
