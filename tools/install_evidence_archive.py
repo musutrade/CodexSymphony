@@ -9,8 +9,9 @@ from pathlib import Path
 NAMES = ('archive_gate_evidence.py', 'storage_maintenance.py', 'compact_gate_evidence.py',
          'retire_pr_attempts.py', 'cache_retention.py', 'capture_cache_retention.py')
 SERVICES = ('codexsymphony-archive.service', 'codexsymphony-cache-retention.service',
-            'codexsymphony-capture-cache.service', 'codexsymphony-storage.service')
-GUARDED = (*SERVICES, 'symphony-codexsymphony.service', 'codexsymphony-remote-gate.service')
+            'codexsymphony-capture-cache.service', 'codexsymphony-storage.service',
+            'codexsymphony-retention-watch.service')
+GUARDED = (*SERVICES[:3], 'symphony-codexsymphony.service', 'codexsymphony-remote-gate.service')
 
 
 def install_release(root, base):
@@ -96,6 +97,24 @@ WantedBy=timers.target
 
 def install_guard(base, release, units):
     script = release / 'storage_maintenance.py'
+    (units/'codexsymphony-retention-watch.service').write_text(f'''[Unit]
+Description=Detect retention deployment drift and pause dispatch
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 {script} --guard-retention
+TimeoutStartSec=300
+UMask=0077
+''')
+    (units/'codexsymphony-retention-watch.timer').write_text('''[Unit]
+Description=Check retention deployment independently of the disk guard
+[Timer]
+OnBootSec=30
+OnUnitInactiveSec=15
+AccuracySec=1
+Unit=codexsymphony-retention-watch.service
+[Install]
+WantedBy=timers.target
+''')
     (units/'codexsymphony-storage.service').write_text(f'''[Unit]
 Description=CodexSymphony disk and retention deployment guard
 [Service]
@@ -125,7 +144,8 @@ WantedBy=timers.target
     paths += [units/(name+'.d')/'retention-guard.conf' for name in GUARDED]
     paths += [units/(name+'.d')/'disk-guard.conf' for name in GUARDED[-2:]]
     scripts = ('compact_gate_evidence.py --apply', 'cache_retention.py --apply',
-               'capture_cache_retention.py --apply', 'storage_maintenance.py')
+               'capture_cache_retention.py --apply', 'storage_maintenance.py',
+               'storage_maintenance.py --guard-retention')
     receipt = {'schema': 'retention-deployment/v1', 'release': str(release),
                'commands': {unit: f'/usr/bin/python3 {release}/{script}' for unit, script in zip(SERVICES, scripts)},
                'files': {str(path): hashlib.sha256(path.read_bytes()).hexdigest() for path in paths}}
@@ -145,7 +165,8 @@ def main():
     install_guard(base, release, Path.home() / '.config/systemd/user')
     subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
     for timer in ('codexsymphony-archive.timer', 'codexsymphony-cache-retention.timer',
-                  'codexsymphony-capture-cache.timer', 'codexsymphony-storage.timer'):
+                  'codexsymphony-capture-cache.timer', 'codexsymphony-storage.timer',
+                  'codexsymphony-retention-watch.timer'):
         subprocess.run(['systemctl', '--user', 'enable', timer], check=True)
     print('Installed; start retention timers after validation:', release)
 

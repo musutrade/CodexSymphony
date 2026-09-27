@@ -261,6 +261,9 @@ class RetentionGuard(unittest.TestCase):
         with patch.object(STORAGE, 'ROOT', self.root), patch.object(STORAGE, 'check_retention') as check, patch('sys.argv', ['storage', '--check-retention']):
             STORAGE.main()
             check.assert_called_once_with(self.root)
+        with patch.object(STORAGE, 'ROOT', self.root), patch.object(STORAGE, 'guard_retention') as guard, patch('sys.argv', ['storage', '--guard-retention']):
+            STORAGE.main()
+            guard.assert_called_once_with(self.root)
 
     def test_old_installer_override_file_and_command_are_rejected(self):
         with patch.object(STORAGE.subprocess, 'check_output', return_value='{ argv[]=/old/release.py ; }'):

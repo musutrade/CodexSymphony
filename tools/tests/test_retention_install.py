@@ -46,7 +46,7 @@ class RetentionInstall(unittest.TestCase):
                  contextlib.redirect_stdout(io.StringIO()):
                 installer.main()
             commands = [call.args[0] for call in run.call_args_list]
-            self.assertEqual(len(commands), 5)
+            self.assertEqual(len(commands), 6)
             self.assertEqual(commands[0], ['systemctl', '--user', 'daemon-reload'])
             self.assertTrue(all(command[2] == 'enable' for command in commands[1:]))
             self.assertTrue(all('--now' not in command and 'start' not in command for command in commands))
@@ -70,6 +70,9 @@ class RetentionDeployment(unittest.TestCase):
             installer.install_guard(root/'state', release, units)
             receipt = json.loads((root/'state/storage-maintenance/deployment.json').read_text())
             self.assertEqual(set(receipt['commands']), set(installer.SERVICES))
+            self.assertIn('--guard-retention', (units/'codexsymphony-retention-watch.service').read_text())
+            self.assertFalse((units/'codexsymphony-retention-watch.service.d').exists())
+            self.assertFalse((units/'codexsymphony-storage.service.d').exists())
             for name, digest in receipt['files'].items():
                 self.assertEqual(hashlib.sha256(Path(name).read_bytes()).hexdigest(), digest)
             for name in installer.GUARDED:

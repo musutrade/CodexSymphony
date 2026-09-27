@@ -254,7 +254,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check-start', action='store_true')
     parser.add_argument('--check-retention', action='store_true')
+    parser.add_argument('--guard-retention', action='store_true')
     args = parser.parse_args()
+    if args.guard_retention:
+        guard_retention(ROOT)
+        return
     if args.check_retention:
         check_retention(ROOT)
         return

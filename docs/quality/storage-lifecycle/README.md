@@ -26,7 +26,7 @@ tracked document.
 
 The release candidate also binds retention script hashes, service and timer files,
 persistent admission drop-ins, and effective systemd commands to a host deployment
-record. The disk guard checks this record every 15 seconds and pauses dispatch
+record. An independent watcher and the disk guard check this record every 15 seconds and pause dispatch
 on drift; admission checks also block starting managed services with an overwritten
 release. Reinstalling an old retention installer cannot silently refresh this record.
 This does not authorize automatic tool approval or trusted host upgrades.
