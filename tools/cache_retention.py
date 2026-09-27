@@ -52,7 +52,7 @@ def cache_info(path):
     return size, newest
 
 
-def collect(path, budget, apply=False, now=None, busy=in_use):
+def collect(path, budget, apply=False, now=None, busy=in_use, min_idle_seconds=MIN_IDLE_SECONDS):
     now = time.time() if now is None else now
     result = {'path': str(path), 'budget_bytes': budget}
     if path.is_symlink():
@@ -64,7 +64,7 @@ def collect(path, budget, apply=False, now=None, busy=in_use):
     result.update(bytes_before=size, newest_mtime=newest)
     if size <= budget:
         return dict(result, status='WITHIN_BUDGET')
-    if now - newest < MIN_IDLE_SECONDS:
+    if now - newest < min_idle_seconds:
         return dict(result, status='DEFERRED_RECENT')
     if busy(path):
         return dict(result, status='DEFERRED_BUSY')

@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -127,8 +128,46 @@ class StorageMaintenance(unittest.TestCase):
         self.assertFalse(result['deferred'])
         self.assertEqual(result['removed'], [str(self.target)])
 
+    def test_padded_ssh_session_titles_do_not_block_but_children_do(self):
+        proc, process = self.process(b'sshd-session: gem@pts/2                  \0')
+        (process / 'fd').rmdir()
+        self.assertFalse(STORAGE.gate_busy(self.run.parent, proc))
+        child = proc / '99999998'
+        child.mkdir(); (child / 'fd').mkdir()
+        (child / 'cmdline').write_bytes(b'rustc\0')
+        (child / 'cwd').symlink_to(self.target)
+        self.assertTrue(STORAGE.gate_busy(self.run.parent, proc))
+
+    def test_session_exemptions_are_exact_and_keep_unknown_workers_protected(self):
+        self.assertTrue(STORAGE.protected_session(['(sd-pam)'], '(sd-pam)\0'))
+        self.assertTrue(STORAGE.protected_session(['sshd-session: gem@notty   '], 'sshd-session: gem@notty   \0'))
+        self.assertFalse(STORAGE.protected_session(['sshd-session: gem@pts/2 worker'], 'sshd-session: gem@pts/2 worker\0'))
+        self.assertFalse(STORAGE.fixed_fixture_broker(['python3', 'unrelated.py']))
+        self.assertTrue(STORAGE.gate_launcher(['/approved/quality-host/release/run.py']))
+        proc, _ = self.process(b'sshd-session: gem@pts/2 worker\0')
+        with patch.object(STORAGE.os, 'readlink', side_effect=PermissionError):
+            self.assertTrue(STORAGE.gate_busy(self.run.parent, proc))
+
+    def test_nonprocess_self_foreign_and_exited_entries_are_ignored(self):
+        proc, process = self.process(b'worker\0')
+        (proc / 'not-a-process').mkdir()
+        (proc / str(os.getpid())).mkdir()
+        with patch.object(STORAGE.os, 'getuid', return_value=os.getuid() + 1):
+            self.assertFalse(STORAGE.gate_busy(self.run.parent, proc))
+        (process / 'cmdline').unlink()
+        self.assertFalse(STORAGE.gate_busy(self.run.parent, proc))
+
+    def test_worker_command_exact_directory_and_disappearing_descriptor(self):
+        proc, process = self.process(str(self.target / 'worker').encode() + b'\0')
+        self.assertTrue(STORAGE.gate_busy(self.run.parent, proc))
+        (process / 'cmdline').write_bytes(b'worker\0')
+        (process / 'cwd').unlink(); (process / 'cwd').symlink_to(self.run.parent)
+        self.assertTrue(STORAGE.gate_busy(self.run.parent, proc))
+        with patch.object(STORAGE.os, 'readlink', side_effect=FileNotFoundError):
+            self.assertFalse(STORAGE.gate_busy(self.run.parent, proc))
+
     def test_start_condition_rejects_low_disk(self):
-        with patch('sys.argv', ['storage', '--check-start']), patch.object(STORAGE.shutil, 'disk_usage') as usage:
+        with patch('sys.argv', ['storage', '--check-start']), patch.object(STORAGE.shutil, 'disk_usage') as usage, patch.object(STORAGE, 'check_retention'):
             usage.return_value.free = 19 * STORAGE.GIB
             with self.assertRaises(SystemExit) as error:
                 STORAGE.main()
@@ -199,3 +238,69 @@ class WorkspaceCaches(unittest.TestCase):
             self.assertEqual(STORAGE.collect_workspace_caches(root,busy=lambda _:True)['removed'],[])
             w.rename(root/'saved');w.symlink_to(root/'saved')
             self.assertEqual(STORAGE.collect_workspace_caches(root,busy=lambda _:False)['removed'],[])
+
+class RetentionGuard(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root/'storage-maintenance').mkdir()
+        self.file = self.root/'release.py'
+        self.file.write_text('release')
+        self.receipt = {'schema': 'retention-deployment/v1', 'commands': {'test.service': '/usr/bin/python3 release.py'},
+                        'files': {str(self.file): hashlib.sha256(self.file.read_bytes()).hexdigest()}}
+        self.save()
+
+    def save(self):
+        (self.root/'storage-maintenance/deployment.json').write_text(json.dumps(self.receipt))
+
+    def test_exact_deployment_and_guard_success(self):
+        with patch.object(STORAGE.subprocess, 'check_output', return_value='{ argv[]=/usr/bin/python3 release.py ; }'):
+            STORAGE.check_retention(self.root)
+            STORAGE.guard_retention(self.root)
+        with patch.object(STORAGE, 'ROOT', self.root), patch.object(STORAGE, 'check_retention') as check, patch('sys.argv', ['storage', '--check-retention']):
+            STORAGE.main()
+            check.assert_called_once_with(self.root)
+        with patch.object(STORAGE, 'ROOT', self.root), patch.object(STORAGE, 'guard_retention') as guard, patch('sys.argv', ['storage', '--guard-retention']):
+            STORAGE.main()
+            guard.assert_called_once_with(self.root)
+
+    def test_old_installer_override_file_and_command_are_rejected(self):
+        with patch.object(STORAGE.subprocess, 'check_output', return_value='{ argv[]=/old/release.py ; }'):
+            with self.assertRaisesRegex(ValueError, 'test.service'):
+                STORAGE.check_retention(self.root)
+        with patch.object(STORAGE.subprocess, 'check_output', return_value=''):
+            with self.assertRaises(ValueError):
+                STORAGE.check_retention(self.root)
+        self.file.write_text('overwritten')
+        with self.assertRaisesRegex(ValueError, 'release.py'):
+            STORAGE.check_retention(self.root)
+        self.file.unlink(); self.file.symlink_to(self.root/'missing')
+        with self.assertRaises(ValueError):
+            STORAGE.check_retention(self.root)
+        self.receipt['schema'] = 'invalid'; self.save()
+        with self.assertRaisesRegex(ValueError, 'unsupported'):
+            STORAGE.check_retention(self.root)
+
+    def test_drift_stops_dispatch_and_keeps_pause_ledger_for_repair(self):
+        self.file.write_text('changed')
+        calls = []
+        for _ in range(2):
+            with self.assertRaises(ValueError):
+                STORAGE.guard_retention(self.root, lambda action, service: calls.append((action, service)))
+        state = json.loads((self.root/'storage-maintenance/state.json').read_text())
+        self.assertEqual(state['paused_services'], list(STORAGE.SERVICES))
+        self.assertEqual(calls, [('stop', unit) for unit in STORAGE.SERVICES]*2)
+        self.assertEqual(state['paused_services'].count(STORAGE.SERVICES[0]), 1)
+
+    def test_main_checks_before_cleanup_and_missing_guard_is_failure(self):
+        with patch.object(STORAGE, 'ROOT', self.root), patch('sys.argv', ['storage']), patch.object(STORAGE, 'guard_retention') as guard, patch.object(STORAGE, 'maintain', return_value={'ok': True}) as maintain:
+            STORAGE.main(); guard.assert_called_once(); maintain.assert_called_once()
+        with patch.object(STORAGE.shutil.rmtree, 'avoids_symlink_attacks', False), patch('sys.argv', ['storage']):
+            with self.assertRaisesRegex(RuntimeError, 'fd-safe'):
+                STORAGE.main()
+        (self.root/'storage-maintenance/deployment.json').unlink()
+        with patch.object(STORAGE, 'control') as control:
+            with self.assertRaises(FileNotFoundError):
+                STORAGE.guard_retention(self.root)
+            self.assertEqual(control.call_count, 2)

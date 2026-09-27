@@ -5,6 +5,7 @@ Never run from an issue sandbox. Retained evidence is not garbage collected.
 """
 import argparse
 import fcntl
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -20,48 +21,101 @@ STOP_FREE = 12 * GIB
 RESUME_FREE = 20 * GIB
 
 
-def gate_busy(runs, proc=Path('/proc'), include_launchers=True):
-    """Fail closed for unreadable same-user workers; include orphan workers.
+def check_retention_files(files):
+    for name, expected in files.items():
+        path = Path(name)
+        if path.is_symlink() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
+            raise ValueError('retention deployment drift: ' + name)
 
-    A run launcher may not mention its generated run directory yet, so detect
-    launchers separately. Scan cwd and descriptors as well as command arguments.
-    New runs always get new UUID directories; collection snapshots older targets.
-    """
+
+def check_retention(root):
+    receipt = json.loads((root / 'storage-maintenance/deployment.json').read_text())
+    if receipt['schema'] != 'retention-deployment/v1':
+        raise ValueError('unsupported retention deployment')
+    check_retention_files(receipt['files'])
+    for unit, expected in receipt['commands'].items():
+        actual = subprocess.check_output(['systemctl', '--user', 'show', unit,
+                                          '--property=ExecStart', '--value'], text=True)
+        if 'argv[]=' not in actual or actual.split('argv[]=', 1)[1].split(' ;', 1)[0] != expected:
+            raise ValueError('retention deployment drift: ' + unit)
+
+
+def guard_retention(root, control_service=None):
+    # Admission failures preserve the pause ledger before stopping dispatch.
+    control_service = control_service or control
+    try:
+        check_retention(root)
+    except (ValueError, OSError, KeyError, subprocess.SubprocessError):
+        path = root / 'storage-maintenance/state.json'
+        state = json.loads(path.read_text()) if path.exists() else {'paused_services': []}
+        for service in SERVICES:
+            if service not in state['paused_services']:
+                state['paused_services'].append(service)
+                save(path, state)
+            control_service('stop', service)
+        raise
+
+
+def protected_session(arguments, command):
+    # sshd pads its process title with spaces; match only the existing session forms.
+    if arguments[0] == '/usr/lib/systemd/systemd' and '--user' in arguments:
+        return True
+    title = command.rstrip('\0').rstrip(' ')
+    if title == '(sd-pam)':
+        return True
+    return re.fullmatch(r'sshd-session: [a-zA-Z0-9_-]+@(?:pts/[0-9]+|notty)', title) is not None
+
+
+def fixed_fixture_broker(arguments):
+    if len(arguments) != 2 or arguments[0] != '/usr/bin/python3':
+        return False
+    broker_root = ROOT / 'symphony'
+    return re.fullmatch(re.escape(str(broker_root)) + r'/gh\d+-environment/broker.py', arguments[1]) is not None
+
+
+def gate_launcher(arguments):
+    for argument in arguments:
+        if argument.endswith('/run.py') and ('/quality-host/' in argument or '/gate-host/releases/' in argument):
+            return True
+    return False
+
+
+def process_paths_busy(process, runs):
+    links = [process / 'cwd', *(process / 'fd').iterdir()]
+    for link in links:
+        try:
+            value = os.readlink(link)
+        except FileNotFoundError:
+            continue
+        if value == str(runs) or value.startswith(str(runs) + '/'):
+            return True
+    return False
+
+
+def process_busy(process, runs, include_launchers):
+    if process.stat().st_uid != os.getuid():
+        return False
+    command = (process / 'cmdline').read_bytes().decode(errors='replace')
+    if str(runs) + '/' in command:
+        return True
+    arguments = command.rstrip('\0').split('\0')
+    if fixed_fixture_broker(arguments) or protected_session(arguments, command):
+        return False
+    if include_launchers and gate_launcher(arguments):
+        return True
+    return process_paths_busy(process, runs)
+
+
+def gate_busy(runs, proc=Path('/proc'), include_launchers=True):
+    """Inspect workers, including orphans; unreadable worker state defers cleanup."""
     for process in proc.iterdir():
         if not process.name.isdigit() or int(process.name) == os.getpid():
             continue
         try:
-            if process.stat().st_uid != os.getuid():
-                continue
-            command = (process / 'cmdline').read_bytes().decode(errors='replace')
-            if str(runs) + '/' in command:
+            if process_busy(process, runs, include_launchers):
                 return True
-            arguments = command.rstrip('\0').split('\0')
-            # Fixed fixture brokers retain only the request-spool descriptor.
-            # Their child probes/compilers are still inspected independently.
-            broker_root = ROOT / 'symphony'
-            if (len(arguments) == 2 and arguments[0] == '/usr/bin/python3'
-                    and re.fullmatch(re.escape(str(broker_root)) + r'/gh\d+-environment/broker.py', arguments[1])):
-                continue
-            if include_launchers and any(arg.endswith('/run.py') and ('/quality-host/' in arg or '/gate-host/releases/' in arg)
-                   for arg in arguments):
-                return True
-            # The OS session manager and PAM/sshd have protected descriptors.
-            # They do not compile; their children are scanned independently.
-            if (arguments[0] == '/usr/lib/systemd/systemd' and '--user' in arguments
-                    or command.rstrip('\0') == '(sd-pam)'
-                    or re.fullmatch(r'sshd-session: [a-zA-Z0-9_-]+@(?:pts/[0-9]+|notty)', command.rstrip('\0'))):
-                continue
-            links = [process / 'cwd', *(process / 'fd').iterdir()]
-            for link in links:
-                try:
-                    value = os.readlink(link)
-                except FileNotFoundError:
-                    continue
-                if value == str(runs) or value.startswith(str(runs) + '/'):
-                    return True
         except FileNotFoundError:
-            continue  # Process exited while reading /proc.
+            continue
         except (PermissionError, OSError):
             return True
     return False
@@ -199,8 +253,17 @@ def maintain(root, control_service=control, free_bytes=None, collector=collect):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check-start', action='store_true')
+    parser.add_argument('--check-retention', action='store_true')
+    parser.add_argument('--guard-retention', action='store_true')
     args = parser.parse_args()
+    if args.guard_retention:
+        guard_retention(ROOT)
+        return
+    if args.check_retention:
+        check_retention(ROOT)
+        return
     if args.check_start:
+        check_retention(ROOT)
         free = shutil.disk_usage(ROOT).free
         if free < RESUME_FREE:
             print(f'Disk guard: {free / GIB:.1f} GiB free; start requires 20 GiB', flush=True)
@@ -212,6 +275,7 @@ def main():
     home.mkdir(parents=True, exist_ok=True)
     with (home / 'maintenance.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        guard_retention(ROOT)
         print(json.dumps(maintain(ROOT)), flush=True)
 
 

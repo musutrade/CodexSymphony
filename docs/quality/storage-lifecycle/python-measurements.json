@@ -1,0 +1,507 @@
+{
+  "status": "PASS",
+  "authorization": "User authorized task-scoped coverage.py/Radon on 2026-09-27; not permanent collector approval",
+  "tools": {
+    "coverage": "7.16.1",
+    "radon": "6.0.1"
+  },
+  "tests": 51,
+  "capture_success": true,
+  "inputs_match": true,
+  "functions": [
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "capture_receipt",
+      "line": 17,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 9,
+      "statements": 9,
+      "complexity": 6,
+      "risk.crap": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "validate_receipt",
+      "line": 29,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 4,
+      "statements": 4,
+      "complexity": 6,
+      "risk.crap": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "root_identity",
+      "line": 36,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 2,
+      "statements": 2,
+      "complexity": 1,
+      "risk.crap": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "read_registry",
+      "line": 41,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 8,
+      "statements": 8,
+      "complexity": 5,
+      "risk.crap": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "register",
+      "line": 52,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 11,
+      "statements": 11,
+      "complexity": 5,
+      "risk.crap": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "retained_raw",
+      "line": 67,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 7,
+      "statements": 7,
+      "complexity": 6,
+      "risk.crap": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "verify_raw_file",
+      "line": 77,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 5,
+      "statements": 5,
+      "complexity": 5,
+      "risk.crap": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "capture_busy",
+      "line": 85,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 1,
+      "statements": 1,
+      "complexity": 1,
+      "risk.crap": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "collect_capture",
+      "line": 90,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 13,
+      "statements": 13,
+      "complexity": 6,
+      "risk.crap": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "maintain",
+      "line": 106,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 10,
+      "statements": 10,
+      "complexity": 3,
+      "risk.crap": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/capture_cache_retention.py",
+      "source_sha256": "d11f327e768306ecaf04cde6a54fec6afd29079fddf8204f20a047cca6a460e8",
+      "function": "main",
+      "line": 120,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 14,
+      "statements": 14,
+      "complexity": 4,
+      "risk.crap": {
+        "numerator": 4,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/install_evidence_archive.py",
+      "source_sha256": "3997042a07c22653c739c0f240702ecd1227a8cc33dc123ca8ee8d24d7a2f520",
+      "function": "install_release",
+      "line": 17,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 10,
+      "statements": 10,
+      "complexity": 5,
+      "risk.crap": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/install_evidence_archive.py",
+      "source_sha256": "3997042a07c22653c739c0f240702ecd1227a8cc33dc123ca8ee8d24d7a2f520",
+      "function": "install_units",
+      "line": 30,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 7,
+      "statements": 7,
+      "complexity": 1,
+      "risk.crap": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/install_evidence_archive.py",
+      "source_sha256": "3997042a07c22653c739c0f240702ecd1227a8cc33dc123ca8ee8d24d7a2f520",
+      "function": "install_guard",
+      "line": 98,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 22,
+      "statements": 22,
+      "complexity": 10,
+      "risk.crap": {
+        "numerator": 10,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/install_evidence_archive.py",
+      "source_sha256": "3997042a07c22653c739c0f240702ecd1227a8cc33dc123ca8ee8d24d7a2f520",
+      "function": "main",
+      "line": 159,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 10,
+      "statements": 10,
+      "complexity": 2,
+      "risk.crap": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/cache_retention.py",
+      "source_sha256": "25d23526719c723bdc14bf6039e9398f1e407f8904c70ce26b18380dd465f8b4",
+      "function": "collect",
+      "line": 55,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 18,
+      "statements": 18,
+      "complexity": 8,
+      "risk.crap": {
+        "numerator": 8,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "check_retention_files",
+      "line": 24,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 4,
+      "statements": 4,
+      "complexity": 4,
+      "risk.crap": {
+        "numerator": 4,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "check_retention",
+      "line": 31,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 8,
+      "statements": 8,
+      "complexity": 5,
+      "risk.crap": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "guard_retention",
+      "line": 43,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 12,
+      "statements": 12,
+      "complexity": 6,
+      "risk.crap": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "protected_session",
+      "line": 59,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 6,
+      "statements": 6,
+      "complexity": 4,
+      "risk.crap": {
+        "numerator": 4,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "fixed_fixture_broker",
+      "line": 69,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 4,
+      "statements": 4,
+      "complexity": 3,
+      "risk.crap": {
+        "numerator": 3,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "gate_launcher",
+      "line": 76,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 4,
+      "statements": 4,
+      "complexity": 5,
+      "risk.crap": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "process_paths_busy",
+      "line": 83,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 9,
+      "statements": 9,
+      "complexity": 5,
+      "risk.crap": {
+        "numerator": 5,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "process_busy",
+      "line": 95,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 11,
+      "statements": 11,
+      "complexity": 7,
+      "risk.crap": {
+        "numerator": 7,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "gate_busy",
+      "line": 109,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 11,
+      "statements": 11,
+      "complexity": 7,
+      "risk.crap": {
+        "numerator": 7,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    },
+    {
+      "source": "tools/storage_maintenance.py",
+      "source_sha256": "4dde8cbb6b126647e639b9b9cc3d37bbab5305f652016a5e5acc2dd67cc7f952",
+      "function": "main",
+      "line": 253,
+      "coverage.line": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "covered": 26,
+      "statements": 26,
+      "complexity": 6,
+      "risk.crap": {
+        "numerator": 6,
+        "denominator": 1
+      },
+      "missing_lines": [],
+      "passed": true
+    }
+  ]
+}
