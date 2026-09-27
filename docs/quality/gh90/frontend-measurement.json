@@ -1,0 +1,21 @@
+{
+  "stage": "frontend-source-measurement",
+  "capture": "/tmp/codexsymphony-ts-risk-lkK253",
+  "response": "/tmp/codexsymphony-ts-risk-lkK253/collector-response.json",
+  "response_sha256": "fd9b5b73d07c62d86a1a94a577ef112b8210fd78235d84b70cae995a13cb1de5",
+  "files": 26,
+  "functions": 230,
+  "declarationFiles": 1,
+  "scope_authority": "installed configure.py uses approved declarationOnly inventory grouping; no added exclusions",
+  "coverage_and_crap": "PASS",
+  "violations": [],
+  "retained_root": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/frontend-20260927T144037",
+  "timings": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/frontend-20260927T144037/timings.jsonl",
+    "sha256": "0dc6f7c2453cf0187dd3085c313dbeda5f996a3d1f388d2a1946c0d2babde419"
+  },
+  "physical_response": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/frontend-20260927T144037/tmp/codexsymphony-ts-risk-lkK253/collector-response.json",
+    "sha256": "fd9b5b73d07c62d86a1a94a577ef112b8210fd78235d84b70cae995a13cb1de5"
+  }
+}

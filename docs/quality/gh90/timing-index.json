@@ -1,0 +1,27 @@
+{
+  "authority": "original host-format timings.jsonl; final Gate timing stays external",
+  "timings": [
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/backend-20260927T143959/timings.jsonl",
+      "sha256": "d94c3fbb62f11936e1639379655c59a890773d44c3e030d8652bd64b6d52575b"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/frontend-20260927T144037/timings.jsonl",
+      "sha256": "0dc6f7c2453cf0187dd3085c313dbeda5f996a3d1f388d2a1946c0d2babde419"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/timings.jsonl",
+      "sha256": "c95bacb970d10e7fdf1b7631f177ec10f2258939d5695116bd8b14f64377b893"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/readiness/timings.jsonl",
+      "sha256": "88f58b31e61e26dcaedbdc9c6dce052c6048ca9acd6d6dda6a66c35ff09396fe"
+    }
+  ],
+  "timed_execution_union_seconds": 1747.772,
+  "timed_stage_sum_seconds": 1789.013,
+  "failure_execution_seconds": 114.986,
+  "overlap_accounting": "merged intervals counted once; capture tests are measurement execution, not an additional ordinary test pass",
+  "unclassified_gaps": "agent preparation and waiting are not retrospectively labeled as execution",
+  "final_gate": "recorded separately by installed host after this index is frozen"
+}
