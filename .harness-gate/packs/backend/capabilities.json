@@ -1,6 +1,6 @@
 {
   "series": {
-    "id": "measurement-series/v1:c46bff81308f920f15e01778ba1468651d11ce32d1155bd64fa3f642f85ff830",
+    "id": "measurement-series/v1:507fabf52ffa930ca6a1611f2d8384eb0fe56e3d2d51bda087134c8cfff0004a",
     "name": "rust-source-function-risk",
     "collector": {
       "name": "rust-source-risk",
@@ -8,7 +8,7 @@
     },
     "tool": {
       "name": "rust-llvm-source-coverage",
-      "version": "8e6d382a9b86b9c0f8dfa108d56a2a92f9e4d2c11aa0e76374a6a58f893bd428"
+      "version": "c130b288e87b1e7090594bd9afcc78125a519e6bbda5c793a384d5bdef64b455"
     },
     "rule": {
       "name": "rust-explicit-decisions",

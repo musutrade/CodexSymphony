@@ -1,0 +1,51 @@
+{
+  "scope": "operator/test fixture corrections, no production source or trusted host changes",
+  "interventions": [
+    {
+      "cause": "resumed run had no database",
+      "outcome": "recovered with new approved isolated database receipt"
+    },
+    {
+      "cause": "nginx unavailable; PATH hypothesis failed",
+      "outcome": "blocked, two attempts retained; prerequisite failure was not honored before second attempt"
+    },
+    {
+      "cause": "backup test helper stopped before native recovery barrier; dump clients absent",
+      "outcome": "native readiness polling plus unchanged client bytes from already approved image"
+    },
+    {
+      "cause": "migration writer returns None",
+      "outcome": "operator adapter reads actual psql stdout"
+    },
+    {
+      "cause": "notification fixture omitted explicit scope",
+      "outcome": "explicit disabled scope and original scope_version inserted before plugin ledger fixture"
+    },
+    {
+      "cause": "backup binary path included ignored target symlink",
+      "outcome": "same binary bound by canonical path; native rejection unchanged"
+    }
+  ],
+  "timed_failure_count": 6,
+  "extra_precommand_failure_count": 1,
+  "operator_recovery_decisions": 6,
+  "real_task_intervention_rate": "not measured; no new real task started",
+  "records": [
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/database-resume-failure.json",
+      "sha256": "ef2a70e09f19a3bfdd13032757cc7324bd4cadaa32a6509e1cf6276a576bed32"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/ingress-recovery.json",
+      "sha256": "48d9f98c02af79fd54f79407d42f361d44015d81ac468fb547605e4f21fd3792"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/supplemental-recovery.json",
+      "sha256": "91cad457311b1f25b68615b7448baba9bc681fed87da5f43321d23992cd760b8"
+    },
+    {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/backup-final-recovery.json",
+      "sha256": "e1e1078e29d40dbcd1e4fb6a37751f6e6a08fb5c2353e81c17e2d031afeaa59f"
+    }
+  ]
+}

@@ -10,7 +10,7 @@ import uuid
 
 HOME = Path('/home/gem')
 
-def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=(), environment=None, cwd=None):
+def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=(), environment=None, cwd=None, compiler_target=None):
     run = Path(run).resolve()
     policy = contract.load(repository)
     codex = contract.codex_bin(policy)
@@ -22,7 +22,8 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     cargo.mkdir(exist_ok=True)
     temporary = run / 'tmp'
     temporary.mkdir(exist_ok=True)
-    cache = run / 'target/sccache'
+    build_target = Path(compiler_target or run / 'target').resolve()
+    cache = build_target / 'sccache'
     cache.mkdir(parents=True, exist_ok=True)
     # Dedicated AppArmor transition permits nested user namespaces without
     # weakening the inner command's filesystem, PID or network isolation.
@@ -48,7 +49,7 @@ def command(argv, *, run, repository, plugins, writable=(), readonly=(), mounts=
     env = {'HOME': str(HOME), 'CARGO_HOME': str(HOME / '.cargo'), 'RUSTUP_HOME': str(HOME / '.rustup'),
            'PATH': '/opt/codex:' + str(HOME / '.cargo/bin') + ':/usr/local/bin:/usr/bin:/bin',
            'LANG': 'C.UTF-8', 'TZ': 'UTC', 'CARGO_NET_OFFLINE': 'true',
-           'CARGO_TARGET_DIR': str(run / 'target')}
+           'CARGO_TARGET_DIR': str(build_target)}
     env.update(environment or {})
     env.update(contract.test_environment(policy))
     args += ['--clearenv']

@@ -114,10 +114,11 @@ pub async fn plan_selected(
     let Some((requirement, revision)) = eligible(&mut tx, incarnation).await? else {
         return Ok(None);
     };
-    if selected.is_some_and(|selected| selected != (requirement, revision)) {
+    if selected.is_some() && selected != Some((requirement, revision)) {
         return Ok(None);
     }
-    if let Some(job) = saved(&mut tx, requirement, revision, incarnation).await? {
+    if let Some(job) = saved(&mut tx, broker, requirement, revision, incarnation).await? {
+        tx.commit().await?;
         return Ok(Some(job));
     }
     save_initial(
@@ -231,6 +232,7 @@ async fn eligible(
 }
 async fn saved(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    broker: &GitBroker,
     requirement: i64,
     revision: i64,
     incarnation: &str,
@@ -243,15 +245,119 @@ async fn saved(
     .fetch_optional(&mut **tx)
     .await?;
     if let Some((launch, workspace)) = saved {
-        let launch: Launch = serde_json::from_value(launch)?;
+        let mut launch: Launch = serde_json::from_value(launch)?;
+        let mut workspace: Workspace = serde_json::from_value(workspace)?;
         if launch.key.incarnation != incarnation {
-            return Err(
-                "initial preparation belongs to prior incarnation; reconcile saved worktree".into(),
-            );
+            rebind_preparation(
+                tx,
+                broker,
+                requirement,
+                revision,
+                incarnation,
+                &mut launch,
+                &mut workspace,
+            )
+            .await?;
         }
-        return Ok(Some((launch, serde_json::from_value(workspace)?)));
+        return Ok(Some((launch, workspace)));
     }
     Ok(None)
+}
+
+async fn rebind_preparation(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    broker: &GitBroker,
+    requirement: i64,
+    revision: i64,
+    incarnation: &str,
+    launch: &mut Launch,
+    workspace: &mut Workspace,
+) -> Result<()> {
+    verify_saved_preparation(broker, requirement, revision, launch, workspace)?;
+    let old_launch = json!(&*launch);
+    require_rebind_authorization(tx, requirement, revision, launch, &old_launch).await?;
+    let prior_incarnation = launch.key.incarnation.clone();
+    launch.key.incarnation = incarnation.to_owned();
+    workspace.key.incarnation = incarnation.to_owned();
+    persist_rebound_preparation(
+        tx,
+        requirement,
+        revision,
+        launch,
+        workspace,
+        &old_launch,
+        &prior_incarnation,
+    )
+    .await
+}
+
+fn verify_saved_preparation(
+    broker: &GitBroker,
+    requirement: i64,
+    revision: i64,
+    launch: &Launch,
+    workspace: &Workspace,
+) -> Result<()> {
+    if launch.key != workspace.key
+        || launch.workspace != workspace.path
+        || launch.workspace_identity != workspace.identity
+        || workspace.requirement != requirement
+        || workspace.revision != revision
+        || broker.head(workspace)? != workspace.baseline
+    {
+        return Err("saved preparation workspace identity changed".into());
+    }
+    Ok(())
+}
+
+async fn require_rebind_authorization(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    requirement: i64,
+    revision: i64,
+    launch: &Launch,
+    old_launch: &Value,
+) -> Result<()> {
+    let eligible: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM preparation_record p WHERE p.run_id=$1 AND p.requirement_id=$2 AND p.revision=$3 AND p.launch=$4 AND NOT p.ready AND p.retry->>'todo'='false' AND (p.retry->>'group_attempts')::integer=0 AND (SELECT h.event ? 'authorized_recovery' FROM preparation_history h WHERE h.run_id=p.run_id ORDER BY h.id DESC LIMIT 1)=true) AND NOT EXISTS(SELECT 1 FROM agent_run WHERE id=$1) AND NOT EXISTS(SELECT 1 FROM runtime_session WHERE run_id=$1) AND NOT EXISTS(SELECT 1 FROM model_call WHERE run_id=$1) AND NOT EXISTS(SELECT 1 FROM run_workspace WHERE run_id=$1) AND NOT EXISTS(SELECT 1 FROM workspace_operation WHERE run_id=$1 AND status<>'complete')")
+        .bind(&launch.key.run_id).bind(requirement).bind(revision).bind(old_launch)
+        .fetch_one(&mut **tx).await?;
+    if !eligible {
+        return Err(
+            "prior preparation requires explicit recheck and quiescent reconciliation".into(),
+        );
+    }
+    Ok(())
+}
+
+async fn persist_rebound_preparation(
+    tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
+    requirement: i64,
+    revision: i64,
+    launch: &Launch,
+    workspace: &Workspace,
+    old_launch: &Value,
+    prior_incarnation: &str,
+) -> Result<()> {
+    let changed = sqlx::query("UPDATE initial_run SET launch=$4,workspace=$5 WHERE requirement_id=$1 AND revision=$2 AND launch=$3")
+        .bind(requirement).bind(revision).bind(old_launch).bind(json!(launch)).bind(json!(workspace))
+        .execute(&mut **tx).await?;
+    if changed.rows_affected() != 1 {
+        return Err("saved preparation changed during recheck".into());
+    }
+    let changed =
+        sqlx::query("UPDATE preparation_record SET launch=$3 WHERE run_id=$1 AND launch=$2")
+            .bind(&launch.key.run_id)
+            .bind(old_launch)
+            .bind(json!(launch))
+            .execute(&mut **tx)
+            .await?;
+    if changed.rows_affected() != 1 {
+        return Err("preparation ledger changed during recheck".into());
+    }
+    sqlx::query("INSERT INTO preparation_history(run_id,recorded_at,event) VALUES($1,$2,$3)")
+        .bind(&launch.key.run_id).bind(crate::runtime_client::now())
+        .bind(json!({"incarnation_rebound":{"from":prior_incarnation,"to":launch.key.incarnation,"old_launch":old_launch,"new_launch":launch,"workspace":workspace}}))
+        .execute(&mut **tx).await?;
+    Ok(())
 }
 
 fn binding_json(binding: crate::local_git::Binding) -> Value {

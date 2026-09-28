@@ -1,0 +1,23 @@
+{
+  "stage": "backend-source-measurement",
+  "capture": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/backend-20260927T143959",
+  "functions": 2309,
+  "measurement": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/backend-20260927T143959/probes/backend/measurement-20260927T145933/measurements.json",
+  "measurement_sha256": "016730f426680a1cef3a7742fc7b0e8a93686ed0439379093d7c53a421db15fb",
+  "coverage_and_crap": "PASS",
+  "violations": [],
+  "changed_inputs": [],
+  "retained_root": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/backend-20260927T143959",
+  "timings": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/backend-20260927T143959/timings.jsonl",
+    "sha256": "d94c3fbb62f11936e1639379655c59a890773d44c3e030d8652bd64b6d52575b"
+  },
+  "bundle": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/backend-20260927T143959/probes/backend/bundle.json",
+    "sha256": "a037f027663dbd9ba1ae5fd129976db263c5d433df08b0654c33d4051adfd826"
+  },
+  "retention_registration": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/measurements/backend-20260927T143959/retention-registration.json",
+    "sha256": "a88975ed111905669beb1363714298b08dc517d273cd0b0a3b0d3b49c41aae6a"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "issue": 90,
+  "baseline": "54003aa46e5952b826f4780aff02ac480e0c67c7",
+  "base_tree": "81b2c92d69c23f2126d8855085b589412fbb45e9",
+  "workspace": "/home/gem/.local/share/codexsymphony/workspaces/GH-90",
+  "branch": "feat/gh90-v1-acceptance",
+  "started_at": "2026-09-27T14:39:57.416726+00:00",
+  "user_authorization": [
+    "\u4f60\u7ee7\u7eed\u554a",
+    "\u4f60\u63a8\u8fdb#90\uff0c\u4e0d\u7528\u7b49\u6211\u56de\u590d"
+  ],
+  "acceptance": "B01\u2013B08 and X01\u2013X05 as specified in issue 90; retain controlled, real external and physical evidence boundaries",
+  "prerequisites": {
+    "installed_host": "b4c9c09b96c53b3d",
+    "policy_trusted_runtime_files_match": true,
+    "original_dirty_workspace_preserved": true,
+    "standalone_git_metadata": true
+  },
+  "production_deployment_authorized": false
+}

@@ -2,9 +2,9 @@
 
 个人 AI 开发编排系统：评审需求后由 Agent 编码，平台负责验证、PR、CI 和交接。目标是电脑与手机共用一条需求流程，正常路径自动到合并与业务验收完成。
 
-截至 2026-09-21，M1 需求与队列、M2 远程接续的代码与对应阶段验收已交付。M2 的 #71–#76 全部关闭，PR #77–#82 已合并；开发基线为 `5c7934f6d86ba16f552b18c2bf90a19748f1a648`。版本、门禁与后续边界统一见 [M2 收尾与 M3 开发基线](docs/development-baseline.md)。
+2026-09-27 的组合验收基线为 main `54003aa`，包含手机生命周期 #89 / PR #138、完整诊断 #126、固定模型 #106 及双交付 #122。M1/M2 和 M3 前置实现已合入；各版本及证据边界见 [开发基线](docs/development-baseline.md)。
 
-M2 受控集成已通过；真实公网、实体手机 Bark 和离机备份的部署验收仍待完成，逐项状态见 [M2 交付矩阵及上线清单](docs/m2-delivery.md)。下一阶段为 M3：CI 有限修复、自动合并、子项业务验收、纯验证项与父项集成验收；整个日常 V1 尚未完成。
+日常 V1 的 #90 已完成 B01 原授权真实父组链（三个受保护合并及最终纯验证），其余组合与现场验收尚未完成，见 [V1 交付矩阵与发布索引](docs/v1-delivery.md)。M2 真实公网、实体手机 Bark 和离机备份仍待现场验收，见 [M2 上线清单](docs/m2-delivery.md)；代码合入和本地检查不证明生产已部署。
 
 | 使用与维护 | 文档入口 |
 |---|---|
@@ -24,7 +24,7 @@ M2 受控集成已通过；真实公网、实体手机 Bark 和离机备份的�
 | [综合方案 V10.4](Personal_AI_Software_Factory_综合方案.md) | 当前实施契约；第 23 章为队列，第 24 章为验收索引 |
 | [日常 V1 契约](docs/daily-use-v1.md) | 已确认的多入口、父子队列、手机接续与自动交付要求 |
 | [架构边界](docs/architecture-boundaries.md) | 三个真相分离，Harness-Gate 只提供验证证据 |
-| [解耦改造需求](docs/extension-requirements.md) / [核心扩展协议](docs/extension-protocol.md) | 待实施草案；hooks、可选交付、按子需求选择模型，文档合并不启动队列 |
+| [解耦改造需求](docs/extension-requirements.md) / [核心扩展协议](docs/extension-protocol.md) | 扩展契约及实际调用点；hooks、本地交付和固定模型实现已合入，启用仍需明确授权 |
 | [演进目录](docs/roadmap-specs/README.md) | 后期候选及启用条件，不构成当前开发/验收要求 |
 | [本次范围收缩记录](docs/scope-reduction-2026-09-14.md) | 变更理由与迁移映射，不另定义行为 |
 | [运行复盘](docs/symphony-harness-gate-retrospective-2026-09-13.md) | 历史事故依据，不覆盖当前规格 |
@@ -39,12 +39,12 @@ M2 受控集成已通过；真实公网、实体手机 Bark 和离机备份的�
 ## 当前选择
 
 - 一个 Rust 控制面 + PostgreSQL + 最小 Angular Web，30 秒只读 GitHub 刷新（60 秒有效期）。
-- GitHub App；Agent 只通过受控工具提交/声明，平台经持久化 outbox 发布。
+- GitHub 路径由 GitHub App/Broker 与持久 outbox 交付；本地路径由明确授权的 local_git 适配器更新保护目标。
 - 严格全局顺序覆盖编码、验证、交接、CI 等待和阻塞；具体释放条件见综合方案第 6 章。
 - 采用 Symphony 的可信开发环境；普通命令和测试直接执行，网络声明仅用于依赖准备与连通性检查。
-- 保留启动恢复闸门、工作保全、精确验证身份、0a 一次代码修复、跨 Run 累计预算和磁盘保护。
+- 保留启动恢复闸门、工作保全、精确验证身份、跨 Run 累计预算和磁盘保护；修复次数受冻结授权约束，旧 0a 授权不自动扩展。
 - 仓库先做交付能力检查；暂停保留占用，取消按完整收尾流程释放。旧 S2 合并字段推论已纠正，实际规则见综合方案 11.1/11.2。
-- 手机接续与执行隔离已纳入 M2；自动合并及完整业务验收属于 M3，平台对受管仓库的 Harness-Gate 编排接入按契约实施。通用框架按实际需要评估。
+- 手机接续、执行隔离、自动合并、子项与父组验收实现已合入；完整 V1 组合状态以交付矩阵为准。受管项目的具体验证实现由受审扩展提供。
 
 ## 已有实验
 
@@ -55,10 +55,11 @@ M2 受控集成已通过；真实公网、实体手机 Bark 和离机备份的�
 
 ## 开发环境与本仓库门禁
 
-- `codex-version.lock` 固定 Codex 0.157.1；协议生成与兼容性检查绑定该版本。
-- `harness-gate-version.lock` 固定 Core 0.4.5 与 Rust collector rc.6。独立源码／前端／合约插件见 `.harness-gate/collector-candidates.json`。
+- 工具和依赖以 `environment.lock.json`、版本/依赖锁文件及匹配的安装审批为准；运行前核对实际版本和摘要。
+- 批准的独立源码／前端／合约插件见 `.harness-gate/collector-candidates.json`；旧产品准备探针的兼容边界见对应验收原件，不能按 README 版本文字更换受信工具。
 - 本仓库从开发阶段启用 Harness-Gate，CRAP ≤10，覆盖率 ≥80%；不改变未来平台对受管仓库的分期。
 - [CI 范围与过期任务](docs/remote-gate.md#ci-范围与过期任务2026-09)：普通文档可复用同策略完整基线，过期 PR 检查自动停止；手动触发仍跑完整门禁。
+- 当前开发 Gate 与远端验证已复用固定源码槽位、编译缓存和两个测试数据库容器，并启用定时回收；安装、历史清理及尚未启用的 trim 见 [宿主整改](docs/proposals/current-development-storage.md)。产品级全面固定工作区仍由 #140 实现，旧开发控制器暂不派发。
 - [本机开发](docs/local-development.md)、[完整门禁验收](docs/quality/complete-local/README.md)、[Symphony 启用](docs/symphony-development-setup.md)。
 - `WORKFLOW.lifecycle.md` 供现有 Elixir Symphony 开发本项目；Agent 使用宿主 `github_api` 交付，不能执行 shell git push。
 - 首个未来平台接管仓库为 `musutrade/disposable`，沿用 S2/S2b 的测试授权；与当前开发本仓库的 Symphony 验收分开。
@@ -71,7 +72,7 @@ A13 原件恢复进展、剩余缺口及当前就绪状态见 [证据恢复索�
 
 环境清单、漂移检查和发布前完整验证见 [环境与发布约束](docs/environment-and-publication.md)。
 
-受控交付本轮按 #118 → #119 → #120 → #121 → #105 → #122 串行；[方案及授权快照](docs/product-controlled-delivery-plan.md)、[统一扩展协议与实际调用点](docs/extension-protocol.md)区分现有实现和待接入能力。项目环境、验证、凭据与交付由受审扩展提供，缓存可选；Rust、GitHub App 和 Harness-Gate 不是受管项目的通用前提。本仓库自己的门禁不变。
+扩展及双路径前置交付见 [方案与历史授权](docs/product-controlled-delivery-plan.md)、[双路径验收](docs/dual-path-acceptance.md)及 [统一扩展协议](docs/extension-protocol.md)。当前 #90 组合验收不沿用历史任务额度或写权限。项目环境、验证、凭据与交付由受审扩展提供，缓存可选；Rust、GitHub App 和 Harness-Gate 不是受管项目的通用前提。本仓库自己的门禁不变。
 
 项目完整验证接入、P9 证据与交付准入见 [验证 Hooks](docs/validation-hooks.md)。
 

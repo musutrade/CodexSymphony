@@ -13,10 +13,11 @@ FIELDS=('nonce','invocation_id','step_id','config_digest')
 def identity(request): return {name:request[name] for name in FIELDS}
 
 @contextmanager
-def broker(run, ledger):
+def broker(run, ledger, workspace=None):
     ledger.mkdir(parents=True,exist_ok=True,mode=0o700)
     allowed={}
-    for path in (run/'workspace/.harness-gate/runtime').glob('*-request.json'):
+    root = workspace if workspace is not None else run / 'workspace'
+    for path in (root / '.harness-gate/runtime').glob('*-request.json'):
         request=load(path);allowed[request['nonce']]=identity(request)
     address=run/'nonce.sock'
     if address.exists(): address.unlink()

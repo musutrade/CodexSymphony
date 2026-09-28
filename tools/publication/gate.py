@@ -8,6 +8,7 @@ GitHub before the controller asks for admission.
 import argparse
 import fcntl
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -35,19 +36,62 @@ def atomic(path, value):
     pending.replace(path)
 
 
+def fixed_binding(issue, approval):
+    binding = STATE / 'active-workspace.json'
+    if binding.is_symlink():
+        raise ValueError('aliased workspace binding')
+    selected = json.loads(binding.read_text())
+    root = Path('/home/gem/CodexSymphony')
+    volume = Path('/mnt/dev-ssd/codexsymphony-bounded/data')
+    if selected != {'issue': issue, 'repository': str(root)} or approval['repository'] != str(root):
+        raise ValueError('issue is not assigned to the fixed workspace')
+    if not root.is_mount() or not volume.is_mount() or root.stat().st_dev != volume.stat().st_dev:
+        raise ValueError('bounded workspace mounts required')
+    return root
+
+
 def workspace(issue):
     if not re.fullmatch(r'GH-[1-9][0-9]*', issue):
         raise ValueError('assigned GH issue required')
+    approval = json.loads(APPROVAL.read_text())
+    if approval.get('execution_version') == 3:
+        return fixed_binding(issue, approval)
     root = WORKSPACES / issue
     if root.is_symlink() or root.resolve().parent != WORKSPACES.resolve():
         raise ValueError('unsafe workspace')
     return root.resolve(strict=True)
 
 
+def snapshot_matches(run, root, approval):
+    if approval.get('execution_version') != 3:
+        return source_tree(run / 'workspace') == source_tree(root)
+    archive = json.loads((run / 'source-archive.json').read_text())
+    if hashlib.sha256((run / 'source.tar.gz').read_bytes()).hexdigest() != archive['sha256']:
+        raise ValueError('retained source archive changed')
+    path = Path(approval['host_release']) / 'fixed_workspace.py'
+    if hashlib.sha256(path.read_bytes()).hexdigest() != approval['runtime_files'][str(path)]:
+        raise ValueError('approved source reader changed')
+    spec = importlib.util.spec_from_file_location('approved_source_reader', path)
+    reader = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(reader)
+    current = reader.sources(root)
+    captured = json.loads((run / 'source-inputs.json').read_text())
+    return current == archive['inputs'] and captured == {name: row['sha256'] for name, row in current.items()}
+
+
+def temporary_root(root):
+    if root != Path('/home/gem/CodexSymphony'):
+        return None
+    volume = Path('/mnt/dev-ssd/codexsymphony-bounded/data')
+    if not volume.is_mount():
+        raise ValueError('bounded temporary filesystem missing')
+    return volume / 'tmp'
+
+
 def source_tree(root):
     """Hash exactly the tested bytes, without source filters or index writes."""
     root=Path(root).resolve(strict=True)
-    with tempfile.TemporaryDirectory(prefix='publication-tree-') as temp:
+    with tempfile.TemporaryDirectory(prefix='publication-tree-', dir=temporary_root(root)) as temp:
         # Do not pass controller credentials to Git or read global Git settings.
         env={'PATH':'/usr/bin:/bin','HOME':temp,'LANG':'C.UTF-8',
              'GIT_CONFIG_NOSYSTEM':'1','GIT_CONFIG_GLOBAL':'/dev/null'}
@@ -129,12 +173,12 @@ def validate(issue):
             if inputs(root) != before:
                 raise ValueError('source/environment changed during local validation')
             run = Path(result['run'])
-            if source_tree(run/'workspace') != before['tree']:
+            if not snapshot_matches(run, root, approval):
                 raise ValueError('validated snapshot tree differs from publication source')
             proof = json.loads((run / 'environment.json').read_text())
             if proof['fingerprint'] != before['environment']:
                 raise ValueError('environment drift: verifier and publication fingerprints differ')
-            report = run / 'workspace/.harness-gate/reports/test_result.json'
+            report = run / ('reports/test_result.json' if approval.get('execution_version') == 3 else 'workspace/.harness-gate/reports/test_result.json')
             receipt = {'status': 'PASS', 'scope': result['scope'], 'inputs': before,
                        'report': str(report), 'report_sha256': hashlib.sha256(report.read_bytes()).hexdigest()}
             admit(root, receipt, before['tree'])

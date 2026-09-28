@@ -88,16 +88,16 @@ def approved_deployment(root, config):
 
 
 def prepare(run,config,job):
-    root=job/'source'
-    subprocess.run(['git','clone','--quiet','--no-checkout','https://github.com/'+config['repository']+'.git',root],check=True)
-    subprocess.run(['git','-C',root,'fetch','--quiet','origin',run['head_sha']],check=True)
-    subprocess.run(['git','-C',root,'checkout','--quiet','--detach',run['head_sha']],check=True)
-    deployment,approval=approved_deployment(root,config)
-    config.update(deployment)
-    return root,approval
+    import fixed_checkout
+    return fixed_checkout.prepare(run,config)
 
 
-def prepare_dependencies(root,approval,config,job):
+def prepare_dependencies(root,approval,config,job,revision=None):
+    if approval.get('execution_version') == 3:
+        import fixed_checkout
+        fixed_checkout.dependencies(root,revision,config)
+        write(job/'gate-approval.json',approval)
+        return root,approval
     # Dependencies are prepared by the operator, never installed by a credentialed PR job.
     # Require exact reviewed lockfiles before exposing the installed dependency tree.
     deps=Path(config['dependency_source'])
@@ -124,6 +124,8 @@ def gate_timeout(config):
 
 def gate_command(run,config,approval,root,job):
     command=['/usr/bin/python3',Path(approval['host_release'])/'run.py','--repository',root,'--approval',job/'gate-approval.json']
+    if approval.get('execution_version') == 3:
+        command += ['--revision',run['head_sha']]
     if approval.get('execution_version') == 2:
         command += ['--cache-max-bytes',str(config.get('cache_max_bytes',40*1024**3)),
                     '--cache-ttl-seconds',str(config.get('cache_ttl_seconds',7*86400))]
@@ -135,22 +137,28 @@ def evaluate(run,config,job):
     config=dict(config)  # Selection is local to this run; service policy stays immutable.
     root,approval=prepare(run,config,job)
     if actions_cancelled(run,config): raise SupersededRun('Actions attempt no longer active')
-    docs=documentation_result(root,run,config,approval,job)
-    if docs is not None: return docs
-    reused=identical_tree_result(root,run,config,approval,job)
-    if reused is not None: return reused
+    if approval.get('execution_version') != 3:
+        docs=documentation_result(root,run,config,approval,job)
+        if docs is not None: return docs
+        reused=identical_tree_result(root,run,config,approval,job)
+        if reused is not None: return reused
     fingerprint=policy_identity(config,approval)
-    root,approval=prepare_dependencies(root,approval,config,job)
+    root,approval=prepare_dependencies(root,approval,config,job,run['head_sha'])
     # Older reviewed deployments remain executable during a rolling transition.
     command=gate_command(run,config,approval,root,job)
     with (job/'gate.stdout').open('w') as out,(job/'gate.stderr').open('w') as err:
         code=run_cancellable(command,out,err,lambda: actions_cancelled(run,config),timeout=gate_timeout(config))
     if code: raise RuntimeError('complete gate failed; inspect retained gate.stderr and run reports')
+    return accepted_result(run,approval,job,fingerprint)
+
+
+def accepted_result(run,approval,job,fingerprint):
     lines=(job/'gate.stdout').read_text().splitlines()
     accepted=json.loads(lines[-1])
     if accepted.get('status')!='PASS': raise ValueError('missing complete acceptance')
     retained=Path(accepted['run'])
-    report=retained/'workspace/.harness-gate/reports/test_result.json';value=load(report)
+    report=retained/('reports/test_result.json' if approval.get('execution_version') == 3 else 'workspace/.harness-gate/reports/test_result.json')
+    value=load(report)
     if not value['passed'] or not value['evidence_complete']: raise ValueError('incomplete evidence')
     if value['source_identity'] not in ('commit:'+run['head_sha'],'working-tree:'+run['head_sha']):
         raise ValueError('report source identity mismatch')
@@ -220,7 +228,8 @@ def process(run,config,home):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True)
     parser.add_argument('--once',action='store_true');args=parser.parse_args()
-    config=load(args.config);home=Path(config['state_root']);home.mkdir(parents=True,exist_ok=True)
+    import fixed_checkout
+    config=load(args.config);home=fixed_checkout.state_home(config)
     with (home/'service.lock').open('w') as lock:
         fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
         while True:

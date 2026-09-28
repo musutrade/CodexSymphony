@@ -1,22 +1,30 @@
+"""A new run must reuse compiler storage instead of deleting it at handoff."""
 import tempfile
 from pathlib import Path
 import unittest
-from run import prune_build_cache
+from unittest.mock import patch
+import bounded_layout as layout
+
 
 class CacheTests(unittest.TestCase):
-    def test_only_build_cache_is_removed(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'target').mkdir();(root/'target/cache').write_text('rebuildable')
-            for name in ['http-server','raw-object','receipt.json']: (root/name).write_text('retained')
-            prune_build_cache(root)
-            self.assertFalse((root/'target').exists())
-            self.assertEqual((root/'http-server').read_text(),'retained')
-            self.assertEqual((root/'raw-object').read_text(),'retained')
-            self.assertEqual((root/'receipt.json').read_text(),'retained')
-    def test_cache_symlink_cannot_delete_evidence(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root=Path(directory);(root/'evidence').mkdir();(root/'target').symlink_to(root/'evidence')
-            with self.assertRaises(ValueError):prune_build_cache(root)
-            self.assertTrue((root/'evidence').is_dir())
+    def test_thirty_runs_keep_compiler_cache_in_one_fixed_slot(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(layout,'VOLUME',Path(directory).resolve()),patch.object(layout,'CACHE_DOMAIN','local'):
+            target=layout.target();cached=target/'compiled-object';cached.write_bytes(b'reusable')
+            before=cached.stat()
+            for _ in range(30):
+                run=layout.new_run()
+                self.assertNotEqual(run,layout.target())
+                self.assertEqual(cached.read_bytes(),b'reusable')
+                self.assertEqual(cached.stat().st_ino,before.st_ino)
+            self.assertEqual(len(list((Path(directory)/'cache').iterdir())),1)
+            self.assertFalse(any(p.name=='target' for p in (Path(directory)/'evidence').rglob('*')))
+
+    def test_cache_symlink_cannot_adopt_evidence(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(layout,'VOLUME',Path(directory).resolve()),patch.object(layout,'CACHE_DOMAIN','local'):
+            root=Path(directory).resolve();evidence=root/'evidence';evidence.mkdir()
+            (root/'cache').symlink_to(evidence)
+            with self.assertRaises(ValueError):layout.target()
+            self.assertEqual(list(evidence.iterdir()),[])
+
 
 if __name__=='__main__':unittest.main()

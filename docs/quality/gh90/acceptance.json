@@ -1,0 +1,298 @@
+{
+  "kind": "retained evidence index; host receipt owns publication admission",
+  "recorded_at": "2026-09-27T15:18:38.453079+00:00",
+  "production_source_changed": false,
+  "run": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106",
+  "timings": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/timings.jsonl",
+    "sha256": "c95bacb970d10e7fdf1b7631f177ec10f2258939d5695116bd8b14f64377b893"
+  },
+  "stages": [
+    {
+      "phase": "format",
+      "started_at": "2026-09-27T15:01:34.443907+00:00",
+      "status": "PASS",
+      "duration_ms": 1354
+    },
+    {
+      "phase": "clippy",
+      "started_at": "2026-09-27T15:01:35.802803+00:00",
+      "status": "PASS",
+      "duration_ms": 41072
+    },
+    {
+      "phase": "secrets",
+      "started_at": "2026-09-27T15:02:16.876155+00:00",
+      "status": "PASS",
+      "duration_ms": 11062
+    },
+    {
+      "phase": "lint",
+      "started_at": "2026-09-27T15:02:27.939342+00:00",
+      "status": "PASS",
+      "duration_ms": 5373
+    },
+    {
+      "phase": "build",
+      "started_at": "2026-09-27T15:02:33.313432+00:00",
+      "status": "PASS",
+      "duration_ms": 11062
+    },
+    {
+      "phase": "server-build",
+      "started_at": "2026-09-27T15:02:44.376841+00:00",
+      "status": "PASS",
+      "duration_ms": 41965
+    },
+    {
+      "phase": "http",
+      "started_at": "2026-09-27T15:04:05.809941+00:00",
+      "status": "PASS",
+      "duration_ms": 15210
+    },
+    {
+      "phase": "browser-recovery",
+      "started_at": "2026-09-27T15:04:21.021672+00:00",
+      "status": "PASS",
+      "duration_ms": 147357
+    },
+    {
+      "phase": "auth-process",
+      "started_at": "2026-09-27T15:06:48.381036+00:00",
+      "status": "PASS",
+      "duration_ms": 8157
+    },
+    {
+      "phase": "ingress",
+      "started_at": "2026-09-27T15:06:56.539660+00:00",
+      "status": "FAIL",
+      "duration_ms": 2577
+    },
+    {
+      "phase": "ingress-recovery",
+      "started_at": "2026-09-27T15:07:46.357357+00:00",
+      "status": "FAIL",
+      "duration_ms": 2552
+    },
+    {
+      "phase": "restart-legacy",
+      "started_at": "2026-09-27T15:08:12.804583+00:00",
+      "status": "PASS",
+      "duration_ms": 29876
+    },
+    {
+      "phase": "notifier",
+      "started_at": "2026-09-27T15:08:42.682035+00:00",
+      "status": "PASS",
+      "duration_ms": 30954
+    },
+    {
+      "phase": "backup",
+      "started_at": "2026-09-27T15:09:13.637385+00:00",
+      "status": "FAIL",
+      "duration_ms": 11382
+    },
+    {
+      "phase": "migration",
+      "started_at": "2026-09-27T15:10:03.461889+00:00",
+      "status": "FAIL",
+      "duration_ms": 2428
+    },
+    {
+      "phase": "migration-recovery",
+      "started_at": "2026-09-27T15:12:02.412285+00:00",
+      "status": "FAIL",
+      "duration_ms": 17756
+    },
+    {
+      "phase": "backup-recovery",
+      "started_at": "2026-09-27T15:12:39.850496+00:00",
+      "status": "FAIL",
+      "duration_ms": 78291
+    },
+    {
+      "phase": "migration-recovery2",
+      "started_at": "2026-09-27T15:14:13.216176+00:00",
+      "status": "PASS",
+      "duration_ms": 19608
+    },
+    {
+      "phase": "backup-final",
+      "started_at": "2026-09-27T15:15:30.327760+00:00",
+      "status": "PASS",
+      "duration_ms": 60587
+    },
+    {
+      "phase": "secrets-candidate2",
+      "started_at": "2026-09-27T15:20:38.503662+00:00",
+      "status": "PASS",
+      "duration_ms": 11018
+    }
+  ],
+  "required_completed_stages": [
+    "format",
+    "clippy",
+    "secrets",
+    "lint",
+    "build",
+    "server-build",
+    "http",
+    "browser-recovery",
+    "auth-process",
+    "restart-legacy",
+    "notifier",
+    "migration-recovery2",
+    "backup-final",
+    "secrets-candidate2"
+  ],
+  "reports": {
+    "http": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh71-product-contract/validation.json",
+      "sha256": "1e3dc45fab0b414349e7ba5f9f7158409c4d523f840ba2ac1beff92e31f41e16"
+    },
+    "http_client": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh71-product-contract/client-measurement.json",
+      "sha256": "dd7b0a5fffc47c866a6f2eba543eec0a07df76ce0d5ab87537ffc9d2b8ebfdb5"
+    },
+    "browser": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh90/browser-final.json",
+      "sha256": "a833c678cfaad2024e09720cad8ef4fa5a3e9ab0f8ee724e3101b452e627758f"
+    },
+    "auth": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh71-resume/auth-process.json",
+      "sha256": "a71dd193662ee0bf17c547d26f7b05dd0f564f9edeefab140ab0bc2b57dab8e0"
+    },
+    "restart": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh90/mobile-recovery/result.json",
+      "sha256": "22dbfc71a3a4e81ecc7b4afafdf618d1f3356f0ee4d5e9a249de9f1481573789"
+    },
+    "restart_environment": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh90/mobile-recovery/environment-binding.json",
+      "sha256": "9eef79cf46296bfab678507be247b39de25b9756600c1fd32f0e5f8e4fb69f6e"
+    },
+    "backup": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh75/recovery-acceptance.json",
+      "sha256": "947d40c4fefa57364e30d6a6eb225b2811ed3e1b43e4459f0fa75577c912d8a9"
+    }
+  },
+  "migration": [
+    {
+      "baseline": 39,
+      "report": {
+        "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh90/migration-9638dababf0e45f09ca1db14151769c7/upgrade-39.json",
+        "sha256": "db963415880969c729d5733a75d4ee12b702431f4ff67ede43c33ef146c2a02c"
+      },
+      "tables_compared": 82,
+      "starts": 2,
+      "barrier": "closed for original partial preservation"
+    },
+    {
+      "baseline": 24,
+      "report": {
+        "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/workspace/artifacts/gh90/migration-9b172b5315834d24bd1ad56a2dc34f77/upgrade-24.json",
+        "sha256": "0f29d29f48fa1682bf7ea88296cb19987ca6fd5b4ee4360ae646346e8294e492"
+      },
+      "tables_compared": 60,
+      "starts": 2,
+      "barrier": "closed for original partial preservation"
+    }
+  ],
+  "backup": {
+    "restore_case": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/backup-final.stderr",
+      "sha256": "85900399267c51223f51908a4501e1339bb15d414b86c94fa84ac1196d967d8b"
+    },
+    "failure_and_cli_cases": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/backup-recovery.stderr",
+      "sha256": "5361774f891804c14c9cbd92bcbd886caac17652fe396893e095777d657d1deb"
+    },
+    "orchestration": "test-only native readiness polling and canonical binary reference; reviewed image client copies, no production safety check relaxed",
+    "unique_cases_passed": 3
+  },
+  "browser_cases": 34,
+  "http_variants": 108,
+  "notifier_and_execution_boundary_cases": 14,
+  "runtime_boundary": "scripted Runtime/provider in measured regressions and restart drill; real product/HTTPS/PostgreSQL/Git/processes; zero GH-90 live model calls or repository writes",
+  "restart": {
+    "instances": 3,
+    "runs": 3,
+    "scripted_peer_turns": 3,
+    "original_account_preserved": true,
+    "all_quiescent": true,
+    "cleanup_complete": true
+  },
+  "github_readiness": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/readiness/current-binary-github-readiness.json",
+    "sha256": "9fa3fa4232d920b1946282bc8e79e80d57ffec49978ffbe0152877fd9484d214"
+  },
+  "failed_timed_stages": [
+    {
+      "phase": "ingress",
+      "started_at": "2026-09-27T15:06:56.539660+00:00",
+      "status": "FAIL",
+      "duration_ms": 2577
+    },
+    {
+      "phase": "ingress-recovery",
+      "started_at": "2026-09-27T15:07:46.357357+00:00",
+      "status": "FAIL",
+      "duration_ms": 2552
+    },
+    {
+      "phase": "backup",
+      "started_at": "2026-09-27T15:09:13.637385+00:00",
+      "status": "FAIL",
+      "duration_ms": 11382
+    },
+    {
+      "phase": "migration",
+      "started_at": "2026-09-27T15:10:03.461889+00:00",
+      "status": "FAIL",
+      "duration_ms": 2428
+    },
+    {
+      "phase": "migration-recovery",
+      "started_at": "2026-09-27T15:12:02.412285+00:00",
+      "status": "FAIL",
+      "duration_ms": 17756
+    },
+    {
+      "phase": "backup-recovery",
+      "started_at": "2026-09-27T15:12:39.850496+00:00",
+      "status": "FAIL",
+      "duration_ms": 78291
+    }
+  ],
+  "setup_failure": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/database-resume-failure.json",
+    "sha256": "ef2a70e09f19a3bfdd13032757cc7324bd4cadaa32a6509e1cf6276a576bed32"
+  },
+  "supplemental_ingress": {
+    "status": "BLOCKED",
+    "cause": "Nginx fixture executable unavailable; PATH recovery hypothesis disproved",
+    "first": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/ingress-attempt-01.json",
+      "sha256": "61701205d7da21e556efc468062c022f49e7300f3a2e5cda37c36562f52c5e00"
+    },
+    "second": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/ingress-attempt-02.json",
+      "sha256": "74534fdfd67b970367716a65ec50d726699e8d889a73fc7c13d0558416b52140"
+    },
+    "recovery": {
+      "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/ingress-recovery.json",
+      "sha256": "48d9f98c02af79fd54f79407d42f361d44015d81ac468fb547605e4f21fd3792"
+    }
+  },
+  "live_acceptance": {
+    "status": "BLOCKED",
+    "repository_mutations": 0,
+    "model_calls": 0,
+    "reason": "no GH-90-specific disposable write scope and finite original-account model reservation; old #106/#122 grants stay original",
+    "resume_condition": "freeze explicit current-task disposable repositories, reviewed group/scope and cumulative/per-call limits before real Runtime and delivery"
+  },
+  "physical_acceptance": "not executed; existing M2 public ingress, physical phone/Bark and off-host restore conditions remain",
+  "candidate_secret_scan": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/checks-20260927T150106/secrets-candidate2.stdout",
+    "sha256": "49fb8eb3f7a3eeae5cf509025b5759003751abf57b629f033cc9ebbb65639151"
+  }
+}

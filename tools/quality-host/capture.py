@@ -36,22 +36,9 @@ def node(plugin, operation, request):
     return json.loads(subprocess.check_output(['node','-e',script,str(plugin / 'protocol.cjs')],input=json.dumps(request),text=True))
 
 def database(run, purpose="", repository=None):
-    policy = contract.load(repository)
-    name = 'codexsymphony-gate-' + run.name[-16:] + purpose
-    subprocess.run(['docker','run','--detach','--name',name,'--publish','127.0.0.1::5432',
-                    '--env','POSTGRES_DB=gate_test','--env','POSTGRES_USER=gate_test','--env','POSTGRES_PASSWORD=gate_test',
-                    '--tmpfs','/var/lib/postgresql/data',*contract.database_args(policy),policy['postgres']['image']],check=True,capture_output=True)
-    inspection = json.loads(subprocess.check_output(['docker','inspect',name],text=True))[0]
-    write(run / ('database'+purpose+'.json'), contract.check_database(inspection,policy))
-    for _ in range(60):
-        # The entrypoint's temporary init server accepts Unix sockets before
-        # the published TCP listener exists; wait for the latter.
-        probe=subprocess.run(['docker','exec',name,'pg_isready','--host','127.0.0.1','-U','gate_test','-d','gate_test'],capture_output=True)
-        if probe.returncode==0: break
-        time.sleep(.5)
-    else: raise RuntimeError('test database did not become ready')
-    port=subprocess.check_output(['docker','port',name,'5432/tcp'],text=True).strip().split(':')[-1]
-    return name, f'postgres://gate_test:gate_test@127.0.0.1:{port}/gate_test'
+    import database_pool
+    return database_pool.acquire(run, purpose, repository)
+
 
 def wait_http_address(server, output, timeout=20):
     """Drain OS pipe chunks; buffered readline can hide subsequent ready lines."""
@@ -102,8 +89,10 @@ def capture_http(run, repository, container, url):
 
 
 def capture_http_session(run, repository, container, url, adapter, tls, variables, auth_env):
-    binary=run/'target/debug/codexsymphony-server'
-    args=command(['cargo','build','--locked','--bin','codexsymphony-server'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
+    import bounded_layout
+    target = bounded_layout.target('normal')
+    binary = target / 'debug/codexsymphony-server'
+    args=command(['cargo','build','--locked','--bin','codexsymphony-server'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',target],compiler_target=target,environment={'TEST_DATABASE_URL':url})
     run_logged(run,'http-build',args)
     environment={'DATABASE_URL':url,'BIND_ADDRESS':'127.0.0.1:0','RUST_LOG':'info','EXECUTION_DIRECTORY':'/tmp/codexsymphony-execution', **auth_env}
     args=command([binary],run=run,repository=repository,plugins=PLUGIN_ROOT,readonly=[binary],environment=environment)
@@ -115,37 +104,7 @@ def capture_http_session(run, repository, container, url, adapter, tls, variable
     try:
         with (open(os.devnull, 'wb') if adapter else (run/'http-server.stdout').open('wb')) as output:
             address=wait_http_address(server,output)
-        prepare_http_fixture(run,repository,container)
-        from http_scenarios import capture
-        from http_auth import bootstrap
-        if adapter:
-            bootstrap(adapter, variables, binary=binary, run=run, repository=repository,
-                      plugins=PLUGIN_ROOT, environment=environment)
-            tls.start(address)
-        scenario_path=repository/'api/capture-scenarios.json'
-        scenarios=load(scenario_path) if scenario_path.exists() else []
-        setup=adapter['login'] if adapter else []
-        from http_contract import ContractCapture
-        bridge=ContractCapture(variables) if adapter else None
-        observations=capture(address,load(repository/'api/openapi.json'),setup+scenarios,
-                             tls=tls,variables=variables,setup_count=len(setup),
-                             default_headers=adapter['headers'] if adapter else None, observer=bridge)
-        for status in (200,503):
-            if status==503: subprocess.run(['docker','stop','--time','1',container],check=True,capture_output=True)
-            request=urllib.request.Request((tls.origin if tls else 'http://'+address)+'/api/health')
-            handlers=[urllib.request.ProxyHandler({})]
-            from http_scenarios import NoRedirect
-            handlers.append(NoRedirect())
-            if tls: handlers.append(urllib.request.HTTPSHandler(context=tls.context))
-            try: response=urllib.request.build_opener(*handlers).open(request,timeout=8)
-            except urllib.error.HTTPError as error: response=error
-            with response:
-                if response.status!=status: raise RuntimeError(f'expected HTTP {status}, got {response.status}')
-                observations.append({'method':'GET','path':'/api/health','status':response.status,'content_type':response.headers['Content-Type'],'body':json.load(response)})
-        if bridge:
-            for observation in observations: bridge.observe(observation)
-            observations, validation=bridge.seal(load(repository/'api/openapi.json'))
-            write(run/'http-auth-validation.json',validation)
+        observations=capture_http_observations(run, repository, container, binary, environment, address, adapter, tls, variables)
         write(run/'http-observations.json',observations)
         shutil.copyfile(binary,run/'http-server')
         return observations,sha(binary.read_bytes())
@@ -156,28 +115,66 @@ def capture_http_session(run, repository, container, url, adapter, tls, variable
         try: server.wait(timeout=5)
         except subprocess.TimeoutExpired: os.killpg(server.pid,signal.SIGKILL);server.wait()
 
-def captures(run, repository, root, context, baseline):
-    for directory in ('probes','target'): (run/directory).mkdir(exist_ok=True)
-    container,url=database(run,repository=repository)
+def capture_http_observations(run, repository, container, binary, environment, address, adapter, tls, variables):
+    prepare_http_fixture(run,repository,container)
+    from http_scenarios import capture
+    from http_auth import bootstrap
+    if adapter:
+        bootstrap(adapter, variables, binary=binary, run=run, repository=repository,
+                  plugins=PLUGIN_ROOT, environment=environment)
+        tls.start(address)
+    scenario_path=repository/'api/capture-scenarios.json'
+    scenarios=load(scenario_path) if scenario_path.exists() else []
+    setup=adapter['login'] if adapter else []
+    from http_contract import ContractCapture
+    bridge=ContractCapture(variables) if adapter else None
+    observations=capture(address,load(repository/'api/openapi.json'),setup+scenarios,
+                         tls=tls,variables=variables,setup_count=len(setup),
+                         default_headers=adapter['headers'] if adapter else None, observer=bridge)
+    capture_health(address, container, tls, observations)
+    if bridge:
+        for observation in observations: bridge.observe(observation)
+        observations, validation=bridge.seal(load(repository/'api/openapi.json'))
+        write(run/'http-auth-validation.json',validation)
+    return observations
+
+
+def capture_health(address, container, tls, observations):
+    for status in (200,503):
+        if status==503: subprocess.run(['docker','stop','--time','1',container],check=True,capture_output=True)
+        request=urllib.request.Request((tls.origin if tls else 'http://'+address)+'/api/health')
+        handlers=[urllib.request.ProxyHandler({})]
+        from http_scenarios import NoRedirect
+        handlers.append(NoRedirect())
+        if tls: handlers.append(urllib.request.HTTPSHandler(context=tls.context))
+        try: response=urllib.request.build_opener(*handlers).open(request,timeout=8)
+        except urllib.error.HTTPError as error: response=error
+        with response:
+            if response.status!=status: raise RuntimeError(f'expected HTTP {status}, got {response.status}')
+            observations.append({'method':'GET','path':'/api/health','status':response.status,'content_type':response.headers['Content-Type'],'body':json.load(response)})
+
+def capture_producers(run, repository, root):
+    import manual_capture
+    import database_pool
+    manual_capture.backend(run, root)
+    import manual_measure
+    result = manual_measure.measure(run, root)
+    manual_measure.register(run)
+    write(run / 'measurement-summary.json', result)
+    if result['coverage_and_crap'] != 'PASS':
+        raise ValueError('backend coverage or CRAP failed before checks')
+    modules = root / 'web/angular/node_modules'
+    modules.mkdir(exist_ok=True)
+    args=command(['node',root/'web/angular/tools/probe-typescript-risk.cjs'],run=run,repository=root,plugins=PLUGIN_ROOT,writable=[run/'probes'],mounts=[(repository/'web/angular/node_modules',modules)],environment={'HARNESS_GATE_TYPESCRIPT_PLUGIN':str(TS)})
+    run_logged(run,'frontend-capture',args)
+    container,url=database(run,purpose='-http',repository=root)
     try:
-        args=command(['python3',RUST/'capture.py','--repository',repository,'--output',run/'probes/backend','--target-dir',run/'target','--source-root','apps/server/src','--input','Cargo.toml','--input','Cargo.lock','--input','apps','--input','migrations','--manifest','apps/server/Cargo.toml'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes',run/'target'],environment={'TEST_DATABASE_URL':url})
-        run_logged(run,'backend-capture',args)
-        args=command(['node',repository/'web/angular/tools/probe-typescript-risk.cjs'],run=run,repository=repository,plugins=PLUGIN_ROOT,writable=[run/'probes'],environment={'HARNESS_GATE_TYPESCRIPT_PLUGIN':str(TS)})
-        run_logged(run,'frontend-capture',args)
-        # Contract fixtures must not inherit rows left by backend tests.
-        http_container,http_url=database(run,purpose='-http',repository=repository)
-        try:
-            observations,binary_hash=capture_http(run,repository,http_container,http_url)
-        finally:
-            subprocess.run(['docker','rm','--force',http_container],check=True,capture_output=True)
+        return capture_http(run,root,container,url)
     finally:
-        subprocess.run(['docker','rm','--force',container],check=True,capture_output=True)
-    runtime=root/'.harness-gate/runtime'; runtime.mkdir(parents=True,exist_ok=True)
-    output=root/'.harness-gate/reports/evidence';output.mkdir(parents=True,exist_ok=True)
-    backend=load(run/'probes/backend/bundle.json')['request']
-    backend.update(workspace_root=str(root),output_root=str(output),context=context)
-    backend['parameters']['receipt']['context']=context
-    # Source hashes are checked against the combined immutable checkout by the plugin.
+        database_pool.release(container)
+
+
+def bind_frontend(run, root, output, runtime, context):
     frontend_dir=next((run/'tmp').glob('codexsymphony-ts-risk-*'))
     frontend=load(frontend_dir/'collector-bundle.json')['request']
     receipt=frontend['parameters']['receipt']
@@ -198,9 +195,13 @@ def captures(run, repository, root, context, baseline):
     receipt['pipeline']['tools']['path-rebase']='original-app-to-repository-prefix/v1'
     discovery=node(TS,'p.discover(q)',frontend);p['subjects']=discovery['subjects'];receipt['sources']=[{k:f[k] for k in ('path','sha256')} for f in discovery['sources']]
     receipt['request']=node(TS,'p.binding(q)',frontend)
+    return frontend, discovery
+
+
+def bind_contract(run, root, output, runtime, context, baseline, observations, binary_hash, frontend, discovery):
     observation_path=runtime/'http-observations.json';write(observation_path,observations)
     contract={'schema':'harness-collector-request/v1','project':'codexsymphony','component':'backend','collector':{'name':'http-json-contract','version':'0.1.0-rc.5'},'context':context,'workspace_root':str(root),'output_root':str(output),'requested_capabilities':['contract.breaking_changes','contract.client_drift','contract.compatible'],
-              'parameters':{'boundary':'contract','consumer_boundary':'production','contract':'api/openapi.json','client':'web/angular/src/app/health.ts','type_file':'web/angular/src/app/health-response.ts','type_name':'HealthResponse','observations':'.harness-gate/runtime/http-observations.json','artifact_subdir':'frontend-api','relationship':'frontend-api','consumer':'frontend','consumer_source_root':'web/angular/src','exclude':p['exclude']}}
+              'parameters':{'boundary':'contract','consumer_boundary':'production','contract':'api/openapi.json','client':'web/angular/src/app/health.ts','type_file':'web/angular/src/app/health-response.ts','type_name':'HealthResponse','observations':'.harness-gate/runtime/http-observations.json','artifact_subdir':'frontend-api','relationship':'frontend-api','consumer':'frontend','consumer_source_root':'web/angular/src','exclude':frontend['parameters']['exclude']}}
     files=['api/openapi.json','web/angular/src/app/health.ts','web/angular/src/app/health-response.ts','apps/server/src/lib.rs','apps/server/src/main.rs','Cargo.toml','Cargo.lock','apps/server/Cargo.toml']
     for name in ('api/capture-scenarios.json','api/capture-fixture.sql','api/capture-auth.json'):
         if (root/name).exists(): files.append(name)
@@ -208,6 +209,18 @@ def captures(run, repository, root, context, baseline):
     if (run/'http-auth-validation.json').exists():
         contract['parameters']['receipt']['auth_validation']=load(run/'http-auth-validation.json')
     contract['parameters']['subjects']=node(HTTP,'p.discover(q)',contract)['subjects']
+    return contract
+
+
+def captures(run, repository, root, context, baseline):
+    observations,binary_hash=capture_producers(run,repository,root)
+    runtime=root/'.harness-gate/runtime'; runtime.mkdir(parents=True,exist_ok=True)
+    output=root/'.harness-gate/reports/evidence';output.mkdir(parents=True,exist_ok=True)
+    backend=load(run/'probes/backend/bundle.json')['request']
+    backend.update(workspace_root=str(root),output_root=str(output),context=context)
+    backend['parameters']['receipt']['context']=context
+    frontend,discovery=bind_frontend(run,root,output,runtime,context)
+    contract=bind_contract(run,root,output,runtime,context,baseline,observations,binary_hash,frontend,discovery)
     requests={'backend':backend,'frontend':frontend,'frontend-api':contract}
     # Subject IDs use relative source paths and source hashes, not snapshot
     # directories or commit IDs. Validate the relocated inventory; collect()
