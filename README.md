@@ -4,7 +4,7 @@
 
 2026-09-27 的组合验收基线为 main `54003aa`，包含手机生命周期 #89 / PR #138、完整诊断 #126、固定模型 #106 及双交付 #122。M1/M2 和 M3 前置实现已合入；各版本及证据边界见 [开发基线](docs/development-baseline.md)。
 
-日常 V1 的 #90 正在补组合验收、迁移和发布证据，完整交付尚未完成，见 [V1 交付矩阵与发布索引](docs/v1-delivery.md)。M2 真实公网、实体手机 Bark 和离机备份仍待现场验收，见 [M2 上线清单](docs/m2-delivery.md)；代码合入和本地检查不证明生产已部署。
+日常 V1 的 #90 已完成 B01 原授权真实父组链（三个受保护合并及最终纯验证），其余组合与现场验收尚未完成，见 [V1 交付矩阵与发布索引](docs/v1-delivery.md)。M2 真实公网、实体手机 Bark 和离机备份仍待现场验收，见 [M2 上线清单](docs/m2-delivery.md)；代码合入和本地检查不证明生产已部署。
 
 | 使用与维护 | 文档入口 |
 |---|---|
@@ -59,6 +59,7 @@
 - 批准的独立源码／前端／合约插件见 `.harness-gate/collector-candidates.json`；旧产品准备探针的兼容边界见对应验收原件，不能按 README 版本文字更换受信工具。
 - 本仓库从开发阶段启用 Harness-Gate，CRAP ≤10，覆盖率 ≥80%；不改变未来平台对受管仓库的分期。
 - [CI 范围与过期任务](docs/remote-gate.md#ci-范围与过期任务2026-09)：普通文档可复用同策略完整基线，过期 PR 检查自动停止；手动触发仍跑完整门禁。
+- 当前开发 Gate 与远端验证已复用固定源码槽位、编译缓存和两个测试数据库容器，并启用定时回收；安装、历史清理及尚未启用的 trim 见 [宿主整改](docs/proposals/current-development-storage.md)。产品级全面固定工作区仍由 #140 实现，旧开发控制器暂不派发。
 - [本机开发](docs/local-development.md)、[完整门禁验收](docs/quality/complete-local/README.md)、[Symphony 启用](docs/symphony-development-setup.md)。
 - `WORKFLOW.lifecycle.md` 供现有 Elixir Symphony 开发本项目；Agent 使用宿主 `github_api` 交付，不能执行 shell git push。
 - 首个未来平台接管仓库为 `musutrade/disposable`，沿用 S2/S2b 的测试授权；与当前开发本仓库的 Symphony 验收分开。

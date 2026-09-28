@@ -49,7 +49,7 @@ def seal(run, repository, context):
     bundle = json.loads((capture / 'bundle.json').read_text())['request']
     receipt = bundle['parameters']['receipt']
     pipeline = receipt['pipeline']
-    if pipeline['capture'] != 'cargo-llvm-cov-locked/v1' or pipeline['tests'] or pipeline['manifest'] != 'apps/server/Cargo.toml':
+    if pipeline['capture'] not in ('cargo-llvm-cov-locked/v1', 'cargo-llvm-cov-fixed-source/v1') or pipeline['tests'] or pipeline['manifest'] != 'apps/server/Cargo.toml':
         raise ValueError('capture does not cover the complete backend test selection')
     inputs = backend_inputs(repository)
     if inputs != receipt['inputs'] or bundle['context']['commit'] != context['commit']:
@@ -70,21 +70,28 @@ def verified_log(path, root):
     if not path.is_absolute() or path.resolve() != path:
         raise ValueError('noncanonical test receipt')
     value = json.loads(path.read_text())
-    expected_run = path.parent.name
+    validate_identity(value, root, path.parent.name)
+    validate_selection(value, root)
+    log = path.parent / 'probes/backend/capture.stdout'
+    if value['stdout'] != str(log) or log.resolve() != log or digest(log) != value['stdout_sha256']:
+        raise ValueError('test capture log changed')
+    return log.read_bytes()
+
+
+def validate_identity(value, root, expected_run):
     head = subprocess.check_output(['git', '-C', root, 'rev-parse', 'HEAD'], text=True).strip()
     if (value.get('schema') != 'host-test-capture/v1' or type(value.get('exit_code')) is not int
             or value['exit_code'] != 0 or value['context']['commit'] != head
             or value['context']['run'] != expected_run):
         raise ValueError('test capture identity mismatch')
+
+
+def validate_selection(value, root):
     pipeline = value['pipeline']
     if (not supported(root) or value['inputs'] != backend_inputs(root)
-            or pipeline['capture'] != 'cargo-llvm-cov-locked/v1'
+            or pipeline['capture'] not in ('cargo-llvm-cov-locked/v1', 'cargo-llvm-cov-fixed-source/v1')
             or pipeline['tests'] or pipeline['manifest'] != 'apps/server/Cargo.toml'):
         raise ValueError('test capture selection or inputs changed')
-    log = path.parent / 'probes/backend/capture.stdout'
-    if value['stdout'] != str(log) or log.resolve() != log or digest(log) != value['stdout_sha256']:
-        raise ValueError('test capture log changed')
-    return log.read_bytes()
 
 
 def main():

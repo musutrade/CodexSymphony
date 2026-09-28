@@ -12,29 +12,30 @@
 
 ## B01–B08 与增量证据
 
-| 项目 | 同版本受控检查主体 | 完整验收仍需的证据 |
+| 项目 | 受控检查主体（各自来源见索引） | 真实链与剩余边界 |
 | --- | --- | --- |
-| B01 | `group_review`、`group_queue`、`integration_validation`、`local_git`；桌面整组评审与覆盖遗漏拒绝 | 一次整组授权下，三个独立代码子项及最终纯验证的真实 Runtime/交付链；实际完整版本集合和父 Done |
+| B01 | `group_review`、`group_queue`、`integration_validation`、`local_git`；桌面整组评审与覆盖遗漏拒绝 | 已完成原授权三代码项、三个受保护合并及最终纯验证，父 Done 绑定实际版本集合；[真实链](quality/gh90/b01-real-group.json)。本地 API 录入与浏览器 fixture 分别取证 |
 | B02 | 桌面/移动同一 Rust API、真实 HTTPS 浏览器导入/确认；固定模型冻结与实际身份协议回归 | 本轮手机输入到线上模型执行的完整身份与用量，不借用 #106 原任务结果 |
 | B03 | 真实产品服务、Git、数据库、HTTPS/Chromium 的旧问题接续及暂停重启；脚本 Runtime 对端 | 真实模型接续的原账户记录；实体手机隔夜观测 |
-| B04 | `bounded_recovery`、`budgets`、`extension_lifecycle`，旧预留/事件/修复累计账本 | 同一原任务的真实外部暂态及代码失败恢复，逐调用保留 unknown 预留 |
+| B04 | `bounded_recovery`、`budgets`、`extension_lifecycle`，旧预留/事件/修复累计账本 | 已完成原 C1 预算停止/保全恢复与环境修复，unknown 预留保持；其余真实外部暂态及代码失败组合仍待完成 |
 | B05 | `linked_repair`、`automatic_merge`、`local_git`；范围、额度、后继占用和手机决定 | 本轮真实交付后失败、原项关联修复和最终新版本验收 |
 | B06 | `integration_validation`、`linked_repair`、`local_git`；原集成项修复和全版本组合重验 | 混合父组真实失败/修复链，旧子项完成事实和旧失败原件均保持 |
 | B07 | `group_edits`、`group_queue`、`delivery`、`automatic_merge`；真实服务暂停/取消/重启 | 本轮外部取消与合并竞态的原动作对账；不能以 fixture 推断远端结果 |
-| B08 | GitHub 身份/SHA/有效重跑回归、认证撤销、进程隔离、通知失败、备份恢复 | 真实 GitHub CI/合并组合；M2 公网、实体通知与离机恢复现场项 |
+| B08 | GitHub 身份/SHA/有效重跑回归、认证撤销、进程隔离、通知失败、备份恢复 | 已完成三次真实 CI/test-merge/merged 验收；其余 GitHub 故障组合、M2 公网、实体通知与离机恢复仍待完成 |
 | X01 | 实际本地 Git/Node 验收、非 Rust/无项目数据库/缓存关闭、可替换检查、多仓版本组合 | 本轮 GitHub/local_git 混合父组；只读 App 预检不构成写入或交付验收 |
 | X02 | `validation_hooks`、`project_hooks`、`extension_lifecycle` 的伪结果/漂移/超时/代次与迟到 PASS | 接入真实恢复链的冻结配置、同候选新证明或范围内新候选，以及原预算 |
 | X03 | `extension_lifecycle` 多仓作用域、撤权、持久事件/有限补投及浏览器状态 | 实际通知渠道送达观测；插件 accepted 保持为插件接收事实 |
 | X04 | `diagnostics`、真实 stdio 客户端、受保护长报告/附件与桌面/移动下载 | 线上修复 Agent 在真实恢复链读取原报告；fixture 不代替本轮线上调用 |
 | X05 | 独立库升级/重启检查与加密备份/隔离恢复；原授权、余额、预留、交付和失败投影比较 | 兼容旧版本的真实回退/恢复切换及生产现场恢复；不承诺任意向下迁移 |
 
-每个项目的受控执行是否 PASS 以证据索引及原报告为准。真实 GitHub App 的只读预检
-只证明当次访问能力；它没有创建任务、模型调用、PR 或更改保护规则。
-本轮真实三子项组合执行须先有 GH-90 专属的 disposable 仓库写入范围和有限原账户预算，
-再由产品冻结整组授权。历史任务的权限不自动扩展到这轮新任务。
+每个项目的受控执行是否 PASS 以证据索引及原报告为准。早期 GitHub App 只读预检
+只证明当次访问能力，不代表后续交付已经完成。用户随后已批准 GH-90 专属
+`musutrade/disposable-2` 范围与有限原账户预算，产品已冻结整组授权并启动真实链；
+历史 #106/#122 权限与用量没有借给本轮。实际进度见 GH-90 证据索引，不能继续按
+“真实链未启动”判断，也不能将其中一条链的成功外推到整个矩阵。
 
-本轮测量及受控回归结果已保留；Nginx 补充入口场景因 executable 缺失仍 blocked，
-其余已通过的 HTTPS/认证结果不替代它。真实链未启动，故上表完整验收缺口保持开放。
+Nginx 补充隔离验收已通过；早期 executable 缺失和补跑首轮导入失败仍保留原事实。
+该结果不代表公网、实体通知或离机生产恢复完成。
 
 ## 使用路径
 

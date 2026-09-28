@@ -4,7 +4,9 @@ use codexsymphony_server::{
     budget_store, delivery_control,
     git_broker::GitBroker,
     group_completion::{self, Fact, Verifier},
-    group_queue_store as queue, run_store, runtime_initial,
+    group_queue_store as queue,
+    preparation::{Evidence, Failure, NetworkEvidence, Retry},
+    preparation_store, run_store, runtime_initial,
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -121,6 +123,171 @@ impl Verifier for FixtureVerifier {
     fn verify(&self, fact: &Fact) -> bool {
         self.0 == *fact && fact.source == "fixture:confirmed-acceptance"
     }
+}
+
+#[tokio::test]
+async fn exhausted_preparation_rebinds_only_after_explicit_recheck_without_model_use() {
+    let (pool, _, _) = fixture().await;
+    bootstrap(&pool).await;
+    authorized(&pool, "restart-preparation-recheck").await;
+    queue::materialize(&pool).await.unwrap();
+    let (root, broker, base) = broker();
+    let (original, workspace) = plan(&pool, &broker, &base).await.unwrap();
+    broker.prepare(&workspace, true).unwrap();
+    let mut retry = Retry::new("preparation", 100);
+    for now in [100, 130, 250] {
+        assert!(retry.begin(now, false));
+        retry.fail(
+            Failure::new(
+                "preparation_capability_mismatch",
+                "old tool identity",
+                "probe",
+            ),
+            now,
+        );
+    }
+    assert!(retry.todo);
+    sqlx::query("INSERT INTO preparation_record(run_id,requirement_id,revision,launch,retry,ready,evidence,checked_at) VALUES($1,1,1,$2,$3,false,$4,250)")
+        .bind(&original.key.run_id)
+        .bind(json!(original))
+        .bind(json!(retry))
+        .bind(json!({"original_failure":"old tool identity"}))
+        .execute(&pool).await.unwrap();
+    run_store::begin_incarnation(&pool, "restarted")
+        .await
+        .unwrap();
+    assert!(
+        run_store::finish_recovery(&pool, "restarted")
+            .await
+            .unwrap()
+    );
+    let original_workspace = json!(workspace);
+    for (field, altered) in [
+        ("/key/run_id", json!("another-run")),
+        ("/path", json!("/different-worktree")),
+        ("/identity", json!("different-workspace")),
+        ("/requirement", json!(2)),
+        ("/revision", json!(2)),
+        (
+            "/baseline",
+            json!("0000000000000000000000000000000000000000"),
+        ),
+    ] {
+        let mut invalid = original_workspace.clone();
+        *invalid.pointer_mut(field).unwrap() = altered;
+        sqlx::query("UPDATE initial_run SET workspace=$1 WHERE requirement_id=1")
+            .bind(invalid)
+            .execute(&pool)
+            .await
+            .unwrap();
+        assert!(
+            runtime_initial::plan(
+                &pool,
+                &broker,
+                "restarted",
+                &["/usr/bin/codex".into()],
+                &base
+            )
+            .await
+            .is_err(),
+            "changed saved workspace field {field} must block rebinding"
+        );
+    }
+    sqlx::query("UPDATE initial_run SET workspace=$1 WHERE requirement_id=1")
+        .bind(original_workspace)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert!(
+        runtime_initial::plan(
+            &pool,
+            &broker,
+            "restarted",
+            &["/usr/bin/codex".into()],
+            &base
+        )
+        .await
+        .is_err()
+    );
+    assert_eq!(count(&pool, "model_call").await, 0);
+    preparation_store::authorize_retry(
+        &pool,
+        &original.key.run_id,
+        codexsymphony_server::runtime_client::now(),
+        "operator reconciled the old probe and approved the corrected tool identity",
+    )
+    .await
+    .unwrap();
+    let (rebound, saved_workspace) = runtime_initial::plan(
+        &pool,
+        &broker,
+        "restarted",
+        &["/usr/bin/codex".into()],
+        &base,
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    assert_eq!(rebound.key.run_id, original.key.run_id);
+    assert_eq!(rebound.key.incarnation, "restarted");
+    assert_eq!(saved_workspace.path, workspace.path);
+    assert_eq!(saved_workspace.key.incarnation, "restarted");
+    let retained: serde_json::Value =
+        sqlx::query_scalar("SELECT evidence FROM preparation_record WHERE run_id=$1")
+            .bind(&original.key.run_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert_eq!(retained["original_failure"], "old tool identity");
+    let rebound_event: serde_json::Value = sqlx::query_scalar(
+        "SELECT event FROM preparation_history WHERE run_id=$1 AND event ? 'incarnation_rebound' ORDER BY id DESC LIMIT 1",
+    )
+    .bind(&original.key.run_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        rebound_event["incarnation_rebound"]["from"],
+        original.key.incarnation
+    );
+    assert!(!run_store::reserve_prepared(&pool, &rebound).await.unwrap());
+    assert!(
+        preparation_store::begin(
+            &pool,
+            &rebound,
+            1,
+            1,
+            "preparation",
+            codexsymphony_server::runtime_client::now(),
+        )
+        .await
+        .unwrap()
+    );
+    let evidence = Evidence {
+        deployment_identity: "deployment".into(),
+        execution_identity: "approved-workspace".into(),
+        network: NetworkEvidence {
+            configuration_identity: "deployment".into(),
+            reachable: true,
+        },
+        failures: vec![],
+        sample: json!({"model_calls":0}),
+    };
+    assert!(
+        preparation_store::finish(
+            &pool,
+            &rebound,
+            "deployment",
+            &evidence,
+            codexsymphony_server::runtime_client::now(),
+        )
+        .await
+        .unwrap()
+    );
+    assert!(run_store::reserve_prepared(&pool, &rebound).await.unwrap());
+    assert_eq!(count(&pool, "model_call").await, 0);
+    pool.close().await;
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[tokio::test]

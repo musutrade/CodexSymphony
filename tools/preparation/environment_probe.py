@@ -16,8 +16,8 @@ import urllib.error
 import urllib.request
 import urllib.parse
 
-CORE_VERSION = "harness-gate 0.4.5"
-CORE_SHA256 = "70721282c751826ed4d57e14bd7de9516e73e833aa058d758dbd2154c0aa5e10"
+CORE_VERSION = "harness-gate 0.4.7"
+CORE_SHA256 = "b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9"
 CODEX_VERSION = "codex-cli 0.157.1"
 RESERVE = 256 * 1024 * 1024
 

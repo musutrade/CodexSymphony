@@ -1,0 +1,443 @@
+{
+  "schema": "gh90-b01-real-group/v1",
+  "status": "PASS",
+  "scope": "Original authorized B01 GitHub group; desktop/mobile fixture and remaining GH90 scenarios have separate boundaries",
+  "recorded_at": "2026-09-28T14:12:47.496996+00:00",
+  "source": {
+    "binary_sha256": "d4910d8fc360131d44a28212bdec28eb7fa202eccab1e0d895da98fd4391fe2e",
+    "deployment_gate": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-ae5cb2017a43",
+    "readback": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b01-final-readback.json",
+    "readback_sha256": "2deb9a78a79b628c0e4584cc02264a861ef9954d6fbeef9359f71949fc74cdbb",
+    "parent_api_sha256": "e787de37ca1586a73766bafd125fe19ee1c7efcdd7ef29d58c4e0e748f545b5a"
+  },
+  "authorization": {
+    "id": 1,
+    "draft_id": "draft-9cd31d41-aa8d-4ac5-9d63-b7d9fe1c59ff",
+    "review_version": 2,
+    "created_at": "2026-09-27T23:18:54.056661+00:00"
+  },
+  "parent": {
+    "state": "Done",
+    "business_complete": true,
+    "draft_revision": 2,
+    "review_version": 2,
+    "accepted_at": "2026-09-28T14:11:54.800087+00:00",
+    "coverage": [
+      {
+        "step_id": "cargo",
+        "child_ac": "AC1",
+        "child_id": "C1",
+        "parent_ac": "P1",
+        "child_revision": 2
+      },
+      {
+        "step_id": "cargo",
+        "child_ac": "AC1",
+        "child_id": "C2",
+        "parent_ac": "P2",
+        "child_revision": 2
+      },
+      {
+        "step_id": "cargo",
+        "child_ac": "AC1",
+        "child_id": "C3",
+        "parent_ac": "P3",
+        "child_revision": 2
+      },
+      {
+        "step_id": "cargo",
+        "child_ac": "AC1",
+        "child_id": "C4",
+        "parent_ac": "P4",
+        "child_revision": 2
+      }
+    ]
+  },
+  "children": [
+    {
+      "item": "C1",
+      "requirement_id": 1,
+      "state": "Done",
+      "pr": "https://github.com/musutrade/disposable-2/pull/13",
+      "head_sha": "67fc29b565213dd84013863a04697cab65930004",
+      "test_merge_sha": "9d51627c91de0dccf9ff4e33a40a67eaec4bb7e3",
+      "merged_sha": "a0d31908e02715869243321930d03c50f45a9d6c",
+      "acceptance_sha": "a0d31908e02715869243321930d03c50f45a9d6c",
+      "tree": "5ab2edd53b5ed8fd2859fc2aee31777a76161630",
+      "merge_method": "squash",
+      "acceptance_evidence_sha256": "0065fadc762206ddb4219d59bcd401bd0f7c5d85b9e2c6939360f1d8be9d408b",
+      "completed_at": "2026-09-28T13:56:58.318921+00:00"
+    },
+    {
+      "item": "C2",
+      "requirement_id": 2,
+      "state": "Done",
+      "pr": "https://github.com/musutrade/disposable-2/pull/14",
+      "head_sha": "a8552a2330d87a6663dbb9a9cba85acfd1c72a67",
+      "test_merge_sha": "75c8236c5460b40a837f02584a6e6fdccb881e8c",
+      "merged_sha": "b05a8d07bcc1d39fe3d155fb813a464f2cf07381",
+      "acceptance_sha": "b05a8d07bcc1d39fe3d155fb813a464f2cf07381",
+      "tree": "eaa940a106dae5bbe952c9060a0765c51afd9a95",
+      "merge_method": "squash",
+      "acceptance_evidence_sha256": "c1e1e883d87a6ed8cd41b07e96399a7ceb809cd6e63b74ef19a80bbdd26b8ee9",
+      "completed_at": "2026-09-28T14:04:27.834013+00:00"
+    },
+    {
+      "item": "C3",
+      "requirement_id": 3,
+      "state": "Done",
+      "pr": "https://github.com/musutrade/disposable-2/pull/15",
+      "head_sha": "8b0587330530217cd1e1354e80ca16508dbd11a9",
+      "test_merge_sha": "320360600563384af476725a9f728660256613c8",
+      "merged_sha": "8870ba39b52952e5b2f2f14745292646f776b2c1",
+      "acceptance_sha": "8870ba39b52952e5b2f2f14745292646f776b2c1",
+      "tree": "00522b72830b0f06255a1b6b299322d45acc3835",
+      "merge_method": "squash",
+      "acceptance_evidence_sha256": "63fb81ddd92e435f3efb660547567cd8c06b7805f2e59cf9ad1365c0c4147dd3",
+      "completed_at": "2026-09-28T14:11:48.685458+00:00"
+    }
+  ],
+  "validation_only": {
+    "item": "C4",
+    "requirement_id": 4,
+    "state": "Done",
+    "validation_id": "integration-940ebec1-4cb4-4555-8ea6-d3ab683017a4",
+    "candidate": {
+      "sha": "8870ba39b52952e5b2f2f14745292646f776b2c1",
+      "tree": "00522b72830b0f06255a1b6b299322d45acc3835",
+      "immutable": true
+    },
+    "binding": {
+      "trusted": {
+        "tool": "trusted-development-process",
+        "tool_version": "1",
+        "config_sha256": "b5beb144f19af2fbb234d8d6f28cf1cf563770e1f416562bfeca842a0735f175",
+        "command_sha256": "1d6e51af65ebc415ecb4c326bbd475be318e52955b71d8ded06e467e6ba476af",
+        "protected_entry": "/usr/bin/bash",
+        "protected_entry_sha256": "3efccc187bafa75ff1e37d246270ab3e7aa559f242c7a52bf3ec2a1b5450bdbd"
+      },
+      "required": [
+        "cargo"
+      ],
+      "revision": 1,
+      "versions": [
+        {
+          "artifacts": [
+            "merge-operation:1ae16dce34fef4ec64d239dafdf168e4fa703a7078615102306fa8554f569acd:acceptance",
+            "merge-operation:25eb8d22c9295ab2b5652a93d0745c3f7e87d7d4e0a35ea91e8750c7a1abe913:acceptance",
+            "merge-operation:c16b7f5001ee5593c318b7bfcc76d79f792a6d701aba547f7d59a45d9e7925af:acceptance"
+          ],
+          "candidate": {
+            "sha": "8870ba39b52952e5b2f2f14745292646f776b2c1",
+            "tree": "00522b72830b0f06255a1b6b299322d45acc3835",
+            "immutable": true
+          },
+          "repository_id": 1,
+          "repository_version": 2,
+          "github_repository_id": 1377749969
+        }
+      ],
+      "requirement": 4,
+      "input_sha256": "c6d478ce486aab9f5ba66548a763a0f17f090184904d633671b8dfcb7a636d66",
+      "authorization": 1
+    },
+    "binding_sha256": "70887d655377083b54010e87b78698a5c9e2d6800d9519b4a062b64c46f9ba42",
+    "step": {
+      "id": "cargo",
+      "exit_code": 0,
+      "output_sha256": "96281960c95fce35d9e28c3cc2446d18ce902401f307e665781bb4285298de1e",
+      "log_ref": "/home/gem/.local/share/codexsymphony/gh90-development/live/execution/integration-940ebec1-4cb4-4555-8ea6-d3ab683017a4/checks/step-0.log",
+      "passed_tests": 9
+    },
+    "source_before": "00522b72830b0f06255a1b6b299322d45acc3835",
+    "source_after": "00522b72830b0f06255a1b6b299322d45acc3835",
+    "model_calls": 0,
+    "deliveries": 0
+  },
+  "budgets": [
+    {
+      "item_id": "",
+      "limits": {
+        "turns": 20,
+        "tokens": 720000,
+        "model_seconds": 3600
+      },
+      "used": {
+        "turns": 5,
+        "tokens": 407981,
+        "model_seconds": 230
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 670
+      }
+    },
+    {
+      "item_id": "C1",
+      "limits": {
+        "turns": 6,
+        "tokens": 300000,
+        "model_seconds": 1080
+      },
+      "used": {
+        "turns": 3,
+        "tokens": 263105,
+        "model_seconds": 123
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 417
+      }
+    },
+    {
+      "item_id": "C2",
+      "limits": {
+        "turns": 6,
+        "tokens": 180000,
+        "model_seconds": 1080
+      },
+      "used": {
+        "turns": 1,
+        "tokens": 71692,
+        "model_seconds": 49
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 131
+      }
+    },
+    {
+      "item_id": "C3",
+      "limits": {
+        "turns": 6,
+        "tokens": 180000,
+        "model_seconds": 1080
+      },
+      "used": {
+        "turns": 1,
+        "tokens": 73184,
+        "model_seconds": 58
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 122
+      }
+    },
+    {
+      "item_id": "C4",
+      "limits": {
+        "turns": 2,
+        "tokens": 60000,
+        "model_seconds": 360
+      },
+      "used": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 0
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 0
+      }
+    }
+  ],
+  "model_calls": [
+    {
+      "requirement_id": 1,
+      "run_id": "f76cbcf1-12da-4210-976b-fe473b551d82",
+      "turn_id": "2069026c-632d-43e2-b6fd-113c3068c460",
+      "reserved": {
+        "turns": 1,
+        "tokens": 30000,
+        "model_seconds": 180
+      },
+      "usage": {
+        "input": 101174,
+        "cached": 84352,
+        "output": 1166,
+        "complete": false,
+        "model_seconds": 52
+      },
+      "created_at": "2026-09-28T01:34:01.617242+00:00"
+    },
+    {
+      "requirement_id": 1,
+      "run_id": "094b7289-4f7f-42d0-98b8-87ea220abe22",
+      "turn_id": "fd96f020-b494-4c1d-84b0-d1699053c41e",
+      "reserved": {
+        "turns": 1,
+        "tokens": 30000,
+        "model_seconds": 180
+      },
+      "usage": {
+        "input": 87224,
+        "cached": 70144,
+        "output": 418,
+        "complete": false,
+        "model_seconds": 35
+      },
+      "created_at": "2026-09-28T12:08:19.64469+00:00"
+    },
+    {
+      "requirement_id": 1,
+      "run_id": "ee99c550-2b2d-475a-a6ed-0d166019be6a",
+      "turn_id": "56b7bf6f-36c4-447c-9ad5-5be6a281c3f9",
+      "reserved": {
+        "turns": 1,
+        "tokens": 30000,
+        "model_seconds": 180
+      },
+      "usage": {
+        "input": 72494,
+        "cached": 41088,
+        "output": 629,
+        "complete": false,
+        "model_seconds": 36
+      },
+      "created_at": "2026-09-28T13:50:19.739135+00:00"
+    },
+    {
+      "requirement_id": 2,
+      "run_id": "c08f4421-ebdd-43ed-9d35-54740f10b69f",
+      "turn_id": "4523f4b3-83bc-4979-8dd6-e4b6a4fe0fa6",
+      "reserved": {
+        "turns": 1,
+        "tokens": 30000,
+        "model_seconds": 180
+      },
+      "usage": {
+        "input": 70707,
+        "cached": 40064,
+        "output": 985,
+        "complete": false,
+        "model_seconds": 49
+      },
+      "created_at": "2026-09-28T13:57:09.539062+00:00"
+    },
+    {
+      "requirement_id": 3,
+      "run_id": "e04cfd56-451f-47af-8421-c029e7c8112f",
+      "turn_id": "d5f589bd-a719-4828-850a-4f13367d22bc",
+      "reserved": {
+        "turns": 1,
+        "tokens": 30000,
+        "model_seconds": 180
+      },
+      "usage": {
+        "input": 72008,
+        "cached": 55040,
+        "output": 1176,
+        "complete": false,
+        "model_seconds": 58
+      },
+      "created_at": "2026-09-28T14:04:38.093174+00:00"
+    }
+  ],
+  "models": [
+    {
+      "run_id": "f76cbcf1-12da-4210-976b-fe473b551d82",
+      "frozen": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "actual": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "matched": true
+    },
+    {
+      "run_id": "094b7289-4f7f-42d0-98b8-87ea220abe22",
+      "frozen": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "actual": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "matched": true
+    },
+    {
+      "run_id": "ee99c550-2b2d-475a-a6ed-0d166019be6a",
+      "frozen": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "actual": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "matched": true
+    },
+    {
+      "run_id": "c08f4421-ebdd-43ed-9d35-54740f10b69f",
+      "frozen": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "actual": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "matched": true
+    },
+    {
+      "run_id": "e04cfd56-451f-47af-8421-c029e7c8112f",
+      "frozen": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "actual": {
+        "model": "gpt-6-astra",
+        "effort": "low",
+        "provider": "openai"
+      },
+      "matched": true
+    }
+  ],
+  "operator_control_records": {
+    "count": 7,
+    "by_reason": {
+      "preparation_recheck": 1,
+      "user_pause": 2,
+      "user_resume": 2,
+      "storage_recheck": 2
+    },
+    "scope": "API intervention records only, not a count of all human actions"
+  },
+  "additional_interventions": {
+    "original_account_limit_increases": 2,
+    "runner_cc_rg_configuration_repairs": 1
+  },
+  "timing": {
+    "requirement_created_at": "2026-09-27T23:18:54.666555+00:00",
+    "parent_accepted_at": "2026-09-28T14:11:54.800087+00:00",
+    "total_wall_seconds": 53580.133532,
+    "successful_resume_at": "2026-09-28T13:50:12.710674+00:00",
+    "successful_resume_to_acceptance_seconds": 1302.089413,
+    "known_model_seconds": 230,
+    "unknown_reserved_model_seconds": 670,
+    "interpretation": "Total wall time includes operator waits, budget stops, host repair and validation; model seconds are separately accounted; overlapping stages are not summed."
+  },
+  "remaining_boundaries": [
+    "B02-B08 and X01-X05 real combined/physical scenarios remain individually open",
+    "No production deployment, public ingress, physical phone/Bark or offsite recovery claimed",
+    "Original model usage completeness and unknown reservations are preserved; cached input is not subtracted",
+    "Product-wide fixed workspace and cleanup controller remains issue 140"
+  ]
+}

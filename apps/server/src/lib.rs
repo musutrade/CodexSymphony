@@ -50,6 +50,7 @@ pub mod github_service;
 pub mod github_store;
 pub mod group_api;
 pub mod group_budget;
+pub mod group_budget_increase;
 pub mod group_completion;
 pub mod group_dependency;
 pub mod group_edit;

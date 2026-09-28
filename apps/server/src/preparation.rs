@@ -1,8 +1,8 @@
 //! Preparation decisions and bounded recovery; no runtime, SQL, or GitHub calls.
 use serde::{Deserialize, Serialize};
 
-pub const CORE_VERSION: &str = "harness-gate 0.4.5";
-pub const CORE_SHA256: &str = "70721282c751826ed4d57e14bd7de9516e73e833aa058d758dbd2154c0aa5e10";
+pub const CORE_VERSION: &str = "harness-gate 0.4.7";
+pub const CORE_SHA256: &str = "b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9";
 pub const CODEX_VERSION: &str = "codex-cli 0.157.1";
 pub const RESERVE_BYTES: u64 = 256 * 1024 * 1024;
 

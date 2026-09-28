@@ -144,3 +144,77 @@ class GateTimeBudget(unittest.TestCase):
         for value in (0,-1,True,'2400',1.5,None):
             with self.subTest(value=value),self.assertRaises(ValueError):
                 gate_timeout({'gate_timeout_seconds':value})
+
+
+class BoundedExecution(unittest.TestCase):
+    def setUp(self):
+        import host
+        self.host=host
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.job=Path(self.temp.name).resolve();self.root=self.job/'repo';self.root.mkdir()
+        self.run={'head_sha':'a'*40,'event':'pull_request'}
+        self.approval={'execution_version':3,'host_release':'/installed'}
+
+    def test_prepare_delegates_without_job_checkout_and_v3_dependencies_keep_binding(self):
+        from unittest.mock import patch
+        with patch('fixed_checkout.prepare',return_value=(self.root,self.approval)) as prepare:
+            self.assertEqual(self.host.prepare(self.run,{},self.job),(self.root,self.approval))
+            prepare.assert_called_once_with(self.run,{})
+        with patch('fixed_checkout.dependencies') as dependencies:
+            self.assertEqual(self.host.prepare_dependencies(self.root,self.approval,{},self.job,self.run['head_sha']),(self.root,self.approval))
+            dependencies.assert_called_once()
+        self.assertFalse((self.job/'source').exists())
+        command=self.host.gate_command(self.run,{},self.approval,self.root,self.job)
+        self.assertEqual(command[-2:],['--revision',self.run['head_sha']])
+
+    def test_legacy_dependency_check_and_copy_preserved(self):
+        deps=self.job/'deps/node_modules';deps.mkdir(parents=True)
+        frontend=self.root/'web/angular';frontend.mkdir(parents=True)
+        for name in ('package.json','package-lock.json'):
+            (deps.parent/name).write_text('{}');(frontend/name).write_text('{}')
+        (deps/'fixture').write_text('dependency')
+        self.host.prepare_dependencies(self.root,{}, {'dependency_source':str(deps)},self.job)
+        self.assertEqual((frontend/'node_modules/fixture').read_text(),'dependency')
+        (frontend/'package.json').write_text('changed')
+        with self.assertRaisesRegex(ValueError,'review'):self.host.prepare_dependencies(self.root,{}, {'dependency_source':str(deps)},self.job)
+
+    def test_evaluate_full_gate_and_failure_boundaries(self):
+        from contextlib import ExitStack
+        from unittest.mock import patch
+        host=self.host
+        for mode in ('full','cancel','docs','reuse','failure'):
+            approval=self.approval if mode=='full' else {}
+            with ExitStack() as stack:
+                for name,value in [('prepare',(self.root,approval)),('actions_cancelled',mode=='cancel'),('documentation_result',{'scope':'documentation'} if mode=='docs' else None),('identical_tree_result',{'scope':'identical-tree'} if mode=='reuse' else None),('policy_identity','fingerprint'),('prepare_dependencies',(self.root,approval)),('gate_command',[]),('run_cancellable',1 if mode=='failure' else 0),('accepted_result',{'status':'PASS'})]:
+                    stack.enter_context(patch.object(host,name,return_value=value))
+                if mode in ('cancel','failure'):
+                    with self.assertRaises((host.SupersededRun,RuntimeError)):host.evaluate(self.run,{},self.job)
+                else:self.assertIn(host.evaluate(self.run,{},self.job).get('scope','full'),('full','documentation','identical-tree'))
+
+    def test_result_requires_complete_report_and_exact_source(self):
+        import json
+        retained=self.job/'retained';report=retained/'reports/test_result.json';report.parent.mkdir(parents=True)
+        accepted={'status':'PASS','run':str(retained)}
+        value={'passed':True,'evidence_complete':True,'source_identity':'commit:'+self.run['head_sha'],'quality':{'evidence':[{'context':{'commit':self.run['head_sha']}}],'producers':[{}]}}
+        (self.job/'gate.stdout').write_text(json.dumps(accepted)+'\n')
+        report.write_text(json.dumps(value))
+        result=self.host.accepted_result(self.run,self.approval,self.job,'fingerprint')
+        self.assertEqual(result['records'],1)
+        for changes in ({'passed':False},{'source_identity':'commit:other'},{'quality':{'evidence':[{'context':{'commit':'other'}}]}}):
+            report.write_text(json.dumps(value|changes))
+            with self.assertRaises(ValueError):self.host.accepted_result(self.run,self.approval,self.job,'fingerprint')
+        (self.job/'gate.stdout').write_text('{"status":"FAIL"}\n')
+        with self.assertRaisesRegex(ValueError,'complete acceptance'):self.host.accepted_result(self.run,self.approval,self.job,'fingerprint')
+
+
+    def test_main_uses_bounded_state_and_once_handles_failure(self):
+        import json,sys
+        from unittest.mock import patch
+        config=self.job/'config.json';config.write_text(json.dumps({'repository':'fixture/repo'}))
+        with patch.object(sys,'argv',['host','--config',str(config),'--once']),patch('fixed_checkout.state_home',return_value=self.job),patch.object(self.host,'installation_token',return_value='fixture'),patch.object(self.host,'reconcile_interrupted'),patch.object(self.host,'request',return_value={'workflow_runs':[{'path':'.github/workflows/quality.yml'}]}),patch.object(self.host,'process') as process:
+            self.host.main();process.assert_called_once()
+            process.side_effect=RuntimeError('fixture failure')
+            with self.assertRaises(RuntimeError):self.host.main()
+            process.side_effect=[None,RuntimeError('stop loop')]
+            with patch.object(sys,'argv',['host','--config',str(config)]),patch.object(self.host.time,'sleep',side_effect=RuntimeError('stop loop')):
+                with self.assertRaisesRegex(RuntimeError,'stop loop'):self.host.main()

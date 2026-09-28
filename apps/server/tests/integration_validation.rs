@@ -1,6 +1,8 @@
 //! Actual PostgreSQL + supervised validation commands. No GitHub/model writes.
 use codexsymphony_server::{
+    budget::Amount,
     git_broker::GitBroker,
+    group_budget_increase::{self, ChildIncrease, GroupIncrease},
     group_queue_store, integration_worker, process, run_store,
     validation_runner::{self, Plan},
 };
@@ -8,18 +10,253 @@ use serde_json::{Value, json};
 use sqlx::PgPool;
 use std::{
     path::{Path, PathBuf},
+    process::Stdio,
     time::Duration,
 };
+use tokio::io::AsyncWriteExt;
 #[path = "support/groups.rs"]
 mod groups;
 #[path = "support/validation_runner.rs"]
 mod source;
 struct Fixture {
     pool: PgPool,
+    url: String,
     root: PathBuf,
     broker: GitBroker,
     plan: Plan,
     draft: String,
+}
+
+async fn budget_admin(f: &Fixture, command: &str, payload: Value) -> bool {
+    let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+        .args(["budget", command, "--stdin-json"])
+        .env("DATABASE_URL", &f.url)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(payload.to_string().as_bytes())
+        .await
+        .unwrap();
+    child.wait().await.unwrap().success()
+}
+
+#[tokio::test]
+async fn in_flight_group_increase_preserves_exposure_and_original_accounts() {
+    let f = fixture("dependencies", false).await;
+    let used = json!({"tokens":125,"turns":1,"model_seconds":10});
+    let reserved = json!({"tokens":0,"turns":0,"model_seconds":40});
+    sqlx::query(
+        "UPDATE group_budget SET used=$2,reserved=$3 WHERE draft_id=$1 AND item_id IN ('','C1')",
+    )
+    .bind(&f.draft)
+    .bind(&used)
+    .bind(&reserved)
+    .execute(&f.pool)
+    .await
+    .unwrap();
+    sqlx::query("UPDATE requirement_budget SET exhausted=true WHERE requirement_id IN (SELECT requirement_id FROM group_execution_item WHERE draft_id=$1)")
+        .bind(&f.draft).execute(&f.pool).await.unwrap();
+    let bound: Vec<(String, i64, i64)> = sqlx::query_as("SELECT i.child_id,i.requirement_id,b.version FROM group_execution_item i JOIN requirement_budget b ON b.requirement_id=i.requirement_id WHERE i.draft_id=$1 ORDER BY i.child_id")
+        .bind(&f.draft).fetch_all(&f.pool).await.unwrap();
+    assert_eq!(bound.len(), 4);
+    let delta = Amount {
+        tokens: 100,
+        turns: 2,
+        model_seconds: 60,
+    };
+    let children: Vec<_> = bound
+        .iter()
+        .map(
+            |(child_id, requirement_id, expected_version)| ChildIncrease {
+                child_id: child_id.clone(),
+                requirement_id: *requirement_id,
+                expected_version: *expected_version,
+                delta,
+            },
+        )
+        .collect();
+    let grant = GroupIncrease {
+        request_id: "reviewed-live-group-increase".into(),
+        draft_id: f.draft.clone(),
+        expected_queue_version: 1,
+        actor: "local-user".into(),
+        reason: "explicit cumulative increase".into(),
+        parent_delta: Amount {
+            tokens: 400,
+            turns: 8,
+            model_seconds: 240,
+        },
+        children,
+    };
+    let mut invalid = grant.clone();
+    invalid.parent_delta.tokens -= 1;
+    assert!(
+        group_budget_increase::increase(&f.pool, &invalid)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM budget_authorization WHERE version=2")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    let mut overflow = grant.clone();
+    overflow.children[0].delta.tokens = i64::MAX;
+    assert!(
+        group_budget_increase::increase(&f.pool, &overflow)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM budget_authorization WHERE version=2")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    assert!(!budget_admin(&f, "increase", json!({})).await);
+    assert!(budget_admin(&f, "group-increase", json!(grant)).await);
+    group_budget_increase::increase(&f.pool, &grant)
+        .await
+        .unwrap();
+    let ledgers: Vec<(String, Value, Value, Value)> = sqlx::query_as(
+        "SELECT item_id,limits,used,reserved FROM group_budget WHERE draft_id=$1 ORDER BY item_id",
+    )
+    .bind(&f.draft)
+    .fetch_all(&f.pool)
+    .await
+    .unwrap();
+    assert_eq!(ledgers.len(), 5);
+    assert_eq!(
+        ledgers[0].1,
+        json!({"tokens":800,"turns":16,"model_seconds":480})
+    );
+    for row in &ledgers[1..] {
+        assert_eq!(row.1, json!({"tokens":200,"turns":4,"model_seconds":120}));
+    }
+    assert_eq!(ledgers[0].2, used);
+    assert_eq!(ledgers[0].3, reserved);
+    assert_eq!(ledgers[1].2, used);
+    assert_eq!(ledgers[1].3, reserved);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM requirement_budget WHERE version=2 AND NOT exhausted"
+        )
+        .fetch_one(&f.pool)
+        .await
+        .unwrap(),
+        4
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM budget_authorization WHERE version=2")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        4
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM group_queue_event WHERE request_id=$1")
+            .bind(&grant.request_id)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    let mut stale = grant.clone();
+    stale.request_id = "stale-live-group-increase".into();
+    assert!(
+        group_budget_increase::increase(&f.pool, &stale)
+            .await
+            .is_err()
+    );
+    let mut conflict = grant.clone();
+    conflict.reason = "different approval".into();
+    assert!(
+        group_budget_increase::increase(&f.pool, &conflict)
+            .await
+            .is_err()
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM budget_authorization WHERE version>2")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    let mut selective = grant.clone();
+    selective.request_id = "c1-tokens-only-increase".into();
+    selective.parent_delta = Amount {
+        tokens: 100,
+        ..Amount::default()
+    };
+    for child in &mut selective.children {
+        child.expected_version = 2;
+        child.delta = if child.child_id == "C1" {
+            selective.parent_delta
+        } else {
+            Amount::default()
+        };
+    }
+    let mut missing = selective.clone();
+    missing.children.pop();
+    assert!(
+        group_budget_increase::increase(&f.pool, &missing)
+            .await
+            .is_err()
+    );
+    let mut empty = selective.clone();
+    empty.parent_delta = Amount::default();
+    for child in &mut empty.children {
+        child.delta = Amount::default();
+    }
+    assert!(
+        group_budget_increase::increase(&f.pool, &empty)
+            .await
+            .is_err()
+    );
+    let mut negative = selective.clone();
+    negative.children[1].delta.tokens = -1;
+    negative.parent_delta.tokens -= 1;
+    assert!(
+        group_budget_increase::increase(&f.pool, &negative)
+            .await
+            .is_err()
+    );
+    assert!(budget_admin(&f, "group-increase", json!(selective)).await);
+    assert!(budget_admin(&f, "group-increase", json!(selective)).await);
+    let after: Vec<(String, Value, Value, Value)> = sqlx::query_as(
+        "SELECT item_id,limits,used,reserved FROM group_budget WHERE draft_id=$1 ORDER BY item_id",
+    )
+    .bind(&f.draft)
+    .fetch_all(&f.pool)
+    .await
+    .unwrap();
+    for (before, after) in ledgers.iter().zip(&after) {
+        let mut expected = before.1.clone();
+        if before.0.is_empty() || before.0 == "C1" {
+            expected["tokens"] = json!(before.1["tokens"].as_i64().unwrap() + 100);
+        }
+        assert_eq!(after.1, expected);
+        assert_eq!(after.2, before.2);
+        assert_eq!(after.3, before.3);
+    }
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM budget_authorization WHERE version=3")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap(),
+        4
+    );
+    f.pool.close().await;
+    std::fs::remove_dir_all(f.root).unwrap();
 }
 fn git(path: &Path, args: &[&str]) {
     let result = std::process::Command::new("git")
@@ -35,7 +272,7 @@ fn git(path: &Path, args: &[&str]) {
     );
 }
 async fn fixture(mode: &str, two: bool) -> Fixture {
-    let (pool, _, _) = groups::fixture().await;
+    let (pool, url, _) = groups::fixture().await;
     let (root, repo, mut plan) = source::fixture();
     if mode == "linked" {
         std::fs::write(
@@ -142,6 +379,7 @@ async fn fixture(mode: &str, two: bool) -> Fixture {
     group_queue_store::materialize(&pool).await.unwrap();
     Fixture {
         pool,
+        url,
         root,
         broker,
         plan,
