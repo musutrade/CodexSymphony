@@ -43,8 +43,10 @@ class EnvironmentInstallationTests(unittest.TestCase):
 
     def test_test_fixture_has_more_memory_than_persistent_dev(self):
         with patch.object(provision,'TEMPLATE',ROOT/'tools/symphony/environment'):
-            self.assertEqual(provision.memory_bytes('test'),2*1024**3)
-            self.assertEqual(provision.memory_bytes('dev'),512*1024**2)
+            limits=json.loads((ROOT/'environment.lock.json').read_text())['postgres']
+            self.assertEqual(provision.memory_bytes('test'),limits['test']['memory'])
+            self.assertEqual(provision.memory_bytes('dev'),limits['dev']['memory'])
+            self.assertGreater(provision.memory_bytes('test'),provision.memory_bytes('dev'))
         sources=install.environment_sources()
         self.assertIn(Path('client/workspace_tests.py'),sources)
         self.assertNotIn(Path('fixture-policy.json'),sources)

@@ -283,7 +283,6 @@ fn merge_blockers(
         let option = match contract.actions.merge_method.as_deref() {
             Some("merge") => "allow_merge_commit",
             Some("squash") => "allow_squash_merge",
-            Some("rebase") => "allow_rebase_merge",
             _ => "unknown",
         };
         if repo[option] != true {

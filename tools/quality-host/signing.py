@@ -8,6 +8,9 @@ import time
 from capture import RUST, TS, HTTP, sha, write, run_logged, contract
 
 CORE=Path.home()/'.local/share/harness-gate/versions'/('v'+contract.load()['tools']['gate'])/'bin/harness-gate'
+# Backend export, provenance validation and artifact packaging exceeded the former
+# 120 s bound in retained captures. Keep a finite, signed per-collector budget.
+COLLECTOR_TIMEOUT_MS={'backend':300000,'frontend':120000,'frontend-api':120000}
 
 def canonical(value): return json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False)
 
@@ -77,7 +80,7 @@ def provision(run, root, state, requests, expected_config, key_root):
             schema={'backend':'rust-source-project-binding/v1','frontend':'typescript-project-collector-binding/v1','frontend-api':'http-json-project-collector-binding/v1'}[collector]
             binding=host/(collector+'-binding.json');write(binding,{'schema':schema,'input':inner,'config_digest':digest,'request':measurement})
             launcher=runtime_launcher(host,collector);now=int(time.time()*1000)
-            request={'protocol_version':2,'result_schema_version':'1','adapter':measurement['collector']|{'executable':str(launcher),'source_digest':sha(launcher.read_bytes()),'signature':{'algorithm':'ed25519','key_id':'codexsymphony-local-host','value':''}},'invocation_id':state['expected']['run'],'step_id':collector,'timeout_ms':120000,'config_digest':digest,'artifact_root':measurement['output_root'],'nonce':os.urandom(16).hex(),'issued_at_ms':now,'expires_at_ms':now+900000,'args':['project','--binding',str(binding),'--binding-sha256',sha(binding.read_bytes())],'environment':{},'capabilities':{'network':[],'resources':[],'environment':[]},'input':inner}
+            request={'protocol_version':2,'result_schema_version':'1','adapter':measurement['collector']|{'executable':str(launcher),'source_digest':sha(launcher.read_bytes()),'signature':{'algorithm':'ed25519','key_id':'codexsymphony-local-host','value':''}},'invocation_id':state['expected']['run'],'step_id':collector,'timeout_ms':COLLECTOR_TIMEOUT_MS[collector],'config_digest':digest,'artifact_root':measurement['output_root'],'nonce':os.urandom(16).hex(),'issued_at_ms':now,'expires_at_ms':now+900000,'args':['project','--binding',str(binding),'--binding-sha256',sha(binding.read_bytes())],'environment':{},'capabilities':{'network':[],'resources':[],'environment':[]},'input':inner}
             signed={'domain':'harness-gate/adapter-request/v2','protocol_version':2,'result_schema_version':'1','adapter':{k:request['adapter'][k] for k in ('name','version','executable','source_digest')}}
             signed['adapter']['signature']={'algorithm':'ed25519','key_id':'codexsymphony-local-host'}
             for name in ('invocation_id','step_id','timeout_ms','config_digest','artifact_root','nonce','issued_at_ms','expires_at_ms','args','environment','capabilities','input'):

@@ -340,7 +340,7 @@ impl Case {
 #[tokio::test]
 async fn broker_merge_real_merged_checkout_completes_child_and_advances_successor() {
     let _guard = recovery_acceptance::DATABASE_TEST.lock().await;
-    for method in ["squash", "rebase", "merge"] {
+    for method in ["squash", "merge"] {
         let mut case = setup_method(method, false).await;
         let mut client = case.f.client();
         case.tick(&mut client).await;

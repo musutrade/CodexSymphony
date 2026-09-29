@@ -75,6 +75,30 @@ class RetentionTests(unittest.TestCase):
             (self.run.parent/'run-unsafe').mkdir()
             with self.assertRaisesRegex(ValueError,'unsafe'):retention.maintain()
 
+    def test_whole_pass_runs_under_the_exclusive_pin_lock_with_live_pins(self):
+        def maintain(keep=2,hours=24,budget=123):pass
+        policy=SimpleNamespace(maintain=maintain)
+        self.complete()
+        root=self.base/'evidence/pins';root.mkdir();(root/'lock').touch()
+        live={'run':str(self.run),'validation_id':'v','expires_at_ms':2**62}
+        dead={'run':str(self.run),'validation_id':'v','expires_at_ms':1}
+        (root/'state.json').write_text(json.dumps({'schema':retention.evidence_pins.SCHEMA,'sequence':1,'pins':{'a':live,'b':dead}}))
+        held=[]
+        def probe(*args):
+            descriptor=os.open(root/'lock',os.O_RDWR)
+            try:
+                retention.evidence_pins.fcntl.flock(descriptor,retention.evidence_pins.fcntl.LOCK_EX|retention.evidence_pins.fcntl.LOCK_NB)
+                held.append(False)
+            except BlockingIOError:
+                held.append(True)
+            finally:
+                os.close(descriptor)
+            return []
+        with patch.object(retention.layout,'lease',return_value=nullcontext()),patch.object(retention,'installed_policy',return_value=policy),patch.object(retention,'expire',side_effect=probe),patch.object(retention.bounded_records,'maintain',side_effect=probe) as record_cleanup:
+            retention.maintain()
+        self.assertEqual(held,[True,True])
+        self.assertEqual(record_cleanup.call_args.args[6]['pins'],{'a':live})
+
     def test_raw_byte_age_and_count_limits_delegate_only_named_payloads(self):
         self.complete();os.utime(self.run/'source-archive.json',(100,100))
         policy=SimpleNamespace(bytes_used=lambda paths:100,payloads=lambda run:[run/'probes/backend/raw'],compact=MagicMock(return_value={'released':100}))

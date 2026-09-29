@@ -131,7 +131,7 @@ class Cancellation(unittest.TestCase):
                'path': '.github/workflows/quality.yml', 'event': 'pull_request', 'head_sha': 'a'*40,
                'id': 1, 'run_attempt': 1}
         with patch.object(host, 'actions_cancelled', return_value=True), patch.object(host, 'evaluate') as evaluate:
-            host.process(run, {'repository': 'owner/repo'}, Path('/unused'))
+            host.process(run, {'repository': 'owner/repo', 'mode': 'execute'}, Path('/unused'))
             evaluate.assert_not_called()
 
     def test_documentation_does_not_prepare_dependencies_or_launch_full_gate(self):
@@ -154,7 +154,7 @@ class Cancellation(unittest.TestCase):
              patch.object(host, 'installation_token', return_value='fixture'), \
              patch.object(host, 'request', return_value={'id': 9}) as request, \
              patch.object(host, 'evaluate', side_effect=SupersededRun('cancelled')):
-            host.process(run, {'repository': 'owner/repo'}, Path(tmp))
+            host.process(run, {'repository': 'owner/repo', 'mode': 'execute'}, Path(tmp))
             self.assertEqual(request.call_args.args[3]['conclusion'], 'cancelled')
             receipt = json.loads((Path(tmp)/'jobs/1-1/receipt.json').read_text())
             self.assertEqual(receipt['status'], 'CANCELLED')
