@@ -37,11 +37,8 @@ fn main() -> Result<(), StartupError> {
 
 #[tokio::main]
 async fn serve() -> Result<(), StartupError> {
-    if std::env::args().nth(1).as_deref() == Some("budget") {
-        return codexsymphony_server::budget_admin::run(
-            &std::env::args().skip(2).collect::<Vec<_>>(),
-        )
-        .await;
+    if let Some(result) = host_admin().await {
+        return result;
     }
     if std::env::args().nth(1).as_deref() == Some("--environment-check") {
         return codexsymphony_server::environment_cli::run(
@@ -69,6 +66,16 @@ async fn serve() -> Result<(), StartupError> {
         return codexsymphony_server::github_service::inspect(std::path::Path::new(&path)).await;
     }
     run_service(Config::from_env()?).await
+}
+
+async fn host_admin() -> Option<Result<(), StartupError>> {
+    let arguments = std::env::args().skip(2).collect::<Vec<_>>();
+    match std::env::args().nth(1).as_deref() {
+        Some("environment") => Some(codexsymphony_server::environment_recovery::run(&arguments)),
+        Some("delivery") => Some(codexsymphony_server::delivery_admin::run(&arguments).await),
+        Some("budget") => Some(codexsymphony_server::budget_admin::run(&arguments).await),
+        _ => None,
+    }
 }
 
 async fn run_service(config: Config) -> Result<(), StartupError> {

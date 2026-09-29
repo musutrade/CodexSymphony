@@ -134,7 +134,7 @@ impl Job {
 }
 
 pub async fn pending(pool: &PgPool) -> Result<Option<Job>> {
-    Ok(sqlx::query_as("SELECT d.*,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) WHERE d.mode='local_git' AND a.kind='publish' AND NOT d.released AND a.state<>'withdrawn' AND (NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.local_delivery=d.action_key) OR EXISTS(SELECT 1 FROM requirement r WHERE r.id=d.requirement_id AND r.cancel_requested)) AND a.next_attempt_at<=extract(epoch FROM now())::bigint ORDER BY d.requirement_id LIMIT 1")
+    Ok(sqlx::query_as("SELECT d.*,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) WHERE d.mode='local_git' AND a.kind='publish' AND NOT d.released AND a.state<>'withdrawn' AND (NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.local_delivery=d.action_key) OR (d.local_acceptance IS NULL AND EXISTS(SELECT 1 FROM local_acceptance_recheck k WHERE k.delivery_key=d.action_key) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.local_delivery=d.action_key AND f.state<>'cancelled')) OR EXISTS(SELECT 1 FROM requirement r WHERE r.id=d.requirement_id AND r.cancel_requested)) AND a.next_attempt_at<=extract(epoch FROM now())::bigint ORDER BY d.requirement_id LIMIT 1")
         .fetch_optional(pool).await?)
 }
 

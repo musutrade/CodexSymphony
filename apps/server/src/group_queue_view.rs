@@ -90,16 +90,21 @@ async fn ready_reason(tx: &mut Tx<'_>, id: i64) -> Result<&'static str> {
     {
         return Ok("waiting_dependency_completion");
     }
-    if !crate::github_store::claim_ready(tx, id, 1).await? {
+    if !crate::local_delivery_store::claim_ready(tx, id, 1)
+        .await
+        .map_err(repository_error)?
+    {
         return Ok("repository_unavailable");
     }
-    if !crate::group_queue_store::head(tx)
-        .await?
-        .is_some_and(|r| r.0 == id)
-    {
+    let head = crate::group_queue_store::head(tx).await?;
+    if !matches!(head, Some((requirement, _, _)) if requirement == id) {
         return Ok("waiting_queue_order");
     }
     Ok("waiting_repository_baseline_or_preparation")
+}
+
+fn repository_error(error: Box<dyn std::error::Error + Send + Sync>) -> sqlx::Error {
+    sqlx::Error::Protocol(error.to_string())
 }
 
 async fn validation_reason(tx: &mut Tx<'_>, id: i64) -> Result<&'static str> {

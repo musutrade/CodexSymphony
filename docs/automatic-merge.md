@@ -37,6 +37,9 @@
 
 ## 迁移与回退
 
+合并前旧基线冲突的原项恢复见[合并前恢复入口](pre-merge-recovery.md)。它要求旧
+PR 明确关闭且未合并，保留原账户和旧交付，不适用于已发送或结果未知的 Merge。
+
 `0027_automatic_merge.sql` 是增量迁移：新增 merge_operation；为 candidate_validation
 增加 approved_plan；Requirement state 约束增加 Done。已存在的验证记录不伪造计划：
 缺失 approved_plan 时，需要该计划的自动路径安全阻塞。固定 post_merge 计划仍须

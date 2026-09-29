@@ -1,5 +1,5 @@
 //! Independent verification of the delivered version under the existing
-//! subreaper, with an immutable invocation and the original approved plan.
+//! subreaper, with an immutable invocation and its approved plan.
 use crate::{
     delivery_extension::Result,
     git_broker::GitBroker,
@@ -10,6 +10,10 @@ use crate::{
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use std::path::Path;
+
+// BeforeRun can create its own records before the validator supervisor exists.
+// Keep those records out of the supervisor's exclusive first-launch directory.
+const HOOK_DIRECTORY: &str = "local-acceptance-hooks";
 
 pub async fn accept(
     pool: &PgPool,
@@ -31,7 +35,7 @@ pub async fn accept(
     let outcome = crate::local_acceptance_process::execute(pool, root, job, &task, claimed).await?;
     crate::validation_worker::finish_validation_hook(
         pool,
-        root,
+        &root.join(HOOK_DIRECTORY),
         broker,
         &task.invocation,
         &serde_json::from_value(job.manifest.clone())?,
@@ -69,14 +73,32 @@ async fn prepare(
     let manifest = serde_json::from_value(job.manifest.clone())?;
     let checkout = restore(pool, broker, job, &manifest).await?;
     let id = format!("local-acceptance-{}", job.action_key);
+    let task = approved_task(pool, job, id, checkout.clone()).await?;
     if !crate::validation_worker::prepare_validation_hook(
-        pool, root, &id, &manifest, &checkout, hooks,
+        pool,
+        &root.join(HOOK_DIRECTORY),
+        &task.invocation,
+        &manifest,
+        &checkout,
+        hooks,
     )
     .await?
     {
         return Err("local acceptance preparation hook incomplete".into());
     }
-    approved_task(pool, job, id, checkout).await
+    check_task_checkout(&task, &checkout)?;
+    Ok(task)
+}
+
+fn check_task_checkout(task: &crate::integration_process::Job, checkout: &Path) -> Result<()> {
+    let expected = &task.binding.versions[0].candidate;
+    check_input(
+        &task.plan,
+        &task.binding.trusted,
+        &crate::validation_runner::candidate(checkout)?,
+        &expected.sha,
+        &expected.tree,
+    )
 }
 
 async fn approved_task(
@@ -89,6 +111,9 @@ async fn approved_task(
         .bind(&job.validation_id).bind(&job.head_sha).fetch_one(pool).await?;
     let plan: Plan = serde_json::from_value(plan)?;
     let trusted: validation::TrustedIdentity = serde_json::from_value(trusted)?;
+    let (plan, trusted, invocation) =
+        crate::local_acceptance_recheck::plan(pool, &job.action_key, plan, trusted, invocation)
+            .await?;
     let candidate = crate::validation_runner::candidate(&checkout)?;
     check_input(&plan, &trusted, &candidate, &job.head_sha, &tree)?;
     task(
@@ -167,7 +192,7 @@ async fn begin(pool: &PgPool, job: &Job, task: &crate::integration_process::Job)
         return Err("local acceptance is not authorized".into());
     }
     reserve_storage(&mut tx, task).await?;
-    let changed = sqlx::query("UPDATE delivery SET local_acceptance_started=true,local_acceptance_job=$2 WHERE action_key=$1 AND NOT local_acceptance_started")
+    let changed = sqlx::query("UPDATE delivery SET local_acceptance_started=true,local_acceptance_quiescent=false,local_acceptance_job=$2 WHERE action_key=$1 AND NOT local_acceptance_started")
         .bind(&job.action_key).bind(json!(task)).execute(&mut *tx).await?.rows_affected()==1;
     let saved: Value =
         sqlx::query_scalar("SELECT local_acceptance_job FROM delivery WHERE action_key=$1")
@@ -206,7 +231,9 @@ async fn retain_authorized(
 ) -> Result<bool> {
     retain(tx, job, evidence, passed).await?;
     if !passed {
-        crate::local_repair::failed(tx, job, evidence).await?;
+        if !crate::local_acceptance_recheck::active(tx, &job.action_key).await? {
+            crate::local_repair::failed(tx, job, evidence).await?;
+        }
         return Ok(false);
     }
     store::allowed(tx, job).await

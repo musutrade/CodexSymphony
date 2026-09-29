@@ -5,6 +5,33 @@ use crate::{
 };
 use serde_json::{Value, json};
 
+/// Compare changes with the currently authorized account, without rewriting
+/// the original review or treating a later explicit grant as a new item edit.
+pub async fn current_budget_review(
+    tx: &mut Tx<'_>,
+    id: &str,
+    mut review: crate::group_review::Review,
+) -> Result<crate::group_review::Review> {
+    for item in &mut review.items {
+        item.budget = current_limit(tx, id, &item.child_id).await?;
+    }
+    if review.group_budget.is_some() {
+        review.group_budget = Some(current_limit(tx, id, "").await?);
+    }
+    Ok(review)
+}
+
+async fn current_limit(tx: &mut Tx<'_>, id: &str, item: &str) -> Result<crate::budget::Amount> {
+    let value: Value =
+        sqlx::query_scalar("SELECT limits FROM group_budget WHERE draft_id=$1 AND item_id=$2")
+            .bind(id)
+            .bind(item)
+            .fetch_one(&mut **tx)
+            .await
+            .map_err(store::db)?;
+    serde_json::from_value(value).map_err(store::db)
+}
+
 pub async fn replay(tx: &mut Tx<'_>, key: &str, identity: &Value) -> Result<Option<Value>> {
     let row: Option<(Value, Value)> =
         sqlx::query_as("SELECT input,result FROM group_queue_event WHERE request_id=$1")

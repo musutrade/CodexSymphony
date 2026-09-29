@@ -12,7 +12,7 @@
 | 整组授权与变更 | [父 AC 覆盖评审](docs/group-review.md)、[依赖队列](docs/group-queue.md)、[变化部分评审](docs/queue-editing.md) |
 | 登录与远程部署 | [账号与会话](docs/platform-authentication.md)、[HTTPS 与执行隔离](docs/m2-deployment.md) |
 | 手机与通知 | [手机接续与隔夜回答](docs/mobile-continuation.md)、[Bark 行动通知](docs/bark-notifications.md)、[生命周期通知与插件恢复](docs/lifecycle-recovery.md) |
-| 备份、升级与恢复 | [日常恢复](docs/daily-recovery.md)、[工作保全](docs/workspaces.md)、[存储生命周期](docs/storage-lifecycle.md) |
+| 备份、升级与恢复 | [日常恢复](docs/daily-recovery.md)、[工作保全](docs/workspaces.md)、[存储与证据保留策略](docs/quality/evidence-retention.md) |
 | 执行与交付 | [执行控制](docs/execution-control.md)、[累计预算](docs/budgets.md)、[PR 交接](docs/delivery.md)、[GitHub 观察](docs/github-observation.md) |
 | 环境与操作 | [环境预检](docs/preparation.md)、[每仓库环境与可选缓存](docs/repository-environments.md)、[操作与待办](docs/operations.md) |
 | 历史 0a 验收 | [单仓 A01–A12](docs/single-repository-acceptance.md)、[多仓 A13](docs/multiple-repositories.md)、[原件恢复缺口](docs/quality/gh25/evidence-recovery.md) |

@@ -283,6 +283,7 @@ struct Product {
     manifest: codexsymphony_server::workspace::Manifest,
     plan: codexsymphony_server::validation_runner::Plan,
     binding: local_git::Binding,
+    hooks: serde_json::Value,
 }
 async fn product() -> Product {
     product_group(false).await
@@ -456,6 +457,7 @@ async fn product_checked(grouped: bool, javascript_check: Option<&str>) -> Produ
         manifest,
         plan,
         binding,
+        hooks: serde_json::Value::Null,
     }
 }
 async fn validate_product(p: &Product) -> bool {
@@ -478,9 +480,14 @@ async fn validate_product(p: &Product) -> bool {
 }
 async fn product_tick(p: &Product) {
     assert!(
-        codexsymphony_server::local_delivery::tick(&p.pool, p.root.path(), &p.broker)
-            .await
-            .unwrap()
+        codexsymphony_server::local_delivery::tick_with_hooks(
+            &p.pool,
+            p.root.path(),
+            &p.broker,
+            &p.hooks
+        )
+        .await
+        .unwrap()
     );
 }
 
@@ -1930,4 +1937,435 @@ fn symbolic_targets_and_receipts_cannot_redirect_or_forge_delivery() {
         Observation::Conflict
     );
     assert_eq!(local_git::head(&binding).unwrap(), base);
+}
+
+async fn failed_validator() -> (
+    Product,
+    codexsymphony_server::local_acceptance_recheck::Command,
+) {
+    failed_validator_with_hooks(false).await
+}
+
+async fn failed_validator_with_hooks(
+    with_hooks: bool,
+) -> (
+    Product,
+    codexsymphony_server::local_acceptance_recheck::Command,
+) {
+    use codexsymphony_server::{local_acceptance_recheck::Command, validation::sha256};
+    let mut p = product_group(true).await;
+    if with_hooks {
+        configure_recheck_hooks(&mut p).await;
+    }
+    let script = "#!/bin/sh\nset -eu\ncat value\ntest \"$(head -n1 value)\" = after\nif [ -f \"$SYMPHONY_DIAGNOSTIC_DIR/../job.json\" ] && [ \"${1:-}\" != corrected-local-phase ]; then echo 'AssertionError: validator confused local acceptance with integration'; exit 1; fi\n";
+    fs::write(&p.plan.entry, script).unwrap();
+    p.plan.entry_sha256 = sha256(script);
+    assert!(validate_product(&p).await);
+    product_tick(&p).await;
+    product_tick(&p).await;
+    let (key, result, version): (String, serde_json::Value, i64) = sqlx::query_as("SELECT d.action_key,COALESCE(d.local_acceptance,'null'::jsonb),r.version FROM delivery d JOIN requirement r ON r.id=d.requirement_id WHERE d.validation_id='validation'").fetch_one(&p.pool).await.unwrap();
+    assert_eq!(
+        result["passed"],
+        false,
+        "delivery blocked before failed-validator fixture: {:?}",
+        sqlx::query_scalar::<_, Option<serde_json::Value>>(
+            "SELECT error FROM delivery_action WHERE action_key=$1"
+        )
+        .bind(&key)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap()
+    );
+    sqlx::query("UPDATE execution_control SET paused=true")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    let mut plan = p.plan.clone();
+    plan.steps[0].command.push("corrected-local-phase".into());
+    let command = Command {
+        request_id: "reviewed-validator-correction".into(),
+        requirement_id: 1,
+        version,
+        delivery_key: key,
+        previous_result_sha256: sha256(serde_json::to_vec(&result).unwrap()),
+        reason:
+            "Correct validator phase identification; original code and required assertion unchanged"
+                .into(),
+        plan,
+    };
+    (p, command)
+}
+
+async fn recheck_cli(p: &Product, args: &[&str], payload: &[u8]) -> std::process::Output {
+    use sqlx::ConnectOptions;
+    use std::io::Write;
+    let options = p.pool.connect_options();
+    let mut url = options.to_url_lossy();
+    // SQLx 0.8's lossy URL omits PostgreSQL options, including schema isolation.
+    url.query_pairs_mut()
+        .append_pair("options", options.get_options().unwrap());
+    let roundtrip: sqlx::postgres::PgConnectOptions = url.as_str().parse().unwrap();
+    assert_eq!(roundtrip.get_options(), options.get_options());
+    let mut child = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+        .arg("delivery")
+        .args(args)
+        .env("DATABASE_URL", url.as_str())
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+    child.stdin.take().unwrap().write_all(payload).unwrap();
+    child.wait_with_output().unwrap()
+}
+
+#[tokio::test]
+async fn validator_correction_preserves_failed_identity_and_never_resends_or_spends() {
+    use codexsymphony_server::local_acceptance_recheck::request;
+    use serde_json::Value;
+    let (p, command) = failed_validator_with_hooks(true).await;
+    let old: Value = sqlx::query_scalar("SELECT jsonb_build_object('job',local_acceptance_job,'result',local_acceptance) FROM delivery WHERE validation_id='validation'").fetch_one(&p.pool).await.unwrap();
+    let account_sql = "SELECT jsonb_build_object('calls',(SELECT count(*) FROM model_call),'attempts',(SELECT count(*) FROM delivery_attempt),'budgets',(SELECT jsonb_agg(to_jsonb(b)) FROM requirement_budget b),'groups',(SELECT jsonb_agg(to_jsonb(b)) FROM group_budget b),'validations',(SELECT jsonb_agg(to_jsonb(v)) FROM candidate_validation v))";
+    let before: Value = sqlx::query_scalar(account_sql)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    let result = recheck_cli(
+        &p,
+        &["acceptance-recheck", "--stdin-json"],
+        &serde_json::to_vec(&command).unwrap(),
+    )
+    .await;
+    assert!(
+        result.status.success(),
+        "{}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(
+        serde_json::from_slice::<Value>(&result.stdout).unwrap()["started"],
+        false
+    );
+    assert_eq!(request(&p.pool, &command).await.unwrap()["accepted"], true);
+    let retained: Value = sqlx::query_scalar("SELECT jsonb_build_object('job',previous_job,'result',previous_result) FROM local_acceptance_recheck").fetch_one(&p.pool).await.unwrap();
+    assert_eq!(retained, old);
+    assert_eq!(
+        sqlx::query_scalar::<_, Value>(account_sql)
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        before
+    );
+    let mut conflict = command.clone();
+    conflict.reason = "Different approval cannot replay an old identity".into();
+    assert!(request(&p.pool, &conflict).await.is_err());
+    conflict = command.clone();
+    conflict.request_id = "second-request-while-pending".into();
+    assert!(request(&p.pool, &conflict).await.is_err());
+    sqlx::query("UPDATE execution_control SET paused=false")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    product_tick(&p).await;
+    let (state, accepted, invocation): (String,Value,String) = sqlx::query_as("SELECT r.state,d.local_acceptance,d.local_acceptance_job->>'invocation' FROM delivery d JOIN requirement r ON r.id=d.requirement_id WHERE d.validation_id='validation'").fetch_one(&p.pool).await.unwrap();
+    assert_eq!(state, "Done");
+    assert_eq!(accepted["passed"], true);
+    assert!(invocation.starts_with("local-acceptance-recheck-"));
+    let hook_calls: Vec<Value> = fs::read_to_string(p.root.path().join("recheck-hook-calls.jsonl"))
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(
+        hook_calls,
+        vec![
+            serde_json::json!([old["job"]["invocation"], "before_run"]),
+            serde_json::json!([old["job"]["invocation"], "after_run"]),
+            serde_json::json!([invocation, "before_run"]),
+            serde_json::json!([invocation, "after_run"]),
+        ]
+    );
+    assert_ne!(
+        accepted["evidence"]["trusted"],
+        old["result"]["evidence"]["trusted"]
+    );
+    assert_eq!(
+        accepted["evidence"]["candidate"],
+        old["result"]["evidence"]["candidate"]
+    );
+    assert_eq!(local_git::head(&p.binding).unwrap(), p.manifest.head);
+    let counts:(i64,i64,i64)=sqlx::query_as("SELECT (SELECT count(*) FROM model_call),(SELECT count(*) FROM delivery_attempt),(SELECT count(*) FROM local_acceptance_recheck)").fetch_one(&p.pool).await.unwrap();
+    assert_eq!(counts, (0, 1, 1));
+    assert_eq!(
+        sqlx::query_scalar::<_, Value>("SELECT previous_result FROM local_acceptance_recheck")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        old["result"]
+    );
+    assert!(
+        !codexsymphony_server::local_delivery::tick(&p.pool, p.root.path(), &p.broker)
+            .await
+            .unwrap()
+    );
+    p.pool.close().await;
+}
+
+#[tokio::test]
+async fn acceptance_correction_rejects_unbound_unsafe_and_unchanged_inputs() {
+    use codexsymphony_server::local_acceptance_recheck::request;
+    let (p, command) = failed_validator().await;
+    assert!(!recheck_cli(&p, &["unknown"], b"").await.status.success());
+    assert!(
+        !recheck_cli(&p, &["acceptance-recheck", "--stdin-json"], b"{}")
+            .await
+            .status
+            .success()
+    );
+    assert!(
+        !recheck_cli(
+            &p,
+            &["acceptance-recheck", "--stdin-json"],
+            &vec![b' '; 32769]
+        )
+        .await
+        .status
+        .success()
+    );
+    let mut bad = command.clone();
+    bad.request_id.clear();
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.version += 1;
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.previous_result_sha256 = "0".repeat(64);
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.plan = p.plan.clone();
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.plan.steps.clear();
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.plan.steps[0].timeout_seconds += 1;
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.plan.steps[0].id = "different-check".into();
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.plan.steps[0].code_failure = false;
+    assert!(request(&p.pool, &bad).await.is_err());
+    bad = command.clone();
+    bad.plan.steps.push(bad.plan.steps[0].clone());
+    bad.plan.steps[1].id = "extra".into();
+    assert!(request(&p.pool, &bad).await.is_err());
+    let original_input: serde_json::Value =
+        sqlx::query_scalar("SELECT input FROM group_execution_item WHERE requirement_id=1")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+    sqlx::query("UPDATE group_execution_item SET input=jsonb_set(input,'{child,kind}','\"validation_only\"') WHERE requirement_id=1")
+        .execute(&p.pool).await.unwrap();
+    assert!(request(&p.pool, &command).await.is_err());
+    sqlx::query("UPDATE group_execution_item SET input=$1 WHERE requirement_id=1")
+        .bind(original_input)
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE execution_control SET paused=false")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    assert!(request(&p.pool, &command).await.is_err());
+    sqlx::query("UPDATE execution_control SET paused=true")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    git(
+        &p.binding.target.path,
+        &[
+            "update-ref",
+            "refs/heads/main",
+            &p.manifest.workspace.baseline,
+            &p.manifest.head,
+        ],
+    );
+    assert!(request(&p.pool, &command).await.is_err());
+    git(
+        &p.binding.target.path,
+        &[
+            "update-ref",
+            "refs/heads/main",
+            &p.manifest.head,
+            &p.manifest.workspace.baseline,
+        ],
+    );
+    sqlx::query("UPDATE repository SET revoked_through_version=version WHERE id=1")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    assert!(request(&p.pool, &command).await.is_err());
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM local_acceptance_recheck")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    p.pool.close().await;
+}
+
+#[tokio::test]
+async fn failed_validator_rechecks_stop_and_have_a_cumulative_attempt_limit() {
+    use codexsymphony_server::{local_acceptance_recheck::request, validation::sha256};
+    let (p, mut command) = failed_validator().await;
+    for ordinal in 1..=3 {
+        command.request_id = format!("failed-validator-correction-{ordinal}");
+        command.plan.steps[0].command =
+            vec!["/gate-entry".into(), format!("still-wrong-{ordinal}")];
+        let result: serde_json::Value = sqlx::query_scalar(
+            "SELECT local_acceptance FROM delivery WHERE validation_id='validation'",
+        )
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+        command.previous_result_sha256 = sha256(serde_json::to_vec(&result).unwrap());
+        request(&p.pool, &command).await.unwrap();
+        sqlx::query("UPDATE execution_control SET paused=false")
+            .execute(&p.pool)
+            .await
+            .unwrap();
+        product_tick(&p).await;
+        assert!(
+            !codexsymphony_server::local_delivery::tick(&p.pool, p.root.path(), &p.broker)
+                .await
+                .unwrap()
+        );
+        sqlx::query("UPDATE execution_control SET paused=true")
+            .execute(&p.pool)
+            .await
+            .unwrap();
+    }
+    command.request_id = "fourth-correction".into();
+    command.plan.steps[0].command = vec!["/gate-entry".into(), "corrected-local-phase".into()];
+    let result: serde_json::Value = sqlx::query_scalar(
+        "SELECT local_acceptance FROM delivery WHERE validation_id='validation'",
+    )
+    .fetch_one(&p.pool)
+    .await
+    .unwrap();
+    command.previous_result_sha256 = sha256(serde_json::to_vec(&result).unwrap());
+    assert!(
+        request(&p.pool, &command)
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("limit reached")
+    );
+    let state: String = sqlx::query_scalar("SELECT state FROM requirement WHERE id=1")
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    assert_eq!(state, "Submitted");
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM local_acceptance_recheck")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        3
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM delivery_attempt")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        1
+    );
+    p.pool.close().await;
+}
+
+#[tokio::test]
+async fn local_queue_projection_does_not_require_github_capabilities() {
+    use serde_json::json;
+    let p = product_group(true).await;
+    sqlx::query("UPDATE requirement SET state='Ready' WHERE id=1")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE execution_control SET requirement_id=NULL")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    let draft: String =
+        sqlx::query_scalar("SELECT draft_id FROM group_execution_item WHERE requirement_id=1")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+    let app = groups::app(&p.pool);
+    let view = groups::request(
+        &app,
+        "GET",
+        &format!("/api/drafts/{draft}/review"),
+        json!({}),
+        200,
+    )
+    .await;
+    assert_eq!(
+        view["execution"]["items"][0]["waiting_reason"],
+        "waiting_repository_baseline_or_preparation"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM github_repository")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    fs::write(p.root.path().join("targets.json"), "[]").unwrap();
+    groups::request(
+        &app,
+        "GET",
+        &format!("/api/drafts/{draft}/review"),
+        json!({}),
+        503,
+    )
+    .await;
+    p.pool.close().await;
+}
+
+async fn configure_recheck_hooks(p: &mut Product) {
+    use serde_json::json;
+    let script = p.root.path().join("recheck-hook.py");
+    let counter = p.root.path().join("recheck-hook-calls.jsonl");
+    let text = r#"#!/usr/bin/python3
+import json, pathlib, sys
+request = json.load(sys.stdin)
+with pathlib.Path(sys.argv[1]).open('a') as stream:
+    stream.write(json.dumps([request['run_id'], request['event']]) + '\n')
+identity = {key: request[key] for key in ('protocol_version', 'requirement_id', 'revision', 'run_id', 'resource_id', 'invocation_id', 'attempt', 'config_id')}
+print(json.dumps(dict(identity, status='success', artifacts=[])), flush=True)
+"#;
+    fs::write(&script, text).unwrap();
+    fs::set_permissions(&script, fs::Permissions::from_mode(0o755)).unwrap();
+    let digest = format!("sha256:{}", codexsymphony_server::validation::sha256(text));
+    let hooks: Vec<_> = ["before_run", "after_run"]
+        .iter()
+        .map(|event| {
+            json!({
+                "name": format!("recheck-{event}"), "event":event, "roles":["validation"],
+                "argv":[script,counter], "script_identity":digest, "timeout_seconds":10,
+                "output_limit_bytes":8192, "replay":"never"
+            })
+        })
+        .collect();
+    sqlx::query("UPDATE repository SET document=jsonb_set(document,'{hooks}',$1) WHERE id=1")
+        .bind(json!(hooks))
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE requirement_revision SET document=jsonb_set(document,'{repository,hooks}',$1) WHERE requirement_id=1")
+        .bind(json!(hooks)).execute(&p.pool).await.unwrap();
+    sqlx::query("INSERT INTO plugin_scope(plugin_id,kind,repository_ids,enabled) SELECT 'hook:'||(h->>'name'),'repositories',ARRAY[1]::bigint[],true FROM jsonb_array_elements($1::jsonb) h")
+        .bind(json!(hooks)).execute(&p.pool).await.unwrap();
+    p.hooks = json!({"hook_allowlist":hooks});
 }

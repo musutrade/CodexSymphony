@@ -1,68 +1,38 @@
-# Evidence retention
+# 当前存储与证据保留策略入口
 
-The operator accepts rebuilding historical commits instead of retaining every native
-binary and raw coverage profile forever. This does not change Gate acceptance criteria.
-A historical PASS remains a historical result; rebuilding creates a new result and is
-not a claim to reproduce the original runtime or binary byte for byte.
+本页是仓库存储清理与证据保留的统一入口，更新于 2026-09-28。旧文档中的“长期保留在线”“转入冷存储”“空间不足后归档或扩容”不再作为当前开发宿主的操作方案。历史记录中的“已保留”仅描述当时事实，不承诺附件永久存在。
 
-## Installed policy
+本页汇总适用范围和权威来源，不另设保留参数。实际期限、数量、字节预算和执行权限以匹配的已安装宿主批准及产品部署策略为准；文档不能授权修改可信宿主、删除未对账材料或绕过 [开发程序](../../AGENTS.md)。
 
-The hourly `codexsymphony-archive` service now runs `compact_gate_evidence.py`:
+## 当前开发宿主
 
-- Retain rebuildable backend raw files and HTTP server binaries for at most the newest
-  two runs, within 24 hours, with a 4 GiB aggregate limit. Active runs and recently
-  finished runs are exempt until safe to collect. Completed runs have a five-minute
-  grace period; incomplete runs have a one-hour grace period and require no live workers.
-- Keep final report JSON/Markdown, source identity, input/lockfile hashes, signed
-  evidence and diagnostic logs. Before removing report subdirectories, preserve all
-  report details plus signatures and capture metadata in `review-record.tar.gz`.
-  Verify every archived file by SHA256 before deleting anything.
-- Keep `compact-retention.json` with the archive hash, file hashes and original sizes,
-  deleted paths, and an explicit statement that original raw payloads are unavailable.
-  An interrupted deletion resumes against the original verified review package.
-- Stop creating new cold archives of rebuildable binaries. Existing cold archives
-  expire after seven days or above 4 GiB (oldest first); retain their original manifests
-  and an `.expired.json` tombstone. Expired raw archives cannot be restored.
-- Cache cleanup remains separate. This policy does not delete managed issue worktrees, Git
-  history, host approvals, tool installations, or historical host acceptance fixtures.
-  The 4 GiB limits apply to raw payloads, not all Symphony data.
+- 固定开发工作区、验证槽位、普通/插桩缓存和测试数据库槽位复用；不按任务或重试新增工作区，不复制完整 checkout、依赖目录或 target 作为证据。
+- 完成捕获经来源归档、独立原始清单、宿主注册及测量结果核对后，才能释放 pending 并进入回收集合。原始计数、二进制、完整运行记录和最终摘要均按适用的数量、期限及总字节预算保留，不无限累积，也不默认另存永久冷副本。
+- `bounded_retention.py` 从已安装并核对摘要的保留实现读取参数；`bounded_records.py` 管理记录去重、到期摘要和可恢复的删除。入口收尾与独立 timer 执行回收，不能依赖 Agent 记得清理。
+- 历史 PASS 是历史结果。附件过期须明确标记不可用；重新构建产生新验证结果，不能把旧回执或已删除的原始材料当作当前发布依据。
+- 活动、未知和未完成捕获仍受保护，不能仅凭目录年龄或磁盘压力删除。其自动对账和收尾仍有缺口；当前硬容量和停止准入防止继续无界写入，不代表已经完成失败资源的自动清理。
+- 旧历史目录、业务数据库和未提交的独有代码不因新入口上线自动进入删除名单。须核对归属、活动引用和恢复需要；本页不是批量删除授权。
 
-Review records are much smaller but still grow with the number of runs; their long-term
-storage is not advertised as constant or unlimited. Monitor actual retained report
-volume before adding a separate policy for those essential records.
+具体安装事实、历史回收与限制见 [当前开发宿主整改](../proposals/current-development-storage.md)。受限卷内部释放空间不等于外层稀疏镜像已释放物理块；专用 trim 尚待管理员认证安装，不能计为已启用。
 
-## Review and recovery
+## 产品与宿主的边界
 
-`python3 tools/compact_gate_evidence.py` prints a dry-run plan. `--apply` applies it.
-The service requires both the runtime SSD bind mount and `/data` to exist. It shares
-an exclusive lock with the old archive tool and refuses symlink/mount traversal.
+[产品存储生命周期](../storage-lifecycle.md)描述产品部署配置和现有行为；它与开发 Gate 的存储范围不同，不得套用开发机器的路径或额度。产品级固定工作区控制器仍由 #140 承接，当前开发宿主整改不表示该能力已经交付。失败资源自动收尾等新增建议也不能冒充现行实现。
 
-To examine compacted report details, extract `review-record.tar.gz` into a new review
-directory, retaining `compact-retention.json` to verify the recorded file hashes.
-The top-level original final report remains at its existing path for diagnostics.
-For code reproduction, fetch the commit recorded in `source-inputs.json`/the final
-report, use its checked-in lockfiles and recorded tool/pipeline versions, and rerun Gate.
-Uncommitted or environment-dependent behavior may not be reproducible from Git alone;
-retained input hashes and logs expose these limits rather than asserting equivalence.
+[资源退出机制：#140 配套提案](../proposals/resource-exit-lifecycle.md)记录已讨论收敛的创建登记、失败接管、恢复校验、消费者与容量边界及验收要求，状态为**待实现、待验收**；不授权提前删除未完成捕获，也不替代本页的现行策略。
 
-## Consolidation after PR success
+[主方案 10.4–10.6](../../Personal_AI_Software_Factory_综合方案.md#104-证据分级与保留)是产品需求说明。产品的冷存储类别仍可在显式有限策略下使用；它不要求当前开发宿主把可重建产物转入冷归档，更不允许永久保留或把增长搬到另一块盘。
 
-Each hourly sweep also resolves finished Actions attempts to an unambiguous PR using
-GitHub's exact attempt SHA and commit association. The validated association is cached
-in `attempt-context.json`. API failures, ambiguous associations, different repositories,
-and non-PR workflows do not authorize deletion.
+## 文档状态与使用顺序
 
-After a later successful trusted receipt is at least five minutes old and its retained
-report hash matches, older finished attempts for that PR are reduced to
-`superseded-attempt.json`: attempt/commit identity, original status, failure reason,
-input hashes, tool approval, and key logs. Log excerpts retain up to 64 KiB per file;
-longer logs explicitly record truncation and original hashes. Prior successful retries
-are also superseded; the latest successful run keeps its full compact review record.
+| 文档 | 状态与用途 |
+| --- | --- |
+| 本页 | 当前统一入口；先确认范围，再读取对应权威配置与回执 |
+| [当前开发宿主整改](../proposals/current-development-storage.md) | 实施记录；各阶段状态和回执有来源边界，不另外定义保留参数 |
+| [手工采集登记](manual-capture-retention.md) | 登记与缓存安全前提；不是原始证据或报告的永久保留承诺 |
+| [旧磁盘容量调整方案](storage-capacity-plan.md) | 已失效的历史方案；旧迁移、归档步骤不作为当前操作入口 |
+| [旧宿主磁盘维护](storage-maintenance.md) | 历史实现说明；旧缓存回收及压力阈值不是当前完整保留策略 |
+| [2026-09-26 回收修复](storage-retention-recovery.md) | 历史修复和验收记录；当时保留范围不是当前永久保留规则 |
+| [证据生命周期需求影响](../evidence-lifecycle-impact.md) | 2026-09-16 历史分析；Issue 状态和实施缺口仅对应当时基线 |
 
-The collector removes superseded run payloads and their cold binary archives, and
-removes disposable `remote-gate/jobs/<attempt>/source` clones/dependencies, including
-preparation failures with no Gate run. The final successful job's disposable source
-is also removed; its separate Gate report and review record remain. Open workers,
-unfinished attempts, more recent failures, and unrelated PRs remain protected. Failed
-attempts without a later validated success continue under the ordinary raw retention
-policy. An interrupted deletion resumes from the durably saved summary.
+旧链接保留以便追溯，不继续维护第二套当前策略。历史命令、阈值和路径不能替代现行安装批准；若批准与预期不符，应停止相关操作并对账。

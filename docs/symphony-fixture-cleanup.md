@@ -1,5 +1,7 @@
 # Symphony 开发环境回收
 
+> **旧开发控制器的按 Issue 环境回收说明。** 当前开发 Gate 使用固定数据库槽位；旧控制器仍停止派发，不能据本文重新安装按 Issue 创建资源的流程。历史资源清理仍须核对实际归属和已安装批准。当前策略统一见 [存储与证据保留策略入口](quality/evidence-retention.md)。
+
 每个开发 Issue 的 PostgreSQL test/dev 容器由
 `tools/symphony/provision_issue_environment.py` 创建。任务工作区删除不会自动删除
 这些宿主 Docker 资源。`cleanup_issue_environments.py` 补齐这个生命周期。
@@ -22,7 +24,6 @@
 共享镜像、其他项目、产品 A01/A13 数据库、凭据、预算及产品恢复资料不属于回收范围。
 宿主环境辅助程序目录保留，避免破坏其他运行说明或诊断引用。
 
-门禁运行证据继续由已有 `codexsymphony-archive.timer` 单独管理：保留验收报告，
-归档原始证据并回收可重建内容。本脚本不以开发任务完成为理由删除产品验收证据。
+当时门禁证据由 `codexsymphony-archive.timer` 单独管理；这是历史接线，不定义当前保留策略。本脚本不以开发任务完成为理由删除产品验收证据。
 
 验证：`python3 -m unittest discover -s tools/symphony -p 'test_fixture_cleanup.py' -v`。

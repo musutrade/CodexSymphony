@@ -1332,3 +1332,111 @@ async fn seed_hook_retry(
     sqlx::query("INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result,retry_of) SELECT $1,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,$2,required_steps,source_before,source_before,$3,$3,'declaration','pending',id FROM candidate_validation WHERE id='validate'")
         .bind(id).bind(json!(plan.identity().unwrap())).bind(&plan.entry_sha256).execute(pool).await.unwrap();
 }
+
+#[tokio::test]
+async fn host_boot_recovery_cli_retains_unknown_probe_and_requires_a_real_boundary() {
+    use std::io::Write;
+    use std::process::Stdio;
+    let root = temporary();
+    let (plan, profile) = fixture(&root, "boot-recovery", "node", false);
+    let registry = registry(&root, vec![("boot-recovery".into(), profile)]);
+    let config = root.join("registry.json");
+    fs::write(&config, serde_json::to_vec(&registry).unwrap()).unwrap();
+    let original = check(&registry, &plan, "startup").await;
+    assert!(original.passed());
+    let directory = original.evidence.clone();
+    fs::rename(
+        directory.join("quiescent.json"),
+        directory.join("fixture-retained-native-stop.json"),
+    )
+    .unwrap();
+    let identity = directory.join("identity.json");
+    let mut receipt: codexsymphony_server::execution::Receipt = process::read(&identity).unwrap();
+    let original_output = fs::read(directory.join("stdout.json")).unwrap();
+    let mut request = json!({"request_id":"controlled-boot-recovery","invocation_id":original.request.invocation_id,"evidence_sha256":sha256(serde_json::to_vec(&(&original.request,&receipt)).unwrap()),"reason":"Synthetic lost-supervisor fixture; never a real machine reboot claim"});
+    let invoke = |args: &[&str], input: &[u8]| {
+        let mut child = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
+            .arg("environment")
+            .args(args)
+            .env("ENVIRONMENT_CONFIG", &config)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        // Invalid argument cases may close stdin without reading.
+        let _ = child.stdin.take().unwrap().write_all(input);
+        child.wait_with_output().unwrap()
+    };
+    assert!(!invoke(&[], b"").status.success());
+    assert!(!invoke(&["unknown", "--stdin-json"], b"").status.success());
+    assert!(
+        !invoke(&["prepare-recovery", "invalid"], b"")
+            .status
+            .success()
+    );
+    assert!(
+        !invoke(&["prepare-recovery", "--stdin-json"], b"{")
+            .status
+            .success()
+    );
+    assert!(
+        !invoke(&["prepare-recovery", "--stdin-json"], &vec![b'x'; 8193])
+            .status
+            .success()
+    );
+    let bytes = serde_json::to_vec(&request).unwrap();
+    let prepare = invoke(&["prepare-recovery", "--stdin-json"], &bytes);
+    assert!(
+        prepare.status.success(),
+        "{}",
+        String::from_utf8_lossy(&prepare.stderr)
+    );
+    assert_eq!(
+        serde_json::from_slice::<Value>(&prepare.stdout).unwrap()["quiescence_proven"],
+        false
+    );
+    let denied = invoke(&["reconcile", "--stdin-json"], &bytes);
+    assert!(!denied.status.success());
+    assert!(String::from_utf8_lossy(&denied.stderr).contains("same-boot"));
+    assert!(!directory.join("host-recovery-proof.json").exists());
+    assert!(
+        environment_probe::check(&registry, &plan, "startup", "test", None)
+            .await
+            .is_err()
+    );
+    // Simulate a persisted prior-boot witness in this isolated fixture only.
+    // The real CLI never permits preparing a witness for a foreign/past boot.
+    receipt.process.boot_id = process::new_identity().unwrap();
+    process::durable_write(&identity, &receipt).unwrap();
+    let digest = sha256(serde_json::to_vec(&(&original.request, &receipt)).unwrap());
+    request["evidence_sha256"] = json!(digest);
+    let origin_path = directory.join("host-recovery-origin.json");
+    let mut origin: Value = process::read(&origin_path).unwrap();
+    origin["binding"]["receipt"] = json!(receipt);
+    origin["binding"]["evidence_sha256"] = json!(digest);
+    origin["command"] = request.clone();
+    process::durable_write(&origin_path, &origin).unwrap();
+    let accepted = invoke(
+        &["reconcile", "--stdin-json"],
+        &serde_json::to_vec(&request).unwrap(),
+    );
+    assert!(
+        accepted.status.success(),
+        "{}",
+        String::from_utf8_lossy(&accepted.stderr)
+    );
+    let ack: Value = serde_json::from_slice(&accepted.stdout).unwrap();
+    assert_eq!(ack["quiescence_proven"], true);
+    assert_eq!(ack["started"], false);
+    assert_eq!(ack["prior_result"], "unknown");
+    let next = check(&registry, &plan, "recovery").await;
+    assert!(next.passed());
+    assert_ne!(original.request.invocation_id, next.request.invocation_id);
+    assert_eq!(
+        fs::read(directory.join("stdout.json")).unwrap(),
+        original_output
+    );
+    assert!(!directory.join("quiescent.json").exists());
+    fs::remove_dir_all(root).unwrap();
+}

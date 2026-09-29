@@ -60,6 +60,9 @@ pub(crate) async fn allowed(tx: &mut Tx<'_>, intent: &Intent) -> Result<bool> {
     if !allowed || !crate::group_queue_store::authorized(tx, intent.requirement).await? {
         return Ok(false);
     }
+    if !crate::pre_merge_recovery::delivery_allowed(tx, &intent.delivery_key).await? {
+        return Ok(false);
+    }
     dependencies_and_budget_allowed(tx, intent).await
 }
 async fn dependencies_and_budget_allowed(tx: &mut Tx<'_>, intent: &Intent) -> Result<bool> {
