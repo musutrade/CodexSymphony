@@ -1,4 +1,11 @@
-"""Bound completed Gate records; retain current proof and explicit expiry facts."""
+"""Bound completed Gate records; retain current proof and explicit expiry facts.
+
+Retention pins (evidence_pins) are honored here: the caller holds the exclusive pin
+lock across this whole pass and a pinned run is never retired. Record bytes are
+evidence_pins.charge, the measure pin admission uses: the live pins, the current
+record and the pin state are charged first and must fit, or the pass fails; an older
+unpinned record is retained only if it still fits.
+"""
 import fcntl
 import json
 import os
@@ -7,6 +14,7 @@ import re
 import shutil
 import time
 
+import evidence_pins
 import fixed_workspace
 import manual_measure
 import rust_capture
@@ -85,17 +93,22 @@ def read_index(parent):
     return values
 
 
-def resume_deletions(parent, records, apply):
+def resume_deletions(parent, records, pinned, apply):
     indexed = {row['run'] for row in records}
     for path in parent.glob('retiring-run-*'):
-        if path.name.removeprefix('retiring-') not in indexed:
+        name = path.name.removeprefix('retiring-')
+        if name not in indexed:
             raise ValueError('unregistered record retirement')
+        if parent / name in pinned:
+            raise ValueError('pinned record is being retired')
         safe_directory(path)
         if apply:
             shutil.rmtree(path)
 
 
-def retire(run, parent, records, apply):
+def retire(run, parent, records, pinned, apply):
+    if run in pinned:
+        raise ValueError('pinned record cannot be retired')
     record = summary(run)
     safe_directory(run)
     if apply:
@@ -124,26 +137,43 @@ def trim_index(parent, records, hours, budget, apply):
             fixed_workspace.write_json(path, kept)
 
 
-def maintain(parent, candidates, policy, keep, hours, budget, apply):
+def kept(index, age, fits, keep, hours):
+    """Retained within count and age; an older record also within what pins and newer records leave."""
+    return index < keep and age < hours * 3600 and (index == 0 or fits)
+
+
+def maintain(parent, candidates, keep, hours, budget, apply, pins):
+    """pins: the live pin state, read under the pin lock the caller holds for this pass.
+
+    The pins, the current record (candidates[0]) and the pin state are charged first,
+    exactly as pin admission charges them; if they do not fit the pass fails before
+    any change. The current record still expires by count and age."""
     records = read_index(parent)
-    resume_deletions(parent, records, apply)
-    candidates.sort(key=lambda run: (run / 'source-archive.json').stat().st_mtime, reverse=True)
-    used, results = 0, []
+    pinned = evidence_pins.runs(pins)
+    candidates.sort(key=evidence_pins.archived_at, reverse=True)
+    needed = evidence_pins.reserved(pins, candidates[:1])
+    if needed > budget:
+        raise ValueError(f'pins and current required evidence need {needed} of {budget} record bytes')
+    resume_deletions(parent, records, pinned, apply)
+    retained, results = list(pinned), []
     for index, run in enumerate(candidates):
         released = deduplicate(run, apply)
-        size = policy.bytes_used([run]) - policy.bytes_used(policy.payloads(run))
-        age = time.time() - (run / 'source-archive.json').stat().st_mtime
-        if index == 0 and size > budget:
-            raise ValueError('current required evidence exceeds approved record budget')
-        retain = index < keep and age < hours * 3600 and used + size <= budget
-        if retain:
-            used += size
-            results.append({'run': str(run), 'deduplicated_bytes': released, 'retained': True})
+        age = time.time() - evidence_pins.archived_at(run)
+        result = {'run': str(run), 'deduplicated_bytes': released, 'retained': True}
+        if run in pinned:
+            results.append(result | {'pinned': True})
+        elif kept(index, age, charged(pins, [*retained, run]) <= budget, keep, hours):
+            retained.append(run)
+            results.append(result)
         else:
-            results.append(retire(run, parent, records, apply))
+            results.append(retire(run, parent, records, pinned, apply))
     unregister_expired(parent, records, apply)
-    trim_index(parent, records, hours, max(0, budget - used), apply)
+    trim_index(parent, records, hours, max(0, budget - charged(pins, retained)), apply)
     return results
+
+
+def charged(pins, runs):
+    return evidence_pins.charge(runs) + evidence_pins.state_bytes(pins)
 
 
 def unregister_expired(parent, records, apply):

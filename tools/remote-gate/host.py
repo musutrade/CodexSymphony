@@ -115,6 +115,23 @@ def actions_cancelled(run,config):
     return current['run_attempt']!=run['run_attempt'] or current['status']=='completed'
 
 
+# Statuses of an Actions run that has not finished; anything else no longer awaits this host.
+INCOMPLETE=('queued','in_progress','waiting','requested','pending')
+
+
+def attempt_superseded(run,config):
+    """Verify-only, every event: the attempt read back now is no longer this exact unfinished attempt."""
+    current=request('/repos/'+config['repository']+'/actions/runs/'+str(run['id']),installation_token(config))
+    identity=(current.get('id'),current.get('head_sha'),current.get('event'),current.get('run_attempt'))
+    return identity!=(run['id'],run['head_sha'],run['event'],run['run_attempt']) or current.get('status') not in INCOMPLETE
+
+
+def superseded(run,config):
+    """Execute keeps its PR-only cancellation; verify-only checks every event's attempt before verifying."""
+    if config['mode']=='verify-only': return attempt_superseded(run,config)
+    return actions_cancelled(run,config)
+
+
 def gate_timeout(config):
     seconds=config.get('gate_timeout_seconds',1500)
     if type(seconds) is not int or seconds <= 0:
@@ -168,10 +185,32 @@ def accepted_result(run,approval,job,fingerprint):
             'records':len(evidence),'producers':len(value['quality']['producers']),'status':'PASS'}
 
 
+def verified(run,config,job,identity,check,receipt,state):
+    """Verify-only deployment: every event only verifies; there is no Gate fallback."""
+    import evidence_admission
+    result=evidence_admission.publish(run,config,job.parent.parent,identity,check['id'],lambda: attempt_superseded(run,config))
+    write(receipt,state|result|{'finished':True})
+    print(json.dumps({'identity':identity,'status':result['status'],'check_id':check['id']}),flush=True)
+
+
+def settle_pins(config,token):
+    """Verify-only: every loop, under the service lock, hand merged PR proofs over to main and drop dead ones."""
+    if config.get('mode')!='verify-only': return
+    import evidence_admission
+    evidence_admission.sweep(config,token)
+
+
+def deployment_mode(config):
+    """Installed configs name their mode; a missing or unknown mode never defaults to running a Gate."""
+    if config.get('mode') not in MODES: raise ValueError('installed remote gate mode missing or unknown')
+    return config['mode']
+
+
 def process(run,config,home):
+    deployment_mode(config)
     identity=validate_run(run,config)
-    # The queue snapshot may be stale after another long run. Never start a cancelled PR.
-    if actions_cancelled(run,config): return
+    # The queue snapshot may be stale after another long run. Never start a cancelled attempt.
+    if superseded(run,config): return
     job=home/'jobs'/identity.replace('/','-');job.mkdir(parents=True,exist_ok=True)
     receipt=job/'receipt.json'
     token=installation_token(config);prefix='/repos/'+config['repository']
@@ -187,6 +226,12 @@ def process(run,config,home):
         'external_id':identity,'status':'in_progress','started_at':timestamp(),'details_url':run['html_url']})
     state={'identity':identity,'check_id':check['id'],'source_sha':run['head_sha'],'finished':False}
     write(receipt,state)
+    MODES[config['mode']](run,config,job,identity,check,receipt,state)
+
+
+def executed(run,config,job,identity,check,receipt,state):
+    """Legacy deployments execute the complete Gate for this attempt."""
+    prefix='/repos/'+config['repository']
     try:
         result=evaluate(run,config,job)
         if actions_cancelled(run,config): raise SupersededRun('Actions attempt superseded before publication')
@@ -225,6 +270,9 @@ def process(run,config,home):
     print(json.dumps({'identity':identity,'conclusion':conclusion,'check_id':check['id']}),flush=True)
 
 
+MODES={'verify-only':verified,'execute':executed}
+
+
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--config',type=Path,required=True)
     parser.add_argument('--once',action='store_true');args=parser.parse_args()
@@ -236,6 +284,7 @@ def main():
             try:
                 token=installation_token(config)
                 reconcile_interrupted(config,home,token)
+                settle_pins(config,token)
                 # New PR workflows need not exist on the default branch yet.
                 runs=request('/repos/'+config['repository']+'/actions/runs?status=in_progress&per_page=30',token)
                 for run in reversed(runs['workflow_runs']):
