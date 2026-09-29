@@ -262,7 +262,7 @@ fn legacy_migration_contract_gaps_and_test_merge_protection() {
         "deadline",
         "test-merge",
         "PR-only",
-        "merge method",
+        "delivery.actions: merge or squash method required",
     ] {
         assert!(
             blockers.iter().any(|v| v.contains(expected)),
@@ -794,7 +794,7 @@ async fn workflow_blob_is_checked_on_every_observed_source_not_only_capability_p
 async fn selected_merge_and_dispatch_capabilities_do_not_mutate_remote_rules() {
     let (f, mut p) = fixture().await;
     let now = github_service::now();
-    for method in ["merge", "squash", "rebase"] {
+    for method in ["merge", "squash"] {
         let contract = p.delivery.as_mut().unwrap();
         contract.actions.merge = true;
         contract.actions.merge_method = Some(method.into());
@@ -807,6 +807,18 @@ async fn selected_merge_and_dispatch_capabilities_do_not_mutate_remote_rules() {
                 .is_empty()
         );
     }
+    // Rebase rewrites the validated head, so it is refused before any merge request.
+    let contract = p.delivery.as_mut().unwrap();
+    contract.actions.merge_method = Some("rebase".into());
+    assert!(
+        github_observe::preflight(&mut f.client(), &p, 1, now)
+            .await
+            .unwrap()
+            .blockers
+            .iter()
+            .any(|v| v.contains("merge or squash method required"))
+    );
+    p.delivery.as_mut().unwrap().actions.merge_method = Some("squash".into());
     f.put(
         "/repos/owner/repo",
         json!({"id":99,"full_name":"owner/repo","default_branch":"main","archived":false}),

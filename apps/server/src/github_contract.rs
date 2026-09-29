@@ -162,10 +162,11 @@ impl DeliveryContract {
         if self.actions.merge
             && !matches!(
                 self.actions.merge_method.as_deref(),
-                Some("merge" | "squash" | "rebase")
+                Some("merge" | "squash")
             )
         {
-            blockers.push("delivery.actions: merge method required".into());
+            // Rebase rewrites the validated head; only merge or squash keep a provable merge source.
+            blockers.push("delivery.actions: merge or squash method required".into());
         }
         if self.actions.merge && reviews_required(&self.protection, &self.rules) {
             blockers.push(

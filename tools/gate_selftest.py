@@ -13,7 +13,11 @@ SUITES += [('tools/tests', name) for name in (
 
 
 def main():
-    for directory, pattern in SUITES:
+    suites = [*SUITES, ('tools/tests', 'test_evidence_ledger.py'),
+              ('tools/tests', 'test_install_publication_gate.py'),
+              ('tools/tests', 'test_install_remote_gate.py'),
+              ('tools/tests', 'test_gate_selftest.py')]
+    for directory, pattern in suites:
         path = ROOT / directory
         if not list(path.glob(pattern)):
             raise ValueError('missing gate regression suite: ' + directory + '/' + pattern)

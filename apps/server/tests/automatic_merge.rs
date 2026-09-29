@@ -12,7 +12,7 @@ fn identities_checks_and_protection_are_not_interchangeable() {
     let o = observation(&i, 100);
     let required = vec!["test".into()];
     assert!(automatic_merge::admit(&i, &o, &e, &required, 100));
-    for method in ["squash", "rebase", "merge"] {
+    for method in ["squash", "merge"] {
         i.policy.delivery.as_mut().unwrap().actions.merge_method = Some(method.into());
         let mut o = observation(&i, 100);
         o.merge = MergeFact::Merged;

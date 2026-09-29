@@ -34,7 +34,8 @@ class ContractTests(unittest.TestCase):
 
     def test_database_memory_swap_cpu_and_image_each_reject_drift(self):
         policy=contract.load(ROOT)
-        state={'Image':policy['postgres']['image_id'], 'HostConfig':{'Memory':2147483648,'MemorySwap':4294967296,'NanoCpus':1000000000}}
+        resources=policy['postgres']['test']
+        state={'Image':policy['postgres']['image_id'], 'HostConfig':{'Memory':resources['memory'],'MemorySwap':resources['memory_swap'],'NanoCpus':resources['nano_cpus']}}
         contract.check_database(state,policy)
         for key in state['HostConfig']:
             drift={'Image':state['Image'],'HostConfig':state['HostConfig']|{key:0}}
