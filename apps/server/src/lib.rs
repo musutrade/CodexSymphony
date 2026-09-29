@@ -5,6 +5,8 @@ pub mod auth_api;
 pub mod auth_store;
 pub mod automatic_merge;
 pub mod budget_admin;
+pub mod delivery_admin;
+pub mod local_acceptance_recheck;
 mod merge_acceptance;
 mod merge_dispatch;
 mod merge_prevalidation;
@@ -132,6 +134,7 @@ pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
             .merge(validation_api::routes())
             .merge(diagnostic_api::routes())
             .merge(extension_api::routes())
+            .merge(pre_merge_recovery_api::routes())
             .merge(lifecycle_api::routes())
             .merge(runtime_api::routes())
             .layer(axum::middleware::from_fn(draft_api::guard_legacy))
@@ -202,6 +205,7 @@ pub mod environment_cli;
 pub mod environment_host;
 pub mod environment_probe;
 pub mod environment_service;
+pub mod linked_budget_recovery;
 pub mod linked_failure_store;
 pub mod linked_integration;
 pub mod linked_repair;
@@ -244,3 +248,9 @@ pub mod delivered_version;
 pub mod model_review;
 pub mod model_runtime;
 pub mod model_selection;
+
+pub mod pre_merge_recovery;
+pub mod pre_merge_recovery_api;
+pub mod pre_merge_recovery_worker;
+
+pub mod environment_recovery;

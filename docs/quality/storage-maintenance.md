@@ -1,5 +1,7 @@
 # Host disk maintenance
 
+> **历史实现说明，已被当前方案取代。** 下文记录旧缓存清理与磁盘压力保护；“证据继续增长后归档或扩容”不再是当前策略。旧安装、回收及测试命令仅供追溯，不作为当前操作入口。参见 [当前存储与证据保留策略入口](evidence-retention.md)。
+
 Install as the trusted host operator:
 
 ```sh

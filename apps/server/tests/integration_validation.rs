@@ -49,6 +49,7 @@ async fn budget_admin(f: &Fixture, command: &str, payload: Value) -> bool {
 #[tokio::test]
 async fn in_flight_group_increase_preserves_exposure_and_original_accounts() {
     let f = fixture("dependencies", false).await;
+    assert!(!budget_admin(&f, "repair-recheck", json!({})).await);
     let used = json!({"tokens":125,"turns":1,"model_seconds":10});
     let reserved = json!({"tokens":0,"turns":0,"model_seconds":40});
     sqlx::query(

@@ -206,6 +206,16 @@ pub(crate) async fn allowed(
     let Some(requirement) = requirement else {
         return Ok(false);
     };
+    if !crate::pre_merge_recovery::admitted(tx, id).await? {
+        return Ok(false);
+    }
+    authorized_balance(tx, requirement).await
+}
+
+async fn authorized_balance(
+    tx: &mut Transaction<'_, Postgres>,
+    requirement: i64,
+) -> std::result::Result<bool, sqlx::Error> {
     let balance = crate::budget_store::balance(tx, requirement).await?;
     Ok(!balance.exhausted
         && balance.exposure.fits(balance.limits)

@@ -1,0 +1,58 @@
+{
+  "status": "BLOCKED_BASELINE_PREPARATION",
+  "time": "2026-09-28T16:02:55.067254+00:00",
+  "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+  "authorization_id": 2,
+  "requirements": {
+    "R1": 5,
+    "R2": 6,
+    "R3": 7
+  },
+  "responsibility": "Operator preparation reused stale B01 starting baseline without comparing current target main; not a model implementation failure.",
+  "configured_and_claimed_baseline": "3e7befaf0b5bdc835854cc1d5a14c62865aec4c4",
+  "actual_target_main": "8870ba39b52952e5b2f2f14745292646f776b2c1",
+  "candidate": "7a765608ac0bf8d217232e5d2ce9d1e822682d58",
+  "pr": 16,
+  "merge": {
+    "state": "blocked",
+    "blocker": "pre_merge checkout validation blocked: test-merge SHA unavailable",
+    "merged_sha": null,
+    "merge_started": false,
+    "requirement_id": 5,
+    "pre_validation_started": false
+  },
+  "known_usage": {
+    "tokens": 56619,
+    "turns": 1,
+    "model_seconds": 28
+  },
+  "unresolved_reservation": {
+    "tokens": 63381,
+    "turns": 0,
+    "model_seconds": 152
+  },
+  "limits": {
+    "tokens": 480000,
+    "turns": 6,
+    "model_seconds": 1080
+  },
+  "r1_limits": {
+    "tokens": 240000,
+    "turns": 3,
+    "model_seconds": 540
+  },
+  "progress": "R1 candidate passed frozen source tests; conflicting PR not merged; no post-merge fault or repair observed; R2/R3 unstarted.",
+  "recovery_boundary": [
+    "Existing extension-recovery returns no eligible failure; it addresses validation failures, not a submitted PR conflict.",
+    "queue-edit rejects already prepared/claimed items. Updating mutable runtime baseline cannot change retained initial_run.",
+    "Normal pause/resume and operator recheck do not rebase or issue a new candidate.",
+    "Do not mutate database business facts, patch frozen candidate, force-push, bypass protection or create another parent to reset spending."
+  ],
+  "required_recovery": [
+    "Provide reviewed same-requirement conflict recovery bound to observed target baseline and approved paths, preserving all original accounting and delivery facts.",
+    "Reconcile and supersede old delivery through normal control-plane flow; obtain new source-bound candidate validation and protected delivery.",
+    "Before any additional paid call, check item/group used plus retained reservation; current R1 can reserve only one more 120000-token call, so an extra baseline-repair call may leave no room for the planned post-merge repair.",
+    "Final B05/B06 remain unpassed until actual merged-version and mixed integration repair complete."
+  ],
+  "no_new_model_calls_after_pause": true
+}

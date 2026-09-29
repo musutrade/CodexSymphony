@@ -1,4 +1,4 @@
-// harness-contract-sha256: cc57989212db715c67b55e7242ba669b4e3dc908dffbff4066f16977ac9e5fed
+// harness-contract-sha256: 7415696b269cb0b2e38cd9573a852f5946d9eebc199b962f512178295b8977b4
 export interface HealthResponse {
   database: 'ok' | 'unavailable';
   status: 'ok' | 'unavailable';
@@ -118,7 +118,13 @@ export interface ConfigureRepositoryRequest {
   version: number;
 }
 export interface ListRequirementsResponse {
-  requirements: { id: number; revision: number; state: string; title: string; version: number }[];
+  requirements: {
+    id: number;
+    revision: number;
+    state: string;
+    title: string;
+    version: number;
+  }[];
 }
 export type CreateRequirementResponse =
   | {
@@ -748,55 +754,23 @@ export interface PauseRequirementRequest {
 }
 export type GetOperationsResponse =
   | {
-      environments?: {
-        observed_at: string;
-        report: string;
-        stage: string;
-      }[];
-      events: {
-        created_at: string;
-        kind: string;
-        version: number;
-      }[];
+      environments?: { observed_at: string; report: string; stage: string }[];
+      events: { created_at: string; kind: string; version: number }[];
       execution?: {
         budget: {
           exhausted: boolean;
-          exposure: {
-            model_seconds: number;
-            tokens: number;
-            turns: number;
-          };
-          limits: {
-            model_seconds: number;
-            tokens: number;
-            turns: number;
-          };
+          exposure: { model_seconds: number; tokens: number; turns: number };
+          limits: { model_seconds: number; tokens: number; turns: number };
           unresolved_calls: number;
-          used: {
-            model_seconds: number;
-            tokens: number;
-            turns: number;
-          };
+          used: { model_seconds: number; tokens: number; turns: number };
         } | null;
         group: {
           authorization_id: number;
           budgets: {
             item_id: string;
-            limits: {
-              model_seconds: number;
-              tokens: number;
-              turns: number;
-            };
-            reserved: {
-              model_seconds: number;
-              tokens: number;
-              turns: number;
-            };
-            used: {
-              model_seconds: number;
-              tokens: number;
-              turns: number;
-            };
+            limits: { model_seconds: number; tokens: number; turns: number };
+            reserved: { model_seconds: number; tokens: number; turns: number };
+            used: { model_seconds: number; tokens: number; turns: number };
           }[];
           child_id: string;
           completion: string | null;
@@ -850,33 +824,21 @@ export type GetOperationsResponse =
         status: string;
       }[];
       metrics: {
-        build_test_coverage_subphases?: {
-          status: 'not_applicable' | 'unknown';
-        };
-        cache_hit_rate?: {
-          status: 'not_applicable' | 'unknown';
-        };
+        build_test_coverage_subphases?: { status: 'not_applicable' | 'unknown' };
+        cache_hit_rate?: { status: 'not_applicable' | 'unknown' };
         cached: number | null;
         ci_wait?: {
           seconds?: number;
           source?: string;
           status: 'known' | 'not_applicable' | 'unknown';
         };
-        environment_samples?: {
-          elapsed_ms: number;
-          source: string;
-          stage: string;
-        }[];
+        environment_samples?: { elapsed_ms: number; source: string; stage: string }[];
         human_seconds: number | null;
         input: number | null;
         interventions: number;
         model_calls: number;
         output: number | null;
-        phases: {
-          complete: boolean;
-          phase: string;
-          seconds: number;
-        }[];
+        phases: { complete: boolean; phase: string; seconds: number }[];
         reasons: string[];
         repair_count: number;
         stage_samples?: {
@@ -886,11 +848,7 @@ export type GetOperationsResponse =
           source: string;
         }[];
         to_pr_seconds: number | null;
-        zero_intervention: {
-          denominator: number;
-          numerator: number;
-          phase: string;
-        };
+        zero_intervention: { denominator: number; numerator: number; phase: string };
       };
       preparation: {
         attempts: number;
@@ -903,11 +861,7 @@ export type GetOperationsResponse =
       questions: {
         answered: boolean;
         id: string;
-        questions: {
-          id: string;
-          options: string[];
-          question: string;
-        }[];
+        questions: { id: string; options: string[]; question: string }[];
         resume_state: string;
         revision: number;
         run_id: string;
@@ -935,27 +889,15 @@ export type GetOperationsResponse =
             };
             versions: {
               artifacts: string[];
-              candidate: {
-                immutable: boolean;
-                sha: string;
-                tree: string;
-              };
+              candidate: { immutable: boolean; sha: string; tree: string };
               github_repository_id?: number;
               repository_id: number;
               repository_version: number;
             }[];
           };
-          candidate?: {
-            immutable: boolean;
-            sha: string;
-            tree: string;
-          };
+          candidate?: { immutable: boolean; sha: string; tree: string };
           evidence?: {
-            candidate: {
-              immutable: boolean;
-              sha: string;
-              tree: string;
-            };
+            candidate: { immutable: boolean; sha: string; tree: string };
             entry_after: string;
             entry_before: string;
             source_after: string;
@@ -980,11 +922,7 @@ export type GetOperationsResponse =
             };
           };
           failed_evidence?: {
-            candidate: {
-              immutable: boolean;
-              sha: string;
-              tree: string;
-            };
+            candidate: { immutable: boolean; sha: string; tree: string };
             entry_after: string;
             entry_before: string;
             source_after: string;
@@ -1023,11 +961,7 @@ export type GetOperationsResponse =
         version_set?:
           | {
               artifacts: string[];
-              candidate: {
-                immutable: boolean;
-                sha: string;
-                tree: string;
-              };
+              candidate: { immutable: boolean; sha: string; tree: string };
               github_repository_id?: number;
               repository_id: number;
               repository_version: number;
@@ -1053,10 +987,7 @@ export type GetOperationsResponse =
         state: string;
         waiting: string;
       }[];
-      storage: {
-        blocked: boolean;
-        error: string | null;
-      };
+      storage: { blocked: boolean; error: string | null };
       storage_lifecycle: string;
       storage_usage?: {
         actual_bytes: number | null;
@@ -1113,9 +1044,7 @@ export type GetOperationsResponse =
         superseded_by?: string | null;
       }[];
     }
-  | {
-      error: string;
-    };
+  | { error: string };
 export type ControlOperationsResponse = { version: number } | { error: string };
 export interface ControlOperationsRequest {
   action: 'cancel' | 'delivery_recheck' | 'pause' | 'recheck' | 'resume' | 'storage_recheck';
@@ -3442,3 +3371,58 @@ export type ReadDiagnosticResponse =
       unit: 'bytes';
     }
   | { error: string };
+export type GetPreMergeRecoveryResponse =
+  | {
+      recoveries: {
+        attempts: number;
+        blocker: string | null;
+        created_at: string;
+        failure_id: string | null;
+        id: string;
+        merge_key: string;
+        next_attempt_at: number;
+        receipts: {
+          attempt?: number;
+          error?: string;
+          previous_attempts?: number;
+          previous_blocker?: string | null;
+          previous_request?: {
+            base: string;
+            head: string;
+            merge_key: string;
+            paths: string[];
+            reason: string;
+            request_id: string;
+            revision: number;
+            version: number;
+          };
+          time?: number;
+        }[];
+        request: {
+          base: string;
+          head: string;
+          merge_key: string;
+          paths: string[];
+          reason: string;
+          request_id: string;
+          revision: number;
+          version: number;
+        };
+        requirement_id: number;
+        revision: number;
+        state: 'blocked' | 'pending' | 'ready';
+      }[];
+    }
+  | { error: string };
+export type ResolvePreMergeRecoveryResponse =
+  { accepted: boolean; recovery_id: string; started: boolean; version: number } | { error: string };
+export interface ResolvePreMergeRecoveryRequest {
+  base: string;
+  head: string;
+  merge_key: string;
+  paths: string[];
+  reason: string;
+  request_id: string;
+  revision: number;
+  version: number;
+}

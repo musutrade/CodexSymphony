@@ -1,5 +1,7 @@
 # Product storage lifecycle (Phase 0a)
 
+> 范围：产品执行与归档根的部署配置和现有行为，不是开发 Gate 的清理操作指南。仓库存储策略统一从 [当前入口](quality/evidence-retention.md) 开始；产品级固定工作区控制器仍由 #140 承接。
+
 `STORAGE_CONFIG` names a deployment-owned JSON file. It is required when
 `RUNTIME_CONFIG` enables execution. Configure it before accepting work. It applies
 only to product execution and archive roots; development evidence, this checkout,

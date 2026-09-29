@@ -56,14 +56,24 @@ async fn enqueue_github(
         .bind(&key).bind(validation).bind(requirement).bind(revision).bind(identity.repository_id as i64).bind(&identity.repository).bind(&identity.branch).bind(&identity.base_branch).bind(&identity.head).bind(manifest).bind(document).execute(&mut **tx).await?;
     sqlx::query("UPDATE linked_failure f SET repair_delivery=$2 FROM candidate_validation v JOIN linked_run_input i ON i.run_id=v.source_run_id WHERE v.id=$1 AND f.id=i.failure_id AND f.state='reserved'")
         .bind(validation).bind(&key).execute(&mut **tx).await?;
+    schedule_github(tx, validation, &key, previous).await
+}
+
+async fn schedule_github(
+    tx: &mut Transaction<'_, Postgres>,
+    validation: &str,
+    key: &str,
+    previous: Option<(String, String, String, i64)>,
+) -> Result<()> {
+    crate::pre_merge_recovery::supersede(tx, key).await?;
     if let Some((original, _, expected, number)) = previous {
         sqlx::query("UPDATE delivery SET original_action_key=$2,expected_head=$3,pr_number=$4 WHERE action_key=$1")
-            .bind(&key).bind(original).bind(expected).bind(number).execute(&mut **tx).await?;
+            .bind(key).bind(original).bind(expected).bind(number).execute(&mut **tx).await?;
     }
     sqlx::query(
         "INSERT INTO delivery_action(action_key,kind) VALUES($1,'publish') ON CONFLICT DO NOTHING",
     )
-    .bind(&key)
+    .bind(key)
     .execute(&mut **tx)
     .await?;
     sqlx::query("UPDATE validation_step SET consumer=$2 WHERE validation_id=$1")
@@ -198,6 +208,9 @@ async fn allowed(tx: &mut Transaction<'_, Postgres>, job: &Pending) -> Result<bo
         .bind(job.requirement_id).bind(job.revision).bind(&job.kind).bind(&job.action_key).fetch_one(&mut **tx).await?;
     if !safe || job.kind == "close" {
         return Ok(safe);
+    }
+    if !crate::pre_merge_recovery::delivery_allowed(tx, &job.action_key).await? {
+        return Ok(false);
     }
     let authorized: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM repository r JOIN execution_revision v ON v.requirement_id=$1 AND v.revision=$2 WHERE r.id=COALESCE((v.document->>'repository_id')::bigint,1) AND NOT (r.document->>'revoked')::boolean AND (v.document->>'repository_version')::bigint>r.revoked_through_version)").bind(job.requirement_id).bind(job.revision).fetch_one(&mut **tx).await?;
     Ok(

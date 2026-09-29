@@ -4316,6 +4316,144 @@
           }
         }
       }
+    },
+    "/api/requirements/{id}/pre-merge-recovery": {
+      "get": {
+        "operationId": "getPreMergeRecovery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persisted result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreMergeRecoveries"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Recovery storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "resolvePreMergeRecovery",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persisted result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreMergeRecoveryResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Identity or authorization changed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Recovery storage unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "error"
+                  ],
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreMergeRecoveryDecision"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7072,6 +7210,174 @@
           },
           "text": {
             "type": "string"
+          }
+        }
+      },
+      "PreMergeRecoveryDecision": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "request_id",
+          "version",
+          "revision",
+          "merge_key",
+          "head",
+          "base",
+          "paths",
+          "reason"
+        ],
+        "properties": {
+          "request_id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "merge_key": {
+            "type": "string"
+          },
+          "head": {
+            "type": "string"
+          },
+          "base": {
+            "type": "string"
+          },
+          "paths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "PreMergeRecoveryResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "accepted",
+          "started",
+          "version",
+          "recovery_id"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean"
+          },
+          "started": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "recovery_id": {
+            "type": "string"
+          }
+        }
+      },
+      "PreMergeRecoveries": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "recoveries"
+        ],
+        "properties": {
+          "recoveries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id",
+                "requirement_id",
+                "revision",
+                "merge_key",
+                "request",
+                "state",
+                "failure_id",
+                "attempts",
+                "next_attempt_at",
+                "blocker",
+                "receipts",
+                "created_at"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "requirement_id": {
+                  "type": "integer"
+                },
+                "revision": {
+                  "type": "integer"
+                },
+                "merge_key": {
+                  "type": "string"
+                },
+                "request": {
+                  "$ref": "#/components/schemas/PreMergeRecoveryDecision"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "ready",
+                    "blocked"
+                  ]
+                },
+                "failure_id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "attempts": {
+                  "type": "integer"
+                },
+                "next_attempt_at": {
+                  "type": "integer"
+                },
+                "blocker": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "receipts": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [],
+                    "properties": {
+                      "time": {
+                        "type": "integer"
+                      },
+                      "attempt": {
+                        "type": "integer"
+                      },
+                      "error": {
+                        "type": "string"
+                      },
+                      "previous_request": {
+                        "$ref": "#/components/schemas/PreMergeRecoveryDecision"
+                      },
+                      "previous_attempts": {
+                        "type": "integer"
+                      },
+                      "previous_blocker": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    }
+                  }
+                },
+                "created_at": {
+                  "type": "string"
+                }
+              }
+            }
           }
         }
       }

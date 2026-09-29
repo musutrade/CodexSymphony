@@ -48,3 +48,33 @@ INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candid
 VALUES('capture-recovery-validation',900001,1,'capture-run','fixture-candidate','fixture-tree','{}','[]','source','source','entry','entry','validation','blocked');
 INSERT INTO recovery_failure(event_key,requirement_id,source_validation_id,phase,facts,fingerprint,decision,reason)
 VALUES('capture-recovery-failure',900001,'capture-recovery-validation','local','{"phase":"local","candidate_sha":"fixture-candidate","feedback":{"verdict":"unknown","fault":{"class":"unknown","code":"fixture_unknown","owner":"operator","resume_condition":"Reconcile retained producer evidence"}}}','fixture-unknown','blocked','Historical fixture fault; no root cause inferred');
+
+-- Synthetic pre-merge history and malformed retained JSON exercise real HTTP
+-- responses only. They neither authorize a recovery nor claim model acceptance.
+INSERT INTO business_request(request_id,input,result) VALUES('capture-premerge-replay','{"pre_merge_recovery": 900002, "command": {"request_id": "capture-premerge-replay", "version": 1, "revision": 1, "merge_key": "capture-premerge-merge", "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "paths": ["src/lib.rs"], "reason": "Synthetic retained decision replay; no execution authorization"}}','{"accepted": true, "started": false, "version": 2, "recovery_id": "pre-merge:capture-premerge-merge"}');
+INSERT INTO requirement(id,version,state,contract,revision,paused)
+OVERRIDING SYSTEM VALUE SELECT 900002,1,'Running',contract,1,true FROM requirement WHERE id=900001;
+INSERT INTO requirement_revision(requirement_id,revision,document) VALUES(900002,1,'{"repository_version":1}');
+INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,quiescent)
+VALUES('capture-premerge-run',900002,1,'http-fixture','capture-premerge-run','fixture','fixture','{}','Interrupted',true);
+INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result)
+VALUES('capture-premerge-validation',900002,1,'capture-premerge-run','fixture-candidate','fixture-tree','{}','[]','source','source','entry','entry','validation','blocked');
+INSERT INTO delivery(action_key,validation_id,requirement_id,revision,repository_id,repository,branch,base_branch,head_sha,manifest,policy)
+VALUES('capture-premerge-delivery','capture-premerge-validation',900002,1,900002,'fixture/repository','fixture/premerge','main',repeat('a',40),'{}','{}');
+INSERT INTO merge_operation(action_key,delivery_key,requirement_id,intent,state,created_at,next_attempt_at)
+VALUES('capture-premerge-merge','capture-premerge-delivery',900002,'{}','blocked',0,0);
+-- PostgreSQL accepts this bounded JSON. The pinned SQLx/serde decoder rejects
+-- its depth, producing an actual storage decode failure in each API path.
+-- Do not change production decoding limits or synthesize HTTP error responses.
+DO $$
+DECLARE malformed jsonb := '{}'::jsonb;
+BEGIN
+  FOR depth IN 1..160 LOOP
+    malformed := jsonb_build_object('nested',malformed);
+  END LOOP;
+  INSERT INTO pre_merge_recovery(id,requirement_id,revision,merge_key,request,state)
+  VALUES('capture-premerge-corrupt',900002,1,'capture-premerge-merge',malformed,'blocked');
+  INSERT INTO business_request(request_id,input,result)
+  VALUES('capture-premerge-storage-fault',malformed,'{}');
+END;
+$$;

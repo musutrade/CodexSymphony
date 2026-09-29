@@ -705,3 +705,187 @@ async fn kind_rebinding_is_rejected_and_added_validation_items_never_create_a_ru
         .unwrap();
     assert_eq!(requirements, 3);
 }
+
+#[tokio::test]
+async fn delta_review_preserves_explicit_increase_for_started_predecessor() {
+    use codexsymphony_server::{budget::Amount, group_budget_increase as grants};
+    for explicit_parent in [false, true] {
+        let (pool, _, _) = fixture().await;
+        let router = app(&pool);
+        let mut document = sample();
+        document["children"].as_array_mut().unwrap().truncate(3);
+        let mut original = review();
+        original["items"].as_array_mut().unwrap().truncate(3);
+        original["full_chain_acs"] = json!([]);
+        original["coverage"][0]["child_id"] = json!("C3");
+        if explicit_parent {
+            original["group_budget"] = json!({"tokens":300,"turns":6,"model_seconds":180});
+        }
+        let created = request(
+            &router,
+            "POST",
+            "/api/drafts",
+            body(document.clone(), 0),
+            200,
+        )
+        .await;
+        let id = created["id"].as_str().unwrap();
+        request(
+            &router,
+            "PUT",
+            &format!("/api/drafts/{id}/review"),
+            json!({"version":0,"draft_revision":1,"review":original}),
+            200,
+        )
+        .await;
+        request(
+            &router,
+            "POST",
+            &format!("/api/drafts/{id}/authorize"),
+            json!({"request_id":"initial","version":1,"draft_revision":1}),
+            200,
+        )
+        .await;
+        group_queue_store::materialize(&pool).await.unwrap();
+        let children: Vec<(String, i64, i64)> = sqlx::query_as("SELECT i.child_id,i.requirement_id,b.version FROM group_execution_item i JOIN requirement_budget b USING(requirement_id) ORDER BY child_id")
+            .fetch_all(&pool).await.unwrap();
+        let first = children[0].1;
+        sqlx::query("UPDATE requirement SET state='Running' WHERE id=$1")
+            .bind(first)
+            .execute(&pool)
+            .await
+            .unwrap();
+        let delta = Amount {
+            tokens: 100,
+            turns: 0,
+            model_seconds: 0,
+        };
+        let input = grants::GroupIncrease {
+            request_id: "approved-original-account-increase".into(),
+            draft_id: id.into(),
+            expected_queue_version: 1,
+            actor: "local-user".into(),
+            reason: "Explicit original account increase".into(),
+            parent_delta: delta,
+            children: children
+                .iter()
+                .map(|(child, requirement, version)| grants::ChildIncrease {
+                    child_id: child.clone(),
+                    requirement_id: *requirement,
+                    expected_version: *version,
+                    delta: if child == "C1" {
+                        delta
+                    } else {
+                        Amount::default()
+                    },
+                })
+                .collect(),
+        };
+        grants::increase(&pool, &input).await.unwrap();
+        // Retained cumulative exposure exceeds the original review's limit.
+        sqlx::query("UPDATE group_budget SET used='{\"tokens\":90,\"turns\":1,\"model_seconds\":10}',reserved='{\"tokens\":60,\"turns\":0,\"model_seconds\":5}' WHERE item_id IN ('','C1')")
+            .execute(&pool).await.unwrap();
+        let ledger_sql = "SELECT jsonb_agg(to_jsonb(b) ORDER BY item_id) FROM group_budget b";
+        let balances: Value = sqlx::query_scalar(ledger_sql)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let started_sql = "SELECT jsonb_build_object('requirement',to_jsonb(r),'budget',to_jsonb(b),'input',i.input) FROM requirement r JOIN requirement_budget b ON b.requirement_id=r.id JOIN group_execution_item i ON i.requirement_id=r.id WHERE r.id=$1";
+        let started: Value = sqlx::query_scalar(started_sql)
+            .bind(first)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let immutable: Value =
+            sqlx::query_scalar("SELECT document FROM group_review_revision WHERE version=1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        document["children"][2]["goal"] =
+            json!("Correct only the unstarted final item's validator binding");
+        let mut revised = original.clone();
+        revised["parent_revision"] = json!(2);
+        for item in revised["items"].as_array_mut().unwrap() {
+            item["revision"] = json!(2);
+        }
+        revised["coverage"][0]["child_revision"] = json!(2);
+        edit(
+            &pool,
+            id,
+            "stale-budget",
+            1,
+            json!({"kind":"propose","document":document,"review":revised}),
+            409,
+        )
+        .await;
+        revised["items"][0]["budget"]["tokens"] = json!(200);
+        if explicit_parent {
+            revised["group_budget"]["tokens"] = json!(400);
+        }
+        let mut unauthorized = revised.clone();
+        unauthorized["items"][0]["budget"]["tokens"] = json!(250);
+        edit(
+            &pool,
+            id,
+            "change-started-limit",
+            1,
+            json!({"kind":"propose","document":document,"review":unauthorized}),
+            409,
+        )
+        .await;
+        let proposed = edit(
+            &pool,
+            id,
+            "correct-final",
+            1,
+            json!({"kind":"propose","document":document,"review":revised}),
+            200,
+        )
+        .await;
+        assert_eq!(proposed["affected"], json!(["C3"]));
+        edit(
+            &pool,
+            id,
+            "approve-final",
+            2,
+            json!({"kind":"approve","edit_version":2}),
+            200,
+        )
+        .await;
+        assert_eq!(
+            sqlx::query_scalar::<_, Value>(ledger_sql)
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            balances
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, Value>(started_sql)
+                .bind(first)
+                .fetch_one(&pool)
+                .await
+                .unwrap(),
+            started
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, Value>(
+                "SELECT document FROM group_review_revision WHERE version=1"
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+            immutable
+        );
+        assert_eq!(
+            sqlx::query_scalar::<_, i64>(
+                "SELECT requirement_id FROM group_execution_item WHERE child_id='C3'"
+            )
+            .fetch_one(&pool)
+            .await
+            .unwrap(),
+            children[2].1
+        );
+        assert_eq!(view(&pool, id).await["draft_revision"], 2);
+        pool.close().await;
+    }
+}

@@ -9,6 +9,8 @@ function fixture(id: number, suffix: string) {
   if (!url) throw new Error('TEST_DATABASE_URL is required for persisted operator fixtures');
   const sql = readFileSync('../../api/capture-fixture.sql', 'utf8')
     .replaceAll('900001', String(id))
+    // The retained pre-merge history is a second Requirement in the same fixture.
+    .replaceAll('900002', String(id * 10))
     .replaceAll('capture-', `browser-${suffix}-`);
   const scenarios = JSON.parse(readFileSync('../../api/capture-scenarios.json', 'utf8')) as {
     id: string;

@@ -1,5 +1,7 @@
 # Registered capture cache lifecycle
 
+> 当前保留策略统一从 [存储与证据保留策略入口](evidence-retention.md) 读取。本页只说明采集登记及缓存回收前提；固定宿主复用验证槽位和 target，每次仍生成独立捕获记录。原始材料在登记时完整保留，不等于永久保留；完成后的到期回收由适用的已安装策略决定。
+
 Manual captures outside `gate-host/runs` must be registered with the host retention
 tool after the operator confirms the task/capture is finished and its source-bound
 capture bundle and independent raw inventory exist:

@@ -134,6 +134,7 @@ async fn difference(
     let (_, old) = store::review(tx, id)
         .await?
         .ok_or(store::conflict("group review missing"))?;
+    let old = edits::current_budget_review(tx, id, old).await?;
     if review.parent_revision != revision + 1 {
         return Err(store::conflict(
             "change must reference the next exact draft revision",

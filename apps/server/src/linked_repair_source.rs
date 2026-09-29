@@ -458,3 +458,70 @@ async fn freeze_local(pool: &PgPool, root: &Path, f: &Failure, target: Target) -
     )
     .await
 }
+
+/// Pre-merge conflict is a separate operator decision, never a forged check failure.
+pub(crate) async fn freeze_pre_merge(
+    mut tx: sqlx::Transaction<'_, sqlx::Postgres>,
+    broker: &GitBroker,
+    pending: &crate::pre_merge_recovery_worker::Pending,
+    command: &crate::pre_merge_recovery::Decision,
+) -> Result<()> {
+    let failure = pre_merge_failure(pending, command);
+    let frozen = pre_merge_source(pending, command)?;
+    let workspace = source_workspace(broker, &failure, &frozen)?;
+    if !crate::storage_service::reserve_workspace(&mut tx, &workspace).await? {
+        return Err("recovery workspace capacity unavailable".into());
+    }
+    sqlx::query("INSERT INTO linked_failure(id,requirement_id,revision,merge_key,evidence,required_steps) VALUES($1,$2,$3,$4,$5,'[]')")
+        .bind(&failure.id).bind(failure.requirement_id).bind(failure.revision).bind(&failure.merge_key).bind(&failure.evidence).execute(&mut *tx).await?;
+    preserve_source(
+        &mut tx,
+        broker,
+        &failure,
+        &frozen,
+        pending.document.clone(),
+        &workspace,
+    )
+    .await?;
+    sqlx::query("UPDATE pre_merge_recovery SET state='ready',failure_id=$1,blocker=NULL WHERE id=$1 AND state='pending'")
+        .bind(&pending.id).execute(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(())
+}
+fn pre_merge_failure(
+    pending: &crate::pre_merge_recovery_worker::Pending,
+    command: &crate::pre_merge_recovery::Decision,
+) -> Failure {
+    Failure {
+        id: pending.id.clone(),
+        requirement_id: pending.requirement_id,
+        revision: pending.revision,
+        merge_key: Some(command.merge_key.clone()),
+        integration_id: None,
+        local_delivery: None,
+        evidence: json!({"kind":"pre_merge_recovery","original_candidate":command.head,"approved_target":command.base,"operator_decision":command,"instruction":"Reapply the ORIGINAL initial requirement on the approved target. This is pre-merge baseline recovery, not post-merge test repair; do not preempt a later contract repair. Original candidate and PR remain retained."}),
+        required_steps: json!([]),
+    }
+}
+fn pre_merge_source(
+    pending: &crate::pre_merge_recovery_worker::Pending,
+    command: &crate::pre_merge_recovery::Decision,
+) -> Result<Frozen> {
+    Ok(Frozen {
+        local_binding: None,
+        target: Target {
+            repository: pending.document["repository_id"]
+                .as_i64()
+                .ok_or("repository identity absent")?,
+            version: pending.document["repository_version"]
+                .as_i64()
+                .ok_or("repository version absent")?,
+            paths: command.paths.clone(),
+            affected: command.base.clone(),
+        },
+        repository: pending.document["repository"].clone(),
+        baseline: command.base.clone(),
+        source: pending.source.clone(),
+        manifest: serde_json::from_value(pending.manifest.clone())?,
+    })
+}

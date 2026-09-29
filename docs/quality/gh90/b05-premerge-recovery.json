@@ -1,0 +1,157 @@
+{
+  "status": "BASELINE_RECOVERY_MERGED_POSTMERGE_REPAIR_BUDGET_BLOCKED",
+  "recorded_at": "2026-09-28T19:18:02.947597+00:00",
+  "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+  "authorization_id": 2,
+  "requirements": {
+    "R1": 5,
+    "R2": 6,
+    "R3": 7
+  },
+  "gate": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-c23e6a782ca5",
+  "installed_binary_sha256": "04d7e66d27849d9a0cd1ee74957ed6c7119572b99db885c055d7ed56cec0653e",
+  "migration": 41,
+  "upgrade_preserved_account": true,
+  "old_pr": {
+    "number": 16,
+    "closed_unmerged": true,
+    "head": "7a765608ac0bf8d217232e5d2ce9d1e822682d58",
+    "superseded_by": 17
+  },
+  "recovery": {
+    "id": "pre-merge:14d03c864edfaa9efd8a29d48606d2061fc047913de9b603ea35d543dad6ed21",
+    "approved_base": "8870ba39b52952e5b2f2f14745292646f776b2c1",
+    "preparation_attempts": 1,
+    "run": "a83312bd-c538-4648-880e-65ca27945e5d",
+    "candidate": "01af48aaf7d2cdc5c0245088f8ff6c36e0570d36",
+    "paths": [
+      "src/lib.rs"
+    ],
+    "pr": "https://github.com/musutrade/disposable-2/pull/17",
+    "merged_sha": "82d0fdf1cccc5bf90356c56b2c979d6b31e51aa8"
+  },
+  "post_merge": {
+    "failure_id": "post-merge:80ed728e9617ac48496937f21f31d7d4784e3565fb9edb00d3deada1b905db75",
+    "state": "blocked",
+    "blocker": "shared item or parent repair budget exhausted",
+    "candidate": {
+      "sha": "82d0fdf1cccc5bf90356c56b2c979d6b31e51aa8",
+      "tree": "148e95d47f9684b108fdb0ed199d2ac81564e21e",
+      "immutable": true
+    },
+    "exit_code": 101,
+    "output_sha256": "e160016c67b7b83a1560f36bb9ccc3901c8b7b722484870b3900a8d153a38915",
+    "contract": "Actual wire_version() is 1; pre-authorized post-merge contract requires 2. Declared seed fault, not a naturally occurring model error."
+  },
+  "group_budgets": [
+    {
+      "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+      "item_id": "",
+      "limits": {
+        "turns": 6,
+        "tokens": 480000,
+        "model_seconds": 1080
+      },
+      "used": {
+        "turns": 2,
+        "tokens": 120521,
+        "model_seconds": 56
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 119479,
+        "model_seconds": 304
+      }
+    },
+    {
+      "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+      "item_id": "R1",
+      "limits": {
+        "turns": 3,
+        "tokens": 240000,
+        "model_seconds": 540
+      },
+      "used": {
+        "turns": 2,
+        "tokens": 120521,
+        "model_seconds": 56
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 119479,
+        "model_seconds": 304
+      }
+    },
+    {
+      "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+      "item_id": "R2",
+      "limits": {
+        "turns": 1,
+        "tokens": 120000,
+        "model_seconds": 180
+      },
+      "used": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 0
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 0
+      }
+    },
+    {
+      "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+      "item_id": "R3",
+      "limits": {
+        "turns": 2,
+        "tokens": 120000,
+        "model_seconds": 360
+      },
+      "used": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 0
+      },
+      "reserved": {
+        "turns": 0,
+        "tokens": 0,
+        "model_seconds": 0
+      }
+    }
+  ],
+  "runtime_model_calls_total": 7,
+  "new_group_model_calls": 2,
+  "original_b01_unchanged": true,
+  "execution": {
+    "paused": true,
+    "active_runs": 0,
+    "active_integrations": 0,
+    "pending_workspaces": 0,
+    "service_stopped": true,
+    "original_database_container_stopped": true
+  },
+  "remaining": [
+    "Explicit original-account token increase before another repair call; requested parent 600000 and R1 360000, all other limits unchanged; not yet approved.",
+    "B05 linked repair and post-merge reacceptance; R2/R3 and B06 not started.",
+    "All-new-task remote-baseline guard and remaining GH90 matrix are not completed.",
+    "New implementation/documents not published; final publication requires exact-tree Gate after acceptance evidence is finalized."
+  ],
+  "storage_warning": {
+    "initial_workspace_bytes": 16777216,
+    "reconciled_allocated_and_actual_bytes": 19599360,
+    "model_local_target_bytes": 19361792,
+    "global_storage_blocked": false,
+    "limits_changed": false,
+    "assessment": "Local cargo target exceeded initial workspace reservation; retained allocation readback reconciled to actual bytes. No ongoing excess in this readback. Product-level prevention and exit remain GH140 scope."
+  },
+  "retained_records": {
+    "recovery-paused-install.json": "df94a6eb04c1efedeb79bda0dc20b590d40b17e20301c576061539e2511846e0",
+    "premerge-decision-request.json": "3a745b171f89c40b690d107d39d24fa1aa5730dcfbf34d2da96238b717c07c34",
+    "premerge-decision-response.json": "5dcf2d7dace924e4869ad982dcb413f37a0589fcf4fc75530906f9e08bab3b0a",
+    "postmerge-budget-stop.json": "3ad60ed74df04b240b7cd8203d6184769fc9ce17c91ec2e7cebca6cb03b6e3fa",
+    "account-after-premerge-recovery.json": "ca4555abfec561042b42fe675a959d2b6a66985b7e6c8d327a5042f51c5ea690",
+    "recovery-storage-readback.json": "4b2fcd2db611d7544734fd5a69dc20d959f4db5a449cf2f81cc851b93791ccdf"
+  }
+}

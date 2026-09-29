@@ -108,3 +108,22 @@ Python/Node 工具、配置文件与 Unix socket 服务。它对镜像、内存�
 外部 CI、GitHub 写、真实生产安装和完整两仓业务任务不是这组受控测试的结论；
 后续闭环沿原顺序实施。本仓完整 Rust、Clippy、格式和已安装完整 Gate 结果见
 `artifacts/gh119/` 与 `.symphony-evidence.json`，不以本地结果宣称远端双检查通过。
+
+### 监督器停止回执丢失后的宿主恢复
+
+`environment prepare-recovery --stdin-json` 与 `environment reconcile --stdin-json`
+是宿主 CLI，不是 Runtime 工具或 HTTP 任务操作。输入包含 `request_id`、
+`invocation_id`、`evidence_sha256` 和 `reason`，使用现有 `ENVIRONMENT_CONFIG`
+选择受审证据根。`evidence_sha256` 绑定原 `Request` 和 `Receipt` 的原生 JSON
+二元数组序列化；恢复决定额外绑定规范目录、设备/inode、进程身份和宿主身份。
+
+第一步必须在原记录的同一次开机期间执行，只保存宿主起点证明，不宣称已停止，
+不启动新探测。第二步要求同一宿主已经跨过不同的真实内核 boot ID，再单独保留
+宿主静止证明。原 input、identity、输出和未知退出均不改写，也不补造原生
+`quiescent.json` 或 `exit.json`。准备/确认幂等，冲突、证据替换、错误宿主、缺少
+起点证明和同次开机仅 PID 消失均拒绝。证明允许新 invocation 重新探测，不能
+替代新探测 PASS，也不修改业务状态、调用计数或预算。
+
+此入口不会重启主机。维护重启必须另获授权并协调其他项目；当前批准的 GH-90
+宿主恢复范围不包括机器重启。没有原生停止回执或完整宿主证明时继续阻塞，不能
+删除/移动旧探测目录、更换证据根或回填猜测的进程隔离组绑定。

@@ -2262,6 +2262,99 @@
     "body": {}
   },
   {
+    "id": "premerge-history",
+    "method": "GET",
+    "path": "/api/requirements/{id}/pre-merge-recovery",
+    "path_parameters": {
+      "id": {
+        "$response": "created#/id"
+      }
+    },
+    "status": 200
+  },
+  {
+    "id": "premerge-replay",
+    "method": "POST",
+    "path": "/api/requirements/{id}/pre-merge-recovery",
+    "path_parameters": {
+      "id": 900002
+    },
+    "status": 200,
+    "body": {
+      "request_id": "capture-premerge-replay",
+      "version": 1,
+      "revision": 1,
+      "merge_key": "capture-premerge-merge",
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "paths": [
+        "src/lib.rs"
+      ],
+      "reason": "Synthetic retained decision replay; no execution authorization"
+    }
+  },
+  {
+    "id": "premerge-stale",
+    "method": "POST",
+    "path": "/api/requirements/{id}/pre-merge-recovery",
+    "path_parameters": {
+      "id": 900002
+    },
+    "status": 409,
+    "body": {
+      "request_id": "capture-premerge-stale",
+      "version": 1,
+      "revision": 1,
+      "merge_key": "capture-premerge-merge",
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "paths": [
+        "src/lib.rs"
+      ],
+      "reason": "Synthetic retained decision replay; no execution authorization"
+    }
+  },
+  {
+    "id": "premerge-invalid",
+    "method": "POST",
+    "path": "/api/requirements/{id}/pre-merge-recovery",
+    "path_parameters": {
+      "id": 900002
+    },
+    "status": 422,
+    "body": {}
+  },
+  {
+    "id": "premerge-read-storage-fault",
+    "method": "GET",
+    "path": "/api/requirements/{id}/pre-merge-recovery",
+    "path_parameters": {
+      "id": 900002
+    },
+    "status": 503
+  },
+  {
+    "id": "premerge-write-storage-fault",
+    "method": "POST",
+    "path": "/api/requirements/{id}/pre-merge-recovery",
+    "path_parameters": {
+      "id": 900002
+    },
+    "status": 503,
+    "body": {
+      "request_id": "capture-premerge-storage-fault",
+      "version": 1,
+      "revision": 1,
+      "merge_key": "capture-premerge-merge",
+      "head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "base": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "paths": [
+        "src/lib.rs"
+      ],
+      "reason": "Synthetic retained decision replay; no execution authorization"
+    }
+  },
+  {
     "id": "auth-session",
     "method": "GET",
     "path": "/api/auth/session",

@@ -274,7 +274,10 @@ fn reconcile(root: &Path) -> Result<()> {
 fn reconcile_directory(directory: &Path) -> Result<()> {
     let started = process::read::<Receipt>(&directory.join("identity.json"));
     let stopped = process::read::<Receipt>(&directory.join("quiescent.json"));
-    if !matches!((started, stopped), (Ok(a), Ok(b)) if a == b) {
+    if matches!((started, stopped), (Ok(a), Ok(b)) if a == b) {
+        return Ok(());
+    }
+    if !crate::environment_recovery::stopped(directory)? {
         return Err(format!(
             "environment probe outcome unknown; reconcile {} before another invocation",
             directory.display()
