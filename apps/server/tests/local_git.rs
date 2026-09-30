@@ -2502,13 +2502,20 @@ async fn recover_delivered_local_proof(recheck_first: bool) {
     let mut expected = before;
     expected["validation_id"] = json!(successor);
     assert_eq!(current, expected, "only the proof binding may change");
+    // The rebind never touches the action. Only a registered correction resets
+    // its retry throttle (reset_projection); attempts/state/error stay original.
+    let mut expected_action = original_action.clone();
+    if recheck_first {
+        assert_ne!(original_action["next_attempt_at"], 0);
+        expected_action["next_attempt_at"] = json!(0);
+    }
     assert_eq!(
         sqlx::query_scalar::<_, Value>(action_sql)
             .bind(&key)
             .fetch_one(&p.pool)
             .await
             .unwrap(),
-        original_action
+        expected_action
     );
     let preserved: (String, bool, Option<String>) = sqlx::query_as(
         "SELECT result,hook_invalidated,superseded_by FROM candidate_validation WHERE id='validation'",
