@@ -77,7 +77,7 @@ pub(crate) async fn prepare_pending(
     action: &Action,
 ) -> Result<(), sqlx::Error> {
     check_pending(tx, requirement, validation, action).await?;
-    if matches!(action, Action::RevalidateDelivery { .. }) {
+    if revalidates_delivery(action) {
         reconcile_interruption(tx, requirement, validation).await?;
     }
     Ok(())
@@ -95,6 +95,13 @@ async fn check_pending(
     .bind(requirement)
     .fetch_all(&mut **tx)
     .await?;
+    if let Action::RevalidateLocalDelivery { delivery_key, .. } = action {
+        require(
+            pending.len() == 1 && pending[0] == *delivery_key,
+            "local revalidation must name the single unreleased delivery",
+        )?;
+        return delivered_unchanged(tx, delivery_key, validation).await;
+    }
     if !pending.is_empty() {
         require(
             matches!(action, Action::RevalidateDelivery { .. }),
@@ -107,6 +114,63 @@ async fn check_pending(
         pending_unchanged(tx, &pending[0], validation).await?;
     }
     Ok(())
+}
+
+pub(crate) fn revalidates_delivery(action: &Action) -> bool {
+    matches!(
+        action,
+        Action::RevalidateDelivery { .. } | Action::RevalidateLocalDelivery { .. }
+    )
+}
+
+/// A local version already written by its single recorded attempt may receive
+/// fresh same-candidate proof only while the frozen target still shows it.
+async fn delivered_unchanged(
+    tx: &mut Transaction<'_, Postgres>,
+    key: &str,
+    validation: &str,
+) -> Result<(), sqlx::Error> {
+    let invalidated: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM delivery d JOIN candidate_validation v ON v.id=d.validation_id WHERE d.action_key=$1 AND v.id=$2 AND v.result='succeeded' AND v.hook_invalidated AND v.superseded_by IS NULL AND v.candidate_sha=d.head_sha)")
+        .bind(key).bind(validation).fetch_one(&mut **tx).await?;
+    require(invalidated, "local delivery proof is not interrupted")?;
+    confirmed_delivery(tx, key).await
+}
+
+/// The single recorded write of this local action is still exactly what the
+/// frozen target shows; any drift requires reconciling the original operation.
+async fn confirmed_delivery(
+    tx: &mut Transaction<'_, Postgres>,
+    key: &str,
+) -> Result<(), sqlx::Error> {
+    let job: Option<crate::local_delivery_store::Job> = sqlx::query_as("SELECT d.*,a.state,a.attempts FROM delivery d JOIN delivery_action a ON a.action_key=d.action_key AND a.kind='publish' JOIN repository p ON p.id=d.internal_repository_id WHERE d.action_key=$1 AND d.mode='local_git' AND NOT d.released AND a.state IN ('confirmed','blocked') AND a.attempts>0 AND a.attempts=(SELECT count(*) FROM delivery_attempt t WHERE t.action_key=d.action_key) AND (NOT d.local_acceptance_started OR d.local_acceptance_quiescent) AND NOT (p.document->>'revoked')::boolean AND p.version=(d.policy->>'repository_version')::bigint AND p.version>p.revoked_through_version FOR UPDATE OF d")
+        .bind(key).fetch_optional(&mut **tx).await?;
+    let job = job.ok_or_else(changed_delivery)?;
+    let confirmed = crate::local_delivery_store::confirmed_target(&job)
+        .map_err(crate::extension_recovery::external)?;
+    require(
+        confirmed,
+        "original local delivery is not the current confirmed target",
+    )
+}
+
+/// The written local action owned by any earlier generation of this validation.
+async fn delivered_ancestor(
+    tx: &mut Transaction<'_, Postgres>,
+    validation: &str,
+) -> Result<Option<String>, sqlx::Error> {
+    sqlx::query_scalar("WITH RECURSIVE chain(id) AS (SELECT retry_of FROM candidate_validation WHERE id=$1 AND retry_of IS NOT NULL UNION SELECT v.retry_of FROM candidate_validation v JOIN chain c ON v.id=c.id WHERE v.retry_of IS NOT NULL) SELECT d.action_key FROM delivery d JOIN delivery_action a ON a.action_key=d.action_key AND a.kind='publish' WHERE d.mode='local_git' AND EXISTS(SELECT 1 FROM chain) AND (d.validation_id=$1 OR d.validation_id IN (SELECT id FROM chain)) AND (a.attempts>0 OR EXISTS(SELECT 1 FROM delivery_attempt t WHERE t.action_key=d.action_key)) ORDER BY d.action_key LIMIT 1 FOR UPDATE OF d")
+        .bind(validation).fetch_optional(&mut **tx).await
+}
+
+fn unapproved_successor() -> sqlx::Error {
+    sqlx::Error::Protocol(
+        "successor of a delivered local version lacks its approved rebinding; reconcile original operation"
+            .into(),
+    )
+}
+
+fn changed_delivery() -> sqlx::Error {
+    sqlx::Error::Protocol("local delivery changed; reconcile original operation".into())
 }
 
 async fn reconcile_interruption(
@@ -158,6 +222,69 @@ pub(crate) async fn rebind_pending(
         .bind(key)
         .bind(validation)
         .bind(prior)
+        .execute(&mut **tx)
+        .await?;
+    Ok(())
+}
+
+/// Bind a successful same-candidate generation to the original local action.
+/// Returns false only when no ancestor generation owns a written local
+/// delivery; the caller then uses the ordinary outbox path. A successor of a
+/// delivered version never falls back to it (that would derive a new action
+/// key and a second write): it is rebound under its exact approval or rejected.
+pub(crate) async fn rebind_delivered(
+    tx: &mut Transaction<'_, Postgres>,
+    validation: &str,
+) -> Result<bool, sqlx::Error> {
+    let Some(key) = delivered_ancestor(tx, validation).await? else {
+        return Ok(false);
+    };
+    let (current, released, prior, event) = approved_rebinding(tx, validation, &key).await?;
+    if current == validation {
+        return Ok(true);
+    }
+    require(
+        !released,
+        "released local delivery cannot receive new proof",
+    )?;
+    // The target may have moved after authorization; recheck under the lock.
+    confirmed_delivery(tx, &key).await?;
+    move_delivered_proof(tx, &key, &prior, validation, &event).await?;
+    Ok(true)
+}
+
+/// The exact operator approval binding this successor to the written action:
+/// (bound validation, released, superseded generation, recovery event).
+/// Anything else is an unapproved successor and fails closed.
+async fn approved_rebinding(
+    tx: &mut Transaction<'_, Postgres>,
+    validation: &str,
+    key: &str,
+) -> Result<(String, bool, String, String), sqlx::Error> {
+    let row: Option<(String, bool, String, String)> = sqlx::query_as("SELECT d.validation_id,d.released,old.id,f.event_key FROM candidate_validation v JOIN candidate_validation old ON old.id=v.retry_of AND old.superseded_by=v.id JOIN delivery d ON d.validation_id IN (old.id,v.id) JOIN recovery_failure f ON f.successor_validation=v.id AND f.source_validation_id=old.id WHERE v.id=$1 AND d.action_key=$2 AND d.mode='local_git' AND v.result='succeeded' AND NOT v.hook_invalidated AND v.source_run_id=old.source_run_id AND v.candidate_sha=d.head_sha AND v.candidate_tree=old.candidate_tree AND v.requirement_id=d.requirement_id AND v.revision=d.revision AND f.resolution->>'actor'='authenticated_operator' AND f.resolution#>>'{command,validation_id}'=old.id AND f.resolution#>>'{command,action,kind}'='revalidate_local_delivery' AND f.resolution#>>'{command,action,delivery_key}'=d.action_key AND f.resolution_state IN ('running','complete') FOR UPDATE OF d")
+        .bind(validation).bind(key).fetch_optional(&mut **tx).await?;
+    row.ok_or_else(unapproved_successor)
+}
+
+/// Journal the proof change and move the original action (not a new one) to it.
+async fn move_delivered_proof(
+    tx: &mut Transaction<'_, Postgres>,
+    key: &str,
+    prior: &str,
+    validation: &str,
+    event: &str,
+) -> Result<(), sqlx::Error> {
+    sqlx::query("INSERT INTO delivery_observation(action_key,kind,fact) VALUES($1,'validation_rebound',jsonb_build_object('previous_validation',$2::text,'validation',$3::text,'recovery_event',$4::text,'external_attempts',0))")
+        .bind(key).bind(prior).bind(validation).bind(event).execute(&mut **tx).await?;
+    sqlx::query("UPDATE delivery SET validation_id=$2 WHERE action_key=$1 AND validation_id=$3")
+        .bind(key)
+        .bind(validation)
+        .bind(prior)
+        .execute(&mut **tx)
+        .await?;
+    sqlx::query("UPDATE validation_step SET consumer=$2 WHERE validation_id=$1")
+        .bind(validation)
+        .bind(format!("outbox:{key}"))
         .execute(&mut **tx)
         .await?;
     Ok(())

@@ -2284,6 +2284,496 @@ async fn failed_validator_rechecks_stop_and_have_a_cumulative_attempt_limit() {
     p.pool.close().await;
 }
 
+fn local_revalidation(
+    p: &Product,
+    request: &str,
+    version: i64,
+    delivery_key: &str,
+) -> codexsymphony_server::extension_recovery::Decision {
+    use codexsymphony_server::extension_recovery::{Action, Decision};
+    Decision {
+        request_id: request.into(),
+        version,
+        revision: 1,
+        validation_id: "validation".into(),
+        reason: "control interruption invalidated delivered proof; same candidate only".into(),
+        action: Action::RevalidateLocalDelivery {
+            plan_digest: p.plan.identity().unwrap().config_sha256,
+            resume_condition: "fresh proof for the unchanged delivered version".into(),
+            delivery_key: delivery_key.into(),
+        },
+    }
+}
+
+async fn requirement_version(p: &Product) -> i64 {
+    sqlx::query_scalar("SELECT version FROM requirement WHERE id=1")
+        .fetch_one(&p.pool)
+        .await
+        .unwrap()
+}
+
+/// Mirrors R2: a failed local acceptance of an already delivered version whose
+/// proof a later global pause invalidated. Recovery must keep the original
+/// action, target and attempt ledger, and must never write the target again.
+async fn recover_delivered_local_proof(recheck_first: bool) {
+    use codexsymphony_server::{
+        extension_recovery::{self as recovery, Action},
+        local_acceptance_recheck::request,
+        local_delivery_store as store,
+    };
+    use serde_json::{Value, json};
+    let (p, mut command) = failed_validator().await;
+    let key = command.delivery_key.clone();
+    // Persisted outcome of the control interruption; never cleared below.
+    sqlx::query("UPDATE candidate_validation SET hook_invalidated=true WHERE id='validation'")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    let account_sql = "SELECT jsonb_build_object('calls',(SELECT count(*) FROM model_call),'budgets',(SELECT jsonb_agg(to_jsonb(b)) FROM requirement_budget b),'groups',(SELECT jsonb_agg(to_jsonb(b)) FROM group_budget b))";
+    let account: Value = sqlx::query_scalar(account_sql)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    let action_sql = "SELECT to_jsonb(a) FROM delivery_action a WHERE action_key=$1";
+    let original_action: Value = sqlx::query_scalar(action_sql)
+        .bind(&key)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    // An unstartable correction is rejected before registration.
+    let rejected = request(&p.pool, &command).await.unwrap_err();
+    assert!(
+        rejected.to_string().contains("approve a same-candidate"),
+        "{rejected}"
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM local_acceptance_recheck")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    // Recovery authority is unavailable while paused.
+    let decision = local_revalidation(
+        &p,
+        "local-proof-same-candidate",
+        requirement_version(&p).await,
+        &key,
+    );
+    assert!(recovery::decide(&p.pool, 1, &decision).await.is_err());
+    sqlx::query("UPDATE execution_control SET paused=false")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    // Without a same-candidate generation the delivery waits instead of looping.
+    assert!(store::pending(&p.pool).await.unwrap().is_none());
+    let mut ordinary = decision.clone();
+    ordinary.action = Action::Revalidate {
+        plan_digest: p.plan.identity().unwrap().config_sha256,
+        resume_condition: "ordinary revalidation cannot bind a delivered version".into(),
+    };
+    assert!(recovery::decide(&p.pool, 1, &ordinary).await.is_err());
+    let mut wrong = decision.clone();
+    wrong.action = local_revalidation(&p, "unused", 0, "local-other").action;
+    assert!(recovery::decide(&p.pool, 1, &wrong).await.is_err());
+    for (change, restore) in [
+        (
+            "UPDATE delivery_action SET attempts=2",
+            "UPDATE delivery_action SET attempts=1",
+        ),
+        (
+            "INSERT INTO delivery_attempt(action_key,kind,ordinal,operation) SELECT action_key,'publish',2,'local_update' FROM delivery",
+            "DELETE FROM delivery_attempt WHERE ordinal=2",
+        ),
+        (
+            "UPDATE delivery SET released=true",
+            "UPDATE delivery SET released=false",
+        ),
+    ] {
+        sqlx::query(change).execute(&p.pool).await.unwrap();
+        assert!(
+            recovery::decide(&p.pool, 1, &decision).await.is_err(),
+            "{change}"
+        );
+        sqlx::query(restore).execute(&p.pool).await.unwrap();
+    }
+    git(
+        &p.binding.target.path,
+        &[
+            "update-ref",
+            "refs/heads/main",
+            &p.manifest.workspace.baseline,
+            &p.manifest.head,
+        ],
+    );
+    assert!(recovery::decide(&p.pool, 1, &decision).await.is_err());
+    git(
+        &p.binding.target.path,
+        &[
+            "update-ref",
+            "refs/heads/main",
+            &p.manifest.head,
+            &p.manifest.workspace.baseline,
+        ],
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>(
+            "SELECT count(*) FROM business_request WHERE input ? 'extension_recovery'"
+        )
+        .fetch_one(&p.pool)
+        .await
+        .unwrap(),
+        0
+    );
+    let accepted = recovery::decide(&p.pool, 1, &decision).await.unwrap();
+    assert_eq!(accepted["started"], false);
+    assert_eq!(
+        accepted,
+        recovery::decide(&p.pool, 1, &decision).await.unwrap()
+    );
+    command.version = requirement_version(&p).await;
+    let mut receipt = Value::Null;
+    if recheck_first {
+        // Admitted because exactly this proof has a pending approved generation.
+        receipt = request(&p.pool, &command).await.unwrap();
+        assert_eq!(receipt["accepted"], true);
+        assert_eq!(receipt["started"], false);
+        assert!(receipt.get("proof").is_none());
+        assert_eq!(request(&p.pool, &command).await.unwrap(), receipt);
+        // Registered, but held until the fresh proof is bound.
+        assert!(store::pending(&p.pool).await.unwrap().is_none());
+        assert!(
+            !codexsymphony_server::local_delivery::tick(&p.pool, p.root.path(), &p.broker)
+                .await
+                .unwrap()
+        );
+    }
+    let before: Value = sqlx::query_scalar("SELECT to_jsonb(d) FROM delivery d")
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    assert!(
+        codexsymphony_server::extension_revalidation::tick(
+            &p.pool,
+            p.root.path(),
+            &p.broker,
+            &p.plan,
+            &p.hooks
+        )
+        .await
+        .unwrap()
+    );
+    let (successor, state): (String, String) = sqlx::query_as(
+        "SELECT successor_validation,resolution_state FROM recovery_failure WHERE event_key=$1",
+    )
+    .bind(accepted["event_key"].as_str().unwrap())
+    .fetch_one(&p.pool)
+    .await
+    .unwrap();
+    assert_eq!(state, "complete");
+    assert!(successor.starts_with("revalidate-"));
+    let current: Value = sqlx::query_scalar("SELECT to_jsonb(d) FROM delivery d")
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    let mut expected = before;
+    expected["validation_id"] = json!(successor);
+    assert_eq!(current, expected, "only the proof binding may change");
+    assert_eq!(
+        sqlx::query_scalar::<_, Value>(action_sql)
+            .bind(&key)
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        original_action
+    );
+    let preserved: (String, bool, Option<String>) = sqlx::query_as(
+        "SELECT result,hook_invalidated,superseded_by FROM candidate_validation WHERE id='validation'",
+    )
+    .fetch_one(&p.pool)
+    .await
+    .unwrap();
+    assert_eq!(
+        preserved,
+        ("succeeded".into(), true, Some(successor.clone()))
+    );
+    let fact: Value =
+        sqlx::query_scalar("SELECT fact FROM delivery_observation WHERE kind='validation_rebound'")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+    assert_eq!(fact["previous_validation"], "validation");
+    assert_eq!(fact["validation"], successor);
+    assert_eq!(fact["recovery_event"], accepted["event_key"]);
+    assert_eq!(fact["external_attempts"], 0);
+    assert_eq!(
+        sqlx::query_scalar::<_, Vec<String>>(
+            "SELECT array_agg(DISTINCT consumer) FROM validation_step WHERE validation_id=$1"
+        )
+        .bind(&successor)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap(),
+        vec![format!("outbox:{key}")]
+    );
+    // Replaying the outbox hand-off never derives a second local action.
+    let mut tx = p.pool.begin().await.unwrap();
+    codexsymphony_server::delivery_store::enqueue(&mut tx, &successor)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    let keys: Vec<String> = sqlx::query_scalar("SELECT action_key FROM delivery")
+        .fetch_all(&p.pool)
+        .await
+        .unwrap();
+    assert_eq!(keys, vec![key.clone()]);
+    let facts: (i64, i64, i64) = sqlx::query_as("SELECT (SELECT count(*) FROM delivery_action),(SELECT count(*) FROM delivery_attempt),(SELECT count(*) FROM delivery_observation WHERE kind='validation_rebound')")
+        .fetch_one(&p.pool).await.unwrap();
+    assert_eq!(facts, (1, 1, 1));
+    assert_eq!(local_git::head(&p.binding).unwrap(), p.manifest.head);
+    if !recheck_first {
+        // The retained failed acceptance keeps the delivery idle until corrected.
+        assert!(store::pending(&p.pool).await.unwrap().is_none());
+        receipt = request(&p.pool, &command).await.unwrap();
+        assert_eq!(receipt["accepted"], true);
+        assert!(receipt.get("proof").is_none());
+    }
+    // Replay returns the saved receipt, never a reclassification of current state.
+    assert_eq!(request(&p.pool, &command).await.unwrap(), receipt);
+    product_tick(&p).await;
+    let (state, accepted, invocation): (String, Value, String) = sqlx::query_as("SELECT r.state,d.local_acceptance,d.local_acceptance_job->>'invocation' FROM delivery d JOIN requirement r ON r.id=d.requirement_id")
+        .fetch_one(&p.pool).await.unwrap();
+    assert_eq!(
+        state,
+        "Done",
+        "{:?}",
+        sqlx::query_scalar::<_, Option<Value>>("SELECT error FROM delivery_action")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap()
+    );
+    assert_eq!(accepted["passed"], true);
+    assert!(invocation.starts_with("local-acceptance-recheck-"));
+    assert_eq!(local_git::head(&p.binding).unwrap(), p.manifest.head);
+    // Even after Done (admission would now fail) the same request replays equal.
+    assert_eq!(request(&p.pool, &command).await.unwrap(), receipt);
+    let counts: (i64, i64, i64) = sqlx::query_as("SELECT (SELECT count(*) FROM delivery),(SELECT count(*) FROM delivery_attempt),(SELECT count(*) FROM local_acceptance_recheck)")
+        .fetch_one(&p.pool).await.unwrap();
+    assert_eq!(counts, (1, 1, 1));
+    assert_eq!(
+        sqlx::query_scalar::<_, Value>(account_sql)
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        account
+    );
+    p.pool.close().await;
+    unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
+}
+
+#[tokio::test]
+async fn interrupted_delivered_proof_waits_for_same_candidate_generation_before_correction() {
+    recover_delivered_local_proof(true).await;
+}
+
+#[tokio::test]
+async fn rebound_delivered_proof_admits_correction_as_current_without_new_write() {
+    recover_delivered_local_proof(false).await;
+}
+
+/// Environment-bound proof: the real pause trigger invalidates it, an expired
+/// uninterrupted proof is refused, and a successor of the delivered version
+/// never falls back to a new local action when its rebinding cannot be proven.
+#[tokio::test]
+async fn environment_bound_delivered_proof_fails_closed_on_drift_and_unapproved_successor() {
+    use codexsymphony_server::{
+        extension_recovery as recovery, local_acceptance_recheck::request,
+        local_delivery_store as store,
+    };
+    use serde_json::Value;
+    let (p, command) = failed_validator().await;
+    let key = command.delivery_key.clone();
+    // The fixture has no host environment registry, so emulate only the
+    // retained invocation deadline that `proof_status` classifies.
+    sqlx::query("UPDATE candidate_validation SET hook_required=true,hook_context=jsonb_build_object('call',jsonb_build_object('deadline_unix_ms',1)) WHERE id='validation'")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    let expired = request(&p.pool, &command).await.unwrap_err();
+    assert!(
+        expired.to_string().contains("expired without interruption"),
+        "{expired}"
+    );
+    // A real control interruption, through the migration trigger.
+    for paused in [false, true] {
+        sqlx::query("UPDATE execution_control SET paused=$1")
+            .bind(paused)
+            .execute(&p.pool)
+            .await
+            .unwrap();
+    }
+    assert!(
+        sqlx::query_scalar::<_, bool>(
+            "SELECT hook_invalidated FROM candidate_validation WHERE id='validation'"
+        )
+        .fetch_one(&p.pool)
+        .await
+        .unwrap()
+    );
+    let interrupted = request(&p.pool, &command).await.unwrap_err();
+    assert!(interrupted.to_string().contains("approve a same-candidate"));
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM local_acceptance_recheck")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    sqlx::query("UPDATE execution_control SET paused=false")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    assert!(store::pending(&p.pool).await.unwrap().is_none());
+    // Drop the emulated context: the original supervisor stop check decodes it.
+    sqlx::query("UPDATE candidate_validation SET hook_context=NULL WHERE id='validation'")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    let decision = local_revalidation(
+        &p,
+        "environment-bound-same-candidate",
+        requirement_version(&p).await,
+        &key,
+    );
+    recovery::decide(&p.pool, 1, &decision).await.unwrap();
+    let original: Value = sqlx::query_scalar("SELECT jsonb_build_object('delivery',(SELECT to_jsonb(d) FROM delivery d),'action',(SELECT to_jsonb(a) FROM delivery_action a))")
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    // The target moves after authorization; rebinding rechecks it under lock.
+    git(
+        &p.binding.target.path,
+        &[
+            "update-ref",
+            "refs/heads/main",
+            &p.manifest.workspace.baseline,
+            &p.manifest.head,
+        ],
+    );
+    assert!(
+        codexsymphony_server::extension_revalidation::tick(
+            &p.pool,
+            p.root.path(),
+            &p.broker,
+            &p.plan,
+            &p.hooks
+        )
+        .await
+        .unwrap()
+    );
+    let (successor, state): (String, String) = sqlx::query_as(
+        "SELECT successor_validation,resolution_state FROM recovery_failure WHERE resolution#>>'{command,request_id}'=$1",
+    )
+    .bind(&decision.request_id)
+    .fetch_one(&p.pool)
+    .await
+    .unwrap();
+    assert_eq!(state, "blocked");
+    let reason: String =
+        sqlx::query_scalar("SELECT reason FROM recovery_failure WHERE successor_validation=$1")
+            .bind(&successor)
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+    assert!(reason.contains("current confirmed target"), "{reason}");
+    let unchanged = || async {
+        let current: Value = sqlx::query_scalar("SELECT jsonb_build_object('delivery',(SELECT to_jsonb(d) FROM delivery d),'action',(SELECT to_jsonb(a) FROM delivery_action a))")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+        assert_eq!(current, original);
+        let counts: (i64, i64, i64) = sqlx::query_as("SELECT (SELECT count(*) FROM delivery),(SELECT count(*) FROM delivery_attempt),(SELECT count(*) FROM delivery_observation WHERE kind='validation_rebound')")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap();
+        assert_eq!(counts, (1, 1, 0));
+    };
+    unchanged().await;
+    // Even a successful successor whose approval is no longer active cannot
+    // take the ordinary outbox path and derive a second local action.
+    sqlx::query(
+        "UPDATE candidate_validation SET result='succeeded',hook_invalidated=false WHERE id=$1",
+    )
+    .bind(&successor)
+    .execute(&p.pool)
+    .await
+    .unwrap();
+    let mut tx = p.pool.begin().await.unwrap();
+    let error = codexsymphony_server::delivery_store::enqueue(&mut tx, &successor)
+        .await
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("lacks its approved rebinding"),
+        "{error}"
+    );
+    tx.rollback().await.unwrap();
+    unchanged().await;
+    assert_eq!(
+        local_git::head(&p.binding).unwrap(),
+        p.manifest.workspace.baseline
+    );
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM model_call")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    p.pool.close().await;
+    unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
+}
+
+#[tokio::test]
+async fn local_block_reason_survives_later_confirmed_observation() {
+    use codexsymphony_server::local_delivery_store as store;
+    let p = product().await;
+    assert!(validate_product(&p).await);
+    let job = store::pending(&p.pool).await.unwrap().unwrap();
+    for reason in [
+        "transient admission fault",
+        "transient admission fault",
+        "second cause",
+    ] {
+        store::blocked(&p.pool, &job, reason).await.unwrap();
+    }
+    sqlx::query("UPDATE delivery_action SET next_attempt_at=0")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    product_tick(&p).await;
+    let error: Option<serde_json::Value> = sqlx::query_scalar("SELECT error FROM delivery_action")
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    assert_eq!(error, None);
+    let reasons: Vec<String> = sqlx::query_scalar(
+        "SELECT fact->>'reason' FROM delivery_observation WHERE kind='local_blocked' ORDER BY id",
+    )
+    .fetch_all(&p.pool)
+    .await
+    .unwrap();
+    assert_eq!(reasons, vec!["transient admission fault", "second cause"]);
+    let candidate: String = sqlx::query_scalar(
+        "SELECT DISTINCT fact->>'candidate' FROM delivery_observation WHERE kind='local_blocked'",
+    )
+    .fetch_one(&p.pool)
+    .await
+    .unwrap();
+    assert_eq!(candidate, p.manifest.head);
+    p.pool.close().await;
+    unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
+}
+
 #[tokio::test]
 async fn local_queue_projection_does_not_require_github_capabilities() {
     use serde_json::json;

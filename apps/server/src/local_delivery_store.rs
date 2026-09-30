@@ -133,8 +133,10 @@ impl Job {
     }
 }
 
+/// A delivered version whose proof a control interruption invalidated waits for
+/// an approved same-candidate generation instead of failing admission forever.
 pub async fn pending(pool: &PgPool) -> Result<Option<Job>> {
-    Ok(sqlx::query_as("SELECT d.*,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) WHERE d.mode='local_git' AND a.kind='publish' AND NOT d.released AND a.state<>'withdrawn' AND (NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.local_delivery=d.action_key) OR (d.local_acceptance IS NULL AND EXISTS(SELECT 1 FROM local_acceptance_recheck k WHERE k.delivery_key=d.action_key) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.local_delivery=d.action_key AND f.state<>'cancelled')) OR EXISTS(SELECT 1 FROM requirement r WHERE r.id=d.requirement_id AND r.cancel_requested)) AND a.next_attempt_at<=extract(epoch FROM now())::bigint ORDER BY d.requirement_id LIMIT 1")
+    Ok(sqlx::query_as("SELECT d.*,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) WHERE d.mode='local_git' AND a.kind='publish' AND NOT d.released AND a.state<>'withdrawn' AND NOT EXISTS(SELECT 1 FROM candidate_validation v JOIN requirement r ON r.id=v.requirement_id WHERE v.id=d.validation_id AND v.hook_invalidated AND a.attempts>0 AND (NOT d.local_acceptance_started OR d.local_acceptance_quiescent) AND NOT r.cancel_requested) AND (NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.local_delivery=d.action_key) OR (d.local_acceptance IS NULL AND EXISTS(SELECT 1 FROM local_acceptance_recheck k WHERE k.delivery_key=d.action_key) AND NOT EXISTS(SELECT 1 FROM linked_failure f WHERE f.local_delivery=d.action_key AND f.state<>'cancelled')) OR EXISTS(SELECT 1 FROM requirement r WHERE r.id=d.requirement_id AND r.cancel_requested)) AND a.next_attempt_at<=extract(epoch FROM now())::bigint ORDER BY d.requirement_id LIMIT 1")
         .fetch_optional(pool).await?)
 }
 
@@ -183,9 +185,29 @@ pub async fn observed(pool: &PgPool, job: &Job, fact: &local_git::Observation) -
 }
 
 pub async fn blocked(pool: &PgPool, job: &Job, reason: &str) -> Result<()> {
+    let mut tx = run_store::lock(pool).await?;
     sqlx::query("UPDATE delivery_action SET state='blocked',error=jsonb_build_object('code','local_delivery_blocked','reason',$2::text),next_attempt_at=extract(epoch FROM now())::bigint+30 WHERE action_key=$1 AND kind='publish'")
-        .bind(&job.action_key).bind(reason).execute(pool).await?;
+        .bind(&job.action_key).bind(reason).execute(&mut *tx).await?;
+    // A later confirmed observation clears the action error; keep each
+    // distinct cause in the append-only observation journal.
+    sqlx::query("INSERT INTO delivery_observation(action_key,kind,fact) SELECT $1,'local_blocked',$2 WHERE NOT EXISTS(SELECT 1 FROM delivery_observation WHERE action_key=$1 AND kind='local_blocked' AND fact=$2)")
+        .bind(&job.action_key)
+        .bind(json!({"validation":job.validation_id,"candidate":job.head_sha,"reason":reason}))
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
     Ok(())
+}
+
+/// The frozen target still holds exactly this delivered version.
+pub fn confirmed_target(job: &Job) -> Result<bool> {
+    let binding = job.binding()?;
+    if resolve_document(&job.policy)? != binding {
+        return Ok(false);
+    }
+    Ok(local_git::head(&binding)? == job.head_sha
+        && local_git::observe(&binding, &job.action_key, job.baseline()?, &job.head_sha)?
+            == local_git::Observation::Delivered)
 }
 
 pub async fn cancel_unsent(pool: &PgPool, job: &Job) -> Result<bool> {
