@@ -479,16 +479,39 @@ async fn validate_product(p: &Product) -> bool {
     .unwrap()
 }
 async fn product_tick(p: &Product) {
-    assert!(
-        codexsymphony_server::local_delivery::tick_with_hooks(
-            &p.pool,
-            p.root.path(),
-            &p.broker,
-            &p.hooks
-        )
+    product_tick_at(p, "product_tick").await;
+}
+
+/// Read-only scheduling facts for a tick that found no work: the pending
+/// predicate inputs, throttle, acceptance projection, failures and proofs.
+async fn tick_state(p: &Product) -> serde_json::Value {
+    let facts: serde_json::Value = sqlx::query_scalar("SELECT jsonb_build_object('now',extract(epoch FROM now())::bigint,'requirement',(SELECT jsonb_agg(jsonb_build_object('state',state,'paused',paused,'cancel_requested',cancel_requested,'version',version)) FROM requirement),'control',(SELECT jsonb_agg(jsonb_build_object('paused',paused,'recovery_complete',recovery_complete)) FROM execution_control),'deliveries',(SELECT jsonb_agg(jsonb_build_object('action_key',d.action_key,'validation_id',d.validation_id,'released',d.released,'acceptance_started',d.local_acceptance_started,'acceptance_quiescent',d.local_acceptance_quiescent,'acceptance',d.local_acceptance,'action_state',a.state,'attempts',a.attempts,'next_attempt_at',a.next_attempt_at,'error',a.error,'hook_invalidated',v.hook_invalidated,'superseded_by',v.superseded_by,'result',v.result) ORDER BY d.action_key) FROM delivery d LEFT JOIN delivery_action a ON a.action_key=d.action_key AND a.kind='publish' LEFT JOIN candidate_validation v ON v.id=d.validation_id),'linked_failures',(SELECT jsonb_agg(jsonb_build_object('id',id,'state',state,'local_delivery',local_delivery,'blocker',blocker) ORDER BY id) FROM linked_failure),'rechecks',(SELECT count(*) FROM local_acceptance_recheck),'local_blocked',(SELECT jsonb_agg(fact ORDER BY id) FROM delivery_observation WHERE kind='local_blocked'),'storage_blocked',(SELECT jsonb_agg(jsonb_build_object('blocked',blocked,'error',error)) FROM storage_guard))")
+        .fetch_one(&p.pool)
         .await
-        .unwrap()
-    );
+        .unwrap();
+    let pending = codexsymphony_server::local_delivery_store::pending(&p.pool)
+        .await
+        .map(|job| job.map(|job| job.action_key))
+        .map_err(|error| error.to_string());
+    serde_json::json!({"facts": facts, "pending": format!("{pending:?}")})
+}
+
+async fn product_tick_at(p: &Product, stage: &str) {
+    let before = tick_state(p).await;
+    let worked = codexsymphony_server::local_delivery::tick_with_hooks(
+        &p.pool,
+        p.root.path(),
+        &p.broker,
+        &p.hooks,
+    )
+    .await
+    .unwrap();
+    if !worked {
+        panic!(
+            "local delivery tick found no work at {stage}\nbefore: {before:#}\nafter: {:#}",
+            tick_state(p).await
+        );
+    }
 }
 
 #[tokio::test]
@@ -560,8 +583,8 @@ async fn javascript_local_delivery_accepts_two_reviewed_check_implementations() 
         }
         identities.push(p.plan.identity().unwrap().protected_entry_sha256);
         assert!(validate_product(&p).await);
-        product_tick(&p).await;
-        product_tick(&p).await;
+        product_tick_at(&p, "javascript: deliver").await;
+        product_tick_at(&p, "javascript: accept").await;
         let state: String = sqlx::query_scalar("SELECT state FROM requirement WHERE id=1")
             .fetch_one(&p.pool)
             .await
@@ -1825,9 +1848,9 @@ async fn local_failure_cannot_repair_a_revoked_target_or_unreviewed_path() {
     for revoke in [true, false] {
         let p = product_group(true).await;
         assert!(validate_product(&p).await);
-        product_tick(&p).await;
+        product_tick_at(&p, "local_failure: deliver").await;
         fs::write(p.root.path().join("post-fail"), "dependency changed").unwrap();
-        product_tick(&p).await;
+        product_tick_at(&p, "local_failure: failed acceptance").await;
         if revoke {
             sqlx::query(
                 "UPDATE plugin_scope SET enabled=false WHERE plugin_id='delivery:local_git'",
@@ -1961,8 +1984,8 @@ async fn failed_validator_with_hooks(
     fs::write(&p.plan.entry, script).unwrap();
     p.plan.entry_sha256 = sha256(script);
     assert!(validate_product(&p).await);
-    product_tick(&p).await;
-    product_tick(&p).await;
+    product_tick_at(&p, "failed_validator: deliver").await;
+    product_tick_at(&p, "failed_validator: failed acceptance").await;
     let (key, result, version): (String, serde_json::Value, i64) = sqlx::query_as("SELECT d.action_key,COALESCE(d.local_acceptance,'null'::jsonb),r.version FROM delivery d JOIN requirement r ON r.id=d.requirement_id WHERE d.validation_id='validation'").fetch_one(&p.pool).await.unwrap();
     assert_eq!(
         result["passed"],
@@ -2540,7 +2563,25 @@ async fn recover_delivered_local_proof(recheck_first: bool) {
     }
     // Replay returns the saved receipt, never a reclassification of current state.
     assert_eq!(request(&p.pool, &command).await.unwrap(), receipt);
-    product_tick(&p).await;
+    // Read-only: the correction reset the throttle and nothing blocked since,
+    // so the rebound delivery is due now without advancing any clock.
+    let due: bool = sqlx::query_scalar(
+        "SELECT next_attempt_at<=extract(epoch FROM now())::bigint FROM delivery_action WHERE action_key=$1",
+    )
+    .bind(&key)
+    .fetch_one(&p.pool)
+    .await
+    .unwrap();
+    assert!(due, "{:#}", tick_state(&p).await);
+    product_tick_at(
+        &p,
+        if recheck_first {
+            "recover: recheck registered before rebind"
+        } else {
+            "recover: recheck registered after rebind"
+        },
+    )
+    .await;
     let (state, accepted, invocation): (String, Value, String) = sqlx::query_as("SELECT r.state,d.local_acceptance,d.local_acceptance_job->>'invocation' FROM delivery d JOIN requirement r ON r.id=d.requirement_id")
         .fetch_one(&p.pool).await.unwrap();
     assert_eq!(
