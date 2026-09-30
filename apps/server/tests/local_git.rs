@@ -2781,6 +2781,147 @@ async fn environment_bound_delivered_proof_fails_closed_on_drift_and_unapproved_
     unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
 }
 
+/// A cancel (or revision change) after pre-validation admission but before the
+/// locked outcome must not bind the fresh proof to the delivered version.
+/// A positive control in the same state proves every other rebinding guard holds.
+#[tokio::test]
+async fn cancelled_requirement_never_rebinds_successor_to_delivered_version() {
+    use codexsymphony_server::extension_recovery as recovery;
+    use serde_json::Value;
+    let (p, command) = failed_validator().await;
+    let key = command.delivery_key.clone();
+    // Legacy proof (hook_required=false): a cancel does not invalidate the
+    // successor, so only the Requirement guard can refuse the rebinding.
+    sqlx::query("UPDATE candidate_validation SET hook_invalidated=true WHERE id='validation'")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE execution_control SET paused=false")
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    let decision = local_revalidation(
+        &p,
+        "cancel-before-rebinding",
+        requirement_version(&p).await,
+        &key,
+    );
+    recovery::decide(&p.pool, 1, &decision).await.unwrap();
+    // Produce the successor without letting the tick rebind it: the moved target
+    // makes the locked rebinding refuse, and the whole outcome rolls back.
+    let target = |from: &str, to: &str| {
+        git(
+            &p.binding.target.path,
+            &["update-ref", "refs/heads/main", to, from],
+        );
+    };
+    target(&p.manifest.head, &p.manifest.workspace.baseline);
+    assert!(
+        codexsymphony_server::extension_revalidation::tick(
+            &p.pool,
+            p.root.path(),
+            &p.broker,
+            &p.plan,
+            &p.hooks
+        )
+        .await
+        .unwrap()
+    );
+    target(&p.manifest.workspace.baseline, &p.manifest.head);
+    let successor: String = sqlx::query_scalar(
+        "SELECT successor_validation FROM recovery_failure WHERE resolution#>>'{command,request_id}'=$1",
+    )
+    .bind(&decision.request_id)
+    .fetch_one(&p.pool)
+    .await
+    .unwrap();
+    // Restore exactly the state of a successful successor inside `finish`.
+    sqlx::query("UPDATE candidate_validation SET result='succeeded',stage='handoff' WHERE id=$1")
+        .bind(&successor)
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE recovery_failure SET resolution_state='running' WHERE resolution#>>'{command,request_id}'=$1")
+        .bind(&decision.request_id)
+        .execute(&p.pool)
+        .await
+        .unwrap();
+    let snapshot = "SELECT jsonb_build_object('delivery',(SELECT jsonb_agg(to_jsonb(d)) FROM delivery d),'action',(SELECT jsonb_agg(to_jsonb(a)) FROM delivery_action a),'attempts',(SELECT count(*) FROM delivery_attempt),'rebound',(SELECT count(*) FROM delivery_observation WHERE kind='validation_rebound'),'consumers',(SELECT jsonb_agg(DISTINCT consumer) FROM validation_step WHERE validation_id=$1))";
+    let original: Value = sqlx::query_scalar(snapshot)
+        .bind(&successor)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    assert_eq!(original["rebound"], 0);
+    // Positive control: without the cancel this exact state rebinds.
+    let mut tx = p.pool.begin().await.unwrap();
+    codexsymphony_server::delivery_store::enqueue(&mut tx, &successor)
+        .await
+        .unwrap();
+    let bound: String = sqlx::query_scalar("SELECT validation_id FROM delivery")
+        .fetch_one(&mut *tx)
+        .await
+        .unwrap();
+    assert_eq!(bound, successor);
+    tx.rollback().await.unwrap();
+    // A changed revision is refused under the same state.
+    let mut tx = p.pool.begin().await.unwrap();
+    sqlx::query("UPDATE requirement SET revision=revision+1 WHERE id=1")
+        .execute(&mut *tx)
+        .await
+        .unwrap();
+    let error = codexsymphony_server::delivery_store::enqueue(&mut tx, &successor)
+        .await
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("lacks its approved rebinding"),
+        "{error}"
+    );
+    tx.rollback().await.unwrap();
+    // The real cancel API, persisted, then the locked outcome is refused.
+    assert!(
+        codexsymphony_server::delivery_control::cancel(&p.pool, 1)
+            .await
+            .unwrap()
+    );
+    assert!(
+        !sqlx::query_scalar::<_, bool>(
+            "SELECT hook_invalidated FROM candidate_validation WHERE id=$1"
+        )
+        .bind(&successor)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap()
+    );
+    let mut tx = p.pool.begin().await.unwrap();
+    let error = codexsymphony_server::delivery_store::enqueue(&mut tx, &successor)
+        .await
+        .unwrap_err();
+    assert!(
+        error.to_string().contains("lacks its approved rebinding"),
+        "{error}"
+    );
+    tx.rollback().await.unwrap();
+    let after: Value = sqlx::query_scalar(snapshot)
+        .bind(&successor)
+        .fetch_one(&p.pool)
+        .await
+        .unwrap();
+    // A local delivery has no pull request, so cancel adds no close action:
+    // delivery, every action, attempts, rebinding facts and consumers are unchanged.
+    assert_eq!(after, original, "no proof, consumer or attempt change");
+    assert_eq!(local_git::head(&p.binding).unwrap(), p.manifest.head);
+    assert_eq!(
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM model_call")
+            .fetch_one(&p.pool)
+            .await
+            .unwrap(),
+        0
+    );
+    p.pool.close().await;
+    unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
+}
+
 #[tokio::test]
 async fn local_block_reason_survives_later_confirmed_observation() {
     use codexsymphony_server::local_delivery_store as store;

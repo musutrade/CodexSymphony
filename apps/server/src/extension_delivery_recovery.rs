@@ -255,13 +255,15 @@ pub(crate) async fn rebind_delivered(
 
 /// The exact operator approval binding this successor to the written action:
 /// (bound validation, released, superseded generation, recovery event).
+/// The Requirement must still be the delivered, uncancelled revision: the
+/// pre-validation admission is outside this lock and a cancel may intervene.
 /// Anything else is an unapproved successor and fails closed.
 async fn approved_rebinding(
     tx: &mut Transaction<'_, Postgres>,
     validation: &str,
     key: &str,
 ) -> Result<(String, bool, String, String), sqlx::Error> {
-    let row: Option<(String, bool, String, String)> = sqlx::query_as("SELECT d.validation_id,d.released,old.id,f.event_key FROM candidate_validation v JOIN candidate_validation old ON old.id=v.retry_of AND old.superseded_by=v.id JOIN delivery d ON d.validation_id IN (old.id,v.id) JOIN recovery_failure f ON f.successor_validation=v.id AND f.source_validation_id=old.id WHERE v.id=$1 AND d.action_key=$2 AND d.mode='local_git' AND v.result='succeeded' AND NOT v.hook_invalidated AND v.source_run_id=old.source_run_id AND v.candidate_sha=d.head_sha AND v.candidate_tree=old.candidate_tree AND v.requirement_id=d.requirement_id AND v.revision=d.revision AND f.resolution->>'actor'='authenticated_operator' AND f.resolution#>>'{command,validation_id}'=old.id AND f.resolution#>>'{command,action,kind}'='revalidate_local_delivery' AND f.resolution#>>'{command,action,delivery_key}'=d.action_key AND f.resolution_state IN ('running','complete') FOR UPDATE OF d")
+    let row: Option<(String, bool, String, String)> = sqlx::query_as("SELECT d.validation_id,d.released,old.id,f.event_key FROM candidate_validation v JOIN candidate_validation old ON old.id=v.retry_of AND old.superseded_by=v.id JOIN delivery d ON d.validation_id IN (old.id,v.id) JOIN recovery_failure f ON f.successor_validation=v.id AND f.source_validation_id=old.id JOIN requirement r ON r.id=d.requirement_id WHERE v.id=$1 AND d.action_key=$2 AND d.mode='local_git' AND r.revision=d.revision AND NOT r.cancel_requested AND v.result='succeeded' AND NOT v.hook_invalidated AND v.source_run_id=old.source_run_id AND v.candidate_sha=d.head_sha AND v.candidate_tree=old.candidate_tree AND v.requirement_id=d.requirement_id AND v.revision=d.revision AND f.resolution->>'actor'='authenticated_operator' AND f.resolution#>>'{command,validation_id}'=old.id AND f.resolution#>>'{command,action,kind}'='revalidate_local_delivery' AND f.resolution#>>'{command,action,delivery_key}'=d.action_key AND f.resolution_state IN ('running','complete') FOR UPDATE OF d")
         .bind(validation).bind(key).fetch_optional(&mut **tx).await?;
     row.ok_or_else(unapproved_successor)
 }
