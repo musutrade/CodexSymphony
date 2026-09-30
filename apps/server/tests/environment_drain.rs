@@ -14,7 +14,7 @@ use std::{
     fs,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
-    process::{Child, Command, Stdio},
+    process::{Child, Command},
     time::{Duration, Instant},
 };
 

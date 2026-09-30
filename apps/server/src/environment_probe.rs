@@ -147,8 +147,8 @@ async fn admitted() -> Option<tokio::sync::MutexGuard<'static, ()>> {
 
 /// A stop is not an environment failure; callers must not record it. The
 /// process exits after draining, dropping this never-launched request.
-async fn stopping() -> Result<Report> {
-    std::future::pending().await
+fn stopping() -> std::future::Pending<Result<Report>> {
+    std::future::pending()
 }
 
 fn verify_workspace(profile: &Profile, workspace: Option<&Path>) -> Result<()> {
