@@ -229,6 +229,98 @@ fn registry_requires_protected_file_and_unique_references() {
     unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
 }
 
+/// `confirmed_target` accepts only the registered, unchanged target still at
+/// the delivered head with this action's receipt; every other case refuses.
+#[test]
+fn confirmed_target_requires_the_same_registered_target_head_and_receipt() {
+    use codexsymphony_server::local_delivery_store::{Job, confirmed_target};
+    let (root, target, base, candidate) = fixture();
+    let binding = local_git::bind(&target).unwrap();
+    assert_eq!(
+        local_git::submit(
+            &binding,
+            &root.path().join("source"),
+            "delivered",
+            &base,
+            &candidate
+        )
+        .unwrap(),
+        Observation::Delivered
+    );
+    let register = |targets: &[Target]| {
+        let path = root.path().join("confirmed-targets.json");
+        fs::write(&path, serde_json::to_vec(targets).unwrap()).unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600)).unwrap();
+        unsafe { std::env::set_var("LOCAL_GIT_TARGETS", &path) };
+    };
+    register(std::slice::from_ref(&target));
+    let job = Job {
+        action_key: "delivered".into(),
+        validation_id: "validation".into(),
+        requirement_id: 1,
+        revision: 1,
+        head_sha: candidate.clone(),
+        manifest: serde_json::json!({"workspace":{"baseline":base}}),
+        policy: serde_json::json!({"repository_id":1,"repository_version":1,"repository":{"remote":"fixture","base_branch":"main"}}),
+        local_binding: serde_json::json!(binding),
+        local_acceptance_started: false,
+        local_acceptance: None,
+        state: "confirmed".into(),
+        attempts: 1,
+    };
+    assert!(confirmed_target(&job).unwrap());
+    // Same reference re-registered to another target: the document no longer
+    // resolves to the frozen binding, so the delivery is not confirmed.
+    git(
+        root.path(),
+        &[
+            "clone",
+            "--bare",
+            target.path.to_str().unwrap(),
+            "replacement.git",
+        ],
+    );
+    let replacement = Target {
+        path: root.path().join("replacement.git"),
+        ..target.clone()
+    };
+    fs::set_permissions(&replacement.path, fs::Permissions::from_mode(0o700)).unwrap();
+    register(std::slice::from_ref(&replacement));
+    assert_ne!(local_git::bind(&replacement).unwrap(), binding);
+    assert!(!confirmed_target(&job).unwrap());
+    // A registration that differs from the reviewed repository is an error.
+    let revised = Target {
+        repository_version: 2,
+        ..target.clone()
+    };
+    register(std::slice::from_ref(&revised));
+    assert!(confirmed_target(&job).is_err());
+    register(std::slice::from_ref(&target));
+    // Undecodable frozen binding.
+    let mut malformed = job.clone();
+    malformed.local_binding = serde_json::json!({"target":null});
+    assert!(confirmed_target(&malformed).is_err());
+    // A different recorded head is not the delivered version.
+    let mut other_head = job.clone();
+    other_head.head_sha = base.clone();
+    assert!(!confirmed_target(&other_head).unwrap());
+    // Head matches but the baseline or receipt evidence is unusable.
+    let mut no_baseline = job.clone();
+    no_baseline.manifest = serde_json::json!({"workspace":{}});
+    assert!(confirmed_target(&no_baseline).is_err());
+    let mut invalid_baseline = job.clone();
+    invalid_baseline.manifest = serde_json::json!({"workspace":{"baseline":"not-an-oid"}});
+    assert!(confirmed_target(&invalid_baseline).is_err());
+    // Another action's receipt at the same head is a conflict, not delivery.
+    let mut other_action = job.clone();
+    other_action.action_key = "other".into();
+    assert!(!confirmed_target(&other_action).unwrap());
+    // The frozen branch disappearing makes the head unreadable.
+    git(&target.path, &["update-ref", "-d", "refs/heads/main"]);
+    assert!(confirmed_target(&job).is_err());
+    unsafe { std::env::remove_var("LOCAL_GIT_TARGETS") };
+}
+
 struct FixtureDirectory(std::path::PathBuf);
 impl FixtureDirectory {
     fn new() -> Self {

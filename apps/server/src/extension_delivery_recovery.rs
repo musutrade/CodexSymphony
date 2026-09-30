@@ -89,12 +89,7 @@ async fn check_pending(
     validation: &str,
     action: &Action,
 ) -> Result<(), sqlx::Error> {
-    let pending: Vec<String> = sqlx::query_scalar(
-        "SELECT action_key FROM delivery WHERE requirement_id=$1 AND NOT released FOR UPDATE",
-    )
-    .bind(requirement)
-    .fetch_all(&mut **tx)
-    .await?;
+    let pending = unreleased(tx, requirement).await?;
     if let Action::RevalidateLocalDelivery { delivery_key, .. } = action {
         require(
             pending.len() == 1 && pending[0] == *delivery_key,
@@ -102,18 +97,42 @@ async fn check_pending(
         )?;
         return delivered_unchanged(tx, delivery_key, validation).await;
     }
-    if !pending.is_empty() {
-        require(
-            matches!(action, Action::RevalidateDelivery { .. }),
-            "pending delivery requires explicit delivery revalidation",
-        )?;
-        require(
-            pending.len() == 1,
-            "multiple pending deliveries require reconciliation",
-        )?;
-        pending_unchanged(tx, &pending[0], validation).await?;
+    check_unsent(tx, &pending, validation, action).await
+}
+
+/// Every unreleased delivery of the Requirement, locked for this decision.
+async fn unreleased(
+    tx: &mut Transaction<'_, Postgres>,
+    requirement: i64,
+) -> Result<Vec<String>, sqlx::Error> {
+    sqlx::query_scalar(
+        "SELECT action_key FROM delivery WHERE requirement_id=$1 AND NOT released FOR UPDATE",
+    )
+    .bind(requirement)
+    .fetch_all(&mut **tx)
+    .await
+}
+
+/// Without a delivered local version, a pending delivery may only be the
+/// single never-sent operation named by an explicit delivery revalidation.
+async fn check_unsent(
+    tx: &mut Transaction<'_, Postgres>,
+    pending: &[String],
+    validation: &str,
+    action: &Action,
+) -> Result<(), sqlx::Error> {
+    if pending.is_empty() {
+        return Ok(());
     }
-    Ok(())
+    require(
+        matches!(action, Action::RevalidateDelivery { .. }),
+        "pending delivery requires explicit delivery revalidation",
+    )?;
+    require(
+        pending.len() == 1,
+        "multiple pending deliveries require reconciliation",
+    )?;
+    pending_unchanged(tx, &pending[0], validation).await
 }
 
 pub(crate) fn revalidates_delivery(action: &Action) -> bool {
