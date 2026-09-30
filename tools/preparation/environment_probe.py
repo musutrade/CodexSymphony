@@ -18,7 +18,7 @@ import urllib.parse
 
 CORE_VERSION = "harness-gate 0.4.7"
 CORE_SHA256 = "b6976fa07f8ee65cdfbbe1e87c2c7e3592fcf38f1ed0d1c2e57a6e7ff49a85e9"
-CODEX_VERSION = "codex-cli 0.157.1"
+CODEX_VERSION = "codex-cli 0.159.2"
 RESERVE = 256 * 1024 * 1024
 
 

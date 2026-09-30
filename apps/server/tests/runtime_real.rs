@@ -164,7 +164,7 @@ stream_max_retries = 0
         initialized["userAgent"]
             .as_str()
             .unwrap()
-            .contains("/0.157.1 ")
+            .contains("/0.159.2 ")
     );
     transport
         .send(&json!({"method":"initialized"}))

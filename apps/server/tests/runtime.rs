@@ -781,7 +781,7 @@ for line in sys.stdin:
  if m=='initialize':
   print('separate stderr diagnostic',file=sys.stderr,flush=True)
   send({'method':'fixture/queued','params':{'threadId':'unrelated'}})
-  send({'id':r['id'],'result':{'userAgent':'fixture/0.157.1 (test)'}})
+  send({'id':r['id'],'result':{'userAgent':'fixture/0.159.2 (test)'}})
  elif m=='thread/start':send({'id':r['id'],'result':{'cwd':os.getcwd(),'thread':{'id':'thread','cwd':os.getcwd()}}})
  elif m=='turn/start':
   Path('received-input').write_text(json.dumps(p['input']))
@@ -1481,11 +1481,11 @@ async fn failed_protocol_sessions(git: &GitBroker) {
     let premature = client_code().replace("send({'id':77,'method':'item/tool/call','params':{'threadId':'thread','turnId':'turn','callId':'call','tool':'report_blocker','arguments':{'reason':'fixture stop','requires_permission':False}}})", "send({'id':'q','method':'item/tool/requestUserInput','params':{'threadId':'thread','turnId':'turn','itemId':'q','isBlocking':True,'questions':[{'id':'choice','question':'Still answerable?'}]}})\n  send({'method':'turn/completed','params':{'threadId':'thread','turn':{'id':'turn','status':'interrupted'}}})");
     for code in [
         client_code().replace(
-            "'result':{'userAgent':'fixture/0.157.1 (test)'}",
+            "'result':{'userAgent':'fixture/0.159.2 (test)'}",
             "'error':{'code':-1,'message':'fixture rejection'}",
         ),
-        client_code().replace("fixture/0.157.1 (test)", "fixture/0.156.1 (test)"),
-        client_code().replace("'userAgent':'fixture/0.157.1 (test)'", "'userAgent':None"),
+        client_code().replace("fixture/0.159.2 (test)", "fixture/0.156.1 (test)"),
+        client_code().replace("'userAgent':'fixture/0.159.2 (test)'", "'userAgent':None"),
         client_code().replace(
             "'result':{'turn':{'id':'turn'}}",
             "'error':{'code':-1,'message':'fixture turn rejection'}",

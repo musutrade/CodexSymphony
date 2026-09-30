@@ -83,17 +83,125 @@ async fn run_service(config: Config) -> Result<(), StartupError> {
     // Never unlink the lock inode on shutdown: another instance may hold it.
     let _instance =
         process::InstanceLock::acquire(std::path::Path::new("/tmp/codexsymphony-controller.lock"))?;
+    listen_for_stop()?;
+    let mut workers = Workers::default();
+    let (served, drained) = serve_and_drain(config, &mut workers).await;
+    // Only environment probes are proven drained; other workers are aborted
+    // without a quiescence claim.
+    workers.stop();
+    finish(served, drained)
+}
+
+#[derive(Default)]
+struct Workers {
+    coordinator: Option<tokio::task::JoinHandle<()>>,
+    github: Option<tokio::task::JoinHandle<()>>,
+}
+
+impl Workers {
+    fn stop(self) {
+        if let Some(coordinator) = self.coordinator {
+            coordinator.abort();
+        }
+        if let Some(github) = self.github {
+            github.abort();
+        }
+    }
+}
+
+/// Polls the service and the stop drain together. A service exit (including
+/// an error) requests a stop and still waits for the drain. A drain that ends
+/// first drops the service, so a service held at the probe gate (startup or an
+/// HTTP handler) cannot keep the process up. Only a successful drain proves no
+/// probe is in flight; after a drain failure or timeout the service is dropped
+/// with its outcome unknown, and the exit is non-zero.
+async fn serve_and_drain(
+    config: Config,
+    workers: &mut Workers,
+) -> (Option<Result<(), StartupError>>, Result<(), StartupError>) {
+    // Both stay owned here, so the race only borrows them: the drain keeps
+    // running after the service finishes, and neither is cancelled early.
+    let mut service = Box::pin(serve_service(config, workers));
+    let mut drain = Box::pin(drain_on_stop());
+    let first = Race {
+        service: service.as_mut(),
+        drain: drain.as_mut(),
+    }
+    .await;
+    match first {
+        First::Served(result) => {
+            request_stop();
+            (Some(result), drain.await)
+        }
+        First::Drained(result) => (None, result),
+    }
+}
+
+enum First {
+    Served(Result<(), StartupError>),
+    Drained(Result<(), StartupError>),
+}
+
+/// Named two-way race; neither future is cancelled by the other's progress.
+/// The service is polled first, so a service result produced in the same wake
+/// as the drain (e.g. a startup error right after its probe) is not lost.
+struct Race<'a, S, D> {
+    service: std::pin::Pin<&'a mut S>,
+    drain: std::pin::Pin<&'a mut D>,
+}
+
+impl<S, D> std::future::Future for Race<'_, S, D>
+where
+    S: std::future::Future<Output = Result<(), StartupError>>,
+    D: std::future::Future<Output = Result<(), StartupError>>,
+{
+    type Output = First;
+
+    fn poll(
+        self: std::pin::Pin<&mut Self>,
+        context: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<First> {
+        let race = self.get_mut();
+        if let std::task::Poll::Ready(result) = race.service.as_mut().poll(context) {
+            return std::task::Poll::Ready(First::Served(result));
+        }
+        if let std::task::Poll::Ready(result) = race.drain.as_mut().poll(context) {
+            return std::task::Poll::Ready(First::Drained(result));
+        }
+        std::task::Poll::Pending
+    }
+}
+
+/// The service error wins; a drain failure is still logged and fails the exit.
+fn finish(
+    served: Option<Result<(), StartupError>>,
+    drained: Result<(), StartupError>,
+) -> Result<(), StartupError> {
+    match &drained {
+        Ok(()) => tracing::info!("environment probes drained; other workers aborted"),
+        Err(error) => tracing::error!("environment drain failed; stop outcome unknown: {}", error),
+    }
+    if let Some(result) = served {
+        result?;
+    }
+    drained
+}
+
+async fn serve_service(config: Config, workers: &mut Workers) -> Result<(), StartupError> {
     let pool = prepare_database(&config.database_url).await?;
     codexsymphony_server::environment_service::startup(&pool).await?;
     codexsymphony_server::generation_store::recover(&pool)
         .await
-        .map_err(|_| std::io::Error::other("generation recovery failed"))?;
+        .map_err(generation_recovery_failed)?;
     let (listener, policy) = listen(config).await?;
     let (worker, runtime) = start_coordinator(&pool).await?;
-    let github = codexsymphony_server::github_service::start(&pool).await?;
-    serve_http(listener, pool, policy, runtime).await?;
-    stop_workers(worker, github);
-    Ok(())
+    workers.coordinator = Some(worker);
+    workers.github = codexsymphony_server::github_service::start(&pool).await?;
+    serve_http(listener, pool, policy, runtime).await
+}
+
+fn generation_recovery_failed<E>(_: E) -> std::io::Error {
+    std::io::Error::other("generation recovery failed")
 }
 
 async fn listen(config: Config) -> Result<(TcpListener, RequestPolicy), StartupError> {
@@ -169,8 +277,57 @@ async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
         .await
 }
 
+static STOP: tokio::sync::Notify = tokio::sync::Notify::const_new();
+static STOPPING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Resolves once a stop has been requested, even if it was requested earlier.
 async fn shutdown_signal() {
-    let _ = tokio::signal::ctrl_c().await;
+    let mut notified = Box::pin(STOP.notified());
+    notified.as_mut().enable();
+    if !STOPPING.load(std::sync::atomic::Ordering::SeqCst) {
+        notified.await;
+    }
+}
+
+fn request_stop() {
+    // Probe admission closes first; HTTP then stops accepting connections.
+    codexsymphony_server::environment_probe::begin_drain();
+    STOPPING.store(true, std::sync::atomic::Ordering::SeqCst);
+    STOP.notify_waiters();
+}
+
+/// Registered before any probe can start, so neither default signal action can
+/// kill this process while a supervisor has not yet written its receipt.
+/// Later signals are absorbed; the drain limit bounds the stop.
+fn listen_for_stop() -> std::io::Result<()> {
+    use tokio::signal::unix::{SignalKind, signal};
+    let terminate = signal(SignalKind::terminate())?;
+    let interrupt = signal(SignalKind::interrupt())?;
+    tokio::spawn(stop_on(terminate));
+    tokio::spawn(stop_on(interrupt));
+    Ok(())
+}
+
+async fn stop_on(mut signal: tokio::signal::unix::Signal) {
+    if signal.recv().await.is_some() {
+        request_stop();
+    }
+}
+
+async fn drain_on_stop() -> Result<(), StartupError> {
+    shutdown_signal().await;
+    drain_environment().await
+}
+
+async fn drain_environment() -> Result<(), StartupError> {
+    // Close admission before loading anything that can fail.
+    codexsymphony_server::environment_probe::begin_drain();
+    if std::env::var_os("ENVIRONMENT_CONFIG").is_none() {
+        // Every probe loads this registry first, so none can have launched.
+        return Ok(());
+    }
+    let registry = codexsymphony_server::environment_host::Registry::load()?;
+    codexsymphony_server::environment_probe::drain(&registry).await
 }
 
 async fn serve_http(
@@ -192,13 +349,6 @@ async fn serve_http(
     .with_graceful_shutdown(shutdown_signal())
     .await?;
     Ok(())
-}
-
-fn stop_workers(worker: tokio::task::JoinHandle<()>, github: Option<tokio::task::JoinHandle<()>>) {
-    worker.abort();
-    if let Some(github) = github {
-        github.abort();
-    }
 }
 
 async fn prepare_database(url: &str) -> Result<PgPool, StartupError> {

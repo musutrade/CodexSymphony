@@ -172,9 +172,11 @@ fn serve_and_shutdown(configured: bool) {
     assert!(!String::from_utf8_lossy(&duplicate.stdout).contains("API listening"));
     // Keep the API alive across a second coordinator tick before shutdown.
     thread::sleep(Duration::from_millis(300));
+    // systemd stops with TERM; interactive stops use INT. Both must drain.
+    let signal = if configured { "-TERM" } else { "-INT" };
     assert!(
         Command::new("kill")
-            .args(["-INT", &child.0.id().to_string()])
+            .args([signal, &child.0.id().to_string()])
             .status()
             .unwrap()
             .success()
