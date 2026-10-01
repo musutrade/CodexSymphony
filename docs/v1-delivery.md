@@ -10,7 +10,7 @@
 具体执行结果、精确源码绑定、原件路径和摘要见 [GH-90 证据](quality/gh90/README.md)。
 受控结果只覆盖表中列出的边界；未完成的真实链继续保留，#90 不据此关闭。
 
-2026-10-01 交付更新：PR #139 已合并为 `cb903a0fa20558c7b62feec3521ff586d582e5ab`。后续 [B05/B06 真实关联修复验收](proposals/gh90-linked-repair-acceptance.md) 已完成 R1 的真实合并后修复，以及 R2 原本地交付的同候选重验。用户真实重启后，旧探测的原生恢复核验和首次受保护停机实测通过；累计模型调用仍为 9 次。队列差异评审修复已通过完整诊断 Gate 并安装，原 R3 revision 2 的 v2 差异授权完成；首次组合检查因原生 TypeError 分类缺口停下，尚无新增模型调用。GH-90 其余现场边界仍开放。
+2026-10-01 交付更新：原 B01 和 B05/B06 混合父组均已 Done。R1 真实合并后修复、R2 原交付重验、R3 两文件关联修复及同候选本地验收/全版本组合重验已完成，原失败和未知暴露保留；全库累计 11 次调用，最终恢复新增零调用。factory 公网 HTTPS 与账号登录/退出检查通过，但本机 origin TLS8443、独立通知器边界、实体手机和离机目标仍未完成。详见[真实链记录](proposals/gh90-linked-repair-acceptance.md)及[公网入口](quality/gh90/factory-ingress.json)；GH-90 保持开放。
 
 ## B01–B08 与增量证据
 
@@ -21,10 +21,10 @@
 | B03 | 真实产品服务、Git、数据库、HTTPS/Chromium 的旧问题接续及暂停重启；脚本 Runtime 对端 | 真实模型接续的原账户记录；实体手机隔夜观测 |
 | B04 | `bounded_recovery`、`budgets`、`extension_lifecycle`，旧预留/事件/修复累计账本 | 已完成原 C1 预算停止/保全恢复与环境修复，unknown 预留保持；其余真实外部暂态及代码失败组合仍待完成 |
 | B05 | `linked_repair`、`automatic_merge`、`local_git`；范围、额度、后继占用和手机决定 | R1 已完成本轮真实交付后失败、原项关联修复及实际合并版本验收；范围外/安全/手机处理等剩余组合仍未完成 |
-| B06 | `integration_validation`、`linked_repair`、`local_git`；原集成项修复和全版本组合重验 | 混合父组真实失败/修复链，旧子项完成事实和旧失败原件均保持 |
+| B06 | `integration_validation`、`linked_repair`、`local_git`；原集成项修复和全版本组合重验 | 已完成本次混合父组真实失败、原项修复和最终版本组合重验，父 Done；旧子项完成事实和失败原件保持，其他故障组合仍开放 |
 | B07 | `group_edits`、`group_queue`、`delivery`、`automatic_merge`；真实服务暂停/取消/重启 | 本轮外部取消与合并竞态的原动作对账；不能以 fixture 推断远端结果 |
-| B08 | GitHub 身份/SHA/有效重跑回归、认证撤销、进程隔离、通知失败、备份恢复 | 已完成三次真实 CI/test-merge/merged 验收；其余 GitHub 故障组合、M2 公网、实体通知与离机恢复仍待完成 |
-| X01 | 实际本地 Git/Node 验收、非 Rust/无项目数据库/缓存关闭、可替换检查、多仓版本组合 | R2 原本地交付验收已 Done，目标保持 d388d2f8；混合父组的 R3 组合验收仍未完成 |
+| B08 | GitHub 身份/SHA/有效重跑回归、认证撤销、进程隔离、通知失败、备份恢复 | 已完成三次真实 CI/test-merge/merged 验收；其余 GitHub 故障组合、完整 M2 部署、实体通知与离机恢复仍待完成 |
+| X01 | 实际本地 Git/Node 验收、非 Rust/无项目数据库/缓存关闭、可替换检查、多仓版本组合 | R2 原本地交付验收已 Done，目标保持 d388d2f8；R3 的修复版本 0f446bb7 与 Rust 9d77f4ff 组合验收已通过，父 Done |
 | X02 | `validation_hooks`、`project_hooks`、`extension_lifecycle` 的伪结果/漂移/超时/代次与迟到 PASS | R2 实际取得同候选新一代证明并保留原失败，零模型调用、零新增 Git 更新；其余故障组合仍待完成 |
 | X03 | `extension_lifecycle` 多仓作用域、撤权、持久事件/有限补投及浏览器状态 | 实际通知渠道送达观测；插件 accepted 保持为插件接收事实 |
 | X04 | `diagnostics`、真实 stdio 客户端、受保护长报告/附件与桌面/移动下载 | 线上修复 Agent 在真实恢复链读取原报告；fixture 不代替本轮线上调用 |
@@ -37,7 +37,7 @@
 “真实链未启动”判断，也不能将其中一条链的成功外推到整个矩阵。
 
 Nginx 补充隔离验收已通过；早期 executable 缺失和补跑首轮导入失败仍保留原事实。
-该结果不代表公网、实体通知或离机生产恢复完成。
+后续 factory 公网功能检查另有实际记录；origin TLS8443、实体通知或离机生产恢复仍未完成。
 
 ## 使用路径
 
@@ -67,7 +67,7 @@ SQLx 迁移由产品启动执行，不能修改已应用迁移。实际迁移终
 
 ## 后续真实试用记录
 
-下面五种需求是记录模板，尚未执行，不是新增发布门槛或零介入率证明：
+下面五种需求是记录模板；已完成混合样本另按真实链取证，其余未执行，不是新增发布门槛或零介入率证明：
 
 | 样本 | 需求与复杂度 | 主要观测 |
 | --- | --- | --- |
@@ -83,11 +83,4 @@ SQLx 迁移由产品启动执行，不能修改已应用迁移。实际迁移终
 介入原因/次数、电脑/手机入口、原件位置与 SHA256、剩余 blocked 条件。
 cached 是 input 的子集，unknown 保留预留；执行/等待/重做单列，重叠时间只计一次。
 
-B05/B06 最新阻塞：原 R1/R2 已 Done，旧探测恢复与受保护停机已实测通过。
-队列模型修复通过完整诊断 Gate 并安装，原 R3 revision 2 只更新模型绑定为 v2。
-首次组合检查的真实 TypeError 未被原分类器识别，尚未生成关联修复；
-服务已受保护停止，全局暂停，累计仍为 9 次模型调用，原账本未重置。
-[R3 首次组合失败索引](quality/gh90/r3-original-integration-classification-failure.json)保留
-原 invocation、完整日志 hash 和零新增消耗。规范诊断识别修复须重新测量及完整 Gate 后部署。
-R2 的完成和诊断 Gate PASS 不代表 R3 或 GH-90 完成。
-具体边界和当前原账户上限见[真实链恢复记录](proposals/gh90-linked-repair-acceptance.md)。
+B05/B06 当前原组完成事实见[本地纠正](quality/gh90/r3-local-acceptance-correction.json)与[证明恢复](quality/gh90/r3-unstarted-validation-context-recovery.json)。父 Done 的组合检查绑定 Rust 9d77f4ff 与 Node 0f446bb7；原账本 SHA 00f29273 不变，未知暴露不释放。实体观测和未覆盖故障组合仍保持开放，最终发布须另有精确树宿主 Gate。

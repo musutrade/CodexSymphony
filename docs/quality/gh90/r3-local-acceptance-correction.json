@@ -1,6 +1,6 @@
 {
   "schema": "gh90-local-acceptance-correction/v1",
-  "status": "implementation_pending_exact_source_validation_and_field_acceptance",
+  "status": "field_acceptance_passed_final_publication_receipt_required",
   "baseline": "0f83b95c00ccf2528077c2bd5be96680e606c293",
   "requirement": 7,
   "revision": 2,
@@ -20,5 +20,133 @@
     "Recognize the same merged repair on successful local acceptance, preserve failed evidence, and follow the existing integration revalidation path.",
     "Hold linked integration scheduling while its local repair delivery is unreleased; preserve the existing GitHub repair path."
   ],
-  "field_acceptance": "Pending new source-bound measurements, checks, complete diagnostic Gate, reviewed installation and zero-model original-account recovery. No Done or integration PASS claimed."
+  "field_acceptance": {
+    "status": "PASS_original_account_zero_additional_models",
+    "date": "2026-10-01",
+    "release_commit": "c50c0a4e88edea5e71232c7d4db33d8165f414bc",
+    "release_tree": "4316f9c16cb4ee8613ce35072d84e2e09709f05a",
+    "installed_binary_sha256": "59d0c4a42d0ed5131569de73da59d03e209b6ce99802b0946804a00186ede395",
+    "diagnostic_gate": "run-b79591685971",
+    "publication_gate": "host-owned final receipt required after documentation freeze; diagnostic result is not publication admission",
+    "monitor_root": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/r3-unstarted-context-monitor-1790861504707266154",
+    "audit_path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/r3-unstarted-context-real-acceptance-audit-codex.json",
+    "audit_sha256": "a8d50e5db53e139115ec610f2f1318ce1a64a0683492f5f72962c5d51cb4df2d",
+    "audit_executor": "Codex after user-authorized takeover; not a new Claude audit",
+    "audit_checks": 27,
+    "requirement_state": "Done",
+    "requirement_revision": 2,
+    "requirement_version": 8,
+    "candidate": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+    "parent_business_complete": true,
+    "parent_state": "Done",
+    "completed_items": 3,
+    "model_calls_observed": 11,
+    "model_calls_added_in_final_recovery": 0,
+    "additional_model_calls_authorized": 0,
+    "whole_account_sha256": "00f29273873dff6a682dfcfdbcebab2153acf81852dd5ab9b076ea429af1500f",
+    "group_accounts": [
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "",
+        "limits": {
+          "turns": 6,
+          "tokens": 720000,
+          "model_seconds": 1080
+        },
+        "used": {
+          "turns": 6,
+          "tokens": 352561,
+          "model_seconds": 205
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 367439,
+          "model_seconds": 875
+        }
+      },
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "R1",
+        "limits": {
+          "turns": 3,
+          "tokens": 360000,
+          "model_seconds": 540
+        },
+        "used": {
+          "turns": 3,
+          "tokens": 229774,
+          "model_seconds": 97
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 130226,
+          "model_seconds": 443
+        }
+      },
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "R2",
+        "limits": {
+          "turns": 1,
+          "tokens": 120000,
+          "model_seconds": 180
+        },
+        "used": {
+          "turns": 1,
+          "tokens": 57561,
+          "model_seconds": 30
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 62439,
+          "model_seconds": 150
+        }
+      },
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "R3",
+        "limits": {
+          "turns": 2,
+          "tokens": 240000,
+          "model_seconds": 360
+        },
+        "used": {
+          "turns": 2,
+          "tokens": 65226,
+          "model_seconds": 78
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 174774,
+          "model_seconds": 282
+        }
+      }
+    ],
+    "unknown_usage_released": false,
+    "global_paused_after_done": true,
+    "original_integration": "integration-3ed9715c-d909-47f5-9c96-a31e06131839",
+    "passed_integration": "integration-47062b9e-befc-4089-acee-afe9735beb52",
+    "versions": {
+      "repository_1": "9d77f4ff9d508e7c28a7d0bb76a2d3fec964adf6",
+      "repository_2": "0f446bb795799cd753aa84651f1eac6fd0f55e68"
+    },
+    "delivery_passed_released_quiescent": true,
+    "original_failure_state": "complete",
+    "post_local_failure_state": "cancelled",
+    "repair_reservations": {
+      "count": 1,
+      "ordinal": 1,
+      "status": "succeeded",
+      "transferred": true
+    },
+    "correction_receipts": 1,
+    "git_delivery_attempts": 1,
+    "prior_requirements_1_to_6_unchanged": true,
+    "original_integration_files_unchanged": true,
+    "limits": [
+      "Paid model work is exhausted; neither restart nor Done clears unknown exposure.",
+      "This real mixed sample does not complete every B01-B08/X01-X05 scenario or GH-90.",
+      "Public gateway, device observations and offsite backup have separate evidence."
+    ]
+  }
 }

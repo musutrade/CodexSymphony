@@ -18,7 +18,7 @@
 其精确树、环境、审批和完整报告必须全数匹配。本目录不将运行后的回执写回被其绑定的树。
 开发过程和失败恢复遵循 [AGENTS.md](../../../AGENTS.md)；旧失败原件不被成功重跑覆盖。
 
-## 本轮结果
+## 早期受控结果（保留原版本身份）
 
 [后端测量](backend-measurement.json)是新采集及独立 LLVM 重导出的 2,309 个生产函数，
 [前端测量](frontend-measurement.json)覆盖 26 个文件、230 个函数；声明文件按批准的分组处理。
@@ -81,25 +81,22 @@ stdout 后 M2 样本通过。39 条样本的通知 fixture 被原作用域触发
 
 账本有 7 条操作 API 介入记录（1 次准备重查、2 次暂停、2 次恢复、2 次保全恢复），另外记录 2 次原账户扩额及 1 次 cc/rg 环境修复；不将该分类冒充全部人工工作的总次数。编码/验收使用 `run-ae5cb2017a43` 完整 Gate 通过的二进制，摘要见索引；最终发布仍须绑定所有后续文档的精确树。
 
-## 仍需完成
+## 原 R3 关联修复及混合父组完成（2026-10-01）
 
-2026-10-01 增量见 [R2 原交付重验索引](r2-original-delivery-revalidation.json)：
-用户真实重启后，fc8d930f 使用原请求取得原生静止证明，原 unknown 不变；
-R2 同候选新验证和原 recheck 实际通过，Req6 Done，新增模型调用和 Git 更新均为零。
-首次受保护停机实际通过。队列模型修复的完整诊断 Gate `run-ced10750ef66` PASS，
-随后仅原 R3 更新到 v2 / revision 2，R1/R2 历史完成和原账本保持。
-[R3 首次组合失败索引](r3-original-integration-classification-failure.json)记录规范 Node
-TypeError 的真实失败及原生分类缺口；未生成关联修复，累计 calls 仍为 9。
-当前服务受保护停止、全局暂停；新分类修复仍需精确源码测量和完整 Gate，R3/GH-90 未完成。
+[R2 原交付重验](r2-original-delivery-revalidation.json)、[R3 首次组合失败](r3-original-integration-classification-failure.json)、[本地验收纠正](r3-local-acceptance-correction.json)和[未启动证明恢复](r3-unstarted-validation-context-recovery.json)保留各阶段原件。规范 TypeError 分类后，首次模型调用因上游认证失败留下未知预留；用户明确向原账户追加 120,000 tokens，正常 storage-recheck 关联的后继完成两文件修复。没有新建账户、清空预留或创建 ordinal 2。
 
-用户后来已授权 GH-90 专属 disposable 范围与有限模型预算，原父组已建立，C1
-已开始真实调用与交付；不得再按早期“零调用、无授权”摘要处理。实际用量、未知预留及
-已批准扩额见当前实施边界和原账本。B01 三代码子项/纯验证父组已完成；真实合并后与集成失败
-修复、混合父组、线上诊断读取及其余 GitHub 故障组合尚待完成，不能据受控回归勾过。
-M2 公网、实体手机/Bark、离机恢复及生产切换责任继续见原 [上线清单](../../m2-delivery.md)。
+同一 Node 候选 `0f446bb795799cd753aa84651f1eac6fd0f55e68` 通过纠正后的本地验收，原交付 passed/released/quiescent。随后组合检查 `integration-47062b9e-befc-4089-acee-afe9735beb52` 实际通过，绑定 Rust `9d77f4ff9d508e7c28a7d0bb76a2d3fec964adf6` 与上述 Node 候选。Req7 revision 2 为 Done；原父组 API 返回 `business_complete=true`、`parent_state=Done`、3/3。旧 integration 失败和五个证据文件不变，原关联失败为 complete，post-local 阻挡为 cancelled。Req1–6 的原完成事实不变。
 
-[环境](environment.json)、[源码输入](source-inputs.json)和 [计时索引](timing-index.json)
-提供版本与原件来源。最终 replay helper 另保留在运行目录，不追认其为早期失败 operator
-版本的精确身份；生产与仓库测试源码由独立 collector 输入摘要绑定。
-计时用原阶段区间合并计算重叠一次；准备/等待空档不回填成执行，最终 Gate 单独由宿主计时。
-本轮已有上述一组真实交付样本；它不代表后续五类试用都已执行，也不用于计算零介入率或外推交付效率。
+全库累计模型调用 11 次（B01 五次、混合组六次）。最终证明恢复、本地纠正及组合重验新增模型调用和 Git 重发均为零。混合组已知 352,561 tokens / 6 turns / 205 模型秒，另保留 367,439 tokens / 875 秒暴露；父上限 720,000 / 6 / 1,080，R3 上限 240,000 / 2 / 360。未知记录不因 Done 结算，当前没有新增付费调用授权。完成后全局暂停，owner 为空。
+
+本次精确源码测量 `run-546435187777` 为 2,442 函数、零违规、max CRAP 10；完整诊断 Gate `run-b79591685971` PASS。部署 commit 为 `c50c0a4e`、tree `4316f9c1`、binary `59d0c4a4`。用户授权 Codex 接手 Claude 网关故障后的工作；Codex执行冻结审计脚本并独立现场核对 27/27，不将其冒充新的 Claude 审计。诊断回执不替代包含本页的最终发布 Gate。
+
+## factory 入口及剩余现场边界
+
+[公网入口索引](factory-ingress.json)记录 `https://factory.aglmud.org` 实际 HTTPS、正常账号登录、Secure Cookie、退出后旧会话拒绝、匿名及伪造 Access 头拒绝、CSRF/Origin 拒绝和静态产物核对。原产品只监听 loopback 3081，现有 Tunnel 沿用 8790；未修改远端 Tunnel。切换前备份、失败首轮回退及业务/账本逐行比较均保留。
+
+此入口的本机段为 loopback HTTP，未安装 M2 要求的 origin TLS8443；用户级网关与控制面共享 UID。公网功能通过不等于完整 M2 部署通过。实体手机、Bark 专用 UID/网络与渠道观测、实际离机目标/独立 AES custody 仍待完成；未把本机备份或 mTLS fixture 当成离机生产备份。
+
+B05/B06/X01 的这个真实混合样本已完成；B02/B03/B04/B05/B07/B08 与 X02–X05 的剩余组合仍按 [V1 索引](../../v1-delivery.md)开放，GH-90 不据此关闭。
+
+[环境](environment.json)、[源码输入](source-inputs.json)和 [计时索引](timing-index.json)提供各自原版本与原件来源。计时仍使用原阶段边界，不把等待回填成执行，不据这一组样本外推零介入率或交付效率。最终精确树发布身份由仓库外宿主回执保存。
