@@ -1,0 +1,24 @@
+{
+  "schema": "gh90-unstarted-validation-context-recovery/v1",
+  "status": "implementation_pending_source_bound_validation_and_field_acceptance",
+  "baseline": "797a86f88f13f544a296855122e95529d77c767a",
+  "requirement": 7,
+  "revision": 2,
+  "candidate": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+  "model_calls_observed": 11,
+  "additional_model_calls_authorized": 0,
+  "failed_attempt": "r3-local-acceptance-monitor-1790853642629390073",
+  "facts": [
+    "The same-candidate proof recovery decision was accepted before the correction CLI. The worker superseded the old proof before rebinding the delivery, so correction admission rejected the still-bound old proof with RowNotFound; no correction receipt was created.",
+    "Protected global pause and stop preserved the account and all 11 model calls, but the existing invalidation trigger also marked the approved successor invalidated before its first invocation.",
+    "The successor remains pending/declaration with no context, evaluation, start time, validation step or project-hook invocation. The original running recovery decision and both validation generations are retained.",
+    "Existing recovery admission cannot authorize another generation while the delivered action remains bound to its superseded predecessor; no direct database mutation or replacement account is used."
+  ],
+  "implementation": [
+    "Initialize a fresh context for a never-invoked, explicitly approved delivery-revalidation successor under current original-task authority, locking execution control and the Requirement in the same transaction.",
+    "Permit invalidation clearance only when the running authenticated-operator decision, successor/predecessor relation, requirement, revision, source run, candidate and deployed plan all match and no invocation or validation evidence exists.",
+    "Preserve old proof invalidation and all usage exposure. Existing contexts, ordinary interrupted validations, cancellation, pause and conflicting evidence remain rejected.",
+    "Wait for successful proof completion and original-delivery rebinding before replaying the retained correction request; do not submit another extension-recovery decision."
+  ],
+  "field_acceptance": "Pending exact source-bound coverage/CRAP, checks, complete diagnostic Gate, reviewed release/install/start and zero-model original-account acceptance. No R3 Done or new integration PASS claimed."
+}
