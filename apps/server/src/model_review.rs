@@ -73,18 +73,45 @@ pub fn group(
 ) -> Result<()> {
     let defaults = has_defaults(repositories);
     for item in &mut review.items {
-        if item.model_selection.is_none() && !defaults {
-            item.frozen_model = None;
-            continue;
-        }
-        let repository = child_repository(document, &item.child_id, repositories)?;
-        item.frozen_model = freeze(
-            item.model_selection.as_ref(),
-            repository.id,
-            repository.version,
-            &repository.repository,
-        )?;
+        freeze_item(document, item, repositories, defaults)?;
     }
+    Ok(())
+}
+
+/// A delta review grants fresh model authority only to its changed items.
+/// Unchanged items retain the identity under which they were authorized.
+pub fn group_selected(
+    document: &Document,
+    review: &mut Review,
+    repositories: &[RepositorySnapshot],
+    affected: &[String],
+) -> Result<()> {
+    let defaults = has_defaults(repositories);
+    for item in &mut review.items {
+        if affected.contains(&item.child_id) {
+            freeze_item(document, item, repositories, defaults)?;
+        }
+    }
+    Ok(())
+}
+
+fn freeze_item(
+    document: &Document,
+    item: &mut crate::group_review::Item,
+    repositories: &[RepositorySnapshot],
+    defaults: bool,
+) -> Result<()> {
+    if item.model_selection.is_none() && !defaults {
+        item.frozen_model = None;
+        return Ok(());
+    }
+    let repository = child_repository(document, &item.child_id, repositories)?;
+    item.frozen_model = freeze(
+        item.model_selection.as_ref(),
+        repository.id,
+        repository.version,
+        &repository.repository,
+    )?;
     Ok(())
 }
 
@@ -112,6 +139,21 @@ pub fn verify_group(
 ) -> Result<()> {
     let mut expected = review.clone();
     group(document, &mut expected, repositories)?;
+    verify_models(review, &expected)
+}
+
+pub fn verify_group_selected(
+    document: &Document,
+    review: &Review,
+    repositories: &[RepositorySnapshot],
+    affected: &[String],
+) -> Result<()> {
+    let mut expected = review.clone();
+    group_selected(document, &mut expected, repositories, affected)?;
+    verify_models(review, &expected)
+}
+
+fn verify_models(review: &Review, expected: &Review) -> Result<()> {
     for (actual, expected) in review.items.iter().zip(&expected.items) {
         if actual.frozen_model != expected.frozen_model {
             return Err("model choice changed after review; save and review again");
@@ -147,3 +189,7 @@ pub fn runtime_registration(repository: i64, input: &Repository) -> Result<Regis
     };
     registration(&deployment, repository, version, input)
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/model_review.rs"]
+mod tests;
