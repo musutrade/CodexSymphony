@@ -22,7 +22,7 @@ pub(crate) async fn tick(
     incarnation: &str,
 ) -> Result<()> {
     let mut tx = crate::run_store::lock(pool).await?;
-    let row: Option<Repair> = sqlx::query_as("SELECT f.id AS failure,f.repository_id AS repository,f.final_version AS version,v.id AS previous,v.job,v.launch FROM linked_failure f JOIN execution_control c ON c.requirement_id=f.requirement_id JOIN LATERAL (SELECT * FROM integration_validation WHERE requirement_id=f.requirement_id ORDER BY created_at DESC,id DESC LIMIT 1) v ON true WHERE f.state='merged' AND f.revalidation_id IS NULL AND v.quiescent AND v.state='failed' AND NOT EXISTS(SELECT 1 FROM linked_failure x WHERE x.requirement_id=f.requirement_id AND x.state IN ('observed','reserved','blocked')) ORDER BY f.created_at DESC LIMIT 1").fetch_optional(&mut *tx).await?;
+    let row: Option<Repair> = sqlx::query_as("SELECT f.id AS failure,f.repository_id AS repository,f.final_version AS version,v.id AS previous,v.job,v.launch FROM linked_failure f JOIN execution_control c ON c.requirement_id=f.requirement_id JOIN LATERAL (SELECT * FROM integration_validation WHERE requirement_id=f.requirement_id ORDER BY created_at DESC,id DESC LIMIT 1) v ON true WHERE f.state='merged' AND f.revalidation_id IS NULL AND NOT EXISTS(SELECT 1 FROM delivery d WHERE d.action_key=f.repair_delivery AND d.mode='local_git' AND NOT d.released) AND v.quiescent AND v.state='failed' AND NOT EXISTS(SELECT 1 FROM linked_failure x WHERE x.requirement_id=f.requirement_id AND x.state IN ('observed','reserved','blocked')) ORDER BY f.created_at DESC LIMIT 1").fetch_optional(&mut *tx).await?;
 
     let Some(repair) = row else {
         return Ok(());

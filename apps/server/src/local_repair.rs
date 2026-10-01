@@ -50,7 +50,7 @@ pub(crate) async fn accepted(
     job: &Job,
     evidence: &ValidationEvidence,
 ) -> Result<bool> {
-    let linked: Option<String>=sqlx::query_scalar("UPDATE linked_failure SET state='merged',final_version=$2 WHERE repair_delivery=$1 AND state='reserved' RETURNING id").bind(&job.action_key).bind(json!({"candidate":evidence.candidate,"evidence":evidence,"local_delivery":job.action_key})).fetch_optional(&mut **tx).await?;
+    let linked: Option<String>=sqlx::query_scalar("UPDATE linked_failure SET state='merged',final_version=CASE WHEN state='merged' THEN final_version||$2 ELSE $2 END WHERE repair_delivery=$1 AND requirement_id=$3 AND revision=$4 AND (state='reserved' OR (state='merged' AND final_version->>'local_delivery'=$1 AND final_version->'candidate'=$5::jsonb)) RETURNING id").bind(&job.action_key).bind(json!({"candidate":evidence.candidate,"evidence":evidence,"local_delivery":job.action_key})).bind(job.requirement_id).bind(job.revision).bind(json!(evidence.candidate)).fetch_optional(&mut **tx).await?;
     if linked.is_none() {
         return Ok(false);
     }

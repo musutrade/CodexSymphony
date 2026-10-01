@@ -3140,3 +3140,6 @@ print(json.dumps(dict(identity, status='success', artifacts=[])), flush=True)
         .bind(json!(hooks)).execute(&p.pool).await.unwrap();
     p.hooks = json!({"hook_allowlist":hooks});
 }
+
+#[path = "local_git/linked_acceptance_recheck.rs"]
+mod linked_acceptance_recheck;

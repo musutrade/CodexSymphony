@@ -1,0 +1,24 @@
+{
+  "schema": "gh90-local-acceptance-correction/v1",
+  "status": "implementation_pending_exact_source_validation_and_field_acceptance",
+  "baseline": "0f83b95c00ccf2528077c2bd5be96680e606c293",
+  "requirement": 7,
+  "revision": 2,
+  "candidate": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+  "model_calls_observed": 11,
+  "additional_model_calls_authorized": 0,
+  "facts": [
+    "The authorized successor produced a candidate limited to index.js and test/index.test.js; native validation succeeded and the original local Git delivery confirmed that candidate.",
+    "The retained post-local check incorrectly requires two repositories in a one-repository local invocation; the previously reviewed R2 corrected plan distinguishes local acceptance from mixed integration.",
+    "The existing correction gate only admits original code_change children, excluding the authorized linked repair of validation_only R3.",
+    "The original integration failure is already merged after failed local acceptance; successful correction must recognize that exact delivery and candidate and return R3 to Running for mixed integration revalidation.",
+    "The first interrupted call retains unknown exposure; the successor has incomplete usage and retains its reservation. The explicit original-account increase remains recorded without resetting either call.",
+    "Correction cancels the post-local failure before the serial worker reaches local delivery; linked integration must wait for that original local repair delivery to be released by accepted local validation."
+  ],
+  "implementation": [
+    "Admit correction only for an exact linked repair input, successfully validated original-item repair reservation, merged failure, matching requirement/revision/repository/delivery/candidate and unchanged input document.",
+    "Recognize the same merged repair on successful local acceptance, preserve failed evidence, and follow the existing integration revalidation path.",
+    "Hold linked integration scheduling while its local repair delivery is unreleased; preserve the existing GitHub repair path."
+  ],
+  "field_acceptance": "Pending new source-bound measurements, checks, complete diagnostic Gate, reviewed installation and zero-model original-account recovery. No Done or integration PASS claimed."
+}
