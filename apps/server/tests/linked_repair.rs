@@ -8,10 +8,14 @@ use codexsymphony_server::{
 mod source;
 use serde_json::json;
 fn failure() -> (std::path::PathBuf, ValidationEvidence) {
+    failure_printing("AssertionError: reviewed source invariant\n")
+}
+/// Executes a trusted failing check that prints `output` through the real runner.
+fn failure_printing(output: &str) -> (std::path::PathBuf, ValidationEvidence) {
     let (root, repo, mut plan) = source::fixture();
     std::fs::write(
         &plan.entry,
-        "#!/bin/sh\necho 'AssertionError: reviewed source invariant'\nexit 1\n",
+        format!("#!/bin/sh\ncat <<'GH90_OUTPUT'\n{output}GH90_OUTPUT\nexit 1\n"),
     )
     .unwrap();
     plan.entry_sha256 = validation::sha256(std::fs::read(&plan.entry).unwrap());
@@ -123,4 +127,65 @@ fn independent_contract_failure_is_classified_only_with_trusted_code_flag() {
         evidence.steps[0].code_failure = true;
     }
     std::fs::remove_dir_all(root).unwrap();
+}
+
+// Recorded GH-90 R3 integration output: the Node unit phase passes, then the
+// trusted mixed check calls a method on a module that exports a bare function.
+const R3_NODE_OUTPUT: &str = "\u{2714} wireVersion returns version 1 (1.138262ms)\n\u{2139} tests 1\n\u{2139} pass 1\n\u{2139} fail 0\n[eval]:12\n assert.equal(local.wireVersion(),2,'AssertionError: mixed contract requires Node wire version 2');\n                    ^\n\nTypeError: local.wireVersion is not a function\n    at [eval]:12:21\n    at runScriptInThisContext (node:internal/vm:219:10)\n\nNode.js v24.18.0\n";
+
+#[test]
+fn native_node_not_a_function_failure_authorizes_only_reviewed_paths() {
+    let (root, evidence) = failure_printing(R3_NODE_OUTPUT);
+    let required = vec!["test".into()];
+    assert_eq!(evidence.steps[0].output, R3_NODE_OUTPUT);
+    assert_eq!(evidence.steps[0].exit_code, Some(1));
+    let scope = Scope::parse(
+        &json!({"schema":"linked-repair/v1","checks":{"test":["index.js","test/index.test.js"]}})
+            .to_string(),
+    )
+    .unwrap();
+    assert!(failed_code(&evidence, &required));
+    assert_eq!(
+        scope.paths(&evidence, &required).unwrap(),
+        vec!["index.js", "test/index.test.js"]
+    );
+
+    let mut untrusted = evidence.clone();
+    untrusted.steps[0].code_failure = false;
+    assert!(!failed_code(&untrusted, &required));
+    assert!(scope.paths(&untrusted, &required).is_err());
+
+    let mut tampered = evidence.clone();
+    tampered.steps[0].output_sha256 = validation::sha256("other output");
+    assert!(!failed_code(&tampered, &required));
+    assert!(scope.paths(&tampered, &required).is_err());
+
+    let mut rewritten = evidence.clone();
+    rewritten.steps[0].output = R3_NODE_OUTPUT.replace("wireVersion is", "version is");
+    assert!(!failed_code(&rewritten, &required));
+    assert!(scope.paths(&rewritten, &required).is_err());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn type_error_cannot_override_infrastructure_or_match_loosely() {
+    let required = vec!["test".into()];
+    let scope = Scope::parse(
+        &json!({"schema":"linked-repair/v1","checks":{"test":["index.js"]}}).to_string(),
+    )
+    .unwrap();
+    for output in [
+        "permission denied\nTypeError: local.wireVersion is not a function\n",
+        "connection refused\nTypeError: local.wireVersion is not a function\n",
+        "HTTP 429\nTypeError: local.wireVersion is not a function\n",
+        "TypeError: Cannot read properties of undefined (reading 'wireVersion')\n",
+        "    at TypeError: local.wireVersion is not a function\n",
+        " assert.equal(x,2,'TypeError: local.wireVersion is not a function');\n",
+    ] {
+        let (root, evidence) = failure_printing(output);
+        assert_eq!(evidence.steps[0].output, output);
+        assert!(!failed_code(&evidence, &required), "{output:?}");
+        assert!(scope.paths(&evidence, &required).is_err(), "{output:?}");
+        std::fs::remove_dir_all(root).unwrap();
+    }
 }

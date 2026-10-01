@@ -99,28 +99,28 @@ pub fn repair_limit(policy: &str) -> i64 {
 /// code diagnosis. Unrecognized output remains unknown, even with a nonzero exit.
 pub fn native_failure(raw: &str) -> &'static str {
     let lower = raw.to_ascii_lowercase();
-    if [
-        "permission denied",
-        "invalid configuration",
-        "unauthorized",
-        "forbidden",
-    ]
-    .iter()
-    .any(|s| lower.contains(s))
-    {
+    if contains_marker(
+        &lower,
+        &[
+            "permission denied",
+            "invalid configuration",
+            "unauthorized",
+            "forbidden",
+        ],
+    ) {
         return "permission_denied";
     }
-    if [
-        "connection refused",
-        "connection reset",
-        "service unavailable",
-        "could not resolve host",
-        "temporary failure in name resolution",
-        "pooltimedout",
-    ]
-    .iter()
-    .any(|s| lower.contains(s))
-    {
+    if contains_marker(
+        &lower,
+        &[
+            "connection refused",
+            "connection reset",
+            "service unavailable",
+            "could not resolve host",
+            "temporary failure in name resolution",
+            "pooltimedout",
+        ],
+    ) {
         return "service_unavailable";
     }
     if lower.contains("http 429") || lower.contains("rate limit exceeded") {
@@ -133,14 +133,43 @@ pub fn native_failure(raw: &str) -> &'static str {
 }
 
 fn code_diagnostic(raw: &str, lower: &str) -> bool {
-    raw.contains("error[E")
+    if raw.contains("error[E")
         || raw.contains("error TS")
         || lower.contains("assertion `left == right` failed")
         || lower.contains("assertion failed:")
-        || raw.lines().any(|line| line.starts_with("AssertionError"))
-        || raw.lines().any(|line| {
-            line.starts_with("FAIL independent ")
-                && (line.contains(" acceptance contract:")
-                    || line.contains(" integration contract:"))
-        })
+    {
+        return true;
+    }
+    for line in raw.lines() {
+        if code_diagnostic_line(line) {
+            return true;
+        }
+    }
+    false
 }
+
+fn contains_marker(raw: &str, markers: &[&str]) -> bool {
+    for marker in markers {
+        if raw.contains(marker) {
+            return true;
+        }
+    }
+    false
+}
+
+fn code_diagnostic_line(line: &str) -> bool {
+    if line.starts_with("AssertionError") {
+        return true;
+    }
+    if line.starts_with("TypeError: ") && line.ends_with(" is not a function") {
+        return true;
+    }
+    if !line.starts_with("FAIL independent ") {
+        return false;
+    }
+    line.contains(" acceptance contract:") || line.contains(" integration contract:")
+}
+
+#[cfg(test)]
+#[path = "../tests/unit/bounded_recovery.rs"]
+mod tests;

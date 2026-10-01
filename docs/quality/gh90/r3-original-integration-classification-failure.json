@@ -1,0 +1,71 @@
+{
+  "schema": "gh90-original-integration-failure/v1",
+  "status": "R3 failed; native classification repair pending validation",
+  "requirement_id": 7,
+  "requirement_revision": 2,
+  "group_authorization_id": 3,
+  "original_draft": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+  "diagnostic_candidate": {
+    "commit": "6dc75ee28598daec7f43286ca9fcad4bb450b94f",
+    "tree": "394e9ae139d46061e56ce2656890dea6e9b444a9",
+    "gate": "run-ced10750ef66",
+    "status": "PASS",
+    "publication_authority": false
+  },
+  "installed_release_sha256": "63f4541282f97bc8f15a12431838889dcb0c71c4d73c97b549db47d695f98dec",
+  "runtime_capability_version": "gh90-approved-v2",
+  "selected_model": {
+    "provider": "openai",
+    "model": "gpt-6.1-sol",
+    "effort": "medium"
+  },
+  "historical_R1_R2_preserved": true,
+  "r3_budget_delta": {
+    "tokens": 0,
+    "turns": 0,
+    "model_seconds": 0
+  },
+  "integration": {
+    "id": "integration-3ed9715c-d909-47f5-9c96-a31e06131839",
+    "state": "failed",
+    "quiescent": true,
+    "raw_log_sha256": "35be93977a1aaa831ce25323e46381cb381a47cb2113f31b55c017d87273b0eb",
+    "observed_error": "TypeError: local.wireVersion is not a function",
+    "cause": "R2 exports the CommonJS function directly; frozen mixed check calls its wireVersion property; native classifier does not recognize this TypeError",
+    "trusted_plan_changed": false,
+    "historical_delivery_changed": false
+  },
+  "model_calls_total": 9,
+  "model_calls_added": 0,
+  "repair_reservations_added": 0,
+  "original_account_unchanged_except_R3_budget_version": true,
+  "global_paused": true,
+  "service_stopped": true,
+  "acceptance_complete": false,
+  "evidence": [
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/queue-model-fix-complete-gate-result.json",
+      "sha256": "fd5ba4a668162c2f66c3aa6ba3b460702c15c9ecb7a1a8fc71733661894940a9"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/queue-model-fix-release-binding-audit-claude.json",
+      "sha256": "ba3a2f3e164c0036bea052fec6a1560457c0c5d6cf160f56f13a1034327c3fca"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/queue-model-fix-install-1790833507947664841/result.json",
+      "sha256": "5f1146b2bbeb973a34ef76c1b9b9f82151d9af52dd02ff6b92a4743e2149635a"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/queue-model-fix-queue-1790834226784794289/approve-postconditions.json",
+      "sha256": "3bddc0af0e7574599a751bbe2ac559f44e3a6edff79b3e15c07e77f2804010b6"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/queue-model-fix-approve-audit-claude.md",
+      "sha256": "3d7248d1a69835f30f35c36017863625244bd580a8e1c37239d1cd2d788db609"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/r3-first-integration-native-classification-failure.json",
+      "sha256": "97d166ce9d9cb244bdada944db686af7cccbaa94306db48e55165347a3a25378"
+    }
+  ]
+}

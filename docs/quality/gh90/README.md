@@ -86,8 +86,11 @@ stdout 后 M2 样本通过。39 条样本的通知 fixture 被原作用域触发
 2026-10-01 增量见 [R2 原交付重验索引](r2-original-delivery-revalidation.json)：
 用户真实重启后，fc8d930f 使用原请求取得原生静止证明，原 unknown 不变；
 R2 同候选新验证和原 recheck 实际通过，Req6 Done，新增模型调用和 Git 更新均为零。
-首次受保护停机实际通过，Req7 仍暂停。R3 的 v2 切换被队列差异评审重新冻结历史项阻塞，
-需要最小产品修复、新测量与完整 Gate；不是恢复证明失败，也不是预算被重置。
+首次受保护停机实际通过。队列模型修复的完整诊断 Gate `run-ced10750ef66` PASS，
+随后仅原 R3 更新到 v2 / revision 2，R1/R2 历史完成和原账本保持。
+[R3 首次组合失败索引](r3-original-integration-classification-failure.json)记录规范 Node
+TypeError 的真实失败及原生分类缺口；未生成关联修复，累计 calls 仍为 9。
+当前服务受保护停止、全局暂停；新分类修复仍需精确源码测量和完整 Gate，R3/GH-90 未完成。
 
 用户后来已授权 GH-90 专属 disposable 范围与有限模型预算，原父组已建立，C1
 已开始真实调用与交付；不得再按早期“零调用、无授权”摘要处理。实际用量、未知预留及

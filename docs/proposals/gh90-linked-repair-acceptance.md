@@ -1,6 +1,6 @@
 # GH-90 B05/B06：真实关联修复验收计划
 
-状态（2026-10-01）：**R1 和 R2 已完成真实交付验收；用户重启后，旧探测已通过原生恢复核验。R3 未启动，v2 模型切换被队列差异评审错误地重新冻结已完成项阻塞，正在修复，尚未完成 GH-90。** 原账户及未知预留保持，累计仍为 9 次模型调用。
+状态（2026-10-01）：**R1/R2 已完成真实交付验收；队列模型修复已通过完整诊断 Gate、安装及原项 v2 差异授权。R3 revision 2 的首次实际组合检查失败：规范 Node TypeError 未被原生分类器识别，尚未生成关联修复。服务已受保护停止，原账户保留，GH-90 未完成。** 累计仍为 9 次模型调用，没有新增模型或修复预约。
 
 ## 重启后的原账户恢复与 R2 完成
 
@@ -19,14 +19,21 @@ Req6 为 Done，本地目标仍为 `d388d2f8e02fa51fe16516405fa3697004e2a97e`，
 首次受保护停机实测 PASS：服务成功退出，日志确认环境探测排空；934 个已启动探测目录
 均有静止回执或原生恢复证明。helper 记录退出已确认，但主进程退出码为
 `not observable`；退出状态 0 来自 systemd，二者没有混写。
-服务现已停止、原数据库保留运行，Req7 仍暂停。配置尚未切换至 v2，R3 没有领取或调用模型。
-逐项原件及摘要见 [R2 恢复索引](../quality/gh90/r2-original-delivery-revalidation.json)。
+队列修复的完整诊断 Gate 为 `run-ced10750ef66`，候选 tree 为 `394e9ae1`。
+原组仅 R3 进入 affected，新 authorization 3 保持 R1/R2 的业务绑定和历史完成事实，
+R3 revision 2 冻结为 `gh90-approved-v2` / `openai/gpt-6.1-sol/medium`，预算 delta 为零。
+父账本 token 余量保持 120000，R3 item 总限额保持 120000/2/360。
 
-v2 切换前源码核对发现：queue-edit 对全部 review items 重新冻结模型，既会拒绝已完成项
-的历史模型，也会把变化后的 capability version 计为这些项的内容变更。
-本轮修复应保留未变化项的原冻结身份，只重新冻结受影响且未开始的项；
-不通过复用 v1 的版本含义、修改历史事实或改回旧模型绕过。修复须重新取得测量和完整 Gate，
-安装后才能继续 R3。以下 2026-09-29 的阻塞描述和额度表保留为原始历史。
+首次原项 integration 在同 revision 2 上真实失败：已完成的 Node 产物直接导出函数，
+冻结组合检查调用 `local.wireVersion()`，抛出 `TypeError: ... is not a function`。
+原分类器保守地将它保留为 unknown，未生成 linked_failure 或消耗模型额度。
+正在补规范诊断行识别及其权限、基础设施、可信检查标记和证据完整性回归；
+必须先重新测量并取得新 exact-tree 完整 Gate，才能部署并通过原 invocation 继续正常处理。
+不改冻结检查、不覆盖失败结果、不改 R1/R2 历史、不创建新账户或释放 unknown exposure。
+当前服务受保护停止、global pause=true；原数据库保留运行。
+原件摘要见 [R2 恢复索引](../quality/gh90/r2-original-delivery-revalidation.json)和
+[R3 首次组合失败索引](../quality/gh90/r3-original-integration-classification-failure.json)。
+以下 2026-09-29 的阻塞描述和额度表保留为原始历史。
 
 ## 当前恢复工作
 
