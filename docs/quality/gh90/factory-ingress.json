@@ -1,0 +1,72 @@
+{
+  "schema": "gh90-factory-ingress/v1",
+  "status": "public_https_functional_with_declared_deployment_limits",
+  "date": "2026-10-01",
+  "origin": "https://factory.aglmud.org",
+  "backend": "127.0.0.1:3081",
+  "gateway_listener": "127.0.0.1:8790",
+  "gateway_root": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/gh90-factory-gateway-1790862704808693306",
+  "plan_sha256": "c3088b7bb708730bdd0a60fb4674a16193afe666693a4a2a3a5242366199c460",
+  "local_result_sha256": "4ac845ebae58e581ee557707e6f2ab85746d5d5eb8c08525d36ab991ff08ab72",
+  "public_audit_path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/gh90-factory-gateway-1790862704808693306/public-https-auth-audit.json",
+  "public_audit_sha256": "252b1fdf03bed3431aa2d66d6e865b02e58cf27f3d4e3122f7d8f78659584be2",
+  "nginx_binary_sha256": "94eb839f1cdc7f3f42062d352b504fe406e2f888d83b554af7ea25bcdc9506f5",
+  "nginx_authority": "retained GH-90 isolated fixture prerequisite/package receipt; no replacement host approval",
+  "product_binary_sha256": "59d0c4a42d0ed5131569de73da59d03e209b6ce99802b0946804a00186ede395",
+  "static_files": 14,
+  "static_provenance": "Copied retained frontend output from successful diagnostic Gate run-b79591685971; individual hashes in gateway plan",
+  "public_checks": {
+    "verified_https": true,
+    "anonymous_access_headers_status": [
+      401,
+      401,
+      401
+    ],
+    "origin_pid_owned_loopback_only": true,
+    "direct_origin_rejected": true,
+    "public_static_matches_installed_index": true,
+    "normal_https_login": true,
+    "secure_cookie_flags": true,
+    "authenticated_parent_done": true,
+    "foreign_origin_write_rejected": 403,
+    "invalid_csrf_write_rejected": 403,
+    "logout_revokes_old_session": true,
+    "status": "PASS_WITH_DECLARED_DEPLOYMENT_LIMITS",
+    "executor": "Codex",
+    "at_ns": 1790862843010038228,
+    "calls": 11,
+    "model_calls_added": 0,
+    "account_unchanged": true,
+    "global_paused": true,
+    "mobile_human_observation": "not_observed",
+    "origin_tls8443": "not_installed",
+    "offsite_backup": "not_configured",
+    "deviations": [
+      "Existing HTTPS Tunnel forwards to loopback HTTP8790; shipped M2 origin TLS8443 is not satisfied.",
+      "User gateway shares UID with controller; dedicated service-role deployment remains pending."
+    ]
+  },
+  "original_business_rows_unchanged": true,
+  "whole_account_unchanged": true,
+  "global_paused": true,
+  "remote_tunnel_modified": false,
+  "first_attempt": {
+    "root": "gh90-factory-gateway-1790862474320397093",
+    "status": "FAIL_rolled_back",
+    "cause": "upstream connection refused before backend readiness",
+    "original_files_restored": true,
+    "evidence_preserved": true
+  },
+  "remaining": [
+    "Origin TLS8443 / Tunnel originServerName configuration differs from shipped M2 deployment.",
+    "Dedicated notifier UID/network namespace not provisioned; product notifier remains disabled.",
+    "Real phone observation not recorded.",
+    "Offsite HTTPS mTLS target and independent AES custody not configured."
+  ],
+  "offsite_backup": {
+    "status": "not_configured",
+    "target_provided": false,
+    "authority": "User clarified on 2026-10-01 that no offsite target had been provided.",
+    "disposition": "Keep as explicit remaining complete-deployment acceptance item; no new storage purchase or fabricated target."
+  }
+}

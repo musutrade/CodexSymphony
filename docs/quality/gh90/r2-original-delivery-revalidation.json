@@ -1,0 +1,148 @@
+{
+  "schema": "gh90-original-delivery-revalidation/v1",
+  "source_commit": "853e10d2c1405b689828716413d6ae26be95fe0e",
+  "source_tree": "7afb0fa64465074a17a5f6c148e0d326f0022820",
+  "server_sha256": "f42ae39222fd93095bffee695c8600d1aa53b0e45f5d614f5057a5b70f61eca6",
+  "scope": "real original-account post-reboot recovery, R2 same-candidate revalidation and protected stop; not publication authority or complete GH-90 acceptance",
+  "recovery": {
+    "invocation": "fc8d930f-2c35-46ce-bb7f-43eee434fa7b",
+    "request_sha256": "93a3a8493187289c5243ad4e1eace45dc6e40018863c6b6563c21607d04cd719",
+    "proof_sha256": "1595929137664133c24bc42aa3d0707705730aeae26200b5c77cfd0d3d1446e4",
+    "old_boot": "36d0de4e-7df6-4bd9-a2da-0f570079dd51",
+    "new_boot": "b5d23771-fe19-4534-acf7-e03e07db92f9",
+    "accepted": true,
+    "quiescence_proven": true,
+    "prior_result": "unknown",
+    "started": false,
+    "original_ten_files_unchanged": true,
+    "independent_audit": "PASS"
+  },
+  "R2": {
+    "ended_at": "2026-10-01T04:10:28.113225+00:00",
+    "status": "PASS",
+    "scope": "R2 actual same-candidate original local delivery revalidation",
+    "requirement": 6,
+    "state": "Done",
+    "target_head": "d388d2f8e02fa51fe16516405fa3697004e2a97e",
+    "model_calls_added": 0,
+    "model_calls_total": 9,
+    "account_exactly_unchanged": true,
+    "delivery_attempts": 1,
+    "recheck_ordinal": 1,
+    "requirement7_paused_unclaimed": true,
+    "all_execution_quiescent": true,
+    "successor_validation": "revalidate-580beb77-81d2-4d0a-9da3-02ce25509313",
+    "Git_updates_added": 0
+  },
+  "protected_stop": {
+    "recorded_at": "2026-10-01T04:11:20.281342+00:00",
+    "status": "PASS",
+    "scope": "first actual protected service stop after R2",
+    "unit_result": "success",
+    "command_exit_code": 0,
+    "exec_main_status": 0,
+    "helper": {
+      "boot_id": "b5d23771-fe19-4534-acf7-e03e07db92f9",
+      "exit_status": "not observable",
+      "helper": "codexsymphony-stop-drain",
+      "outcome": "exited",
+      "pid": 20439,
+      "signal": "SIGTERM",
+      "signalled": true,
+      "starttime": 121521,
+      "unit": "codexsymphony-gh90-live.service"
+    },
+    "environment_drained": true,
+    "unproven_launched_directories": 0,
+    "launched_directories": 934,
+    "model_calls_added": 0
+  },
+  "R1_actual_version": {
+    "repository": "musutrade/disposable-2",
+    "pr": 18,
+    "merged_sha": "9d77f4ff9d508e7c28a7d0bb76a2d3fec964adf6",
+    "source": "original group_completion and remote GitHub readback; corrects frozen-plan historical PR17 pointer"
+  },
+  "original_parent_budget": {
+    "limits": {
+      "tokens": 600000,
+      "turns": 6,
+      "model_seconds": 1080
+    },
+    "used": {
+      "tokens": 287335,
+      "turns": 4,
+      "model_seconds": 127
+    },
+    "reserved": {
+      "tokens": 192665,
+      "turns": 0,
+      "model_seconds": 593
+    },
+    "R3_single_authorized_reservation": {
+      "tokens": 120000,
+      "turns": 1,
+      "model_seconds": 180
+    },
+    "unknown_released": false
+  },
+  "remaining": {
+    "R3": "not started; paused; fix queue-edit historical model refreeze, measure, complete Gate and install before approved v2 switch",
+    "GH90": "open; other controlled and physical-device acceptance limits remain",
+    "publication": "not performed for this candidate"
+  },
+  "evidence": [
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/readiness.json",
+      "sha256": "600e01717b9c81eb6a050a7dc3867d9d0608b6a0cd0fd5ed8193d82b3b770f09"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/reconcile-start.json",
+      "sha256": "f4251bfe65b2f0a1f835a0d7ac17129de238342d095d753cdfd558912333049f"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/reconcile-result.json",
+      "sha256": "825bbe2573b7dc2456310aa391245b4fd5ac01f4038bfa61074af46d830ebd94"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/proof-audit.json",
+      "sha256": "27568b64686281aca58b5af41413e466a582a5a4d6c803f5414c8c9254909eb5"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-proof-audit-claude.json",
+      "sha256": "9bb7100112fbf75115ae14f47a4b99022f5e5807eec1cca0abf580c9bc299d62"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/r2-result.json",
+      "sha256": "939b4779496b95e023a33426e934c5436ac5d0c10a6d1bee351488f2220397b3"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/r2-account-after.json",
+      "sha256": "ef467e1ae8e796568368ba64d2653e13bbafe39b21233bbfedbf7aee7100e107"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/r2-state-after.json",
+      "sha256": "6727042757ac79d5a0d85739c01305b2ac16b07b632cf32d26ebdc5c693f1d8a"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/r2-revalidate-decision.json",
+      "sha256": "ab69f93b45063e105625f4c54a93c272fc2029aace594bed597107af0d00abea"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/protected-stop-audit.json",
+      "sha256": "c5df3d95a15152ff2651f49b852c8bd95d016a210bfb53199a61bda6e7a31c58"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/protected-stop-journal.txt",
+      "sha256": "6a5a17d6f51777bd0a35bd15f8e81a47df7ae75a7e1add243f8983532179663f"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-reboot-recovery-20261001T040412197650Z/protected-stop-probe-inventory.json",
+      "sha256": "cc3a2fa2c484f35c79406185414ecd76244a6c8b377411e2d1c70b8f981c8c04"
+    },
+    {
+      "path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/post-r2-stop-and-v2-stage-audit-claude.md",
+      "sha256": "7db88b9045c92e7fe952dfc0edd7d412c06b26d3fec322d8df712e1f27c4fc3c"
+    }
+  ]
+}

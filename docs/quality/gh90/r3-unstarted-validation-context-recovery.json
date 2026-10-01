@@ -1,0 +1,193 @@
+{
+  "schema": "gh90-unstarted-validation-context-recovery/v1",
+  "status": "field_acceptance_passed_final_publication_receipt_required",
+  "baseline": "797a86f88f13f544a296855122e95529d77c767a",
+  "requirement": 7,
+  "revision": 2,
+  "candidate": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+  "model_calls_observed": 11,
+  "additional_model_calls_authorized": 0,
+  "failed_attempt": "r3-local-acceptance-monitor-1790853642629390073",
+  "facts": [
+    "The same-candidate proof recovery decision was accepted before the correction CLI. The worker superseded the old proof before rebinding the delivery, so correction admission rejected the still-bound old proof with RowNotFound; no correction receipt was created.",
+    "Protected global pause and stop preserved the account and all 11 model calls, but the existing invalidation trigger also marked the approved successor invalidated before its first invocation.",
+    "At the retained failed attempt, the successor remained pending/declaration with no context, evaluation, start time, validation step or project-hook invocation. The original running recovery decision and both validation generations are retained.",
+    "Existing recovery admission cannot authorize another generation while the delivered action remains bound to its superseded predecessor; no direct database mutation or replacement account is used."
+  ],
+  "implementation": [
+    "Initialize a fresh context for a never-invoked, explicitly approved delivery-revalidation successor under current original-task authority, locking execution control and the Requirement in the same transaction.",
+    "Permit invalidation clearance only when the running authenticated-operator decision, successor/predecessor relation, requirement, revision, source run, candidate and deployed plan all match and no invocation or validation evidence exists.",
+    "Preserve old proof invalidation and all usage exposure. Existing contexts, ordinary interrupted validations, cancellation, pause and conflicting evidence remain rejected.",
+    "Wait for successful proof completion and original-delivery rebinding before replaying the retained correction request; do not submit another extension-recovery decision."
+  ],
+  "field_acceptance": {
+    "status": "PASS_original_account_zero_additional_models",
+    "date": "2026-10-01",
+    "release_commit": "c50c0a4e88edea5e71232c7d4db33d8165f414bc",
+    "release_tree": "4316f9c16cb4ee8613ce35072d84e2e09709f05a",
+    "installed_binary_sha256": "59d0c4a42d0ed5131569de73da59d03e209b6ce99802b0946804a00186ede395",
+    "diagnostic_gate": "run-b79591685971",
+    "publication_gate": "host-owned final receipt required after documentation freeze; diagnostic result is not publication admission",
+    "monitor_root": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/r3-unstarted-context-monitor-1790861504707266154",
+    "audit_path": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/r3-unstarted-context-real-acceptance-audit-codex.json",
+    "audit_sha256": "a8d50e5db53e139115ec610f2f1318ce1a64a0683492f5f72962c5d51cb4df2d",
+    "audit_executor": "Codex after user-authorized takeover; not a new Claude audit",
+    "audit_checks": 27,
+    "requirement_state": "Done",
+    "requirement_revision": 2,
+    "requirement_version": 8,
+    "candidate": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+    "parent_business_complete": true,
+    "parent_state": "Done",
+    "completed_items": 3,
+    "model_calls_observed": 11,
+    "model_calls_added_in_final_recovery": 0,
+    "additional_model_calls_authorized": 0,
+    "whole_account_sha256": "00f29273873dff6a682dfcfdbcebab2153acf81852dd5ab9b076ea429af1500f",
+    "group_accounts": [
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "",
+        "limits": {
+          "turns": 6,
+          "tokens": 720000,
+          "model_seconds": 1080
+        },
+        "used": {
+          "turns": 6,
+          "tokens": 352561,
+          "model_seconds": 205
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 367439,
+          "model_seconds": 875
+        }
+      },
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "R1",
+        "limits": {
+          "turns": 3,
+          "tokens": 360000,
+          "model_seconds": 540
+        },
+        "used": {
+          "turns": 3,
+          "tokens": 229774,
+          "model_seconds": 97
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 130226,
+          "model_seconds": 443
+        }
+      },
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "R2",
+        "limits": {
+          "turns": 1,
+          "tokens": 120000,
+          "model_seconds": 180
+        },
+        "used": {
+          "turns": 1,
+          "tokens": 57561,
+          "model_seconds": 30
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 62439,
+          "model_seconds": 150
+        }
+      },
+      {
+        "draft_id": "draft-0b8eba13-160f-436f-9792-811e5d1a1a12",
+        "item_id": "R3",
+        "limits": {
+          "turns": 2,
+          "tokens": 240000,
+          "model_seconds": 360
+        },
+        "used": {
+          "turns": 2,
+          "tokens": 65226,
+          "model_seconds": 78
+        },
+        "reserved": {
+          "turns": 0,
+          "tokens": 174774,
+          "model_seconds": 282
+        }
+      }
+    ],
+    "unknown_usage_released": false,
+    "global_paused_after_done": true,
+    "original_integration": "integration-3ed9715c-d909-47f5-9c96-a31e06131839",
+    "passed_integration": "integration-47062b9e-befc-4089-acee-afe9735beb52",
+    "versions": {
+      "repository_1": "9d77f4ff9d508e7c28a7d0bb76a2d3fec964adf6",
+      "repository_2": "0f446bb795799cd753aa84651f1eac6fd0f55e68"
+    },
+    "delivery_passed_released_quiescent": true,
+    "original_failure_state": "complete",
+    "post_local_failure_state": "cancelled",
+    "repair_reservations": {
+      "count": 1,
+      "ordinal": 1,
+      "status": "succeeded",
+      "transferred": true
+    },
+    "correction_receipts": 1,
+    "git_delivery_attempts": 1,
+    "prior_requirements_1_to_6_unchanged": true,
+    "original_integration_files_unchanged": true,
+    "limits": [
+      "Paid model work is exhausted; neither restart nor Done clears unknown exposure.",
+      "This real mixed sample does not complete every B01-B08/X01-X05 scenario or GH-90.",
+      "Public gateway, device observations and offsite backup have separate evidence."
+    ]
+  },
+  "measurement": {
+    "run": "run-546435187777",
+    "functions": 2442,
+    "violations": 0,
+    "maximum_crap": 10,
+    "measurements_sha256": "cfac0f0d57e83c6e08b53aa450e05391cd1e350bc98ba7ae3ec3c958161d09e7",
+    "changed_source_sha256": "327036e8e1501c0e04d5174b1fa5c683b06543b6269f0c93f9dad5de22e00e57",
+    "changed_functions": {
+      "freeze_context": {
+        "lines": "33/33",
+        "regions": "57/63",
+        "crap": 7
+      },
+      "persist_context": {
+        "lines": "23/23",
+        "regions": "50/54",
+        "crap": 8
+      }
+    },
+    "manual_bundle_registration_prefix": "52657c55",
+    "independent_raw_inventory_files": 451,
+    "independent_raw_inventory_bytes": 7953800240,
+    "independent_audit_checks": 27,
+    "independent_audit_executor": "Codex executing frozen Claude audit script after quota failure"
+  },
+  "retained_failures": [
+    {
+      "run": "run-01c39288e63d",
+      "cause": "test fixture missing execution incarnation; fixed test fixture only",
+      "raw_files": 149,
+      "raw_bytes": 7962614752,
+      "raw_location": "/mnt/dev-ssd/codexsymphony-state/storage-maintenance/operations/fixed-workspace-20260928/gh90-b05-b06-preparation/gh90-reboot-1790730077380603042/revision-4/r3-unstarted-context-failed-native-01c39288e63d",
+      "registered": false,
+      "pass": false,
+      "retention_note": "Manually relocated unregistered failed raw from bounded loop0 to existing evidence volume with exact name/hash/byte verification; deviation from original-path wording recorded."
+    },
+    {
+      "root": "r3-unstarted-context-start-1790860877692615164",
+      "cause": "operator API session expired; normal login with existing private account, no credential reset or business SQL"
+    }
+  ]
+}

@@ -31,7 +31,7 @@ class CodexUpgradeTests(unittest.TestCase):
             for name in generator.NAMES:
                 (directory / (name + '.json')).write_text(json.dumps(schema))
             source, before = generator.generate(directory)
-            self.assertIn('Codex 0.157.1.', source)
+            self.assertIn('Codex 0.159.2.', source)
             self.assertIn('pub required_name: String,', source)
             self.assertIn('pub capabilities: Option<serde_json::Value>,', source)
             changed = directory / 'InitializeParams.json'
@@ -47,7 +47,7 @@ class CodexUpgradeTests(unittest.TestCase):
 
     def test_preparation_accepts_new_runtime_and_rejects_old_runtime(self):
         probe = module('upgrade_probe', 'tools/preparation/environment_probe.py')
-        with patch.object(probe, 'run', return_value='codex-cli 0.157.1'):
+        with patch.object(probe, 'run', return_value='codex-cli 0.159.2'):
             self.assertEqual(probe.tools(project_verified=True), [])
         with patch.object(probe, 'run', return_value='codex-cli 0.156.1'):
             with self.assertRaisesRegex(ValueError, 'Codex version'):
@@ -58,10 +58,10 @@ class CodexUpgradeTests(unittest.TestCase):
             import hashlib
             digest = hashlib.sha256(executable.read_bytes()).hexdigest()
             lock = {'core_version': 'core fixture', 'core_sha256': digest,
-                    'codex_version': 'codex-cli 0.157.1'}
+                    'codex_version': 'codex-cli 0.159.2'}
             with patch.object(probe.shutil, 'which', return_value=str(executable)):
                 with patch.object(probe, 'run', side_effect=[
-                        'core fixture', 'core fixture', 'codex-cli 0.157.1']):
+                        'core fixture', 'core fixture', 'codex-cli 0.159.2']):
                     self.assertEqual(len(probe.tools(lock)), 2)
                 with patch.object(probe, 'run', return_value='wrong core'):
                     with self.assertRaisesRegex(ValueError, 'Core version'):
@@ -94,7 +94,7 @@ class CodexUpgradeTests(unittest.TestCase):
         frames = [json.loads(line) for line in output.getvalue().splitlines()]
         replies = {frame['id']: frame for frame in frames if 'result' in frame}
         self.assertEqual(replies[1]['result']['userAgent'],
-                         'scripted-mobile-fixture/0.157.1 (test)')
+                         'scripted-mobile-fixture/0.159.2 (test)')
         self.assertEqual(replies[6]['result']['stdout'], 'probe')
         self.assertEqual(sum(frame.get('method') == 'item/tool/requestUserInput'
                              for frame in frames), 1)

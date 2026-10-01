@@ -175,7 +175,7 @@ impl Client<'_> {
             .rpc("initialize", &params, self.settings.startup_seconds)
             .await?;
         let version_matches = match initialized["userAgent"].as_str() {
-            Some(agent) => agent.contains("/0.157.1 "),
+            Some(agent) => agent.contains("/0.159.2 "),
             None => false,
         };
         runtime_store::require(version_matches, "app-server version mismatch")?;

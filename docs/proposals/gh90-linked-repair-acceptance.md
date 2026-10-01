@@ -1,8 +1,51 @@
 # GH-90 B05/B06：真实关联修复验收计划
 
-状态（2026-09-29）：**R1 已完成真实合并后修复闭环，R2 已本地交付但验收脚本识别阶段错误，R3 未启动；当前被旧环境探测缺少静止证明阻塞，尚未完成 GH-90。** 用户追加的原账户 token 授权已实际应用；没有重建账户或释放未知预留。
+状态（2026-10-01）：**原 R1/R2/R3 和混合父组已 Done，当前全局暂停，累计 11 次模型调用；GH-90 的其余组合和现场边界仍开放。** 最终同候选恢复新增零模型调用、零 Git 重发，没有重建账户或释放未知暴露。
 
-## 当前恢复工作
+## 当前完成事实与剩余边界
+
+[R3 本地验收纠正](../quality/gh90/r3-local-acceptance-correction.json)和[未启动证明恢复](../quality/gh90/r3-unstarted-validation-context-recovery.json)绑定原件及现场 27 项读回。当前成功组合为 `integration-47062b9e-befc-4089-acee-afe9735beb52`，Rust `9d77f4ff`、Node `0f446bb7`；原 integration 失败保留，关联 failure complete，post-local cancelled，交付 passed/released/quiescent。Req7 revision 2 / version 8 Done，父 3/3。
+
+用户追加的 120,000 tokens 已应用到原账户：父限额 720,000 / 6 / 1,080，R3 240,000 / 2 / 360；混合组已知用量 352,561 / 6 / 205，未知预留 367,439 tokens / 875 秒仍保持。原401调用与后继的不完整用量不作零账单，当前无新增付费调用授权。
+
+[factory 入口](../quality/gh90/factory-ingress.json)的实际 HTTPS/登录/退出与代理拒绝检查通过；现有 Tunnel 的 loopback HTTP8790 与 M2 TLS8443 有明确差异。实体手机、Bark 独立 UID/网络和渠道观测、离机目标及独立 AES custody 仍待完成。源码诊断 Gate PASS 和这个真实样本不能关闭 GH-90 或替代最终发布精确树 Gate。
+
+## 历史阶段记录（以下状态与额度不作为当前运行参数）
+
+## 重启后的原账户恢复与 R2 完成
+
+用户已完成真实重启。`fc8d930f-2c35-46ce-bb7f-43eee434fa7b` 使用原请求的完全相同字节执行
+`environment reconcile`，原生结果为 `accepted=true`、`quiescence_proven=true`、
+`started=false`、`prior_result=unknown`、`model_calls_added=0`。目录身份和原十个文件未变；
+新证明绑定同一 machine、新 boot 与原起点，独立审计 PASS，没有改写旧 unknown。
+
+原数据库和服务启动前后，原账户、未知预留和 42 条迁移校验和逐项一致。
+Req7 保持需求级暂停，Req6 的原本地交付通过 `RevalidateLocalDelivery` 取得同候选的新证明，
+新验证 `revalidate-580beb77-81d2-4d0a-9da3-02ce25509313` 和原 recheck ordinal 1 实际通过。
+Req6 为 Done，本地目标仍为 `d388d2f8e02fa51fe16516405fa3697004e2a97e`，
+原交付尝试仍为一次，新增 Git 更新与模型调用均为零；R1 实际版本保持
+`9d77f4ff9d508e7c28a7d0bb76a2d3fec964adf6`（disposable-2 PR #18）。
+
+首次受保护停机实测 PASS：服务成功退出，日志确认环境探测排空；934 个已启动探测目录
+均有静止回执或原生恢复证明。helper 记录退出已确认，但主进程退出码为
+`not observable`；退出状态 0 来自 systemd，二者没有混写。
+队列修复的完整诊断 Gate 为 `run-ced10750ef66`，候选 tree 为 `394e9ae1`。
+原组仅 R3 进入 affected，新 authorization 3 保持 R1/R2 的业务绑定和历史完成事实，
+R3 revision 2 冻结为 `gh90-approved-v2` / `openai/gpt-6.1-sol/medium`，预算 delta 为零。
+父账本 token 余量保持 120000，R3 item 总限额保持 120000/2/360。
+
+首次原项 integration 在同 revision 2 上真实失败：已完成的 Node 产物直接导出函数，
+冻结组合检查调用 `local.wireVersion()`，抛出 `TypeError: ... is not a function`。
+原分类器保守地将它保留为 unknown，未生成 linked_failure 或消耗模型额度。
+正在补规范诊断行识别及其权限、基础设施、可信检查标记和证据完整性回归；
+必须先重新测量并取得新 exact-tree 完整 Gate，才能部署并通过原 invocation 继续正常处理。
+不改冻结检查、不覆盖失败结果、不改 R1/R2 历史、不创建新账户或释放 unknown exposure。
+当前服务受保护停止、global pause=true；原数据库保留运行。
+原件摘要见 [R2 恢复索引](../quality/gh90/r2-original-delivery-revalidation.json)和
+[R3 首次组合失败索引](../quality/gh90/r3-original-integration-classification-failure.json)。
+以下 2026-09-29 的阻塞描述和额度表保留为原始历史。
+
+## 历史恢复工作（2026-09-29）
 
 预算恢复代码经完整 Gate `run-73a070c55905` PASS 并安装后，原 Requirement 5 的关联修复实际启动，
 [PR #18](https://github.com/musutrade/disposable-2/pull/18) 受保护合并为
@@ -35,7 +78,7 @@ R2 **120,000 / 1 / 180**，R3 **120,000 / 2 / 360**。以下早期预算表是�
 格式、Clippy、秘密扫描通过；历史回执记录显示完整 Gate `run-063b1746d0a3` 对源码树
 `9489ebad5fb161e1e3361509923fa75e33d48e5a` PASS（原运行目录已不保留，此处不重新核验原报告）。
 该二进制已在服务/数据库停止时安装，为旧探测保存了起点记录，同次开机的静止核验被正确拒绝。
-准备成功只表示起点已记录，不表示已停止或已启动新任务。当前授权不包括机器重启或任务恢复，
+准备成功只表示起点已记录，不表示已停止或已启动新任务。当时授权不包括机器重启或任务恢复，
 因此 R2/R3 在取得实际静止证明前继续暂停。
 
 该实现随后整合到 PR #144 之后的 main 基线；整合后的精确树须重新测量并取得新的完整 Gate

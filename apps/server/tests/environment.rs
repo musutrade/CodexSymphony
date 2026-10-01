@@ -985,7 +985,7 @@ async fn p9_validation_is_bound_to_task_environment_and_retained_source_at_deliv
     typed_repository.environment = None;
     assert!(codexsymphony_server::contract::authorize(&typed_contract, &typed_repository).is_err());
     sqlx::query("UPDATE requirement_revision SET document=document || jsonb_build_object('contract',$1::jsonb) WHERE requirement_id=1").bind(contract).execute(&pool).await.unwrap();
-    sqlx::raw_sql("UPDATE requirement SET state='Running' WHERE id=1; UPDATE execution_control SET recovery_complete=true,paused=false WHERE id=1;").execute(&pool).await.unwrap();
+    sqlx::raw_sql("UPDATE requirement SET state='Running' WHERE id=1; UPDATE execution_control SET recovery_complete=true,paused=false,incarnation='boot' WHERE id=1;").execute(&pool).await.unwrap();
     let checkout = root.join("candidate");
     assert!(
         Command::new("git")
@@ -1216,6 +1216,18 @@ async fn p9_validation_is_bound_to_task_environment_and_retained_source_at_deliv
     .unwrap();
     assert_eq!(unknown["verdict"], "unknown");
     assert!(failed_directory.join("stderr.log").exists());
+    fs::set_permissions(&plan.entry, fs::Permissions::from_mode(0o700)).unwrap();
+    let successor_directory = root.join("validation-successor");
+    approved_successor_survives_protected_stop(
+        &pool,
+        validation_service::Request {
+            id: "validation-successor",
+            directory: &successor_directory,
+            ..request()
+        },
+        &action,
+    )
+    .await;
     let slow_entry = root.join("slow-validation");
     let slow_script = "#!/bin/sh\nprintf 'starting real check\\n'\nsleep 30\n";
     fs::write(&slow_entry, slow_script).unwrap();
@@ -1331,6 +1343,70 @@ async fn seed_hook_retry(
 ) {
     sqlx::query("INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result,retry_of) SELECT $1,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,$2,required_steps,source_before,source_before,$3,$3,'declaration','pending',id FROM candidate_validation WHERE id='validate'")
         .bind(id).bind(json!(plan.identity().unwrap())).bind(&plan.entry_sha256).execute(pool).await.unwrap();
+}
+
+/// Field regression: an operator-approved successor created before a protected
+/// stop was invalidated by the pause before its first invocation. After resume
+/// it freezes a fresh context and really executes once; no model is involved.
+async fn approved_successor_survives_protected_stop(
+    pool: &sqlx::PgPool,
+    request: codexsymphony_server::validation_service::Request<'_>,
+    action: &str,
+) {
+    use codexsymphony_server::validation_service;
+    let id = request.id;
+    seed_hook_retry(pool, id, request.plan).await;
+    let digest = request.plan.identity().unwrap().config_sha256;
+    sqlx::query("UPDATE candidate_validation SET hook_required=true WHERE id=$1")
+        .bind(id)
+        .execute(pool)
+        .await
+        .unwrap();
+    sqlx::query("UPDATE candidate_validation SET superseded_by=$1,hook_invalidated=true WHERE id='validate'")
+        .bind(id).execute(pool).await.unwrap();
+    sqlx::query("INSERT INTO recovery_failure(event_key,requirement_id,source_validation_id,phase,facts,fingerprint,decision,reason,resolution,resolution_state,successor_validation) VALUES('protected-stop',1,'validate','delivery','{}','fixture','blocked','fixture',$1,'running',$2)")
+        .bind(json!({"actor":"authenticated_operator","command":{"validation_id":"validate","action":{"kind":"revalidate_delivery","plan_digest":digest}}}))
+        .bind(id).execute(pool).await.unwrap();
+    for paused in [true, false] {
+        sqlx::query("UPDATE requirement SET paused=$1 WHERE id=1")
+            .bind(paused)
+            .execute(pool)
+            .await
+            .unwrap();
+    }
+    let flags =
+        "SELECT hook_context IS NULL,hook_invalidated,result FROM candidate_validation WHERE id=$1";
+    let before: (bool, bool, String) = sqlx::query_as(flags)
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(before, (true, true, "pending".into()));
+    assert!(validation_service::validate(pool, request).await.unwrap());
+    let after: (bool, bool, String) = sqlx::query_as(flags)
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .unwrap();
+    assert_eq!(after, (false, false, "succeeded".into()));
+    let verdict: Value = sqlx::query_scalar(
+        "SELECT hook_evaluation->'verdict' FROM candidate_validation WHERE id=$1",
+    )
+    .bind(id)
+    .fetch_one(pool)
+    .await
+    .unwrap();
+    assert_eq!(verdict, "pass");
+    // The original action is retained and only its proof binding moves.
+    let rebound: (String, i64) = sqlx::query_as("SELECT d.validation_id,(SELECT count(*) FROM delivery_observation o WHERE o.action_key=d.action_key AND o.kind='validation_rebound' AND o.fact->>'external_attempts'='0') FROM delivery d WHERE d.action_key=$1")
+        .bind(action).fetch_one(pool).await.unwrap();
+    assert_eq!(rebound, (id.to_string(), 1));
+    let counts: (i64, i64) =
+        sqlx::query_as("SELECT (SELECT count(*) FROM delivery),(SELECT count(*) FROM model_call)")
+            .fetch_one(pool)
+            .await
+            .unwrap();
+    assert_eq!(counts, (1, 0));
 }
 
 #[tokio::test]

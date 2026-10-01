@@ -52,6 +52,8 @@ async fn checked_previous(
 ) -> Result<(Value, Value, Value)> {
     let job = authorize(tx, command).await?;
     verify_target(&job)?;
+    // Admission only: the receipt stays the replayable acknowledgement.
+    proof_status(tx, &job).await?;
     let (old_job, old_result, failure) = previous(tx, command).await?;
     require(
         validation::sha256(serde_json::to_vec(&old_result)?) == command.previous_result_sha256,
@@ -84,7 +86,7 @@ async fn replay(
 }
 
 async fn authorize(tx: &mut Transaction<'_, Postgres>, command: &Command) -> Result<Job> {
-    let job: Job = sqlx::query_as("SELECT d.*,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) JOIN requirement r ON r.id=d.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN repository p ON p.id=d.internal_repository_id JOIN candidate_validation v ON v.id=d.validation_id WHERE d.action_key=$1 AND d.requirement_id=$2 AND r.version=$3 AND d.mode='local_git' AND a.kind='publish' AND a.attempts>0 AND a.state='blocked' AND r.state='Submitted' AND EXISTS(SELECT 1 FROM group_execution_item i WHERE i.requirement_id=r.id AND i.input#>>'{child,kind}'='code_change') AND r.revision=d.revision AND NOT r.cancel_requested AND (r.paused OR c.paused) AND c.recovery_complete AND NOT d.released AND d.local_acceptance_started AND d.local_acceptance_quiescent AND d.local_acceptance->>'passed'='false' AND NOT (p.document->>'revoked')::boolean AND p.version=(d.policy->>'repository_version')::bigint AND p.version>p.revoked_through_version AND plugin_scope_allows('delivery:local_git',p.id) AND plugin_scope_allows('validation:native',p.id) AND v.result='succeeded' AND v.superseded_by IS NULL AND v.candidate_sha=d.head_sha AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent) AND NOT EXISTS(SELECT 1 FROM integration_validation WHERE NOT quiescent) AND NOT EXISTS(SELECT 1 FROM workspace_operation WHERE status<>'complete') AND NOT EXISTS(SELECT 1 FROM repair_reservation x JOIN linked_failure f ON f.id=x.linked_failure_id WHERE f.local_delivery=d.action_key)")
+    let job: Job = sqlx::query_as("SELECT d.*,a.state,a.attempts FROM delivery d JOIN delivery_action a USING(action_key) JOIN requirement r ON r.id=d.requirement_id JOIN execution_control c ON c.requirement_id=r.id JOIN repository p ON p.id=d.internal_repository_id JOIN candidate_validation v ON v.id=d.validation_id WHERE d.action_key=$1 AND d.requirement_id=$2 AND r.version=$3 AND d.mode='local_git' AND a.kind='publish' AND a.attempts>0 AND a.state='blocked' AND r.state='Submitted' AND (EXISTS(SELECT 1 FROM group_execution_item i WHERE i.requirement_id=r.id AND i.input#>>'{child,kind}'='code_change') OR EXISTS(SELECT 1 FROM linked_run_input li JOIN linked_failure lf ON lf.id=li.failure_id JOIN repair_reservation pr ON pr.linked_failure_id=lf.id AND pr.repair_run_id=li.run_id WHERE li.run_id=v.source_run_id AND v.requirement_id=r.id AND v.revision=d.revision AND lf.requirement_id=r.id AND lf.revision=d.revision AND lf.repository_id=d.internal_repository_id AND lf.repair_delivery=d.action_key AND lf.state='merged' AND lf.final_version->>'local_delivery'=d.action_key AND lf.final_version#>>'{candidate,sha}'=d.head_sha AND li.document=lf.document AND pr.requirement_id=r.id AND pr.status='succeeded')) AND r.revision=d.revision AND NOT r.cancel_requested AND (r.paused OR c.paused OR EXISTS(SELECT 1 FROM recovery_failure f WHERE f.requirement_id=d.requirement_id AND f.resolution->>'actor'='authenticated_operator' AND f.resolution#>>'{command,action,kind}'='revalidate_local_delivery' AND f.resolution#>>'{command,action,delivery_key}'=d.action_key AND ((f.resolution_state='pending' AND f.source_validation_id=d.validation_id AND f.resolution#>>'{command,validation_id}'=d.validation_id) OR (f.resolution_state='complete' AND f.successor_validation=d.validation_id)))) AND c.recovery_complete AND NOT d.released AND d.local_acceptance_started AND d.local_acceptance_quiescent AND d.local_acceptance->>'passed'='false' AND NOT (p.document->>'revoked')::boolean AND p.version=(d.policy->>'repository_version')::bigint AND p.version>p.revoked_through_version AND plugin_scope_allows('delivery:local_git',p.id) AND plugin_scope_allows('validation:native',p.id) AND v.result='succeeded' AND v.superseded_by IS NULL AND v.candidate_sha=d.head_sha AND NOT EXISTS(SELECT 1 FROM agent_run WHERE NOT quiescent) AND NOT EXISTS(SELECT 1 FROM integration_validation WHERE NOT quiescent) AND NOT EXISTS(SELECT 1 FROM workspace_operation WHERE status<>'complete') AND NOT EXISTS(SELECT 1 FROM repair_reservation x JOIN linked_failure f ON f.id=x.linked_failure_id WHERE f.local_delivery=d.action_key)")
         .bind(&command.delivery_key).bind(command.requirement_id).bind(command.version)
         .fetch_one(&mut **tx).await?;
     require(
@@ -92,6 +94,37 @@ async fn authorize(tx: &mut Transaction<'_, Postgres>, command: &Command) -> Res
         "original group authorization unavailable",
     )?;
     Ok(job)
+}
+
+/// Register a correction only when it can start: the delivery proof is current,
+/// or an approved same-candidate generation of exactly this proof is pending.
+/// A pause invalidates environment-bound proof, so a delivery covered by such
+/// an approval (held by `local_delivery_store::pending` until rebound) or
+/// already rebound under it does not additionally need a pause.
+async fn proof_status(tx: &mut Transaction<'_, Postgres>, job: &Job) -> Result<&'static str> {
+    let (required, invalidated, current, pending): (bool, bool, bool, bool) = sqlx::query_as("SELECT v.hook_required,v.hook_invalidated,COALESCE((v.hook_context#>>'{call,deadline_unix_ms}')::bigint>(extract(epoch FROM now())*1000)::bigint,false),(v.superseded_by IS NULL AND EXISTS(SELECT 1 FROM recovery_failure f WHERE f.requirement_id=v.requirement_id AND f.source_validation_id=v.id AND f.resolution->>'actor'='authenticated_operator' AND f.resolution#>>'{command,validation_id}'=v.id AND f.resolution#>>'{command,action,kind}'='revalidate_local_delivery' AND f.resolution#>>'{command,action,delivery_key}'=$2 AND f.resolution_state='pending' AND f.successor_validation IS NULL)) FROM candidate_validation v WHERE v.id=$1")
+        .bind(&job.validation_id).bind(&job.action_key).fetch_one(&mut **tx).await?;
+    classify_proof(required, invalidated, current, pending)
+}
+
+fn classify_proof(
+    required: bool,
+    invalidated: bool,
+    current: bool,
+    pending: bool,
+) -> Result<&'static str> {
+    if pending {
+        return Ok("revalidation_pending");
+    }
+    require(
+        !invalidated,
+        "delivery proof invalidated by control interruption; approve a same-candidate validation generation first",
+    )?;
+    require(
+        !required || current,
+        "delivery proof expired without interruption; reconcile before correction",
+    )?;
+    Ok("current")
 }
 
 fn verify_target(job: &Job) -> Result<()> {
@@ -232,3 +265,7 @@ pub(crate) async fn active(tx: &mut Transaction<'_, Postgres>, delivery: &str) -
     .fetch_one(&mut **tx)
     .await?)
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/local_acceptance_recheck.rs"]
+mod tests;

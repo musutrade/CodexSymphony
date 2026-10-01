@@ -8,6 +8,11 @@ pub async fn enqueue(tx: &mut Transaction<'_, Postgres>, validation: &str) -> Re
     let (requirement, revision, head, document, manifest): (i64,i64,String,Value,Value) = sqlx::query_as("SELECT v.requirement_id,v.revision,v.candidate_sha,COALESCE(i.document,r.document),s.manifest FROM candidate_validation v JOIN execution_revision r ON r.requirement_id=v.requirement_id AND r.revision=v.revision JOIN workspace_snapshot s ON s.run_id=v.source_run_id LEFT JOIN linked_run_input i ON i.run_id=v.source_run_id WHERE v.id=$1 AND v.result='succeeded' AND s.candidate AND s.manifest->>'head'=v.candidate_sha")
         .bind(validation).fetch_one(&mut **tx).await?;
     if document["repository"]["delivery"] == "local_git" {
+        // A reviewed successor of an already delivered version keeps the
+        // original action; a validation-derived key would imply a new write.
+        if crate::extension_delivery_recovery::rebind_delivered(tx, validation).await? {
+            return Ok(());
+        }
         return crate::local_delivery_store::enqueue(
             tx,
             validation,

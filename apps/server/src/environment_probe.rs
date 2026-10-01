@@ -9,8 +9,16 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
+    sync::atomic::{AtomicBool, Ordering},
     time::{Duration, Instant},
 };
+
+/// Bounded supervisor stop window after a probe deadline; drain uses the same value.
+const STOP_WINDOW: Duration = Duration::from_secs(20);
+// Reconciliation must not mistake another live probe in this process for
+// an abandoned invocation. Keep its original receipts and wait for it.
+static PROBES: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+static DRAINING: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -76,10 +84,9 @@ pub async fn check_bound(
     workspace: Option<&Path>,
     context: Option<&TaskContext>,
 ) -> Result<Report> {
-    // Reconciliation must not mistake another live probe in this process for
-    // an abandoned invocation. Keep its original receipts and wait for it.
-    static PROBES: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
-    let _probe = PROBES.lock().await;
+    let Some(_probe) = admitted().await else {
+        return stopping().await;
+    };
     reconcile(&registry.evidence_root)?;
     let profile = registry.resolve(plan)?;
     verify_workspace(profile, workspace)?;
@@ -87,6 +94,61 @@ pub async fn check_bound(
     let request = request(plan, profile, stage, role, workspace, context)?;
     let directory = prepare_input(registry, &request)?;
     observe(plan, profile, request, directory).await
+}
+
+/// Stop admitting probes. Idempotent; set as soon as the stop request arrives.
+pub fn begin_drain() {
+    DRAINING.store(true, Ordering::SeqCst);
+}
+
+/// Longest in-flight probe lifetime: the largest registered profile deadline
+/// plus the supervisor stop window used by `wait`.
+pub fn drain_limit(registry: &Registry) -> Duration {
+    let mut longest = 0;
+    for profile in registry.profiles.values() {
+        longest = longest.max(profile.timeout_seconds);
+    }
+    Duration::from_secs(longest) + STOP_WINDOW
+}
+
+pub async fn drain(registry: &Registry) -> Result<()> {
+    drain_within(&registry.evidence_root, drain_limit(registry)).await
+}
+
+/// Success requires both no in-flight probe and the existing reconciliation
+/// rule over the whole evidence root: identity equals quiescent, or a verified
+/// host proof. Lock release alone is not proof, because `wait` also releases
+/// it after reporting an unknown stop.
+pub async fn drain_within(evidence_root: &Path, limit: Duration) -> Result<()> {
+    begin_drain();
+    settled(evidence_root, limit).await
+}
+
+/// Separate from the gate so shared-binary unit tests never close admission.
+async fn settled(evidence_root: &Path, limit: Duration) -> Result<()> {
+    let Ok(_probe) = tokio::time::timeout(limit, PROBES.lock()).await else {
+        return Err("environment drain timed out; in-flight probe outcome unknown".into());
+    };
+    reconcile(evidence_root)
+}
+
+/// Checked before and after queueing so a probe waiting on the lock cannot
+/// create evidence or launch a supervisor once draining has started.
+async fn admitted() -> Option<tokio::sync::MutexGuard<'static, ()>> {
+    if DRAINING.load(Ordering::SeqCst) {
+        return None;
+    }
+    let probe = PROBES.lock().await;
+    if DRAINING.load(Ordering::SeqCst) {
+        return None;
+    }
+    Some(probe)
+}
+
+/// A stop is not an environment failure; callers must not record it. The
+/// process exits after draining, dropping this never-launched request.
+fn stopping() -> std::future::Pending<Result<Report>> {
+    std::future::pending()
 }
 
 fn verify_workspace(profile: &Profile, workspace: Option<&Path>) -> Result<()> {
@@ -367,7 +429,7 @@ async fn wait(directory: &Path, key: &RunKey, deadline: Instant) -> Result<bool>
             timed_out = true;
             process::durable_write(&directory.join("stop.json"), key)?;
         }
-        if Instant::now() >= deadline + Duration::from_secs(20) {
+        if Instant::now() >= deadline + STOP_WINDOW {
             return Err("environment stop unknown; reconcile supervisor before resuming".into());
         }
         process::durable_write(&directory.join("storage-heartbeat.json"), key)?;

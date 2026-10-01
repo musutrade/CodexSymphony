@@ -79,9 +79,40 @@ async fn freeze_context(
         checkout: r.checkout.into(),
         directory: r.directory.into(),
     };
-    sqlx::query("UPDATE candidate_validation SET hook_context=$2,hook_required=true WHERE id=$1 AND hook_context IS NULL AND result='pending'")
-        .bind(r.id).bind(json!(context)).execute(pool).await?;
+    persist_context(pool, r, &context, &registration.config_ref).await?;
     Ok(context)
+}
+
+/// Initialize a call, never revive an interrupted call. An approved generation
+/// paused before its first invocation may freeze a fresh context under current
+/// authority; any retained invocation or execution evidence excludes this path.
+async fn persist_context(
+    pool: &PgPool,
+    r: &Request<'_>,
+    context: &Context,
+    plan: &str,
+) -> Result<()> {
+    let mut tx = crate::run_store::lock(pool).await?;
+    let incarnation: String = sqlx::query_scalar(
+        "SELECT c.incarnation FROM execution_control c JOIN requirement r ON r.id=c.requirement_id WHERE r.id=$1 FOR UPDATE OF c,r",
+    )
+    .bind(r.requirement)
+    .fetch_one(&mut *tx)
+    .await?;
+    crate::budget_store::require(
+        crate::recovery_store::allowed(&mut tx, r.requirement, r.revision, &incarnation).await?,
+        "validation context authority changed",
+    )?;
+    let initialized = sqlx::query("UPDATE candidate_validation v SET hook_context=$2,hook_required=true,hook_invalidated=false WHERE v.id=$1 AND v.requirement_id=$3 AND v.revision=$4 AND v.source_run_id=$5 AND v.candidate_sha=$6 AND v.candidate_tree=$7 AND v.result='pending' AND v.stage='declaration' AND v.hook_context IS NULL AND v.hook_evaluation IS NULL AND v.started_at IS NULL AND v.superseded_by IS NULL AND NOT EXISTS(SELECT 1 FROM validation_step s WHERE s.validation_id=v.id) AND (NOT v.hook_invalidated OR EXISTS(SELECT 1 FROM recovery_failure f JOIN candidate_validation old ON old.id=f.source_validation_id WHERE f.successor_validation=v.id AND v.retry_of=old.id AND old.superseded_by=v.id AND old.requirement_id=v.requirement_id AND old.revision=v.revision AND old.source_run_id=v.source_run_id AND old.candidate_sha=v.candidate_sha AND old.candidate_tree=v.candidate_tree AND f.requirement_id=v.requirement_id AND f.resolution_state='running' AND f.resolution->>'actor'='authenticated_operator' AND f.resolution#>>'{command,validation_id}'=old.id AND f.resolution#>>'{command,action,kind}' IN ('revalidate_delivery','revalidate_local_delivery') AND f.resolution#>>'{command,action,plan_digest}'=$8 AND NOT EXISTS(SELECT 1 FROM project_hook_invocation h WHERE h.run_id=v.id)))")
+        .bind(r.id).bind(json!(context)).bind(r.requirement).bind(r.revision)
+        .bind(r.source_run).bind(&r.candidate.sha).bind(&r.candidate.tree).bind(plan)
+        .execute(&mut *tx).await?;
+    crate::budget_store::require(
+        initialized.rows_affected() == 1,
+        "validation context already invoked or fresh generation not approved",
+    )?;
+    tx.commit().await?;
+    Ok(())
 }
 
 async fn build_call(
@@ -386,3 +417,7 @@ async fn current_plan(pool: &PgPool, requirement: i64, expected: &str) -> Result
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "../tests/unit/validation_context.rs"]
+mod tests;
