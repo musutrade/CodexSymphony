@@ -88,6 +88,7 @@ async fn completed(
     let directory = root.join(&saved.id);
     if directory.join("outcome.json").is_file() {
         let outcome = integration_process::reconcile(&directory, job)?;
+        crate::diagnostic_service::integration(pool, &directory, job).await?;
         store::finish(pool, &saved.id, job, &outcome).await?;
     }
     crate::integration_retry::resume(pool, root, supervisor, incarnation, &saved.id, job, launch)

@@ -1,0 +1,304 @@
+{
+  "kind": "GH-90 X04 controlled integration diagnostic and recovery combination",
+  "scope": "real supervised subprocess + isolated PostgreSQL + product Runtime tools; no paid model or live deployment",
+  "baseline_commit": "f4f34324b47ce3e644b411a12b6a838b50f9cd42",
+  "capture": {
+    "run": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-469a6017d054",
+    "timings": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-469a6017d054/timings.jsonl",
+    "test_groups": 44,
+    "tests_passed": 460,
+    "tests_failed": 0,
+    "source_inputs": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-469a6017d054/source-inputs.json",
+    "changed_code_sha256": {
+      "apps/server/src/diagnostic_service.rs": "efad6e2949f3d9b7a0b07df41bf45751a7d2d15fd07fc4f4aef3e9793607b747",
+      "apps/server/src/diagnostic_store.rs": "fd9bc3aa2ccd9ca42e659bcfd8d70d316e625c0eacd91302e58396247caccb8a",
+      "apps/server/src/integration_worker.rs": "1f60c555548bd15d59c8d2ec64a8d5757d6fbbecbfe01ac3a7a9b48c348fdc71",
+      "apps/server/tests/integration_validation.rs": "e6b9f327c95ab3387e45fdc0b3aa47485c39e08cf28680a78956fd630a2f9ea0",
+      "apps/server/tests/unit/diagnostic_service.rs": "be4c9c454fe0a814a018f5381d91645bf78d754aa1376dd9e204b33e0c8f305d",
+      "migrations/0043_integration_diagnostics.sql": "785d4917abf0dca32c6aa0358f8d25bad4262c2a03ea40fb57bbc2770aec0981"
+    },
+    "registration": {
+      "root": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-469a6017d054",
+      "identity": {
+        "device": 1792,
+        "inode": 5661311
+      },
+      "bundle_sha256": "8e6078d552fe7ecfae240d062f6a9b9d91978a412904a193122d8bb374b79a2b",
+      "registered_at": 1790915135.042
+    },
+    "independent_raw_inventory_sha256": "c05515e5522dc1932470f0056585441e7e678f79a0213dee83cf679ba99e6fb8",
+    "raw_retention": "complete and independently verified at registration; compacted by installed bounded retention after measurement; retained review archive and source handoff remain"
+  },
+  "measurement": {
+    "coverage_and_crap": "PASS",
+    "violations": [],
+    "functions": 2443,
+    "measurement": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-469a6017d054/probes/backend/measurement-39j_v2t2/measurements.json",
+    "measurement_sha256": "c61e4098605dff4369010bd87e0e9b2b879b0c89d52b0b356a413f6595d9c110",
+    "changed_functions": [
+      {
+        "source": "apps/server/src/diagnostic_service.rs",
+        "source_sha256": "efad6e2949f3d9b7a0b07df41bf45751a7d2d15fd07fc4f4aef3e9793607b747",
+        "name": "integration",
+        "complexity": 2,
+        "coverage.line": {
+          "numerator": 34,
+          "denominator": 34
+        },
+        "coverage.region": {
+          "numerator": 30,
+          "denominator": 30
+        },
+        "risk.crap": {
+          "numerator": 2,
+          "denominator": 1
+        }
+      },
+      {
+        "source": "apps/server/src/diagnostic_store.rs",
+        "source_sha256": "fd9bc3aa2ccd9ca42e659bcfd8d70d316e625c0eacd91302e58396247caccb8a",
+        "name": "list_in",
+        "complexity": 7,
+        "coverage.line": {
+          "numerator": 17,
+          "denominator": 17
+        },
+        "coverage.region": {
+          "numerator": 40,
+          "denominator": 42
+        },
+        "risk.crap": {
+          "numerator": 7,
+          "denominator": 1
+        }
+      },
+      {
+        "source": "apps/server/src/diagnostic_store.rs",
+        "source_sha256": "fd9bc3aa2ccd9ca42e659bcfd8d70d316e625c0eacd91302e58396247caccb8a",
+        "name": "load_in",
+        "complexity": 8,
+        "coverage.line": {
+          "numerator": 19,
+          "denominator": 19
+        },
+        "coverage.region": {
+          "numerator": 46,
+          "denominator": 50
+        },
+        "risk.crap": {
+          "numerator": 8,
+          "denominator": 1
+        }
+      },
+      {
+        "source": "apps/server/src/integration_worker.rs",
+        "source_sha256": "1f60c555548bd15d59c8d2ec64a8d5757d6fbbecbfe01ac3a7a9b48c348fdc71",
+        "name": "completed",
+        "complexity": 5,
+        "coverage.line": {
+          "numerator": 9,
+          "denominator": 10
+        },
+        "coverage.region": {
+          "numerator": 29,
+          "denominator": 32
+        },
+        "risk.crap": {
+          "numerator": 201,
+          "denominator": 40
+        }
+      }
+    ]
+  },
+  "combination": {
+    "artifacts": [
+      {
+        "artifact": {
+          "artifact_id": "142ebcc63f9d49e124571da5b91da03aa4364f650e00542f8b891685d81e1d01",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "63130491357ed3934a8644e2490936494b108642",
+              "tree": "ca09606804ccc5760c5a947614cafa5828f1ede0"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+              "invocation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "protocol_version": 2,
+              "requirement_id": 1,
+              "resource_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "da7543f031c75b43ac965e6b0b57f594217014a4b2af706b62da0e25dac3ca0d",
+            "phase": "integration/step:test",
+            "policy_digest": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+            "validation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842"
+          },
+          "expires_at": 1791000781,
+          "export_bytes": 142910,
+          "export_sha256": "46112d47e81b4795961eccd056aa084908b3b48fadaa9a6c06cbf052984819df",
+          "media_type": "text/plain; charset=utf-8",
+          "original_bytes": 142911,
+          "purpose": "step-0.log",
+          "raw_sha256": "716a9e141ef3d7cb7afe570ca11c989c47d04f8d83874b8ab760f3e6ca2e8269",
+          "reason": null,
+          "retained_bytes": 142911
+        },
+        "bytes": 142910,
+        "sha256": "46112d47e81b4795961eccd056aa084908b3b48fadaa9a6c06cbf052984819df"
+      },
+      {
+        "artifact": {
+          "artifact_id": "2400117dc2cf3e6ee30aa7b7698c050478c24b521548deb779bdd74f9de918b0",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "63130491357ed3934a8644e2490936494b108642",
+              "tree": "ca09606804ccc5760c5a947614cafa5828f1ede0"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+              "invocation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "protocol_version": 2,
+              "requirement_id": 1,
+              "resource_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "da7543f031c75b43ac965e6b0b57f594217014a4b2af706b62da0e25dac3ca0d",
+            "phase": "integration/step:python",
+            "policy_digest": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+            "validation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842"
+          },
+          "expires_at": 1791000781,
+          "export_bytes": 178,
+          "export_sha256": "3337c18f7d9f7d2f88c1a45b0d5a384460fd21a298053395b3cc8107808fe79f",
+          "media_type": "text/plain; charset=utf-8",
+          "original_bytes": 179,
+          "purpose": "step-1.log",
+          "raw_sha256": "0e36adb5abc1e811e29b7ceffcf6943a2e7a7b38cf68c88764b80bd1a60078ac",
+          "reason": null,
+          "retained_bytes": 179
+        },
+        "bytes": 178,
+        "sha256": "3337c18f7d9f7d2f88c1a45b0d5a384460fd21a298053395b3cc8107808fe79f"
+      },
+      {
+        "artifact": {
+          "artifact_id": "b3e03cd3a560560068ca535bd36eea3f8b8e84f4ba82e93ccf0c6d7371e0dc7b",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "63130491357ed3934a8644e2490936494b108642",
+              "tree": "ca09606804ccc5760c5a947614cafa5828f1ede0"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+              "invocation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "protocol_version": 2,
+              "requirement_id": 1,
+              "resource_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "da7543f031c75b43ac965e6b0b57f594217014a4b2af706b62da0e25dac3ca0d",
+            "phase": "integration/step:python",
+            "policy_digest": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+            "validation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842"
+          },
+          "expires_at": 1791000781,
+          "export_bytes": 84020,
+          "export_sha256": "54ad879baf23b36c16567797d90fc1b999a69ebc4691dc6a74df63d83403eeb0",
+          "media_type": "text/markdown; charset=utf-8",
+          "original_bytes": 84021,
+          "purpose": "report.md",
+          "raw_sha256": "66a4a13d625b8003364ba3fba6e623eb893d9a8cd3f42d7ae71eb32b261d7d50",
+          "reason": null,
+          "retained_bytes": 84021
+        },
+        "bytes": 84020,
+        "sha256": "54ad879baf23b36c16567797d90fc1b999a69ebc4691dc6a74df63d83403eeb0"
+      },
+      {
+        "artifact": {
+          "artifact_id": "39146917ba940145637961a22df0855507cd28898f6382a95487bd5c47e62152",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "63130491357ed3934a8644e2490936494b108642",
+              "tree": "ca09606804ccc5760c5a947614cafa5828f1ede0"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+              "invocation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "protocol_version": 2,
+              "requirement_id": 1,
+              "resource_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "da7543f031c75b43ac965e6b0b57f594217014a4b2af706b62da0e25dac3ca0d",
+            "phase": "integration/step:python",
+            "policy_digest": "bcbd84c1391ff7d1b6f0d47d43e0c6dc3141ddba34f36f463531fd33c5c1d697",
+            "validation_id": "integration-f52d46a2-356a-4e55-8f0a-603418786842"
+          },
+          "expires_at": 1791000781,
+          "export_bytes": 110031,
+          "export_sha256": "83f13f737277273506c72e3738acbd39523c89f3b2628ea96b5f5979f612ab89",
+          "media_type": "application/json",
+          "original_bytes": 110031,
+          "purpose": "single.json",
+          "raw_sha256": "83f13f737277273506c72e3738acbd39523c89f3b2628ea96b5f5979f612ab89",
+          "reason": null,
+          "retained_bytes": 110031
+        },
+        "bytes": 110031,
+        "sha256": "83f13f737277273506c72e3738acbd39523c89f3b2628ea96b5f5979f612ab89"
+      }
+    ],
+    "historical_grant_denied_after_reauthorization": true,
+    "invocation": "integration-f52d46a2-356a-4e55-8f0a-603418786842",
+    "kind": "controlled subprocess and PostgreSQL fixture; no paid model",
+    "nonprimary_revocation_denied": true,
+    "original_result_preserved": true
+  },
+  "combination_evidence_sha256": "ce066cfe46bced8c0f24c1ea28944a1bf2cdf3785f31f3be7954b57171992bc0",
+  "ordinary_checks": {
+    "run": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-697502473440",
+    "timings": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-697502473440/timings.jsonl",
+    "format": "PASS",
+    "clippy": "PASS",
+    "secret_scan": "PASS",
+    "retained_environment_failures": [
+      "x04-secrets: missing pinned collector on namespace PATH",
+      "x04-secrets-approved-path-recovery: reports directory read-only"
+    ],
+    "recovery": "installed approved tool_path and writable reports directory as in installed verify entry; no source or host edits"
+  },
+  "acceptance_limits": {
+    "paid_calls_added": 0,
+    "original_model_calls_observed": 11,
+    "original_control_paused": true,
+    "original_control_owner": null,
+    "live_model_repair_acceptance": "open; original account authorization required",
+    "GH-90": "open",
+    "final_gate": "separately bound host-owned final exact-tree receipt; not asserted by this controlled evidence"
+  }
+}

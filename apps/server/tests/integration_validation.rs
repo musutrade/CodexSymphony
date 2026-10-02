@@ -14,6 +14,8 @@ use std::{
     time::Duration,
 };
 use tokio::io::AsyncWriteExt;
+#[path = "support/diagnostics.rs"]
+mod diagnostic_source;
 #[path = "support/groups.rs"]
 mod groups;
 #[path = "support/validation_runner.rs"]
@@ -275,6 +277,13 @@ fn git(path: &Path, args: &[&str]) {
 async fn fixture(mode: &str, two: bool) -> Fixture {
     let (pool, url, _) = groups::fixture().await;
     let (root, repo, mut plan) = source::fixture();
+    if mode == "diagnostics" {
+        let diagnostic_root = root.join("diagnostic-source");
+        std::fs::create_dir(&diagnostic_root).unwrap();
+        let (_, diagnostic_plan) = diagnostic_source::subprocess(&diagnostic_root);
+        plan = diagnostic_plan;
+        plan.steps[0].id = "test".into();
+    }
     if mode == "linked" {
         std::fs::write(
             &plan.entry,
@@ -499,6 +508,259 @@ async fn failed_required_check_retains_owner_without_parent_done_or_repair_child
         .await
         .unwrap();
     assert_eq!(n, 1);
+}
+
+async fn diagnostic_api_read(pool: &PgPool, path: &str) -> (u16, Value) {
+    use tower::ServiceExt;
+    let response = codexsymphony_server::diagnostic_api::routes()
+        .with_state(pool.clone())
+        .oneshot(
+            axum::http::Request::builder()
+                .uri(path)
+                .body(axum::body::Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let bytes = axum::body::to_bytes(response.into_body(), 65536)
+        .await
+        .unwrap();
+    (status, serde_json::from_slice(&bytes).unwrap())
+}
+
+#[tokio::test]
+async fn integration_reports_survive_cleanup_and_only_the_linked_repair_can_read_them() {
+    use codexsymphony_server::{
+        diagnostic_store,
+        diagnostics::{Chunk, Page},
+        execution::RunKey,
+        runtime_store, runtime_tools,
+        validation::sha256,
+    };
+    let f = fixture("diagnostics", true).await;
+    complete(&f, "failed").await;
+    let (invocation, requirement, original): (String, i64, Value) =
+        sqlx::query_as("SELECT id,requirement_id,result FROM integration_validation")
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    let mut tx = f.pool.begin().await.unwrap();
+    let page = diagnostic_store::list_in(&mut tx, requirement, None, 0)
+        .await
+        .unwrap();
+    tx.commit().await.unwrap();
+    assert_eq!(page.artifacts.len(), 4);
+    let expected = diagnostic_source::binding(&invocation, 1);
+    for artifact in &page.artifacts {
+        assert_eq!(artifact.binding.identity.run_id, None);
+        assert_eq!(
+            artifact.binding.identity.invocation_id,
+            expected.identity.invocation_id
+        );
+        assert_eq!(artifact.binding.identity.attempt, expected.identity.attempt);
+        assert_eq!(artifact.binding.generation, expected.generation);
+        assert_eq!(
+            artifact.binding.validation_id.as_deref(),
+            Some(invocation.as_str())
+        );
+    }
+    // Reconciliation repeats capture idempotently without replacing raw bytes.
+    tick(&f).await;
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM diagnostic_artifact")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    assert_eq!(count, 4);
+    std::fs::remove_dir_all(f.root.join(&invocation).join("checks")).unwrap();
+    let key = RunKey {
+        run_id: "diagnostic-repair".into(),
+        request_id: "diagnostic-request".into(),
+        incarnation: "boot".into(),
+    };
+    sqlx::query("INSERT INTO agent_run(id,requirement_id,revision,incarnation,request_id,workspace,workspace_identity,launch,state,model) VALUES($1,$2,1,'boot',$3,'/fixture','fixture','{}','Created','fixture-model')")
+        .bind(&key.run_id).bind(requirement).bind(&key.request_id).execute(&f.pool).await.unwrap();
+    runtime_store::open(&f.pool, &key, 100).await.unwrap();
+    runtime_store::thread(&f.pool, &key, "diagnostic-thread", 100)
+        .await
+        .unwrap();
+    runtime_store::turn(&f.pool, &key, "turn", "call", 100)
+        .await
+        .unwrap();
+    let request = |tool: &str, args: Value| json!({"id":"diagnostic-rpc","method":"item/tool/call","params":{"threadId":"diagnostic-thread","turnId":"turn","callId":"read","tool":tool,"arguments":args}});
+    let response = runtime_tools::handle(
+        &f.pool,
+        &f.broker,
+        &key,
+        &request("list_diagnostics", json!({"after":0})),
+    )
+    .await
+    .unwrap();
+    let denied: Page =
+        serde_json::from_str(response["contentItems"][0]["text"].as_str().unwrap()).unwrap();
+    assert!(denied.artifacts.is_empty());
+    let response = runtime_tools::handle(
+        &f.pool,
+        &f.broker,
+        &key,
+        &request(
+            "read_diagnostic",
+            json!({"artifact_id":page.artifacts[0].artifact_id,"offset":0,"limit":8192}),
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(response["success"], false);
+    // Explicit persisted fixture authorization; no paid Runtime or new delivery.
+    sqlx::query("INSERT INTO linked_failure(id,requirement_id,revision,integration_id,evidence,required_steps,state) VALUES('diagnostic-linked',$1,1,$2,'{}','[]','reserved')")
+        .bind(requirement).bind(&invocation).execute(&f.pool).await.unwrap();
+    sqlx::query("INSERT INTO repair_reservation(requirement_id,ordinal,linked_failure_id,repair_run_id,failure,status) VALUES($1,1,'diagnostic-linked',$2,'{}','started')")
+        .bind(requirement).bind(&key.run_id).execute(&f.pool).await.unwrap();
+    for (source, call) in [
+        (&invocation[..], "unrelated"),
+        ("unrelated", &invocation[..]),
+    ] {
+        let allowed: bool = sqlx::query_scalar("SELECT diagnostic_run_allows($1,$2,$3)")
+            .bind(&key.run_id)
+            .bind(source)
+            .bind(call)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+        assert!(
+            !allowed,
+            "integration repair must bind both source and invocation"
+        );
+    }
+    let context = codexsymphony_server::diagnostic_tools::context(&f.pool, &key)
+        .await
+        .unwrap();
+    assert_eq!(context["manifest"]["artifacts"], json!(page.artifacts));
+    let mut records = Vec::new();
+    for artifact in &page.artifacts {
+        let mut bytes = Vec::new();
+        let mut offset = 0;
+        loop {
+            let response = runtime_tools::handle(
+                &f.pool,
+                &f.broker,
+                &key,
+                &request(
+                    "read_diagnostic",
+                    json!({"artifact_id":artifact.artifact_id,"offset":offset,"limit":8192}),
+                ),
+            )
+            .await
+            .unwrap();
+            assert_eq!(response["success"], true);
+            let chunk: Chunk =
+                serde_json::from_str(response["contentItems"][0]["text"].as_str().unwrap())
+                    .unwrap();
+            assert_eq!(chunk.artifact, *artifact);
+            assert_eq!(chunk.offset, offset);
+            bytes.extend_from_slice(chunk.text.as_bytes());
+            offset = chunk.next;
+            if chunk.end {
+                break;
+            }
+        }
+        assert_eq!(bytes.len() as u64, artifact.export_bytes);
+        assert_eq!(Some(sha256(&bytes)), artifact.export_sha256);
+        if bytes.len() > 8192 {
+            let text = std::str::from_utf8(&bytes).unwrap();
+            assert!(text.contains("FIRST") && text.contains("LAST"));
+        }
+        records.push(json!({"artifact":artifact,"bytes":bytes.len(),"sha256":sha256(&bytes)}));
+    }
+    let secondary: Value = sqlx::query_scalar("SELECT document FROM repository WHERE id=2")
+        .fetch_one(&f.pool)
+        .await
+        .unwrap();
+    for (revoked, version, cutoff) in [(true, 1_i64, 0_i64), (false, 2, 1)] {
+        sqlx::query("UPDATE repository SET document=jsonb_set(document,'{revoked}',$1),version=$2,revoked_through_version=$3 WHERE id=2")
+            .bind(json!(revoked)).bind(version).bind(cutoff).execute(&f.pool).await.unwrap();
+        let response = runtime_tools::handle(
+            &f.pool,
+            &f.broker,
+            &key,
+            &request("list_diagnostics", json!({"after":0})),
+        )
+        .await
+        .unwrap();
+        let denied: Page =
+            serde_json::from_str(response["contentItems"][0]["text"].as_str().unwrap()).unwrap();
+        assert!(denied.artifacts.is_empty());
+        let response = runtime_tools::handle(
+            &f.pool,
+            &f.broker,
+            &key,
+            &request(
+                "read_diagnostic",
+                json!({"artifact_id":page.artifacts[0].artifact_id,"offset":0,"limit":8192}),
+            ),
+        )
+        .await
+        .unwrap();
+        assert_eq!(response["success"], false);
+        let (status, denied) = diagnostic_api_read(
+            &f.pool,
+            &format!("/api/requirements/{requirement}/diagnostics/0"),
+        )
+        .await;
+        assert_eq!(status, 200);
+        assert!(denied["artifacts"].as_array().unwrap().is_empty());
+        let (status, _) = diagnostic_api_read(
+            &f.pool,
+            &format!(
+                "/api/requirements/{requirement}/diagnostic-artifacts/{}/0/8192",
+                page.artifacts[0].artifact_id
+            ),
+        )
+        .await;
+        assert_eq!(status, 409);
+    }
+    // Restore only this isolated fixture's grant; live historical revocations are immutable.
+    sqlx::query("UPDATE repository SET document=$1,version=1,revoked_through_version=0 WHERE id=2")
+        .bind(secondary)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let context = codexsymphony_server::diagnostic_tools::context(&f.pool, &key)
+        .await
+        .unwrap();
+    assert_eq!(context["manifest"]["artifacts"], json!(page.artifacts));
+    sqlx::query("UPDATE repair_reservation SET status='failed' WHERE requirement_id=$1")
+        .bind(requirement)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let response = runtime_tools::handle(
+        &f.pool,
+        &f.broker,
+        &key,
+        &request(
+            "read_diagnostic",
+            json!({"artifact_id":page.artifacts[0].artifact_id,"offset":0,"limit":8192}),
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(response["success"], false);
+    let retained: Value =
+        sqlx::query_scalar("SELECT result FROM integration_validation WHERE id=$1")
+            .bind(&invocation)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(retained, original);
+    std::fs::write(f.root.join("integration-diagnostic-evidence.json"), serde_json::to_vec_pretty(&json!({"kind":"controlled subprocess and PostgreSQL fixture; no paid model","invocation":invocation,"artifacts":records,"original_result_preserved":true,"nonprimary_revocation_denied":true,"historical_grant_denied_after_reauthorization":true})).unwrap()).unwrap();
+    println!(
+        "GH-90 integration diagnostics: {}",
+        f.root
+            .join("integration-diagnostic-evidence.json")
+            .display()
+    );
+    f.pool.close().await;
 }
 
 #[tokio::test]
