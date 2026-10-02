@@ -29,7 +29,7 @@ async fn rapid_scoped_events_are_transactional_ordered_and_retry_bounded() {
     let id: i64 = sqlx::query_scalar("INSERT INTO requirement(version,state,contract,repository_id) VALUES(1,'Draft','{}',42) RETURNING id")
         .fetch_one(&owner).await.unwrap();
     let mut transaction = owner.begin().await.unwrap();
-    for state in ["Ready", "Running", "Blocked"] {
+    for state in ["Ready", "Running", "Failed"] {
         sqlx::query("UPDATE requirement SET state=$1,version=version+1 WHERE id=$2")
             .bind(state)
             .bind(id)
@@ -73,7 +73,7 @@ async fn rapid_scoped_events_are_transactional_ordered_and_retry_bounded() {
         .fetch_one(&owner)
         .await
         .unwrap();
-    assert_eq!(unchanged, "Blocked");
+    assert_eq!(unchanged, "Failed");
     receiver.close().await;
     owner.close().await;
 }
