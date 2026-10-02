@@ -13,6 +13,9 @@ use std::{fs, path::Path, process::Command};
 mod delivery_fixture;
 use delivery_fixture::source as runner;
 
+#[path = "support/scope_notifications.rs"]
+mod scope_notifications;
+
 async fn database() -> PgPool {
     let options: PgConnectOptions = std::env::var("TEST_DATABASE_URL").unwrap().parse().unwrap();
     let admin = PgPoolOptions::new()
