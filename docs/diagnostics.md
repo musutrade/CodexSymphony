@@ -19,6 +19,10 @@ Runtime 登记两个只读工具：
 
 当前 Run 只读自己以及既有 repair_reservation 或恢复 session 明确关联的原失败内容，同需求的任意其他 Run 没有读取权。每次请求（包括重复 RPC）重验 Run 身份、thread/turn、暂停、取消、仓库撤权和作用域。读取历史报告还检查其生产者修订的仓库授权；新修订的有效权限不能重新开放已撤权的旧仓库报告。修复 Runtime 输入包含可用清单及读取方法，不要求宿主绝对路径；摘要或诊断文字不授予执行权。
 
+父组集成检查没有编码 Run。监督器静止且原结果完成身份核验后，协调器在处理业务结果前登记该 invocation 的 `checks/step-N.log` 和显式 v2 附件。清单以原集成 invocation 作为 source、resource、validation 身份，`run_id=null`；候选沿用冻结版本集合的首个仓库，完整集合仍由原集成记录绑定，未观察到的环境摘要保持 unknown。每个新 invocation 保持独立清单，重复对账不覆盖第一次捕获。只有 `status=started` 且关联同一集成失败的 repair reservation 可以读这些报告；source 与 invocation 必须同时匹配。产品接口和 Runtime 每次列举、读取都核对原集成冻结集合的全部仓库及授权版本；次要仓库撤权同样拒绝整份报告，重新授权不能开放 revoked_through_version 覆盖的旧报告。缺失原集成记录或版本集合时拒绝读取，不借用主候选或当前修订的权限。诊断写入失败保留原检查目录和结果，不能推进业务完成。
+
+`0043_integration_diagnostics.sql` 只扩展上述已有读取关系，不修改历史任务、用量、预留或交付。升级由正常 SQLx 启动迁移执行；回退时保留诊断内容和授权函数，不删除原件或反向改写迁移。缺少完整版本集合读取检查的旧核心不能直接恢复服务，仅保留 SQL 函数不足以保证旧接口的权限边界。旧版本不会自动获得集成报告捕获能力；回退及现场切换仍须按 [V1 发布索引](v1-delivery.md)核对兼容性与暂停状态。本轮源码开发不代表现场已部署该迁移。
+
 已登录产品用户通过现有详情页查看清单、缺失原因及分段内容；下载由同一受保护接口逐段组成，核对完整导出摘要后创建文件。切换需求时丢弃旧请求结果。接口为 `GET /api/requirements/{id}/diagnostics/{after}` 和 `GET /api/requirements/{id}/diagnostic-artifacts/{artifact}/{offset}/{limit}`，200 JSON 契约见 [OpenAPI](../api/openapi.json)，授权/过期/错误范围统一返回 409 的安全说明。复用现有平台登录和同源请求保护；不暴露 raw payload 或任意文件服务。
 
 配额复用已安装存储策略 entry_bytes、run_bytes、requirement_bytes、entry_count 和 hot.seconds。额外安全上限为单文件 1 MiB、单调用 16 MiB、单清单 64 项；原件加脱敏副本均计费，任务累计分配不会因过期或新 attempt 退款。没有部署存储策略的隔离 fixture 使用有界缺省值（1 MiB/8 MiB/32 MiB、256 项、一天），不构成运行就绪。全局/数据库实际容量及预留由现有存储测量校验。配额拒绝保留 missing 清单，不删除当时的生产者文件，也不承诺原文件能超越既有工作区清理期限；清单容量耗尽返回明确错误。过期复用现有存储消费者及未对账事实判定：活动 Run/组合验证、未完成验证与交付、预留修复、准备中的恢复、暂停/问答、未完成工作区操作，以及尚未确认停止的 Hook 均保护诊断。消费者完成且到期后才删除字节，保留身份、摘要、原因和累计分配；不会改变任务/Gate 状态。

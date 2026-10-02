@@ -2,6 +2,44 @@ use super::*;
 use crate::diagnostics::tests::binding;
 use serde_json::json;
 
+#[tokio::test]
+async fn integration_without_a_version_cannot_register_reports() {
+    let pool = sqlx::postgres::PgPoolOptions::new()
+        .connect_lazy("postgres://gate_test:gate_test@localhost/gate_test")
+        .unwrap();
+    let plan = crate::validation_runner::Plan {
+        entry: "/missing".into(),
+        entry_sha256: "missing".into(),
+        steps: Vec::new(),
+    };
+    let job = crate::integration_process::Job {
+        invocation: "empty-integration".into(),
+        binding: crate::integration::Binding {
+            requirement: 1,
+            revision: 1,
+            authorization: 1,
+            input_sha256: "input".into(),
+            versions: Vec::new(),
+            trusted: crate::validation::TrustedIdentity {
+                command_sha256: "command".into(),
+                protected_entry: "/missing".into(),
+                protected_entry_sha256: "entry".into(),
+                config_sha256: "config".into(),
+                tool: "fixture".into(),
+                tool_version: "fixture".into(),
+            },
+            required: Vec::new(),
+        },
+        plan,
+        checkouts: Vec::new(),
+        output_limit: 1024,
+    };
+    let error = integration(&pool, Path::new("/missing"), &job)
+        .await
+        .unwrap_err();
+    assert_eq!(error.to_string(), "empty integration version set");
+}
+
 #[test]
 fn registered_reports_respect_the_shared_manifest_limit_and_keep_omission_visible() {
     let root = std::env::temp_dir().join(crate::process::new_identity().unwrap());

@@ -20,3 +20,11 @@ table during rollback; tasks with a frozen environment plan require a compatible
 binary. See `docs/repository-environments.md` for upgrade/recovery conditions.
 The same migration observes validation and delivery transitions with nullable
 timestamps. Historical starts are not backfilled; unavailable durations stay unknown.
+
+`0043_integration_diagnostics.sql` extends diagnostic read admission to the
+started repair reservation linked to an exact integration invocation. Existing
+Run/session admission remains unchanged; accounts, budgets, reservations and
+delivery rows are untouched. Keep the authorization functions and retained evidence during
+rollback; see [diagnostics](../docs/diagnostics.md) for the capture and upgrade boundary.
+
+0043 同时为产品和 Runtime 诊断读取核验原集成冻结集合中全部仓库的历史授权；次要仓库撤权和撤权后重新授权均不能开放旧报告。回退兼容边界见诊断文档。

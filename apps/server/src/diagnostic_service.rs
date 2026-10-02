@@ -103,6 +103,47 @@ pub async fn plan(
     diagnostic_store::persist(pool, source, captures, &limits).await
 }
 
+/// Integration invocations have no coding Run. Keep their own source identity
+/// so an explicitly linked repair can read the original version-set failure.
+pub async fn integration(
+    pool: &PgPool,
+    directory: &Path,
+    job: &crate::integration_process::Job,
+) -> Result<()> {
+    let primary = job
+        .binding
+        .versions
+        .first()
+        .ok_or("empty integration version set")?;
+    let binding = Binding {
+        identity: InvocationIdentity {
+            protocol_version: crate::extension_contract::PROTOCOL_VERSION,
+            requirement_id: job.binding.requirement,
+            revision: job.binding.revision,
+            run_id: None,
+            resource_id: job.invocation.clone(),
+            invocation_id: job.invocation.clone(),
+            attempt: 1,
+            config_id: job.binding.trusted.config_sha256.clone(),
+        },
+        phase: "integration".into(),
+        candidate: Some(primary.candidate.clone()),
+        validation_id: Some(job.invocation.clone()),
+        generation: 1,
+        implementation_digest: job.binding.trusted.protected_entry_sha256.clone(),
+        environment_digest: "unknown".into(),
+        policy_digest: job.binding.trusted.config_sha256.clone(),
+    };
+    plan(
+        pool,
+        &job.invocation,
+        &directory.join("checks"),
+        &binding,
+        &job.plan,
+    )
+    .await
+}
+
 fn feedback_artifacts(
     directory: &Path,
     binding: &Binding,

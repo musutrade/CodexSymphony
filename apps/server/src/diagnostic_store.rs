@@ -192,7 +192,7 @@ pub async fn list_in(
         return Err("invalid diagnostic cursor".into());
     }
     expire_in(tx, crate::runtime_client::now()).await?;
-    let rows: Vec<(i64,serde_json::Value)> = sqlx::query_as("SELECT d.sequence,d.manifest FROM diagnostic_artifact d WHERE d.requirement_id=$1 AND d.sequence>$2 AND diagnostic_revision_allows(d.requirement_id,d.revision) AND ($3::text IS NULL OR diagnostic_run_allows($3,d.source_run,d.invocation_id)) ORDER BY d.sequence LIMIT 9")
+    let rows: Vec<(i64,serde_json::Value)> = sqlx::query_as("SELECT d.sequence,d.manifest FROM diagnostic_artifact d WHERE d.requirement_id=$1 AND d.sequence>$2 AND diagnostic_revision_allows(d.requirement_id,d.revision) AND diagnostic_integration_allows(d.requirement_id,d.revision,d.source_run,d.invocation_id,d.manifest#>>'{binding,phase}') AND ($3::text IS NULL OR diagnostic_run_allows($3,d.source_run,d.invocation_id)) ORDER BY d.sequence LIMIT 9")
         .bind(requirement).bind(after).bind(source).fetch_all(&mut **tx).await?;
     let mut artifacts = Vec::new();
     let mut next = None;
@@ -213,7 +213,7 @@ pub async fn load_in(
     id: &str,
 ) -> Result<(Artifact, Vec<u8>)> {
     expire_in(tx, crate::runtime_client::now()).await?;
-    let row: Option<(serde_json::Value,Option<Vec<u8>>)> = sqlx::query_as("SELECT manifest,export_payload FROM diagnostic_artifact d WHERE d.requirement_id=$1 AND d.artifact_id=$2 AND diagnostic_revision_allows(d.requirement_id,d.revision) AND ($3::text IS NULL OR diagnostic_run_allows($3,d.source_run,d.invocation_id))")
+    let row: Option<(serde_json::Value,Option<Vec<u8>>)> = sqlx::query_as("SELECT manifest,export_payload FROM diagnostic_artifact d WHERE d.requirement_id=$1 AND d.artifact_id=$2 AND diagnostic_revision_allows(d.requirement_id,d.revision) AND diagnostic_integration_allows(d.requirement_id,d.revision,d.source_run,d.invocation_id,d.manifest#>>'{binding,phase}') AND ($3::text IS NULL OR diagnostic_run_allows($3,d.source_run,d.invocation_id))")
         .bind(requirement).bind(id).bind(source).fetch_optional(&mut **tx).await?;
     let (manifest, payload) = row.ok_or("diagnostic artifact unavailable or unauthorized")?;
     let mut artifact: Artifact = serde_json::from_value(manifest)?;

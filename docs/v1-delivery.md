@@ -27,7 +27,7 @@
 | X01 | 实际本地 Git/Node 验收、非 Rust/无项目数据库/缓存关闭、可替换检查、多仓版本组合 | R2 原本地交付验收已 Done，目标保持 d388d2f8；R3 的修复版本 0f446bb7 与 Rust 9d77f4ff 组合验收已通过，父 Done |
 | X02 | `validation_hooks`、`project_hooks`、`extension_lifecycle` 的伪结果/漂移/超时/代次与迟到 PASS | R2 实际取得同候选新一代证明并保留原失败，零模型调用、零新增 Git 更新；[受控代次测试](quality/gh90/x02-validation-generations.json)补齐暂停/取消/替代后迟到写入、诊断保留、修复预留拒绝及后继独立完成。伪结果/漂移/超时等剩余组合仍待完成 |
 | X03 | `extension_lifecycle` 多仓作用域、撤权、持久事件/有限补投及浏览器状态 | 实际通知渠道送达观测；插件 accepted 保持为插件接收事实 |
-| X04 | `diagnostics`、真实 stdio 客户端、受保护长报告/附件与桌面/移动下载 | 线上修复 Agent 在真实恢复链读取原报告；fixture 不代替本轮线上调用 |
+| X04 | `diagnostics`、真实 stdio 客户端、受保护长报告/附件与桌面/移动下载；[父组集成长报告 → 原项修复读取的受控双仓库组合](quality/gh90/x04-integration-diagnostics.json) | 线上修复 Agent 在真实恢复链读取原报告；fixture 不代替本轮线上调用 |
 | X05 | 独立库升级/重启检查与加密备份/隔离恢复；原授权、余额、预留、交付和失败投影比较 | 兼容旧版本的真实回退/恢复切换及生产现场恢复；不承诺任意向下迁移 |
 
 每个项目的受控执行是否 PASS 以证据索引及原报告为准。早期 GitHub App 只读预检
