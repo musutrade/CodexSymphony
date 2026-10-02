@@ -22,7 +22,7 @@ verdict 为 pass/fail/unknown。pass 和 fail 都要求执行完整退出 0 且 
 
 受登录及 CSRF 保护的 `POST /api/requirements/{id}/extension-recovery` 接收 request_id、version、revision、validation_id、reason、action。重复同一请求返回原结果；复用 request_id 改内容或使用旧版本均拒绝。响应 accepted 不表示已经启动。
 
-- `action.kind=revalidate`：提供部署批准的新 plan_digest 和 resume_condition。核心创建新 validation generation，保留原失败和候选 SHA/tree，沿用 required checks，执行环境检查、before_run、验证及 after_run。不会启动 Agent 或重置预算。原验证标为 superseded，不能拿旧 PASS 交付。
+- `action.kind=revalidate`：提供部署批准的新 plan_digest 和 resume_condition。核心创建新 validation generation，保留原失败和候选 SHA/tree，沿用 required checks，执行环境检查、before_run、验证及 after_run。不会启动 Agent 或重置预算。原验证标为 superseded，不能拿旧 PASS 交付。失效或被替代的旧代次不能再开始、写入 step、提交最终结果、覆盖 hook 评价或领取代码修复预留；原状态和诊断保留。暂停后恢复不会重新激活旧代次，当前后继须取得自己的实际验证结果。
 - `action.kind=revalidate_delivery`：仅用于尚未交付的 GitHub 候选，额外提交 `policy_digest`，明确批准同一新计划用于本次候选重验和实际合并版本验收。摘要是当前强类型 `github::Policy` 的 `serde_json::to_vec` 字节的 SHA-256，包含原 post_merge 固定计划及保护规则；不接受任意文本作为授权。仓库版本必须与冻结修订一致，post_merge 必须原为 fixed_validation。新验证成功后，仅它对应的任务、修订、候选和验证 ID 可使用新计划。执行时复查原策略摘要、新计划摘要和保存的 trusted identity；普通 revalidate 不改变 post_merge。仓库全局策略、CI 来源、合并权限、保护规则及旧计划文件均不更新。
 - `action.kind=adapt_code`：提供非空 constraints，沿用现有代码修复 worker、次数和累计资源授权，生成新的 Run 和候选；不把原 unsupported 改成代码错误。额外冻结的约束在每次 Agent 输入构造时注入，包括恢复与修复。候选修改路径必须在批准范围内，超范围阻断验证。
 

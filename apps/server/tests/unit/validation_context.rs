@@ -5,6 +5,33 @@ use crate::validation::Candidate;
 
 const DIGEST: &str = "approved-plan-digest";
 
+#[tokio::test]
+async fn obsolete_context_cannot_replace_retained_evaluation() {
+    for superseded in [false, true] {
+        let (pool, _, _, _) = fixture::fixture().await;
+        let candidate = seed(&pool).await;
+        let mut ctx = context(&candidate);
+        ctx.call.identity.invocation_id = "successor".into();
+        let original = json!({"original":"unknown result retained"});
+        sqlx::query("UPDATE candidate_validation SET hook_context=$1,hook_evaluation=$2,hook_invalidated=$3,superseded_by=CASE WHEN $3 THEN NULL ELSE 'validation' END WHERE id='successor'")
+            .bind(json!(ctx)).bind(&original).bind(!superseded).execute(&pool).await.unwrap();
+        let late = Evaluation {
+            call: ctx.call.clone(),
+            verdict: crate::controlled_contract::Verdict::Pass,
+            checks: vec![],
+        };
+        assert!(record(&pool, &ctx, &late).await.is_err());
+        let saved: Value = sqlx::query_scalar(
+            "SELECT hook_evaluation FROM candidate_validation WHERE id='successor'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(saved, original);
+        pool.close().await;
+    }
+}
+
 fn context(candidate: &Candidate) -> Context {
     Context {
         call: Call {
