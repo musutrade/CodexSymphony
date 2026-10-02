@@ -210,12 +210,12 @@ async fn observed(pool: &PgPool, requirement: i64, revision: i64, stage: &str) -
 pub async fn check_current(pool: &PgPool, context: &Context, stage: &str) -> Result<()> {
     let id = &context.call.identity;
     let invalidated: bool =
-        sqlx::query_scalar("SELECT hook_invalidated FROM candidate_validation WHERE id=$1")
+        sqlx::query_scalar("SELECT hook_invalidated OR superseded_by IS NOT NULL FROM candidate_validation WHERE id=$1")
             .bind(&id.invocation_id)
             .fetch_one(pool)
             .await?;
     if invalidated {
-        return Err("validation invalidated by control interruption".into());
+        return Err("validation invalidated by control interruption or newer generation".into());
     }
     let environment = crate::environment_service::plan(pool, id.requirement_id, id.revision)
         .await?
@@ -238,7 +238,7 @@ pub async fn allowed(pool: &PgPool, requirement: i64, revision: i64) -> Result<b
 }
 
 pub async fn record(pool: &PgPool, context: &Context, evaluation: &Evaluation) -> Result<()> {
-    sqlx::query("UPDATE candidate_validation SET hook_evaluation=$2 WHERE id=$1 AND hook_context=$3 AND result='pending'")
+    sqlx::query("UPDATE candidate_validation SET hook_evaluation=$2 WHERE id=$1 AND hook_context=$3 AND result='pending' AND NOT hook_invalidated AND superseded_by IS NULL")
         .bind(&context.call.identity.invocation_id).bind(json!(evaluation)).bind(json!(context)).execute(pool).await?;
     check_current(pool, context, "validation").await?;
     if evaluation.verdict == crate::controlled_contract::Verdict::Pass {
