@@ -1,0 +1,437 @@
+{
+  "schema": "gh90-controlled-validation-generation-evidence/v1",
+  "scope": "X02: reject invalidated or superseded generation writes; preserve original evidence and allow a fresh generation",
+  "baseline": "f4f34324b47ce3e644b411a12b6a838b50f9cd42",
+  "acceptance": {
+    "environment": "isolated PostgreSQL and actual local Git/process validation fixtures",
+    "tests": [
+      {
+        "name": "interrupted_generations_reject_late_results_and_keep_original_evidence",
+        "cases": [
+          "requirement pause and resume",
+          "global pause and resume",
+          "cancel and control reset",
+          "superseded native generation"
+        ],
+        "assertions": [
+          "unstarted old generation cannot begin",
+          "late step and repeated finish rejected",
+          "original status and process output retained",
+          "no old delivery or repair reservation",
+          "fresh process validation delivers only the successor"
+        ]
+      },
+      {
+        "name": "obsolete_code_failure_cannot_consume_a_repair_reservation",
+        "cases": [
+          "invalidated code failure",
+          "superseded code failure"
+        ],
+        "assertions": [
+          "original failed evidence retained",
+          "no repair reservation consumed"
+        ]
+      },
+      {
+        "name": "obsolete_context_cannot_replace_retained_evaluation",
+        "cases": [
+          "invalidated context",
+          "superseded context"
+        ],
+        "assertions": [
+          "late hook PASS rejected",
+          "original hook evaluation retained"
+        ]
+      }
+    ],
+    "result": "PASS",
+    "production_deployment": false,
+    "new_business_model_calls": 0,
+    "limits": [
+      "controlled fixtures do not establish new live product acceptance",
+      "remaining X02 forged-result, drift and timeout combinations remain open",
+      "original GH-90 account reservations and global pause are unchanged"
+    ]
+  },
+  "source_bound_measurement": {
+    "coverage_and_crap": "PASS",
+    "violations": [],
+    "functions": 2442,
+    "measurement": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-2e60f9e3132e/probes/backend/measurement-i5rta8jp/measurements.json",
+    "measurement_sha256": "a062afbe0a6e983025585c7ecd8fa2f9d64c242a06d6873b67375ee59103152c",
+    "run": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-2e60f9e3132e",
+    "capture_registration": {
+      "root": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-2e60f9e3132e",
+      "identity": {
+        "device": 1792,
+        "inode": 5912968
+      },
+      "bundle_sha256": "dbe292d9cd6476293536c9b321ec794ffbcacabfce76a41118873029fae3a59f",
+      "registered_at": 1790925310.7807758
+    },
+    "changed_functions": [
+      {
+        "source": "apps/server/src/validation_context.rs",
+        "source_sha256": "d2d0166430df22b046b0253e9efc70e0a0d4820fa97e4574cc324ba93cb3294e",
+        "name": "check_current",
+        "kind": "function",
+        "start": [
+          210,
+          1
+        ],
+        "end": [
+          233,
+          2
+        ],
+        "anchors": [
+          [
+            210,
+            1
+          ],
+          [
+            210,
+            5
+          ],
+          [
+            210,
+            11
+          ],
+          [
+            210,
+            89
+          ]
+        ],
+        "body": [
+          210,
+          89
+        ],
+        "asynchronous": true,
+        "complexity": 10,
+        "native_instances": 4,
+        "coverage.line": {
+          "numerator": 23,
+          "denominator": 23
+        },
+        "coverage.region": {
+          "numerator": 37,
+          "denominator": 42
+        },
+        "coverage.function": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "risk.crap": {
+          "numerator": 10,
+          "denominator": 1
+        }
+      },
+      {
+        "source": "apps/server/src/validation_context.rs",
+        "source_sha256": "d2d0166430df22b046b0253e9efc70e0a0d4820fa97e4574cc324ba93cb3294e",
+        "name": "record",
+        "kind": "function",
+        "start": [
+          240,
+          1
+        ],
+        "end": [
+          253,
+          2
+        ],
+        "anchors": [
+          [
+            240,
+            1
+          ],
+          [
+            240,
+            5
+          ],
+          [
+            240,
+            11
+          ],
+          [
+            240,
+            94
+          ]
+        ],
+        "body": [
+          240,
+          94
+        ],
+        "asynchronous": true,
+        "complexity": 5,
+        "native_instances": 4,
+        "coverage.line": {
+          "numerator": 12,
+          "denominator": 13
+        },
+        "coverage.region": {
+          "numerator": 25,
+          "denominator": 28
+        },
+        "coverage.function": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "risk.crap": {
+          "numerator": 11010,
+          "denominator": 2197
+        }
+      },
+      {
+        "source": "apps/server/src/validation_store.rs",
+        "source_sha256": "5d370cd22e719c993a4ae8f1b1231da146ac2f657a8220c49d77e688a4c7c5f7",
+        "name": "begin",
+        "kind": "function",
+        "start": [
+          62,
+          1
+        ],
+        "end": [
+          68,
+          2
+        ],
+        "anchors": [
+          [
+            62,
+            1
+          ],
+          [
+            62,
+            5
+          ],
+          [
+            62,
+            11
+          ],
+          [
+            62,
+            61
+          ]
+        ],
+        "body": [
+          62,
+          61
+        ],
+        "asynchronous": true,
+        "complexity": 4,
+        "native_instances": 4,
+        "coverage.line": {
+          "numerator": 7,
+          "denominator": 7
+        },
+        "coverage.region": {
+          "numerator": 15,
+          "denominator": 18
+        },
+        "coverage.function": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "risk.crap": {
+          "numerator": 4,
+          "denominator": 1
+        }
+      },
+      {
+        "source": "apps/server/src/validation_store.rs",
+        "source_sha256": "5d370cd22e719c993a4ae8f1b1231da146ac2f657a8220c49d77e688a4c7c5f7",
+        "name": "record_step",
+        "kind": "function",
+        "start": [
+          85,
+          1
+        ],
+        "end": [
+          104,
+          2
+        ],
+        "anchors": [
+          [
+            85,
+            1
+          ],
+          [
+            85,
+            5
+          ],
+          [
+            85,
+            11
+          ],
+          [
+            90,
+            19
+          ]
+        ],
+        "body": [
+          90,
+          19
+        ],
+        "asynchronous": true,
+        "complexity": 8,
+        "native_instances": 4,
+        "coverage.line": {
+          "numerator": 15,
+          "denominator": 15
+        },
+        "coverage.region": {
+          "numerator": 51,
+          "denominator": 55
+        },
+        "coverage.function": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "risk.crap": {
+          "numerator": 8,
+          "denominator": 1
+        }
+      },
+      {
+        "source": "apps/server/src/validation_store.rs",
+        "source_sha256": "5d370cd22e719c993a4ae8f1b1231da146ac2f657a8220c49d77e688a4c7c5f7",
+        "name": "load_evidence",
+        "kind": "function",
+        "start": [
+          164,
+          1
+        ],
+        "end": [
+          190,
+          2
+        ],
+        "anchors": [
+          [
+            164,
+            1
+          ],
+          [
+            164,
+            1
+          ],
+          [
+            164,
+            7
+          ],
+          [
+            167,
+            41
+          ]
+        ],
+        "body": [
+          167,
+          41
+        ],
+        "asynchronous": true,
+        "complexity": 5,
+        "native_instances": 4,
+        "coverage.line": {
+          "numerator": 23,
+          "denominator": 23
+        },
+        "coverage.region": {
+          "numerator": 39,
+          "denominator": 42
+        },
+        "coverage.function": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "risk.crap": {
+          "numerator": 5,
+          "denominator": 1
+        }
+      },
+      {
+        "source": "apps/server/src/validation_store.rs",
+        "source_sha256": "5d370cd22e719c993a4ae8f1b1231da146ac2f657a8220c49d77e688a4c7c5f7",
+        "name": "reserve_repair",
+        "kind": "function",
+        "start": [
+          230,
+          1
+        ],
+        "end": [
+          261,
+          2
+        ],
+        "anchors": [
+          [
+            232,
+            1
+          ],
+          [
+            232,
+            5
+          ],
+          [
+            232,
+            11
+          ],
+          [
+            239,
+            19
+          ]
+        ],
+        "body": [
+          239,
+          19
+        ],
+        "asynchronous": true,
+        "complexity": 10,
+        "native_instances": 4,
+        "coverage.line": {
+          "numerator": 23,
+          "denominator": 23
+        },
+        "coverage.region": {
+          "numerator": 46,
+          "denominator": 51
+        },
+        "coverage.function": {
+          "numerator": 1,
+          "denominator": 1
+        },
+        "risk.crap": {
+          "numerator": 10,
+          "denominator": 1
+        }
+      }
+    ]
+  },
+  "test_capture": {
+    "groups": 44,
+    "passed": 461,
+    "failed": 0,
+    "stdout_sha256": "99f131de2cbe32c397549e43343548bb956e69ef5c78b52c4596018226fc8f78"
+  },
+  "post_measurement_checks": {
+    "measurement": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-2e60f9e3132e",
+    "results": [
+      {
+        "step": "backend-format",
+        "status": "PASS"
+      },
+      {
+        "step": "backend-clippy-with-secret-and-architecture-checks",
+        "status": "PASS"
+      }
+    ],
+    "run": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-aa1a6b575a75"
+  },
+  "retained_failure": {
+    "run": "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-dfc9355ad443",
+    "stage": "backend capture",
+    "cause": "new fixtures attempted multiple initial validations for one candidate, rejected by validation_initial_candidate",
+    "recovery": "successor fixtures use retry_of exactly as product recovery; fresh capture after fixture correction",
+    "evidence": "capture-failure.json, failed-pending-capture.json, source archive and original logs retained; no measurement PASS claimed"
+  },
+  "timing_evidence": [
+    "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-2e60f9e3132e/timings.jsonl",
+    "/mnt/dev-ssd/codexsymphony-bounded/data/evidence/gate/run-aa1a6b575a75/timings.jsonl"
+  ],
+  "publication": "final exact-tree complete Gate and publication identity remain host-owned external receipts"
+}

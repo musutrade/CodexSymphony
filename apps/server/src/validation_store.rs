@@ -61,7 +61,7 @@ fn decode(error: serde_json::Error) -> sqlx::Error {
 
 pub async fn begin(pool: &PgPool, id: &str) -> Result<bool> {
     let mut tx = run_store::lock(pool).await?;
-    let result = sqlx::query("UPDATE candidate_validation v SET stage='validation' WHERE v.id=$1 AND v.stage='declaration' AND v.result='pending' AND (NOT EXISTS(SELECT 1 FROM repair_authorization auth WHERE auth.requirement_id=v.requirement_id AND auth.policy='bounded_v1') OR EXISTS(SELECT 1 FROM requirement r JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision rev ON rev.requirement_id=r.id AND rev.revision=r.revision JOIN repository repo ON repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) WHERE r.id=v.requirement_id AND r.revision=v.revision AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1)))")
+    let result = sqlx::query("UPDATE candidate_validation v SET stage='validation' WHERE v.id=$1 AND v.stage='declaration' AND v.result='pending' AND NOT v.hook_invalidated AND v.superseded_by IS NULL AND (NOT EXISTS(SELECT 1 FROM repair_authorization auth WHERE auth.requirement_id=v.requirement_id AND auth.policy='bounded_v1') OR EXISTS(SELECT 1 FROM requirement r JOIN execution_control c ON c.requirement_id=r.id JOIN execution_revision rev ON rev.requirement_id=r.id AND rev.revision=r.revision JOIN repository repo ON repo.id=COALESCE((rev.document->>'repository_id')::bigint,1) WHERE r.id=v.requirement_id AND r.revision=v.revision AND NOT r.paused AND NOT r.cancel_requested AND NOT c.paused AND c.recovery_complete AND NOT (repo.document->>'revoked')::boolean AND (rev.document->>'repository_version')::bigint>repo.revoked_through_version AND NOT (SELECT blocked FROM storage_guard WHERE id=1)))")
         .bind(id).execute(&mut *tx).await?;
     tx.commit().await?;
     Ok(result.rows_affected() == 1)
@@ -92,7 +92,7 @@ pub async fn record_step(
         return Ok(false);
     }
     let mut tx = run_store::lock(pool).await?;
-    let active: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM candidate_validation WHERE id=$1 AND stage='validation' AND result='pending')")
+    let active: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM candidate_validation WHERE id=$1 AND stage='validation' AND result='pending' AND NOT hook_invalidated AND superseded_by IS NULL)")
         .bind(validation_id).fetch_one(&mut *tx).await?;
     if !active {
         return Ok(false);
@@ -165,7 +165,7 @@ async fn load_evidence(
     tx: &mut sqlx::Transaction<'_, sqlx::Postgres>,
     id: &str,
 ) -> Result<Option<ValidationEvidence>> {
-    let saved: Option<(String,String,Value,String,String,String,String)> = sqlx::query_as("SELECT candidate_sha,candidate_tree,trusted,source_before,source_after,entry_before,entry_after FROM candidate_validation WHERE id=$1 AND stage='validation' AND result='pending' FOR UPDATE")
+    let saved: Option<(String,String,Value,String,String,String,String)> = sqlx::query_as("SELECT candidate_sha,candidate_tree,trusted,source_before,source_after,entry_before,entry_after FROM candidate_validation WHERE id=$1 AND stage='validation' AND result='pending' AND NOT hook_invalidated AND superseded_by IS NULL FOR UPDATE")
         .bind(id).fetch_optional(&mut **tx).await?;
     let Some((sha, tree, trusted_json, before, after, entry_before, entry_after)) = saved else {
         return Ok(None);
@@ -241,7 +241,7 @@ pub async fn reserve_repair(
         return Ok(false);
     }
     let mut tx = run_store::lock(pool).await?;
-    let allowed: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM candidate_validation v WHERE v.id=$1 AND v.requirement_id=$2 AND v.result='gate_failed' AND NOT EXISTS(SELECT 1 FROM repair_authorization a WHERE a.requirement_id=$2 AND a.policy='bounded_v1') AND EXISTS(SELECT 1 FROM validation_step s WHERE s.validation_id=v.id AND s.status='failed' AND s.code_failure AND s.exit_code IS NOT NULL AND s.exit_code<>0))")
+    let allowed: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM candidate_validation v WHERE v.id=$1 AND v.requirement_id=$2 AND v.result='gate_failed' AND NOT v.hook_invalidated AND v.superseded_by IS NULL AND NOT EXISTS(SELECT 1 FROM repair_authorization a WHERE a.requirement_id=$2 AND a.policy='bounded_v1') AND EXISTS(SELECT 1 FROM validation_step s WHERE s.validation_id=v.id AND s.status='failed' AND s.code_failure AND s.exit_code IS NOT NULL AND s.exit_code<>0))")
         .bind(source).bind(requirement).fetch_one(&mut *tx).await?;
     if !allowed {
         return Ok(false);

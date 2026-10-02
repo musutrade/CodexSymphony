@@ -400,6 +400,220 @@ async fn repair_launch(pool: &PgPool) {
 
 #[path = "support/validation_runner.rs"]
 mod runner_fixture;
+
+async fn successor_fixture(pool: &PgPool, id: &str, source: &str) {
+    // Explicit generation fixture, matching the product recovery INSERT;
+    // only the original generation may use the initial-candidate identity.
+    let inserted = sqlx::query("INSERT INTO candidate_validation(id,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_after,entry_before,entry_after,stage,result,retry_of) SELECT $1,requirement_id,revision,source_run_id,candidate_sha,candidate_tree,trusted,required_steps,source_before,source_before,entry_before,entry_before,'declaration','pending',id FROM candidate_validation WHERE id=$2")
+        .bind(id).bind(source).execute(pool).await.unwrap();
+    assert_eq!(inserted.rows_affected(), 1);
+}
+
+#[tokio::test]
+async fn interrupted_generations_reject_late_results_and_keep_original_evidence() {
+    use codexsymphony_server::validation_runner as runner;
+    for interruption in ["requirement_pause", "global_pause", "cancel", "superseded"] {
+        let pool = database().await;
+        let (root, repo, plan) = runner_fixture::fixture();
+        let candidate = runner::candidate(&repo).unwrap();
+        let trusted = plan.identity().unwrap();
+        sqlx::query("UPDATE workspace_snapshot SET manifest=jsonb_set(manifest,'{head}',to_jsonb($1::text))")
+            .bind(&candidate.sha).execute(&pool).await.unwrap();
+        assert!(
+            store::create(
+                &pool,
+                "original",
+                1,
+                1,
+                "run1",
+                &candidate,
+                &trusted,
+                &candidate.tree,
+                &trusted.protected_entry_sha256
+            )
+            .await
+            .unwrap()
+        );
+        successor_fixture(&pool, "unstarted", "original").await;
+        successor_fixture(&pool, "successor", "unstarted").await;
+        // Native and environment-bound generations both obey supersession.
+        if interruption != "superseded" {
+            sqlx::query("UPDATE candidate_validation SET hook_required=true WHERE id<>'successor'")
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        assert!(store::begin(&pool, "original").await.unwrap());
+        let directory = root.join("original-evidence");
+        let steps = runner::execute(&repo, &directory, &candidate, &plan).unwrap();
+        assert_eq!(steps[0].exit_code, Some(0));
+        assert!(
+            store::record_step(&pool, "original", &steps[0], "succeeded")
+                .await
+                .unwrap()
+        );
+        let original = store::status(&pool, "original").await.unwrap().unwrap();
+        match interruption {
+            "requirement_pause" => {
+                sqlx::raw_sql("UPDATE requirement SET paused=true WHERE id=1; UPDATE requirement SET paused=false WHERE id=1")
+                    .execute(&pool).await.unwrap();
+            }
+            "global_pause" => {
+                sqlx::raw_sql("UPDATE execution_control SET paused=true WHERE id=1; UPDATE execution_control SET paused=false WHERE id=1")
+                    .execute(&pool).await.unwrap();
+            }
+            "cancel" => {
+                sqlx::raw_sql("UPDATE requirement SET cancel_requested=true WHERE id=1; UPDATE requirement SET cancel_requested=false WHERE id=1")
+                    .execute(&pool).await.unwrap();
+            }
+            "superseded" => {
+                sqlx::query("UPDATE candidate_validation SET superseded_by='successor' WHERE id<>'successor'")
+                    .execute(&pool).await.unwrap();
+            }
+            _ => unreachable!(),
+        }
+        assert!(!store::begin(&pool, "unstarted").await.unwrap());
+        let mut late = steps[0].clone();
+        late.id = "late".into();
+        assert!(
+            !store::record_step(&pool, "original", &late, "succeeded")
+                .await
+                .unwrap()
+        );
+        for _ in 0..2 {
+            assert!(
+                !store::finish(
+                    &pool,
+                    "original",
+                    &candidate,
+                    &trusted,
+                    &candidate.tree,
+                    &trusted.protected_entry_sha256,
+                    &steps,
+                    &["test".into()]
+                )
+                .await
+                .unwrap()
+            );
+        }
+        assert_eq!(
+            store::status(&pool, "original").await.unwrap().unwrap(),
+            original
+        );
+        let retained: String =
+            sqlx::query_scalar("SELECT output FROM validation_step WHERE validation_id='original'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(retained, steps[0].output);
+        let replayed = runner::execute(&repo, &directory, &candidate, &plan).unwrap();
+        assert_eq!(replayed, steps, "retained process output remains readable");
+        let side_effects: (i64, i64) = sqlx::query_as(
+            "SELECT (SELECT count(*) FROM delivery),(SELECT count(*) FROM repair_reservation)",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(side_effects, (0, 0));
+        assert!(store::begin(&pool, "successor").await.unwrap());
+        let successor_steps =
+            runner::execute(&repo, &root.join("successor-evidence"), &candidate, &plan).unwrap();
+        assert!(
+            store::record_step(&pool, "successor", &successor_steps[0], "succeeded")
+                .await
+                .unwrap()
+        );
+        assert!(
+            store::finish(
+                &pool,
+                "successor",
+                &candidate,
+                &trusted,
+                &candidate.tree,
+                &trusted.protected_entry_sha256,
+                &successor_steps,
+                &["test".into()]
+            )
+            .await
+            .unwrap()
+        );
+        let publications: Vec<String> = sqlx::query_scalar("SELECT validation_id FROM delivery")
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+        assert_eq!(publications, vec!["successor"]);
+        pool.close().await;
+    }
+}
+
+#[tokio::test]
+async fn obsolete_code_failure_cannot_consume_a_repair_reservation() {
+    for superseded in [false, true] {
+        let pool = database().await;
+        let (candidate, trusted, mut failed) = facts();
+        failed.exit_code = Some(1);
+        failed.code_failure = true;
+        assert!(create(&pool, "failed", 1).await);
+        successor_fixture(&pool, "successor", "failed").await;
+        assert!(store::begin(&pool, "failed").await.unwrap());
+        assert!(
+            store::record_step(&pool, "failed", &failed, "failed")
+                .await
+                .unwrap()
+        );
+        assert!(
+            !store::finish(
+                &pool,
+                "failed",
+                &candidate,
+                &trusted,
+                "source",
+                "entry",
+                std::slice::from_ref(&failed),
+                &["test".into()]
+            )
+            .await
+            .unwrap()
+        );
+        let original = store::status(&pool, "failed").await.unwrap().unwrap();
+        if superseded {
+            sqlx::query(
+                "UPDATE candidate_validation SET superseded_by='successor' WHERE id='failed'",
+            )
+            .execute(&pool)
+            .await
+            .unwrap();
+        } else {
+            sqlx::query("UPDATE candidate_validation SET hook_invalidated=true WHERE id='failed'")
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        assert!(
+            !store::reserve_repair(
+                &pool,
+                1,
+                1,
+                "failed",
+                &json!({"raw":failed.output}),
+                FailureKind::Code
+            )
+            .await
+            .unwrap()
+        );
+        assert_eq!(
+            store::status(&pool, "failed").await.unwrap().unwrap(),
+            original
+        );
+        let count: i64 = sqlx::query_scalar("SELECT count(*) FROM repair_reservation")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0);
+        pool.close().await;
+    }
+}
+
 #[tokio::test]
 async fn real_validation_service_success_failure_and_recovery() {
     use codexsymphony_server::{
