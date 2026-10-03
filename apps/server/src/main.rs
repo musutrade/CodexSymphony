@@ -189,7 +189,13 @@ fn finish(
 
 async fn serve_service(config: Config, workers: &mut Workers) -> Result<(), StartupError> {
     let pool = prepare_database(&config.database_url).await?;
-    codexsymphony_server::environment_service::startup(&pool).await?;
+    let mode = codexsymphony_server::service_mode::Mode::from_admission(
+        codexsymphony_server::environment_service::startup(&pool).await,
+    );
+    if !mode.executions_enabled() {
+        let (listener, policy) = listen(config).await?;
+        return serve_http(listener, pool, policy, None, mode).await;
+    }
     codexsymphony_server::generation_store::recover(&pool)
         .await
         .map_err(generation_recovery_failed)?;
@@ -197,7 +203,7 @@ async fn serve_service(config: Config, workers: &mut Workers) -> Result<(), Star
     let (worker, runtime) = start_coordinator(&pool).await?;
     workers.coordinator = Some(worker);
     workers.github = codexsymphony_server::github_service::start(&pool).await?;
-    serve_http(listener, pool, policy, runtime).await
+    serve_http(listener, pool, policy, runtime, mode).await
 }
 
 fn generation_recovery_failed<E>(_: E) -> std::io::Error {
@@ -335,10 +341,11 @@ async fn serve_http(
     pool: PgPool,
     policy: RequestPolicy,
     runtime: Option<tokio::task::AbortHandle>,
+    mode: codexsymphony_server::service_mode::Mode,
 ) -> Result<(), StartupError> {
     let address = listener.local_addr()?;
     tracing::info!("CodexSymphony API listening at http://{}", address);
-    let mut app = codexsymphony_server::router(pool, policy);
+    let mut app = codexsymphony_server::router_with_mode(pool, policy, mode);
     if let Some(runtime) = runtime {
         app = app.layer(axum::Extension(runtime));
     }

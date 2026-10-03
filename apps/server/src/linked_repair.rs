@@ -1,6 +1,8 @@
 //! Original-item repair authorization. Diagnostics cannot enlarge reviewed scope.
 use crate::{
     bounded_recovery,
+    controlled_contract::Verdict,
+    extension_feedback,
     validation::{ValidationError, ValidationEvidence},
 };
 use serde::{Deserialize, Serialize};
@@ -34,14 +36,12 @@ impl Scope {
     ) -> Result<Vec<String>, &'static str> {
         // Verify provenance, output hashes and complete required coverage even
         // though the trusted invocation returned a failing exit status.
-        let mut identity = evidence.clone();
-        for step in &mut identity.steps {
-            step.exit_code = Some(0);
-        }
-        crate::validation::verify(&identity, &evidence.candidate, &evidence.trusted, required)
-            .map_err(evidence_error)?;
+        crate::validation::verify_provenance(evidence, required).map_err(evidence_error)?;
         let mut paths = Vec::new();
-        for step in evidence.steps.iter().filter(|s| s.exit_code != Some(0)) {
+        for step in &evidence.steps {
+            if extension_feedback::verdict(step) == Verdict::Pass {
+                continue;
+            }
             if !classified_step(step) {
                 return Err("failure is not classified code");
             }
@@ -49,7 +49,9 @@ impl Scope {
                 .checks
                 .get(&step.id)
                 .ok_or("failed check outside repair scope")?;
-            paths.extend(allowed.iter().cloned());
+            for path in allowed {
+                paths.push(path.clone());
+            }
         }
         paths.sort();
         paths.dedup();
@@ -70,19 +72,35 @@ fn valid_path(path: &str) -> bool {
 }
 
 pub fn failed_code(evidence: &ValidationEvidence, required: &[String]) -> bool {
-    crate::validation::verify(evidence, &evidence.candidate, &evidence.trusted, required)
-        == Err(ValidationError::ExitFailed)
-        && evidence
-            .steps
-            .iter()
-            .filter(|s| s.exit_code != Some(0))
-            .all(classified_step)
+    if crate::validation::verify_provenance(evidence, required).is_err() {
+        return false;
+    }
+    let mut failed = false;
+    for step in &evidence.steps {
+        if extension_feedback::verdict(step) == Verdict::Pass {
+            continue;
+        }
+        if !classified_step(step) {
+            return false;
+        }
+        failed = true;
+    }
+    failed
 }
 
 fn classified_step(step: &crate::validation::StepEvidence) -> bool {
-    step.code_failure
-        && step.exit_code.is_some()
-        && bounded_recovery::native_failure(&step.output) == "check_exit"
+    if !step.code_failure {
+        return false;
+    }
+    match extension_feedback::decode(step) {
+        Ok(Some(feedback)) => feedback.verdict == Verdict::Fail,
+        Ok(None) => {
+            step.exit_code.is_some()
+                && step.exit_code != Some(0)
+                && bounded_recovery::native_failure(&step.output) == "check_exit"
+        }
+        Err(_) => false,
+    }
 }
 
 fn scope_error(_: serde_json::Error) -> &'static str {

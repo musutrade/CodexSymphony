@@ -79,6 +79,7 @@ pub mod runtime_api;
 pub mod runtime_client;
 pub mod runtime_protocol;
 pub mod runtime_questions;
+mod runtime_repair_context;
 pub mod runtime_resume;
 pub mod runtime_service;
 pub mod runtime_store;
@@ -86,6 +87,7 @@ pub mod runtime_tools;
 pub mod runtime_transport;
 pub mod runtime_unstarted;
 pub mod security;
+pub mod service_mode;
 pub mod storage;
 pub mod storage_archive;
 pub mod storage_cleanup;
@@ -120,25 +122,36 @@ pub struct Health {
 }
 
 pub fn router(pool: PgPool, policy: security::RequestPolicy) -> Router {
+    router_with_mode(pool, policy, service_mode::Mode::Normal)
+}
+
+pub fn router_with_mode(
+    pool: PgPool,
+    policy: security::RequestPolicy,
+    mode: service_mode::Mode,
+) -> Router {
     policy.protect(
-        Router::new()
-            .route("/api/health", get(health))
-            .merge(auth_api::routes())
-            .merge(business::routes())
-            .merge(draft_api::routes())
-            .merge(group_api::routes())
-            .merge(group_edit_api::routes())
-            .merge(generation_api::routes())
-            .merge(operator_api::routes())
-            .merge(execution_api::routes())
-            .merge(validation_api::routes())
-            .merge(diagnostic_api::routes())
-            .merge(extension_api::routes())
-            .merge(pre_merge_recovery_api::routes())
-            .merge(lifecycle_api::routes())
-            .merge(runtime_api::routes())
-            .layer(axum::middleware::from_fn(draft_api::guard_legacy))
-            .with_state(pool.clone()),
+        service_mode::protect(
+            Router::new()
+                .route("/api/health", get(health))
+                .merge(auth_api::routes())
+                .merge(business::routes())
+                .merge(draft_api::routes())
+                .merge(group_api::routes())
+                .merge(group_edit_api::routes())
+                .merge(generation_api::routes())
+                .merge(operator_api::routes())
+                .merge(execution_api::routes())
+                .merge(validation_api::routes())
+                .merge(diagnostic_api::routes())
+                .merge(extension_api::routes())
+                .merge(pre_merge_recovery_api::routes())
+                .merge(lifecycle_api::routes())
+                .merge(runtime_api::routes())
+                .layer(axum::middleware::from_fn(draft_api::guard_legacy))
+                .with_state(pool.clone()),
+            mode,
+        ),
         pool,
     )
 }
@@ -212,6 +225,7 @@ pub mod linked_repair;
 pub mod linked_repair_acceptance;
 pub mod linked_repair_source;
 pub mod linked_repair_worker;
+pub mod linked_source_recovery;
 
 pub mod delivery_extension;
 pub mod delivery_hook_process;
@@ -253,4 +267,5 @@ pub mod pre_merge_recovery;
 pub mod pre_merge_recovery_api;
 pub mod pre_merge_recovery_worker;
 
+mod environment_incomplete_recovery;
 pub mod environment_recovery;

@@ -253,6 +253,7 @@ pub async fn input(pool: &PgPool, key: &RunKey) -> Result<String> {
             .bind(&key.run_id)
             .fetch_optional(pool)
             .await?;
+    let repair = crate::runtime_repair_context::project(repair)?;
     let constraints = crate::extension_recovery::constraints(pool, &key.run_id).await?;
     let diagnostics = crate::diagnostic_tools::context(pool, key)
         .await

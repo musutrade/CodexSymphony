@@ -1,0 +1,442 @@
+{
+  "schema": "gh90-real-reader-resume-budget-stop/v1",
+  "recorded_at": "2026-10-02T23:22:07.781651+00:00",
+  "status": "partial real product reads; X04 and GH90 remain OPEN",
+  "requirement_id": 8,
+  "revision": 1,
+  "run_id": "92f81af7-a368-4bc8-ab3a-e39b02cf6f95",
+  "source_run": "ed814674-162f-4c06-8bef-95fc272ac163",
+  "source_tree": "b1fd5967a864cb9f8d715a29f6940b6a18c263e9",
+  "validation_id": "372122895c9b29a0be58f4913cca1be0c103037033563f85ac59aaf73959dbb7",
+  "binary_sha256": "8b9948df787241d5c61e6f6708ed1c28838889b2f05cc97ed0db22b350674004",
+  "original_group_authorization": 4,
+  "original_budget_version": 2,
+  "user_approved_delta": {
+    "tokens": 180000,
+    "turns": 1,
+    "model_seconds": 180
+  },
+  "limits": {
+    "tokens": 300000,
+    "turns": 2,
+    "model_seconds": 360
+  },
+  "prior_call_usage": {
+    "input": 178807,
+    "cached": 118016,
+    "output": 263,
+    "complete": false,
+    "model_seconds": 20
+  },
+  "new_call_usage": {
+    "input": 126302,
+    "cached": 102784,
+    "output": 765,
+    "complete": false,
+    "model_seconds": 68
+  },
+  "cumulative_tokens": 306137,
+  "token_overrun": 6137,
+  "unresolved_call_model_seconds_exposure": 360,
+  "accounting": "input includes cached input; no cache subtraction or double addition; unknown usage retains original reservation",
+  "same_repair_failure_id": "integration:integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+  "same_repair_ordinal": 1,
+  "total_model_calls": 13,
+  "old11_calls_unchanged": true,
+  "protocol": {
+    "protocol_bytes": 190033,
+    "protocol_sha256": "8a0bf44e18a6ed17c34c3005923536f12969959cd8432f5e4c5d5f5391848205"
+  },
+  "tool_observations": {
+    "requests": 69,
+    "completed": 68,
+    "successful": [
+      {
+        "tool": "list_diagnostics",
+        "arguments": {
+          "after": 0
+        },
+        "success": true,
+        "artifacts": [
+          {
+            "artifact_id": "c96a94fe4914b9b41b628c13a9eb183cd9cf6f3e6237afb1b98c2e43452135c0",
+            "availability": "available",
+            "binding": {
+              "candidate": {
+                "immutable": true,
+                "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+                "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+              },
+              "environment_digest": "unknown",
+              "generation": 1,
+              "identity": {
+                "attempt": 1,
+                "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+                "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "protocol_version": 2,
+                "requirement_id": 8,
+                "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "revision": 1,
+                "run_id": null
+              },
+              "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+              "phase": "integration/step:shell",
+              "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+            },
+            "expires_at": 1793539808,
+            "export_bytes": 143003,
+            "export_sha256": "5efd4e71c9667f9cc0cd67269b3c3135066f1555b0872c8e4db88ee9a23b9398",
+            "media_type": "text/plain; charset=utf-8",
+            "original_bytes": 143004,
+            "purpose": "step-0.log",
+            "raw_sha256": "94dc2214530cb58a764cbe6347e53a239e49e4b4a00ab31fcf13d3aec0f2ab0d",
+            "reason": null,
+            "retained_bytes": 143004
+          },
+          {
+            "artifact_id": "289fc3e1886256c05ded0b2a15af814ba67c092a8350339eb0b03a33a8d59a64",
+            "availability": "available",
+            "binding": {
+              "candidate": {
+                "immutable": true,
+                "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+                "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+              },
+              "environment_digest": "unknown",
+              "generation": 1,
+              "identity": {
+                "attempt": 1,
+                "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+                "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "protocol_version": 2,
+                "requirement_id": 8,
+                "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "revision": 1,
+                "run_id": null
+              },
+              "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+              "phase": "integration/step:python",
+              "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+            },
+            "expires_at": 1793539808,
+            "export_bytes": 178,
+            "export_sha256": "3337c18f7d9f7d2f88c1a45b0d5a384460fd21a298053395b3cc8107808fe79f",
+            "media_type": "text/plain; charset=utf-8",
+            "original_bytes": 179,
+            "purpose": "step-1.log",
+            "raw_sha256": "0e36adb5abc1e811e29b7ceffcf6943a2e7a7b38cf68c88764b80bd1a60078ac",
+            "reason": null,
+            "retained_bytes": 179
+          },
+          {
+            "artifact_id": "148c6d3cf8a3b1ac2ebe270ddbcffc559e8f4bf1bb0166eea4435e45e937530b",
+            "availability": "available",
+            "binding": {
+              "candidate": {
+                "immutable": true,
+                "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+                "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+              },
+              "environment_digest": "unknown",
+              "generation": 1,
+              "identity": {
+                "attempt": 1,
+                "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+                "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "protocol_version": 2,
+                "requirement_id": 8,
+                "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "revision": 1,
+                "run_id": null
+              },
+              "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+              "phase": "integration/step:python",
+              "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+            },
+            "expires_at": 1793539808,
+            "export_bytes": 84020,
+            "export_sha256": "54ad879baf23b36c16567797d90fc1b999a69ebc4691dc6a74df63d83403eeb0",
+            "media_type": "text/markdown; charset=utf-8",
+            "original_bytes": 84021,
+            "purpose": "report.md",
+            "raw_sha256": "66a4a13d625b8003364ba3fba6e623eb893d9a8cd3f42d7ae71eb32b261d7d50",
+            "reason": null,
+            "retained_bytes": 84021
+          },
+          {
+            "artifact_id": "eccff598fc3b95811cfec370cb4586d98b82240a1d4633f70f78d413889cc4f0",
+            "availability": "available",
+            "binding": {
+              "candidate": {
+                "immutable": true,
+                "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+                "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+              },
+              "environment_digest": "unknown",
+              "generation": 1,
+              "identity": {
+                "attempt": 1,
+                "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+                "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "protocol_version": 2,
+                "requirement_id": 8,
+                "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+                "revision": 1,
+                "run_id": null
+              },
+              "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+              "phase": "integration/step:python",
+              "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+            },
+            "expires_at": 1793539808,
+            "export_bytes": 110031,
+            "export_sha256": "83f13f737277273506c72e3738acbd39523c89f3b2628ea96b5f5979f612ab89",
+            "media_type": "application/json",
+            "original_bytes": 110031,
+            "purpose": "single.json",
+            "raw_sha256": "83f13f737277273506c72e3738acbd39523c89f3b2628ea96b5f5979f612ab89",
+            "reason": null,
+            "retained_bytes": 110031
+          }
+        ],
+        "next": null
+      },
+      {
+        "tool": "read_diagnostic",
+        "arguments": {
+          "artifact_id": "c96a94fe4914b9b41b628c13a9eb183cd9cf6f3e6237afb1b98c2e43452135c0",
+          "offset": 0,
+          "limit": 8192
+        },
+        "success": true,
+        "artifact": {
+          "artifact_id": "c96a94fe4914b9b41b628c13a9eb183cd9cf6f3e6237afb1b98c2e43452135c0",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+              "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "protocol_version": 2,
+              "requirement_id": 8,
+              "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+            "phase": "integration/step:shell",
+            "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+            "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+          },
+          "expires_at": 1793539808,
+          "export_bytes": 143003,
+          "export_sha256": "5efd4e71c9667f9cc0cd67269b3c3135066f1555b0872c8e4db88ee9a23b9398",
+          "media_type": "text/plain; charset=utf-8",
+          "original_bytes": 143004,
+          "purpose": "step-0.log",
+          "raw_sha256": "94dc2214530cb58a764cbe6347e53a239e49e4b4a00ab31fcf13d3aec0f2ab0d",
+          "reason": null,
+          "retained_bytes": 143004
+        },
+        "offset": 0,
+        "next": 8192,
+        "end": false,
+        "text_bytes": 8192,
+        "text_sha256": "4742bcee308bfffb612153336660235bda528a3e043b1e5703ac8d119f70c863"
+      },
+      {
+        "tool": "read_diagnostic",
+        "arguments": {
+          "artifact_id": "289fc3e1886256c05ded0b2a15af814ba67c092a8350339eb0b03a33a8d59a64",
+          "offset": 0,
+          "limit": 8192
+        },
+        "success": true,
+        "artifact": {
+          "artifact_id": "289fc3e1886256c05ded0b2a15af814ba67c092a8350339eb0b03a33a8d59a64",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+              "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "protocol_version": 2,
+              "requirement_id": 8,
+              "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+            "phase": "integration/step:python",
+            "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+            "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+          },
+          "expires_at": 1793539808,
+          "export_bytes": 178,
+          "export_sha256": "3337c18f7d9f7d2f88c1a45b0d5a384460fd21a298053395b3cc8107808fe79f",
+          "media_type": "text/plain; charset=utf-8",
+          "original_bytes": 179,
+          "purpose": "step-1.log",
+          "raw_sha256": "0e36adb5abc1e811e29b7ceffcf6943a2e7a7b38cf68c88764b80bd1a60078ac",
+          "reason": null,
+          "retained_bytes": 179
+        },
+        "offset": 0,
+        "next": 178,
+        "end": true,
+        "text_bytes": 178,
+        "text_sha256": "3337c18f7d9f7d2f88c1a45b0d5a384460fd21a298053395b3cc8107808fe79f"
+      },
+      {
+        "tool": "read_diagnostic",
+        "arguments": {
+          "artifact_id": "148c6d3cf8a3b1ac2ebe270ddbcffc559e8f4bf1bb0166eea4435e45e937530b",
+          "offset": 0,
+          "limit": 8192
+        },
+        "success": true,
+        "artifact": {
+          "artifact_id": "148c6d3cf8a3b1ac2ebe270ddbcffc559e8f4bf1bb0166eea4435e45e937530b",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+              "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "protocol_version": 2,
+              "requirement_id": 8,
+              "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+            "phase": "integration/step:python",
+            "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+            "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+          },
+          "expires_at": 1793539808,
+          "export_bytes": 84020,
+          "export_sha256": "54ad879baf23b36c16567797d90fc1b999a69ebc4691dc6a74df63d83403eeb0",
+          "media_type": "text/markdown; charset=utf-8",
+          "original_bytes": 84021,
+          "purpose": "report.md",
+          "raw_sha256": "66a4a13d625b8003364ba3fba6e623eb893d9a8cd3f42d7ae71eb32b261d7d50",
+          "reason": null,
+          "retained_bytes": 84021
+        },
+        "offset": 0,
+        "next": 8190,
+        "end": false,
+        "text_bytes": 8190,
+        "text_sha256": "6cb1a2fcc21de8db7a895d31a77de1fb41dd59f16c5b21fff7b6696077b4dcf5"
+      },
+      {
+        "tool": "read_diagnostic",
+        "arguments": {
+          "artifact_id": "eccff598fc3b95811cfec370cb4586d98b82240a1d4633f70f78d413889cc4f0",
+          "offset": 0,
+          "limit": 8192
+        },
+        "success": true,
+        "artifact": {
+          "artifact_id": "eccff598fc3b95811cfec370cb4586d98b82240a1d4633f70f78d413889cc4f0",
+          "availability": "available",
+          "binding": {
+            "candidate": {
+              "immutable": true,
+              "sha": "0f446bb795799cd753aa84651f1eac6fd0f55e68",
+              "tree": "80820d673ac3bba71c98a9b79401a1276ca146b6"
+            },
+            "environment_digest": "unknown",
+            "generation": 1,
+            "identity": {
+              "attempt": 1,
+              "config_id": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+              "invocation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "protocol_version": 2,
+              "requirement_id": 8,
+              "resource_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b",
+              "revision": 1,
+              "run_id": null
+            },
+            "implementation_digest": "a210beb0b2df44cea04916f60c7a8dc783f9eff56334143e63dc186ef42f2978",
+            "phase": "integration/step:python",
+            "policy_digest": "63f5737556a4f5eb9a59d49877edc06c0281d6f74da4a730bc8b606503c911b3",
+            "validation_id": "integration-9df96cd5-4784-496a-b8bd-a94a00e2810b"
+          },
+          "expires_at": 1793539808,
+          "export_bytes": 110031,
+          "export_sha256": "83f13f737277273506c72e3738acbd39523c89f3b2628ea96b5f5979f612ab89",
+          "media_type": "application/json",
+          "original_bytes": 110031,
+          "purpose": "single.json",
+          "raw_sha256": "83f13f737277273506c72e3738acbd39523c89f3b2628ea96b5f5979f612ab89",
+          "reason": null,
+          "retained_bytes": 110031
+        },
+        "offset": 0,
+        "next": 8192,
+        "end": false,
+        "text_bytes": 8192,
+        "text_sha256": "3ea0f8232b40d5841219073ebfaeb31c5d1ebed83fb50ac9e3b5c6af9704b237"
+      }
+    ],
+    "missing_offset_requests": 64,
+    "missing_offset_completed_failures": 63,
+    "last_missing_offset_request_has_no_completed_event": true
+  },
+  "not_completed": [
+    "long_report_tails",
+    "foreign_artifact_read_denial",
+    "report_blocker",
+    "business_repair_or_delivery"
+  ],
+  "confirmed_fault": "Actual Runtime wire requests omit required offset. Product generic diagnostic rejection gives no specific argument correction. Existing schema already requires offset. Why Runtime omitted offset remains unknown.",
+  "restoration": {
+    "original_runtime_sha256": "1f87a122f8b05ed96fe945418c24c36b7c26d85127b652b84d57922df5a04924",
+    "binary_remains_new_verified_candidate": true,
+    "normal_restore_all13table_rows_unchanged": true,
+    "paused": true,
+    "owner": 8,
+    "recovery_complete": true,
+    "active_runs": 0,
+    "pending_workspace_operations": 0,
+    "active_integrations": 0,
+    "storage_blocked": false,
+    "health": {
+      "status": "ok",
+      "database": "ok"
+    }
+  },
+  "independent_review": {
+    "path": "/home/gem/.local/share/codexsymphony/gh90-development/readiness/x04-real-reader-20261002/deployment/independent-prompt-context-reader-budget-stop-review.json",
+    "sha256": "796d68d0e07779c41ed139f1d4d2dab667ae701cf8080a92b81f9a5bd4d288b8"
+  },
+  "next_paid_retry_authorized": false,
+  "development_repair": "Differentiate malformed public argument shape after lifecycle checks from generic artifact/authorization/storage failures; explicit offset remains required, no automatic offset or broader permissions. New candidate needs measurements/checks/Gate before real retry."
+}

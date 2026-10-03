@@ -636,6 +636,54 @@ async fn integration_reports_survive_cleanup_and_only_the_linked_repair_can_read
         .await
         .unwrap();
     assert_eq!(context["manifest"]["artifacts"], json!(page.artifacts));
+    // The paid Runtime prompt carries identities/digests, never the long original
+    // report. The same retained failure and all original output bytes stay intact.
+    let repair_failure = json!({"original_failure":"diagnostic-linked","evidence":original["evidence"],"authorized_paths":["index.js"],"baseline":"original"});
+    sqlx::query("UPDATE repair_reservation SET failure=$2 WHERE repair_run_id=$1")
+        .bind(&key.run_id)
+        .bind(&repair_failure)
+        .execute(&f.pool)
+        .await
+        .unwrap();
+    let prompt = runtime_store::input(&f.pool, &key).await.unwrap();
+    let projected: Value = serde_json::from_str(&prompt).unwrap();
+    assert!(projected["repair_context"]["evidence"].is_null());
+    assert_eq!(
+        projected["repair_context"]["evidence_metadata"]["candidate"],
+        original["evidence"]["candidate"]
+    );
+    assert_eq!(
+        projected["diagnostics"]["manifest"]["artifacts"],
+        json!(page.artifacts)
+    );
+    for (metadata, original_step) in projected["repair_context"]["evidence_metadata"]["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .zip(original["evidence"]["steps"].as_array().unwrap())
+    {
+        assert!(metadata.get("output").is_none());
+        assert_eq!(metadata["output_sha256"], original_step["output_sha256"]);
+        assert_eq!(
+            metadata["output_bytes"],
+            original_step["output"].as_str().unwrap().len()
+        );
+    }
+    assert!(prompt.len() < original["evidence"].to_string().len() / 2);
+    let retained: Value =
+        sqlx::query_scalar("SELECT failure FROM repair_reservation WHERE repair_run_id=$1")
+            .bind(&key.run_id)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(retained, repair_failure);
+    let retained_result: Value =
+        sqlx::query_scalar("SELECT result FROM integration_validation WHERE id=$1")
+            .bind(&invocation)
+            .fetch_one(&f.pool)
+            .await
+            .unwrap();
+    assert_eq!(retained_result, original);
     let mut records = Vec::new();
     for artifact in &page.artifacts {
         let mut bytes = Vec::new();

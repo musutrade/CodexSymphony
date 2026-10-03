@@ -189,3 +189,68 @@ fn type_error_cannot_override_infrastructure_or_match_loosely() {
         std::fs::remove_dir_all(root).unwrap();
     }
 }
+
+#[test]
+fn structured_failures_require_complete_evidence_and_all_failed_scopes() {
+    let (root, legacy) = failure();
+    let scope = Scope::parse(
+        r#"{"schema":"linked-repair/v1","checks":{"test":["source"],"feedback":["attachment-source"]}}"#,
+    ).unwrap();
+    let mut structured = legacy.steps[0].clone();
+    structured.id = "feedback".into();
+    structured.command = vec!["/gate-entry".into(), "--symphony-feedback-v2".into()];
+    structured.exit_code = Some(0);
+    structured.output = json!({"protocol_version":2,"check_id":"feedback","verdict":"fail","fault":null,"artifacts":[]}).to_string();
+    structured.output_sha256 = validation::sha256(&structured.output);
+    let mut mixed = legacy.clone();
+    mixed.steps.push(structured.clone());
+    let required = vec!["test".into(), "feedback".into()];
+    let original = mixed.clone();
+    assert!(failed_code(&mixed, &required));
+    assert_eq!(
+        scope.paths(&mixed, &required).unwrap(),
+        vec!["attachment-source", "source"]
+    );
+    assert_eq!(mixed, original);
+    let mut structured_only = mixed.clone();
+    structured_only.steps.remove(0);
+    assert!(failed_code(&structured_only, &["feedback".into()]));
+    assert_eq!(
+        scope.paths(&structured_only, &["feedback".into()]).unwrap(),
+        vec!["attachment-source"]
+    );
+    let unmapped =
+        Scope::parse(r#"{"schema":"linked-repair/v1","checks":{"test":["source"]}}"#).unwrap();
+    assert!(unmapped.paths(&mixed, &required).is_err());
+    for output in [
+        "{malformed".to_owned(),
+        json!({"protocol_version":2,"check_id":"other","verdict":"fail","fault":null,"artifacts":[]}).to_string(),
+        json!({"protocol_version":2,"check_id":"feedback","verdict":"unknown","fault":{"class":"resource","code":"timeout","message":"unavailable","owner":"host","scope":[],"resume_condition":"service restored"},"artifacts":[]}).to_string(),
+    ] {
+        let mut invalid=mixed.clone();invalid.steps[1].output=output;invalid.steps[1].output_sha256=validation::sha256(&invalid.steps[1].output);
+        assert!(!failed_code(&invalid,&required));assert!(scope.paths(&invalid,&required).is_err());
+    }
+    let mut invalid = mixed.clone();
+    invalid.steps[1].output_sha256 = "tampered".into();
+    assert!(!failed_code(&invalid, &required));
+    assert!(scope.paths(&invalid, &required).is_err());
+    let mut invalid = mixed.clone();
+    invalid.steps[1].code_failure = false;
+    assert!(!failed_code(&invalid, &required));
+    assert!(scope.paths(&invalid, &required).is_err());
+    let mut invalid = mixed.clone();
+    invalid.steps[1].command[1] = "--symphony-feedback-v3".into();
+    assert!(!failed_code(&invalid, &required));
+    assert!(scope.paths(&invalid, &required).is_err());
+    let mut invalid = mixed.clone();
+    invalid.steps[1].exit_code = Some(1);
+    assert!(!failed_code(&invalid, &required));
+    assert!(scope.paths(&invalid, &required).is_err());
+    let mut invalid = mixed.clone();
+    invalid.steps[1].output=json!({"protocol_version":2,"check_id":"feedback","verdict":"pass","fault":null,"artifacts":[]}).to_string();
+    invalid.steps[1].output_sha256 = validation::sha256(&invalid.steps[1].output);
+    assert!(failed_code(&invalid, &required));
+    assert_eq!(scope.paths(&invalid, &required).unwrap(), vec!["source"]);
+    assert!(!failed_code(&mixed, &["missing".into()]));
+    std::fs::remove_dir_all(root).unwrap();
+}

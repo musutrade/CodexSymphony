@@ -6,8 +6,9 @@ fn input(args: &[String]) -> Result<Vec<u8>> {
     if args != ["increase", "--stdin-json"]
         && args != ["group-increase", "--stdin-json"]
         && args != ["repair-recheck", "--stdin-json"]
+        && args != ["repair-source-recheck", "--stdin-json"]
     {
-        return Err("usage: budget {increase|group-increase|repair-recheck} --stdin-json".into());
+        return Err("usage: budget {increase|group-increase|repair-recheck|repair-source-recheck} --stdin-json".into());
     }
     let mut bytes = Vec::new();
     std::io::stdin().take(8193).read_to_end(&mut bytes)?;
@@ -33,18 +34,32 @@ pub(crate) async fn connect() -> Result<sqlx::PgPool> {
 }
 
 pub(crate) async fn dispatch(args: &[String], input: &[u8], pool: &sqlx::PgPool) -> Result<()> {
-    if args[0] == "repair-recheck" {
-        let command: crate::linked_budget_recovery::Command =
-            serde_json::from_slice(input).or(Err("invalid linked repair recovery"))?;
-        crate::linked_budget_recovery::recheck(pool, &command).await?;
-    } else if args[0] == "group-increase" {
-        let grant: crate::group_budget_increase::GroupIncrease =
-            serde_json::from_slice(input).or(Err("invalid group budget authorization"))?;
-        crate::group_budget_increase::increase(pool, &grant).await?;
-    } else {
-        let grant: crate::budget_store::Increase =
-            serde_json::from_slice(input).or(Err("invalid budget authorization"))?;
-        crate::budget_store::increase(pool, &grant).await?;
+    match args[0].as_str() {
+        "repair-source-recheck" => source_recheck(input, pool).await?,
+        "repair-recheck" => repair_recheck(input, pool).await?,
+        "group-increase" => group_increase(input, pool).await?,
+        _ => increase(input, pool).await?,
     }
+    Ok(())
+}
+
+async fn source_recheck(input: &[u8], pool: &sqlx::PgPool) -> Result<()> {
+    let command = serde_json::from_slice(input).or(Err("invalid linked source recovery"))?;
+    crate::linked_source_recovery::recheck(pool, &command).await?;
+    Ok(())
+}
+async fn repair_recheck(input: &[u8], pool: &sqlx::PgPool) -> Result<()> {
+    let command = serde_json::from_slice(input).or(Err("invalid linked repair recovery"))?;
+    crate::linked_budget_recovery::recheck(pool, &command).await?;
+    Ok(())
+}
+async fn group_increase(input: &[u8], pool: &sqlx::PgPool) -> Result<()> {
+    let grant = serde_json::from_slice(input).or(Err("invalid group budget authorization"))?;
+    crate::group_budget_increase::increase(pool, &grant).await?;
+    Ok(())
+}
+async fn increase(input: &[u8], pool: &sqlx::PgPool) -> Result<()> {
+    let grant = serde_json::from_slice(input).or(Err("invalid budget authorization"))?;
+    crate::budget_store::increase(pool, &grant).await?;
     Ok(())
 }

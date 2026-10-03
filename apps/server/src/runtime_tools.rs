@@ -137,12 +137,24 @@ async fn read_diagnostic(
     )?;
     match crate::diagnostic_tools::handle(pool, key, request).await {
         Ok(value) => Ok(value),
-        Err(_) => Ok(runtime::reply(
-            false,
-            "Diagnostic unavailable, unauthorized, expired or invalid byte range; refresh the manifest. No authority or quality conclusion is implied.",
-        )),
+        Err(error) => Ok(diagnostic_failure(request, error.as_ref())),
     }
 }
+
+fn diagnostic_failure(
+    request: &Value,
+    error: &(dyn std::error::Error + Send + Sync + 'static),
+) -> Value {
+    let message = if error.is::<serde_json::Error>()
+        && !crate::diagnostic_tools::arguments_valid(request)
+    {
+        "Invalid diagnostic arguments. list_diagnostics requires after (integer). read_diagnostic requires artifact_id (string), offset (nonnegative integer, required even for a tail read), and limit (integer). Supply an explicit offset; use the previous chunk.next for sequential pages. Correct the arguments before retrying; report_blocker if unable to proceed. This response contains no artifact content and grants no authority or quality conclusion."
+    } else {
+        "Diagnostic unavailable, unauthorized, expired or invalid byte range; refresh the manifest. No authority or quality conclusion is implied."
+    };
+    runtime::reply(false, message)
+}
+
 fn tool_arguments(_: serde_json::Error) -> sqlx::Error {
     runtime_store::invalid("invalid diagnostic arguments")
 }

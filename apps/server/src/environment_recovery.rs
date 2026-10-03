@@ -15,11 +15,11 @@ use std::{
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Command {
-    request_id: String,
-    invocation_id: String,
-    evidence_sha256: String,
-    reason: String,
+pub(crate) struct Command {
+    pub(crate) request_id: String,
+    pub(crate) invocation_id: String,
+    pub(crate) evidence_sha256: String,
+    pub(crate) reason: String,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -43,12 +43,12 @@ struct Proof {
     origin: Origin,
     observed_boot: String,
 }
-struct Host {
-    machine: String,
-    boot: String,
+pub(crate) struct Host {
+    pub(crate) machine: String,
+    pub(crate) boot: String,
 }
 impl Host {
-    fn read() -> Result<Self> {
+    pub(crate) fn read() -> Result<Self> {
         let host = Self {
             machine: std::fs::read_to_string("/etc/machine-id")?.trim().into(),
             boot: std::fs::read_to_string("/proc/sys/kernel/random/boot_id")?
@@ -62,7 +62,7 @@ impl Host {
     }
 }
 
-fn valid_boot(value: &str) -> bool {
+pub(crate) fn valid_boot(value: &str) -> bool {
     if value.len() != 36 {
         return false;
     }
@@ -90,9 +90,14 @@ pub fn run(args: &[String]) -> Result<()> {
 
 fn action(args: &[String]) -> Result<&str> {
     let [action, flag] = args else {
-        return Err("usage: environment prepare-recovery|reconcile --stdin-json".into());
+        return Err("usage: environment prepare-recovery|reconcile|prepare-incomplete|reconcile-incomplete --stdin-json".into());
     };
-    if flag != "--stdin-json" || !matches!(action.as_str(), "prepare-recovery" | "reconcile") {
+    if flag != "--stdin-json"
+        || !matches!(
+            action.as_str(),
+            "prepare-recovery" | "reconcile" | "prepare-incomplete" | "reconcile-incomplete"
+        )
+    {
         return Err("invalid environment recovery operation".into());
     }
     Ok(action)
@@ -108,6 +113,9 @@ fn input() -> Result<Command> {
 }
 
 fn execute(root: &Path, action: &str, command: &Command, host: &Host) -> Result<serde_json::Value> {
+    if matches!(action, "prepare-incomplete" | "reconcile-incomplete") {
+        return crate::environment_incomplete_recovery::execute(root, action, command, host);
+    }
     let directory = directory(root, &command.invocation_id)?;
     let _lock = process::InstanceLock::acquire(&directory.join("host-recovery.lock"))?;
     let origin = origin(&directory, command, host)?;
@@ -239,6 +247,9 @@ fn reconcile(directory: &Path, origin: &Origin, host: &Host) -> Result<()> {
 }
 
 pub fn stopped(directory: &Path) -> Result<bool> {
+    if crate::environment_incomplete_recovery::stopped(directory)? {
+        return Ok(true);
+    }
     let path = directory.join("host-recovery-proof.json");
     if !path.try_exists()? {
         return Ok(false);
