@@ -801,7 +801,28 @@ async fn control_plane_configuration_and_readonly_cli() {
     let mut second = action_policy();
     second.repository_id = 100;
     second.repository = "owner/second".into();
-    sqlx::query("INSERT INTO repository(id,version,document) SELECT 2,version,jsonb_set(jsonb_set(document,'{github_repository_id}','100'),'{remote}','\"owner/second\"') FROM repository WHERE id=1").execute(&pool).await.unwrap();
+    // A second immutable fixture identity must not silently depend on a SELECT
+    // from another repository after its worker was canceled. Check admission
+    // inputs before asking the normal product startup to install both policies.
+    let second_document = json!({"revoked":false,"github_repository_id":second.repository_id,"remote":second.repository,"base_branch":second.default_branch});
+    let inserted = sqlx::query("INSERT INTO repository(id,version,document) VALUES(2,$1,$2)")
+        .bind(second.version)
+        .bind(&second_document)
+        .execute(&pool)
+        .await
+        .unwrap();
+    assert_eq!(inserted.rows_affected(), 1);
+    let fixture_identity: Value = sqlx::query_scalar("SELECT jsonb_build_object('schema',current_schema(),'repository',to_jsonb(r),'matches',COALESCE(document->>'delivery','github_pr')='github_pr' AND version=$1 AND (document->>'github_repository_id')::bigint=$2 AND document->>'remote'=$3 AND document->>'base_branch'=$4 AND NOT (document->>'revoked')::boolean) FROM repository r WHERE id=2")
+        .bind(second.version).bind(second.repository_id as i64).bind(&second.repository).bind(&second.default_branch).fetch_one(&pool).await.unwrap();
+    assert!(
+        fixture_identity["schema"]
+            .as_str()
+            .unwrap()
+            .starts_with("gh16_"),
+        "{fixture_identity}"
+    );
+    assert_eq!(fixture_identity["repository"]["document"], second_document);
+    assert_eq!(fixture_identity["matches"], true, "{fixture_identity}");
     std::fs::write(
         &file,
         json!({"app":original,"repositories":[{"policy":second,"probe_pr":1}]}).to_string(),
@@ -810,13 +831,16 @@ async fn control_plane_configuration_and_readonly_cli() {
     let multi = github_service::start_path(&pool, &file).await.unwrap();
     multi.abort();
     assert!(multi.await.unwrap_err().is_cancelled());
+    let configured: Value = sqlx::query_scalar("SELECT jsonb_build_object('schema',current_schema(),'repositories',(SELECT jsonb_agg(to_jsonb(r) ORDER BY id) FROM repository r),'configured',(SELECT COALESCE(jsonb_agg(jsonb_build_object('repository_id',repository_id,'repository_version',repository_version,'policy',policy,'probe_pr',probe_pr) ORDER BY repository_id),'[]'::jsonb) FROM github_repository))")
+        .fetch_one(&pool).await.unwrap();
     assert_eq!(
         count(
             &pool,
             "SELECT count(*) FROM github_repository WHERE repository_id IN (99,100)"
         )
         .await,
-        2
+        2,
+        "fixture readiness={fixture_identity}; actual configuration={configured}"
     );
     std::fs::write(&file, original.to_string()).unwrap();
     let binary = env!("CARGO_BIN_EXE_codexsymphony-server");

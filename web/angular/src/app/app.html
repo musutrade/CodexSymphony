@@ -1,5 +1,8 @@
 <a class="skip-link" href="#main-content">跳到主要内容</a>
 <main id="main-content" class="page" tabindex="-1">
+  @if (serviceMode.observationOnly()) {
+    <p role="status">当前仅可查看，执行和修改功能暂不可用。需求记录和登录功能仍可访问。</p>
+  }
   @if (auth.expired()) {
     <app-login />
   }

@@ -186,3 +186,31 @@ fn malformed_kernel_boot_ids_are_rejected() {
     assert!(!valid_boot("00000000x0000-0000-0000-000000000000"));
     assert!(!valid_boot("z0000000-0000-0000-0000-000000000000"));
 }
+
+#[test]
+fn incomplete_cli_dispatch_preserves_the_native_recovery_boundary() {
+    let (root, directory, mut command, host) = fixture();
+    for operation in [
+        "prepare-recovery",
+        "reconcile",
+        "prepare-incomplete",
+        "reconcile-incomplete",
+    ] {
+        assert_eq!(
+            action(&[operation.into(), "--stdin-json".into()]).unwrap(),
+            operation
+        );
+    }
+    assert!(action(&[]).is_err());
+    assert!(action(&["prepare-incomplete".into(), "--other".into()]).is_err());
+    assert!(action(&["unknown".into(), "--stdin-json".into()]).is_err());
+    assert!(execute(root.path(), "prepare-incomplete", &command, &host).is_err());
+    fs::remove_file(directory.join("identity.json")).unwrap();
+    fs::remove_file(directory.join("launched")).unwrap();
+    command.evidence_sha256 = sha256(fs::read(directory.join("input.json")).unwrap());
+    let prepared = execute(root.path(), "prepare-incomplete", &command, &host).unwrap();
+    assert_eq!(prepared["quiescence_proven"], false);
+    assert!(execute(root.path(), "reconcile-incomplete", &command, &host).is_err());
+    assert!(execute(root.path(), "prepare-recovery", &command, &host).is_err());
+    assert!(!stopped(&directory).unwrap());
+}

@@ -56,16 +56,11 @@ pub fn subprocess(root: &Path) -> (PathBuf, Plan) {
     git(&repo, &["add", "."]);
     git(&repo, &["commit", "-qm", "candidate"]);
     let entry = root.join("entry");
-    fs::write(&entry,r#"#!/bin/sh
-case "$1" in
- --symphony-feedback-v2) if [ "$2" = malformed ]; then printf '{malformed'; exit 0; fi; exec python3 -c 'import os,json,pathlib; d=pathlib.Path(os.environ["SYMPHONY_DIAGNOSTIC_DIR"]); report="FAIL-FIRST\n"+"测量 failed\n"*6000+"FAIL-LAST\n"; (d/"report.md").write_text(report); (d/"single.json").write_text(json.dumps({"failures":["FIRST"]+["failure"]*10000+["LAST"]})); print(json.dumps({"protocol_version":2,"check_id":"python","verdict":"fail","fault":None,"artifacts":[{"kind":"report","path":"report.md"},{"kind":"report","path":"single.json"}]}))';;
- timeout) printf 'failure before timeout\n'; sleep 10;;
- crash) printf 'failure before crash\n'; kill -9 $$;;
- malformed) printf '{malformed';;
- flood) yes 'failure overflowing capture';;
- *) printf 'FAIL-FIRST\n'; i=0; while [ "$i" -lt 6000 ]; do printf 'shell failure item %s\n' "$i"; i=$((i+1)); done; printf 'FAIL-LAST\n'; exit 2;;
-esac
-"#).unwrap();
+    fs::write(
+        &entry,
+        include_str!("../fixtures/diagnostics/controlled-reports.sh"),
+    )
+    .unwrap();
     fs::set_permissions(&entry, fs::Permissions::from_mode(0o755)).unwrap();
     let plan = Plan {
         entry_sha256: sha256(fs::read(&entry).unwrap()),

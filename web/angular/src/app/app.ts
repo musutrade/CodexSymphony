@@ -1,5 +1,6 @@
 import { MatButtonModule } from '@angular/material/button';
 import { Auth } from './auth';
+import { ServiceMode } from './service-mode';
 import { Login } from './login/login';
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -10,6 +11,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 })
 export class App {
   readonly auth = inject(Auth);
+  readonly serviceMode = inject(ServiceMode);
   readonly logoutError = signal('');
   async logout() {
     this.logoutError.set('');

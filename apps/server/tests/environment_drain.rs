@@ -8,6 +8,8 @@ use codexsymphony_server::{
     environment_probe, process,
     validation::sha256,
 };
+#[path = "support/server_auth.rs"]
+mod server_auth;
 use serde_json::json;
 use std::{
     collections::BTreeMap,
@@ -251,19 +253,23 @@ async fn service(root: &Path, plan: &Plan, registry: &Registry) -> Service {
     .unwrap();
     let execution = root.join("execution");
     fs::create_dir_all(&execution).unwrap();
+    launch(root, &database(plan).await)
+}
+
+fn launch(root: &Path, database: &str) -> Service {
     let child = Command::new(env!("CARGO_BIN_EXE_codexsymphony-server"))
-        .env("DATABASE_URL", database(plan).await)
+        .env("DATABASE_URL", database)
         .env("BIND_ADDRESS", "127.0.0.1:0")
         .env("WEB_ORIGIN", "https://localhost:4200")
-        .env("AUTH_CONFIG", &auth)
-        .env("EXECUTION_DIRECTORY", &execution)
-        .env("ENVIRONMENT_CONFIG", &config)
+        .env("AUTH_CONFIG", root.join("auth.json"))
+        .env("EXECUTION_DIRECTORY", root.join("execution"))
+        .env("ENVIRONMENT_CONFIG", root.join("registry.json"))
         .env(
             "SYMPHONY_SUPERVISOR",
             env!("CARGO_BIN_EXE_codexsymphony-server"),
         )
         .env("RUST_LOG", "info")
-        .env_remove("RUNTIME_CONFIG")
+        .env("RUNTIME_CONFIG", root.join("invalid-runtime.json"))
         .env_remove("STORAGE_CONFIG")
         .env_remove("GITHUB_APP_CONFIG")
         .stdout(fs::File::create(root.join("stdout.log")).unwrap())
@@ -351,30 +357,135 @@ async fn sigterm_during_startup_probe_drains_real_supervisor_and_exits() {
     fs::remove_dir_all(root).unwrap();
 }
 
-/// A startup error is never turned into a successful exit by a successful
-/// drain, with or without a stop signal during the failing probe.
+/// Failed and incomplete probes keep authenticated reads available. No worker
+/// starts, no original evidence is changed and no business write is admitted.
 #[tokio::test]
-async fn startup_error_is_propagated_after_drain() {
+async fn failed_probe_preserves_observation_without_execution_or_reboot() {
     let _serial = SERVICE.lock().await;
-    for signalled in [false, true] {
+    for incomplete in [false, true] {
         let root = temporary();
-        let (plan, registry) = fixture(&root, 2.0, "broken");
-        let mut service = service(&root, &plan, &registry).await;
-        let directory = launched(&registry.evidence_root);
-        if signalled {
-            terminate(&service);
+        let (plan, registry) = fixture(&root, 0.0, "broken");
+        let url = database(&plan).await;
+        let pool = sqlx::PgPool::connect(&url).await.unwrap();
+        let before: serde_json::Value =
+            sqlx::query_scalar("SELECT to_jsonb(c) FROM execution_control c WHERE id=1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        let original = registry
+            .evidence_root
+            .join(process::new_identity().unwrap());
+        if incomplete {
+            fs::create_dir_all(&original).unwrap();
+            fs::write(original.join("input.json"), b"original partial input").unwrap();
+            fs::write(original.join("report.tmp"), b"").unwrap();
         }
-        let status = exit(&mut service, &registry);
-        let stdout = fs::read_to_string(root.join("stdout.log")).unwrap();
-        let stderr = fs::read_to_string(root.join("stderr.log")).unwrap();
-        assert!(!status.success(), "{status:?}\n{stdout}\n{stderr}");
-        assert!(
-            stderr.contains("environment admission blocked"),
-            "{stdout}\n{stderr}"
+        fs::write(
+            root.join("registry.json"),
+            serde_json::to_vec(&registry).unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            root.join("auth.json"),
+            r#"{"public_origin":"https://localhost:4200","trusted_proxies":[]}"#,
+        )
+        .unwrap();
+        fs::create_dir(root.join("execution")).unwrap();
+        // If execution workers were started, this invalid configuration would
+        // fail startup; observation must not depend on the Runtime launcher.
+        let runtime = root.join("invalid-runtime.json");
+        fs::write(&runtime, b"invalid").unwrap();
+        let mut child = launch(&root, &url);
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let address = loop {
+            let log = fs::read_to_string(root.join("stdout.log")).unwrap();
+            if let Some((_, rest)) = log.split_once("API listening at http://") {
+                break format!("http://{}", rest.lines().next().unwrap().trim());
+            }
+            assert!(child.0.try_wait().unwrap().is_none(), "{log}");
+            assert!(Instant::now() < deadline, "{log}");
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        };
+        let client = reqwest::Client::builder().no_proxy().build().unwrap();
+        let health = client
+            .get(format!("{address}/api/health"))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(health.status(), 200);
+        assert_eq!(
+            health.headers()["x-codexsymphony-service-mode"],
+            "observation-only"
         );
-        quiescent(&directory);
-        assert_eq!(directories(&registry.evidence_root), vec![directory]);
-        assert!(!stdout.contains("API listening"), "{stdout}");
+        assert_eq!(
+            client
+                .get(format!("{address}/api/multi/requirements"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            401
+        );
+        let authenticated = server_auth::client(&address, &url).await;
+        assert_eq!(
+            authenticated
+                .get(format!("{address}/api/multi/requirements"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            200
+        );
+        let denied = authenticated
+            .post(format!("{address}/api/operator/questions/missing/answer"))
+            .json(&json!({}))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(denied.status(), 503);
+        assert_eq!(
+            denied.json::<serde_json::Value>().await.unwrap()["code"],
+            "execution_unavailable"
+        );
+        assert_eq!(
+            authenticated
+                .post(format!("{address}/api/auth/logout"))
+                .send()
+                .await
+                .unwrap()
+                .status(),
+            204
+        );
+        let after: serde_json::Value =
+            sqlx::query_scalar("SELECT to_jsonb(c) FROM execution_control c WHERE id=1")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(before, after, "no incarnation or recovery mutation");
+        let calls: i64 = sqlx::query_scalar("SELECT count(*) FROM model_call")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(calls, 0);
+        assert!(directories(&root.join("execution")).is_empty());
+        if incomplete {
+            assert_eq!(
+                fs::read(original.join("input.json")).unwrap(),
+                b"original partial input"
+            );
+            assert_eq!(directories(&original).len(), 2);
+            assert_eq!(directories(&registry.evidence_root), vec![original.clone()]);
+        } else {
+            for directory in directories(&registry.evidence_root) {
+                quiescent(&directory);
+            }
+        }
+        terminate(&child);
+        let status = exit(&mut child, &registry);
+        // An unresolved stop still fails shutdown; observation never claims
+        // quiescence just because its HTTP listener stopped.
+        assert_eq!(status.success(), !incomplete);
+        pool.close().await;
         fs::remove_dir_all(root).unwrap();
     }
 }

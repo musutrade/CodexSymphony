@@ -183,6 +183,40 @@ fn select_integration_target(
         .next()
         .ok_or_else(|| "failure outside authorized repair checks".into())
 }
+
+pub(crate) fn recheck_integration_scope(
+    input: &Value,
+    binding: &crate::integration::Binding,
+    evidence: &ValidationEvidence,
+    required: &[String],
+) -> Result<()> {
+    verify_integration_origin(input, binding, evidence, required)?;
+    let auth = serde_json::from_value(input["review"]["integration"].clone())?;
+    select_integration_target(auth, binding, &[], evidence, required)?;
+    Ok(())
+}
+fn verify_integration_origin(
+    input: &Value,
+    binding: &crate::integration::Binding,
+    evidence: &ValidationEvidence,
+    required: &[String],
+) -> Result<()> {
+    let primary = binding
+        .versions
+        .first()
+        .ok_or("original integration version absent")?;
+    crate::budget_store::require(
+        binding.input_sha256 == crate::validation::sha256(serde_json::to_vec(input)?)
+            && primary.candidate == evidence.candidate,
+        "original integration source differs",
+    )?;
+    crate::budget_store::require(
+        binding.trusted == evidence.trusted && binding.required == required,
+        "original integration evidence binding differs",
+    )?;
+    Ok(())
+}
+
 struct Frozen {
     local_binding: Option<crate::local_git::Binding>,
     target: Target,

@@ -74,7 +74,18 @@ pub fn verify(
     required_steps: &[String],
 ) -> Result<(), ValidationError> {
     verify_identity(evidence, candidate, trusted)?;
-    verify_steps(&evidence.steps, required_steps)
+    verify_steps(&evidence.steps, required_steps, true)
+}
+
+/// Check the original bytes, identity and complete required coverage without
+/// changing failed conclusions into passing evidence. Repair admission must
+/// separately classify every nonpassing step and apply its reviewed scope.
+pub fn verify_provenance(
+    evidence: &ValidationEvidence,
+    required_steps: &[String],
+) -> Result<(), ValidationError> {
+    verify_identity(evidence, &evidence.candidate, &evidence.trusted)?;
+    verify_steps(&evidence.steps, required_steps, false)
 }
 
 fn verify_identity(
@@ -100,7 +111,11 @@ fn verify_identity(
     Ok(())
 }
 
-fn verify_steps(steps: &[StepEvidence], required: &[String]) -> Result<(), ValidationError> {
+fn verify_steps(
+    steps: &[StepEvidence],
+    required: &[String],
+    require_pass: bool,
+) -> Result<(), ValidationError> {
     if required.is_empty() {
         return Err(ValidationError::MissingStep);
     }
@@ -109,7 +124,7 @@ fn verify_steps(steps: &[StepEvidence], required: &[String]) -> Result<(), Valid
         if !seen.insert(&step.id) {
             return Err(ValidationError::MissingStep);
         }
-        verify_step(step)?;
+        verify_step(step, require_pass)?;
     }
     for id in required {
         if !seen.contains(id) {
@@ -119,7 +134,7 @@ fn verify_steps(steps: &[StepEvidence], required: &[String]) -> Result<(), Valid
     Ok(())
 }
 
-fn verify_step(step: &StepEvidence) -> Result<(), ValidationError> {
+fn verify_step(step: &StepEvidence, require_pass: bool) -> Result<(), ValidationError> {
     if step.output.is_empty()
         || step.log_ref.is_empty()
         || step.consumer.is_empty()
@@ -129,6 +144,9 @@ fn verify_step(step: &StepEvidence) -> Result<(), ValidationError> {
     }
     if sha256(&step.output) != step.output_sha256 {
         return Err(ValidationError::OutputDigestMismatch);
+    }
+    if !require_pass {
+        return Ok(());
     }
     if step.exit_code != Some(0) {
         return Err(ValidationError::ExitFailed);

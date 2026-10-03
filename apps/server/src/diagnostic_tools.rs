@@ -18,6 +18,16 @@ pub fn is_read(request: &Value) -> bool {
         Some("list_diagnostics" | "read_diagnostic")
     )
 }
+
+pub(crate) fn arguments_valid(request: &Value) -> bool {
+    let args = request["params"]["arguments"].clone();
+    if request["params"]["tool"].as_str() == Some("list_diagnostics") {
+        serde_json::from_value::<ListArgs>(args).is_ok()
+    } else {
+        serde_json::from_value::<Read>(args).is_ok()
+    }
+}
+
 pub async fn handle(pool: &PgPool, key: &RunKey, request: &Value) -> Result<Value> {
     let mut tx = crate::run_store::lock(pool).await?;
     let requirement = crate::diagnostic_store::agent_allowed(&mut tx, key).await?;

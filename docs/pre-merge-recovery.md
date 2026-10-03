@@ -62,3 +62,17 @@ B05/B06 完整闭环仍未完成。见[真实恢复记录](quality/gh90/b05-prem
 原失败、额度、已用量、未知预留和修复次数全部保留。成功仅将原失败重新置为
 待调度，正常解除暂停后仍须通过既有范围、修复次数及项/父组预算准入；CLI
 退出成功不代表模型已启动或验收完成。
+
+## 原集成报告的范围重新核验
+
+宿主入口 `codexsymphony-server budget repair-source-recheck --stdin-json`
+用于已保留的 `failure outside authorized repair checks` 阻塞，要求提交
+`request_id`、`requirement_id`、`version`、`revision`、`failure_id`、
+`budget_version`、`configuration_sha256` 和非空 `reason`。它只在全局暂停、
+原项仍为 Running、原集成已静止失败、尚无修复 reservation 或来源 baseline、
+原组授权仍有效且版本与冻结配置一致时，重新核对原始证据和检查到路径的映射。
+
+重新核验不会改变原始输出、失败结论、模型用量、预留、账户限额或来源尝试次数。
+成功仅追加含旧阻塞原因的恢复回执并将同一失败返回 observed；不会启动模型或
+解除暂停。同一请求按字节幂等，冲突或仍不满足范围时保持阻塞。后续正常恢复队列
+仍须独立核对实际运行配置、剩余额度及源码准入；此命令不是新增额度授权。

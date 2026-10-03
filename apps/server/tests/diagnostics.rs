@@ -315,14 +315,52 @@ async fn real_multilanguage_reports_are_read_through_product_tools_and_repair_sc
     let pool = fixture(&root).await;
     session(&pool).await;
     let git = broker(&root.join("broker"));
-    let (repo, plan) = subprocess(&root);
+    let (repo, mut plan) = subprocess(&root);
+    plan.steps[0].command.push("controlled-assertion".into());
     let candidate = validation_runner::candidate(&repo).unwrap();
     let directory = root.join("output");
     let evidence = validation_runner::execute(&repo, &directory, &candidate, &plan).unwrap();
     assert_eq!(evidence[0].exit_code, Some(2));
     assert_eq!(
+        codexsymphony_server::bounded_recovery::native_failure(&evidence[0].output),
+        "check_exit"
+    );
+    assert_eq!(
         codexsymphony_server::extension_feedback::verdict(&evidence[1]),
         codexsymphony_server::controlled_contract::Verdict::Fail
+    );
+    let trusted = plan.identity().unwrap();
+    let failure = codexsymphony_server::validation::ValidationEvidence {
+        candidate: candidate.clone(),
+        source_before: candidate.tree.clone(),
+        source_after: candidate.tree.clone(),
+        entry_before: trusted.protected_entry_sha256.clone(),
+        entry_after: trusted.protected_entry_sha256.clone(),
+        trusted,
+        steps: evidence.clone(),
+    };
+    let original_failure = failure.clone();
+    let required = vec!["shell".into(), "python".into()];
+    let scope = codexsymphony_server::linked_repair::Scope::parse(
+        r#"{"schema":"linked-repair/v1","checks":{"shell":["source"],"python":["attachment-source"]}}"#,
+    )
+    .unwrap();
+    assert!(codexsymphony_server::linked_repair::failed_code(
+        &failure, &required
+    ));
+    assert_eq!(
+        scope.paths(&failure, &required).unwrap(),
+        vec!["attachment-source", "source"]
+    );
+    assert_eq!(failure, original_failure);
+    assert_eq!(
+        codexsymphony_server::validation::verify(
+            &failure,
+            &failure.candidate,
+            &failure.trusted,
+            &required
+        ),
+        Err(codexsymphony_server::validation::ValidationError::ExitFailed)
     );
     let mut b = binding("validation", 1);
     b.candidate = Some(candidate.clone());
@@ -345,6 +383,74 @@ async fn real_multilanguage_reports_are_read_through_product_tools_and_repair_sc
     )
     .unwrap();
     assert_eq!(listed.artifacts.len(), 4);
+    // Reproduce the actual reader's missing-offset requests. Shape errors must
+    // be actionable without exposing artifact existence or weakening scope.
+    for artifact_id in [
+        listed.artifacts[0].artifact_id.as_str(),
+        "unrelated-artifact",
+    ] {
+        for args in [
+            json!({"artifact_id":artifact_id,"limit":8192}),
+            json!({"artifact_id":artifact_id,"offset":null,"limit":8192}),
+            json!({"artifact_id":artifact_id,"offset":-1,"limit":8192}),
+            json!({"artifact_id":artifact_id,"offset":"143000","limit":8192}),
+            json!({"artifact_id":artifact_id,"offset":0,"limit":8192,"extra":true}),
+        ] {
+            let response =
+                runtime_tools::handle(&pool, &git, &key(), &tool("read_diagnostic", args))
+                    .await
+                    .unwrap();
+            assert_eq!(response["success"], false);
+            let message = response["contentItems"][0]["text"].as_str().unwrap();
+            assert!(message.starts_with("Invalid diagnostic arguments."));
+            assert!(
+                message.contains("offset (nonnegative integer, required even for a tail read)")
+            );
+            assert!(message.contains("report_blocker"));
+            assert!(!message.contains(artifact_id));
+        }
+    }
+    let denied = runtime_tools::handle(
+        &pool,
+        &git,
+        &key(),
+        &tool(
+            "read_diagnostic",
+            json!({"artifact_id":"unrelated-artifact","offset":0,"limit":128}),
+        ),
+    )
+    .await
+    .unwrap();
+    assert_eq!(denied["success"], false);
+    assert_eq!(
+        denied["contentItems"][0]["text"],
+        "Diagnostic unavailable, unauthorized, expired or invalid byte range; refresh the manifest. No authority or quality conclusion is implied."
+    );
+    for args in [json!({}), json!({"after":null})] {
+        let response = runtime_tools::handle(&pool, &git, &key(), &tool("list_diagnostics", args))
+            .await
+            .unwrap();
+        assert_eq!(response["success"], false);
+        assert!(
+            response["contentItems"][0]["text"]
+                .as_str()
+                .unwrap()
+                .starts_with("Invalid diagnostic arguments.")
+        );
+    }
+    let invalid_page = runtime_tools::handle(
+        &pool,
+        &git,
+        &key(),
+        &tool("list_diagnostics", json!({"after":-1})),
+    )
+    .await
+    .unwrap();
+    assert_eq!(invalid_page["success"], false);
+    assert_eq!(
+        invalid_page["contentItems"][0]["text"],
+        denied["contentItems"][0]["text"]
+    );
     let mut malformed = tool(
         "read_diagnostic",
         json!({"artifact_id":listed.artifacts[0].artifact_id,"offset":0,"limit":8192}),
@@ -375,6 +481,23 @@ async fn real_multilanguage_reports_are_read_through_product_tools_and_repair_sc
     let error = runtime_store::input(&pool, &key()).await.unwrap_err();
     assert!(error.to_string().contains("diagnostic context unavailable"));
     assert!(!error.to_string().contains("invalid-state"));
+    // Retained-data deserialization failures are not public argument failures.
+    for request in [
+        tool(
+            "read_diagnostic",
+            json!({"artifact_id":first_id,"offset":0,"limit":128}),
+        ),
+        tool("list_diagnostics", json!({"after":0})),
+    ] {
+        let response = runtime_tools::handle(&pool, &git, &key(), &request)
+            .await
+            .unwrap();
+        assert_eq!(response["success"], false);
+        assert_eq!(
+            response["contentItems"][0]["text"],
+            denied["contentItems"][0]["text"]
+        );
+    }
     sqlx::query("UPDATE diagnostic_artifact SET manifest=$2 WHERE artifact_id=$1")
         .bind(first_id)
         .bind(original_manifest)
@@ -516,6 +639,23 @@ async fn real_multilanguage_reports_are_read_through_product_tools_and_repair_sc
             Err(_) => true,
             Ok(value) => value["success"] == false,
         });
+        let malformed_denied = runtime_tools::handle(
+            &pool,
+            &git,
+            &repair,
+            &repair_tool(
+                "read_diagnostic",
+                json!({"artifact_id":listed.artifacts[0].artifact_id,"limit":8192}),
+            ),
+        )
+        .await;
+        if let Ok(value) = malformed_denied {
+            assert_eq!(value["success"], false);
+            assert_eq!(
+                value["contentItems"][0]["text"], denied["contentItems"][0]["text"],
+                "lifecycle denial must precede malformed-argument feedback"
+            );
+        }
         sqlx::raw_sql("UPDATE execution_control SET paused=false;UPDATE requirement SET cancel_requested=false;UPDATE repository SET document='{\"revoked\":false}'").execute(&pool).await.unwrap();
     }
     fs::write(root.join("tool-read-evidence.json"),serde_json::to_vec_pretty(&json!({"kind":"controlled fixture, no paid model","candidate":candidate,"requests_responses":transcript,"digests":digest_records})).unwrap()).unwrap();
