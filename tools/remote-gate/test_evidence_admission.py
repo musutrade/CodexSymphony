@@ -90,6 +90,52 @@ class AdmissionTest(unittest.TestCase):
             item.start()
             self.addCleanup(item.stop)
 
+    def test_candidate_registration_is_bounded_and_needs_no_service_restart(self):
+        import register_candidate
+        identity = self.passed()
+        audit = json.loads(Path(self.config['equivalence']['audit']).read_text())
+        self.config['candidate_registration'] = True
+        (self.pins / 'registration.lock').touch()
+        with patch.object(host.subprocess, 'run', side_effect=AssertionError('service lifecycle changed')):
+            result = register_candidate.register(self.config, audit, SHA, BASE)
+            repeated = register_candidate.register(self.config, audit, SHA, BASE)
+        self.assertEqual(result['status'], 'REGISTERED')
+        self.assertTrue(repeated['reused_registration'])
+        self.assertEqual(result['pin_id'], repeated['pin_id'])
+        record = ledger.verify(self.ledger, identity, self.inputs())
+        self.assertEqual(admission.audited(self.config, self.approval, record, TREE), result['audit_sha256'])
+        admission.sweep(self.config, 'token')
+        self.assertIn(result['pin_id'], pins.current(self.pins))
+        pins.release(self.pins, {result['pin_id']})
+        with self.assertRaisesRegex(ValueError, 'registration missing'):
+            admission.audited(self.config, self.approval, record, TREE)
+
+    def test_registration_rejects_policy_changes_late_main_and_concurrent_writer(self):
+        import fcntl
+        import register_candidate
+        identity = self.passed()
+        audit = json.loads(Path(self.config['equivalence']['audit']).read_text())
+        self.config['candidate_registration'] = True
+        lock = self.pins / 'registration.lock'
+        lock.touch()
+        for changes in [{'approval': 'other'}, {'runtime_files': {}}, {'tree': 'f' * 40}]:
+            with self.assertRaises(ValueError):
+                register_candidate.register(self.config, audit | changes, SHA, BASE)
+        with self.assertRaisesRegex(ValueError, 'changed'):
+            register_candidate.register(self.config, audit, SHA, 'f' * 40)
+        with lock.open('r+') as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            with self.assertRaises(BlockingIOError):
+                register_candidate.register(self.config, audit, SHA, BASE)
+        with patch.object(admission, 'main_head', side_effect=[BASE, 'f' * 40]):
+            with self.assertRaisesRegex(ValueError, 'main changed'):
+                register_candidate.register(self.config, audit, SHA, BASE)
+        self.assertFalse(any(value['publication'].get('kind') == 'candidate-registration'
+                             for value in pins.current(self.pins).values()))
+        ledger.revoke(self.ledger, identity, 'withdrawn')
+        with self.assertRaisesRegex(ValueError, 'blocked'):
+            register_candidate.register(self.config, audit, SHA, BASE)
+
     def reference(self, source='runtime_files', name=None):
         """An approved file as the audit cites it."""
         name = name or self.runtime

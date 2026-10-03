@@ -35,6 +35,8 @@ def arguments():
     parser.add_argument('--verify-only',action='store_true',help='admit trusted local complete PASS evidence; never run a Gate')
     parser.add_argument('--publication-ledger',type=Path,default=Path.home()/'.local/share/codexsymphony/publication/ledger')
     parser.add_argument('--equivalence-audit',type=Path,help='reviewed tree-equivalence audit for this exact approval')
+    parser.add_argument('--candidate-registration',action='store_true',help='enable bounded operator registration without per-candidate installation')
+    parser.add_argument('--validation-contract',type=Path,help='independently reviewed complete verification input contract')
     parser.add_argument('--audit-window-seconds',type=int,help='verify-only: retention of a main publication after merge (required)')
     parser.add_argument('--pin-ttl-seconds',type=int,help='verify-only: retention of a PR publication awaiting merge (required)')
     args=parser.parse_args()
@@ -46,6 +48,10 @@ def arguments():
 
 
 def verification_error(args):
+    if getattr(args,'validation_contract',None) and not getattr(args,'candidate_registration',False):
+        return '--validation-contract requires --candidate-registration'
+    if getattr(args,'candidate_registration',False) and (not args.verify_only or args.equivalence_audit):
+        return '--candidate-registration requires --verify-only and replaces --equivalence-audit'
     if args.equivalence_audit and not args.verify_only:
         return '--equivalence-audit requires --verify-only'
     error=window_error(args)
@@ -99,6 +105,14 @@ def verification(args,approval):
            'storage_deployment':str(STORAGE),'audit_window_seconds':args.audit_window_seconds,
            'pin_ttl_seconds':args.pin_ttl_seconds}
     if args.equivalence_audit:value['equivalence']=equivalence(args.equivalence_audit,approval,args.publication_ledger)
+    if getattr(args,'candidate_registration',False):value['candidate_registration']=True
+    if getattr(args,'validation_contract',None):
+        import evidence_admission as admission
+        verifier=admission.load_verification()
+        path=args.validation_contract.resolve(strict=True)
+        setting={'path':str(path),'sha256':sha(path)}
+        verifier.reviewed(setting,approval)
+        value['verification_contract']=setting
     return value
 
 
@@ -118,12 +132,12 @@ def protected_files(approval):
         if sha(ROOT/name)!=digest:raise ValueError('gate host input changed: '+name)
     names=['.github/workflows/quality.yml','WORKFLOW.lifecycle.md','web/angular/package.json','web/angular/package-lock.json']
     names += ['tools/install_remote_gate.py','tools/install_symphony_development.py','tools/install_sccache.py','tools/symphony/trusted_environment.py','tools/symphony/reviewed_gate.py','tools/symphony/check_deployment.py']
-    names += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tools/remote-gate').glob('*.py'))]+['tools/evidence_ledger.py','tools/quality-host/evidence_pins.py']
+    names += [str(p.relative_to(ROOT)) for p in sorted((ROOT/'tools/remote-gate').glob('*.py'))]+['tools/evidence_ledger.py','tools/quality-host/evidence_pins.py','tools/publication/validation.py']
     return {name:sha(ROOT/name) for name in names}
 
 
 def bridge_sources():
-    return [*(ROOT/'tools/remote-gate').glob('*.py'),ROOT/'tools/evidence_ledger.py',ROOT/'tools/quality-host/evidence_pins.py']
+    return [*(ROOT/'tools/remote-gate').glob('*.py'),ROOT/'tools/evidence_ledger.py',ROOT/'tools/quality-host/evidence_pins.py',ROOT/'tools/publication/validation.py']
 
 
 def install_release(version):
@@ -132,6 +146,7 @@ def install_release(version):
         shutil.copytree(ROOT/'tools/remote-gate',release,ignore=shutil.ignore_patterns('__pycache__'))
         shutil.copyfile(ROOT/'tools/evidence_ledger.py',release/'evidence_ledger.py')
         shutil.copyfile(ROOT/'tools/quality-host/evidence_pins.py',release/'evidence_pins.py')
+        shutil.copyfile(ROOT/'tools/publication/validation.py',release/'validation.py')
     for source in bridge_sources():
         if sha(source)!=sha(release/source.name):raise ValueError('installed bridge changed')
     return release
@@ -148,6 +163,11 @@ def install_pins(value):
     lock=root/'lock'
     if lock.is_symlink():raise ValueError('pin lock must be a regular file')
     lock.touch(mode=0o600)
+    if value.get('candidate_registration') is True:
+        registration=root/'registration.lock'
+        if registration.is_symlink() or (registration.exists() and not registration.is_file()):
+            raise ValueError('candidate registration lock must be a regular file')
+        registration.touch(mode=0o600)
 
 
 def install_service(release,path):

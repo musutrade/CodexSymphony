@@ -17,7 +17,7 @@ NAMES = ['.github/workflows/quality.yml', 'WORKFLOW.lifecycle.md', 'web/angular/
          'web/angular/package-lock.json', 'tools/install_remote_gate.py', 'tools/install_symphony_development.py',
          'tools/install_sccache.py', 'tools/symphony/trusted_environment.py', 'tools/symphony/reviewed_gate.py',
          'tools/symphony/check_deployment.py', 'tools/remote-gate/host.py', 'tools/remote-gate/github.py',
-         'tools/evidence_ledger.py', 'tools/quality-host/evidence_pins.py', 'tools/trusted.py']
+         'tools/evidence_ledger.py', 'tools/quality-host/evidence_pins.py', 'tools/publication/validation.py', 'tools/trusted.py']
 
 
 def digest(path):
@@ -220,7 +220,8 @@ class DeploymentTest(InstallerTest):
         (self.root / 'tools/remote-gate/__pycache__').mkdir()
         release = installer.install_release('v1')
         self.assertEqual(release, self.home / 'releases/v1')
-        self.assertEqual(sorted(p.name for p in release.iterdir()), ['evidence_ledger.py', 'evidence_pins.py', 'github.py', 'host.py'])
+        self.assertEqual(sorted(p.name for p in release.iterdir()),
+                         ['evidence_ledger.py', 'evidence_pins.py', 'github.py', 'host.py', 'validation.py'])
         self.assertEqual(installer.install_release('v1'), release)
         (release / 'evidence_ledger.py').write_text('drift')
         with self.assertRaisesRegex(ValueError, 'bridge changed'):

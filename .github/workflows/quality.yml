@@ -17,6 +17,9 @@ jobs:
     timeout-minutes: 180
     steps:
       - name: Await independently authenticated host gate
+        # Candidate registration may change bounded host records without a service
+        # release. Admission still binds this exact head and Actions attempt; only
+        # the installed reviewed verification-input contract authorizes reuse.
         uses: actions/github-script@v8
         env:
           GATE_QUEUE_MINUTES: ${{ vars.GATE_QUEUE_MINUTES || '60' }}

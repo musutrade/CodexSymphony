@@ -74,6 +74,16 @@ def load_pins():
     return module
 
 
+def load_verification():
+    path = HERE / 'validation.py'
+    if not path.is_file():
+        path = HERE.parent / 'publication/validation.py'
+    spec = importlib.util.spec_from_file_location('remote_verification', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 pins = load_pins()
 
 SCHEMA = 'codexsymphony-ci-publication/v1'
@@ -394,6 +404,13 @@ def check_reads(reads, approval):
 def audit_document(rule, approval):
     """The installed audit, structurally valid for this approval; installation and admission share it."""
     audit = audit_file(rule)
+    return reviewed_audit(audit, approval)
+
+
+def reviewed_audit(audit, approval):
+    """Same independent review contract for installation and bounded registration."""
+    if not isinstance(audit, dict) or sorted(audit) != sorted(AUDIT_KEYS):
+        raise Rejected('equivalence audit fields differ from the reviewed schema')
     if (audit['schema'], audit['rule'], audit['conditions']) != (AUDIT_SCHEMA, TREE_EQUIVALENCE, list(CONDITIONS)):
         raise Rejected('equivalence audit does not state the enforced conditions')
     if audit['approval'] != approval_identity(approval) or audit['runtime_files'] != approval['runtime_files']:
@@ -423,6 +440,23 @@ def check_binding(audit, record, tree):
 
 def audited(config, approval, record, tree):
     """The installed audit's identity, only if it binds exactly this candidate."""
+    if config.get('candidate_registration') is True:
+        matches = []
+        for value in pins.current(config['pins']).values():
+            publication = value['publication']
+            if publication.get('kind') != 'candidate-registration' or publication.get('status') != 'confirmed':
+                continue
+            if pins.digest(pins.canonical(publication)) != value['publication_id']:
+                raise Rejected('registered candidate identity changed')
+            audit = publication['audit']
+            if (audit.get('approval'), audit.get('tree')) != (approval_identity(approval), tree):
+                continue
+            reviewed_audit(audit, approval)
+            check_binding(audit, record, tree)
+            matches.append(pins.digest(pins.canonical(audit)))
+        if len(set(matches)) != 1:
+            raise Rejected('candidate registration missing, expired or conflicting')
+        return matches[0]
     rule = config.get('equivalence')
     check_binding(audit_document(rule, approval), record, tree)
     return rule['audit_sha256']
@@ -440,7 +474,8 @@ def confirmed(config, bound, validation_id, sha):
         raise ledger.fail(error.category, str(error)) from None
     if not found:
         raise missing_source(config, bound, validation_id, sha)
-    matching = [value for value in found if value['validation_id'] == validation_id]
+    matching = [value for value in found if value['validation_id'] == validation_id
+                and value['publication'].get('kind') not in ('candidate-registration', 'local-publication-binding')]
     if not matching:
         raise Rejected('merge source names another validation of this tree')
     return matching[0]
@@ -539,6 +574,7 @@ def verify(run, config, home, identity, token, prefix, number):
     bound = candidate(run, number, prefix, token)
     record = select(Path(config['publication_ledger']), approval_identity(approval), tree, anchor(home))
     check_record(record)
+    check_verification_inputs(config, approval, record, run['head_sha'], bound['base'], number, parents)
     if number is not None:
         rule = pull_request_rule(config, approval, record, tree, run['head_sha'])
     elif record['inputs']['commit'] == run['head_sha']:
@@ -551,6 +587,50 @@ def verify(run, config, home, identity, token, prefix, number):
              'ledger_head': record['head'], 'report_sha256': record['evidence']['report']['sha256'],
              'full_suite_executed': False, 'created_at_ms': int(time.time() * 1000)}
     return value, record
+
+
+def check_verification_inputs(config, approval, record, sha, base, number, parents=()):
+    frozen = record['details'].get('verification_inputs')
+    if frozen is None:
+        if config.get('verification_contract'):
+            raise Rejected('validation predates installed verification contract; complete Gate required')
+        return
+    verifier = load_verification()
+    reviewed = verifier.reviewed(config.get('verification_contract'), approval)
+    verifier.reusable(record, frozen, reviewed)
+    external = {name: verifier.external_input(Path(name)) for name in reviewed['external_inputs']}
+    if external != frozen['external_inputs']:
+        raise Rejected('actual dependency inputs changed; complete Gate required')
+    check_git_inputs(record, frozen, sha, parents)
+    if number is None:
+        return  # Merge provenance is still checked by main_equivalence below.
+    expected = verifier.binding(record, sha, frozen, base)
+    for value in pins.current(config['pins']).values():
+        publication = value['publication']
+        if publication.get('kind') != 'local-publication-binding' or publication.get('status') != 'confirmed':
+            continue
+        if pins.digest(pins.canonical(publication)) != value['publication_id']:
+            raise Rejected('local publication binding changed')
+        if value['validation_id'] == record['validation_id'] and publication.get('binding') == expected:
+            return
+    raise Rejected('exact head/base lacks a live independent local publication binding')
+
+
+def check_git_inputs(record, frozen, sha, parents):
+    """Known committed-checkout reads, rerun from authenticated remote metadata.
+
+    A branch-dependent execution is unsupported by the installed contract. Source
+    selection/status only match a clean committed snapshot with the same tree.
+    """
+    expected = {'head': (sha + '\n').encode(), 'parents': (' '.join([sha, *parents]) + '\n').encode(),
+                'status': b''}
+    for reader, value in frozen['git_inputs'].items():
+        command = reader.rsplit(':', 1)[-1]
+        if command == 'tracked':
+            archive = json.loads(Path(record['evidence']['source-archive.json']['path']).read_text())
+            expected[command] = b''.join(name.encode() + b'\0' for name in sorted(archive['inputs']))
+        if command not in expected or expected[command].hex() != value:
+            raise Rejected('commit-sensitive verification inputs differ; complete Gate required: ' + command)
 
 
 def pull_request_rule(config, approval, record, tree, sha):
@@ -705,6 +785,10 @@ def sweep(config, token):
     prefix = '/repos/' + config['repository']
     released = []
     for pin_id, value in sorted(pins.current(config['pins']).items()):
+        if value['publication'].get('kind') in ('candidate-registration', 'local-publication-binding'):
+            # These are independent audit consumers, never PR merge proofs.
+            # Expiry/release and capacity use the same installed pin contract.
+            continue
         if value['publication']['status'] != 'confirmed':
             released += pins.release(config['pins'], {pin_id})
         elif value['subject']['pull_request'] is not None:
