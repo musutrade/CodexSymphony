@@ -2,7 +2,12 @@
 
 GitHub Actions 的 `Harness-Gate` 不执行带凭据的项目代码。仓库外的宿主服务
 读取 Actions 的精确 head SHA 与 run ID/attempt，拉取同仓源码，核对批准的工作流、
-门禁输入和依赖锁，然后调用已安装的完整隔离门禁。每次重新采集、签发请求和消费 nonce。
+门禁输入和依赖锁。历史 execute 模式调用已安装的完整隔离门禁，重新采集、签发请求和消费 nonce；
+verify-only 模式只准入仍有效的本地完整验证证据，不启动 capture 或 Gate。
+
+GH-176 的 [验证输入契约与普通候选登记](quality/gh176-validation-reuse.md) 是待独立审查、安装的新协议：
+完整输入相同的复用须有新的精确提交绑定，候选审计进入既有有限 pin，普通登记不重新安装或重启服务。
+该协议不由 Issue 排期或工作区文件启用，既有 required checks 和精确 Actions attempt 判定继续生效。
 
 宿主使用独立 GitHub App `my-disposable-bot`（ID 4867361）发布
 `Trusted Harness-Gate` check。Actions 只接受 App ID、slug、head SHA 和

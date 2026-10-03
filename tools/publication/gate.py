@@ -22,6 +22,8 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import environment_contract as contract
 import evidence_ledger as ledger
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import validation
 
 BASE = Path.home() / '.local/share/codexsymphony'
 STATE = BASE / 'publication'
@@ -32,6 +34,7 @@ APPROVAL = BASE / 'gate-host/approval.json'
 CGROUP_ROOT = Path('/sys/fs/cgroup')
 # Written by the installer from the installed approval's host release (bounded_layout.lease).
 HOST_LEASES = Path(__file__).resolve().with_name('host-leases.json')
+SETTINGS = Path(__file__).resolve().with_name('publication-settings.json')
 # Minimal verification evidence. Native raw profiles stay under capture retention
 # and are deliberately not bound: their compaction must not invalidate a PASS.
 REQUIRED_EVIDENCE = {3: ('environment.json', 'requests.json', 'source-archive.json', 'source.tar.gz', 'source-inputs.json')}
@@ -170,6 +173,135 @@ def inputs(root):
             'approval': contract.digest(approval)}
 
 
+def settings():
+    # Only an installed, digest-bound configuration enables the new protocol.
+    if not SETTINGS.exists():
+        return None
+    installed = json.loads(SETTINGS.with_name('installed-files.json').read_text())
+    if installed.get(str(SETTINGS)) != validation.file_digest(SETTINGS):
+        raise ValueError('installed publication settings changed')
+    value = json.loads(SETTINGS.read_text())
+    if set(value) != {'contract', 'remote_config', 'remote_config_sha256'}:
+        raise ValueError('unsupported publication settings')
+    return value
+
+
+def fetch_main(root, repository):
+    """Fetch in a host-owned bare repository, without candidate Git configuration."""
+    with tempfile.TemporaryDirectory(prefix='publication-main-', dir=temporary_root(Path(root))) as temporary:
+        database = Path(temporary) / 'main.git'
+        env = git_environment(temporary)
+        command = ['/usr/bin/git', '-c', 'core.hooksPath=/dev/null', '-c', 'core.fsmonitor=false']
+        subprocess.run([*command, 'init', '--bare', '--quiet', str(database)], env=env,
+                       check=True, capture_output=True, timeout=30)
+        subprocess.run([*command, '--git-dir=' + str(database), 'fetch', '--quiet', '--no-tags',
+                        'https://github.com/' + repository + '.git', '+refs/heads/main:refs/heads/main'],
+                       env=env, check=True, capture_output=True, timeout=60)
+        return subprocess.check_output([*command, '--git-dir=' + str(database), 'rev-parse', '--verify',
+                                        'refs/heads/main^{commit}'], env=env, text=True, timeout=30).strip()
+
+
+def prepublication(root, selected, fetch=True):
+    """Bounded read-only prerequisites; never merge or repair installed policy."""
+    if selected is None:
+        return None
+    remote = Path(selected['remote_config'])
+    if validation.file_digest(remote) != selected['remote_config_sha256']:
+        raise ValueError('remote deployment changed; compatibility review required')
+    config = json.loads(remote.read_text())
+    approval = json.loads(APPROVAL.read_text())
+    if config.get('mode') != 'verify-only' or config.get('candidate_registration') is not True or \
+            json.loads(Path(config['gate_approval']).read_text()) != approval:
+        raise ValueError('remote candidate registration is not ready for this approval')
+    for table in ('protected_files',):
+        for name, expected in config[table].items():
+            if validation.file_digest(root / name) != expected:
+                raise ValueError('remote installed input differs: ' + name)
+    for table in ('config_files', 'trusted_files'):
+        for name, expected in approval[table].items():
+            if validation.file_digest(root / name) != expected:
+                raise ValueError('approved host input differs: ' + name)
+    baseline = approval['baseline']
+    if validation.file_digest(baseline['path']) != baseline['sha256']:
+        raise ValueError('approved baseline changed')
+    repository = config['repository']
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repository):
+        raise ValueError('invalid installed repository')
+    if fetch:
+        base = fetch_main(root, repository)
+    else:
+        base = validation.git(root, ['rev-parse', '--verify', 'refs/remotes/origin/main^{commit}']).decode().strip()
+    if validation.git(root, ['ls-files', '--unmerged', '-z']):
+        raise ValueError('unresolved merge conflicts; reconcile explicitly before freezing')
+    ancestor = subprocess.run(['/usr/bin/git', '-c', 'core.fsmonitor=false', '-C', str(root),
+                               'merge-base', '--is-ancestor', base, head_commit(root)],
+                              env=git_environment('/nonexistent'), capture_output=True, timeout=30)
+    if ancestor.returncode:
+        raise ValueError('candidate must contain current main; reconcile explicitly before freezing')
+    return base
+
+
+def verification_context(root, current, selected):
+    approval = json.loads(APPROVAL.read_text())
+    reviewed = validation.reviewed(selected['contract'], approval) if selected else None
+    return reviewed, validation.freeze(root, current, reviewed)
+
+
+def prior_verification(current, frozen, reviewed):
+    if reviewed is None:
+        return None, 'no installed reviewed contract'
+    try:
+        with ledger.hold(LEDGER):
+            events, _ = ledger.read_events(LEDGER)
+            for event in reversed(events):
+                if event['kind'] != 'pass':
+                    continue
+                record = ledger.load_record(LEDGER, event['validation_id'])
+                if {name: record['inputs'][name] for name in current} != current:
+                    continue
+                record = ledger.verify(LEDGER, event['validation_id'], record['inputs'])
+                try:
+                    validation.reusable(record, frozen, reviewed)
+                except ValueError as error:
+                    return None, str(error)
+                return record, 'all reviewed verification inputs identical'
+    except ledger.LedgerError as error:
+        if error.category == 'missing':
+            return None, str(error)
+        raise
+    return None, 'no matching complete verification'
+
+
+def bind_publication(state, record, commit, frozen, base):
+    value = validation.binding(record, commit, frozen, base)
+    selected = settings()
+    if selected is None:
+        raise ValueError('publication binding requires installed settings')
+    config = json.loads(Path(selected['remote_config']).read_text())
+    pins = validation.pins
+    # The binding is a consumer of the existing finite evidence reservation.
+    # Its complete bytes are charged before admission; no append-only side store.
+    subject = {'repository': config['repository'], 'pull_request': None, 'head': commit,
+               'base': base, 'tree': frozen['tree']}
+    for pin_id, reserved in pins.current(config['pins']).items():
+        publication = reserved['publication']
+        if publication.get('kind') == 'local-publication-binding' and publication.get('binding') == value and \
+                publication.get('status') == 'confirmed' and reserved['validation_id'] == record['validation_id']:
+            if pins.digest(pins.canonical(publication)) != reserved['publication_id']:
+                raise ValueError('local publication binding changed')
+            return {'binding_pin': pin_id, 'binding_sha256': validation.digest(value)}
+    reserved = pins.pin(config['pins'], pins.records_budget(config['storage_deployment']), record, subject,
+                        'local-binding/' + validation.digest(value), config['pin_ttl_seconds'],
+                        {'kind': 'local-publication-binding', 'binding': value})
+    try:
+        with pins.holding(config['pins'], reserved['pin_id'], record['validation_id']) as root:
+            pins.confirm(root, reserved['pin_id'], record['validation_id'])
+    except Exception:
+        pins.release(config['pins'], {reserved['pin_id']})
+        raise
+    return {'binding_pin': reserved['pin_id'], 'binding_sha256': validation.digest(value)}
+
+
 def ledger_inputs(current, commit):
     return {'approval': current['approval'], 'commit': commit,
             'environment': current['environment'], 'tree': current['tree']}
@@ -191,7 +323,28 @@ def admit(root, receipt, tree):
     commit = head_commit(root)
     if commit != receipt.get('commit'):
         raise ValueError('publication rejected: evidence commit changed; run local_gate again')
-    record = ledger.verify(LEDGER, receipt.get('validation_id'), ledger_inputs(current, commit))
+    if settings() is not None and not receipt.get('binding_pin'):
+        raise ValueError('publication rejected: reviewed contract requires an independent live binding')
+    if receipt.get('binding_pin'):
+        selected = settings()
+        reviewed, frozen = verification_context(root, current, selected)
+        config = json.loads(Path(selected['remote_config']).read_text()) if selected else {}
+        retained = validation.pins.active(config['pins'], receipt['binding_pin'], receipt['validation_id'])
+        publication = retained['publication']
+        if publication.get('status') != 'confirmed' or publication.get('kind') != 'local-publication-binding' or \
+                validation.pins.digest(validation.pins.canonical(publication)) != retained['publication_id']:
+            raise ValueError('publication binding changed')
+        bound = publication['binding']
+        if validation.digest(bound) != receipt['binding_sha256']:
+            raise ValueError('publication binding differs from receipt')
+        original = ledger.load_record(LEDGER, receipt['validation_id'])
+        record = ledger.verify(LEDGER, receipt['validation_id'], original['inputs'])
+        validation.reusable(record, frozen, reviewed)
+        base = prepublication(root, selected)
+        if bound != validation.binding(record, commit, frozen, base):
+            raise ValueError('publication binding is stale; reconcile current main explicitly')
+    else:
+        record = ledger.verify(LEDGER, receipt.get('validation_id'), ledger_inputs(current, commit))
     report = Path(record['evidence']['report']['path'])
     if str(report) != receipt.get('report') or record['evidence']['report']['sha256'] != receipt.get('report_sha256'):
         raise ValueError('publication rejected: receipt differs from the ledger record')
@@ -331,9 +484,33 @@ def validate(issue):
     state = STATE / issue
     with claim(state):
         attempt = identity = None
+        concluded = False
+        receipt = {}
         try:
+            selected = settings()
+            with validation.phase(state, 'publication-preflight'):
+                base = prepublication(root, selected)
             before = inputs(root)
             identity = ledger_inputs(before, head_commit(root))
+            reviewed, frozen = verification_context(root, before, selected)
+            with validation.phase(state, 'verification-reuse-check'):
+                reused, reason = prior_verification(before, frozen, reviewed)
+            atomic(state / 'receipt.json', {'status': 'RUNNING', 'identity': identity, 'reuse_reason': reason})
+            if reused:
+                with validation.phase(state, 'publication-binding'):
+                    if inputs(root) != before or head_commit(root) != identity['commit']:
+                        raise ValueError('publication inputs changed during reuse')
+                    if verification_context(root, before, selected)[1] != frozen:
+                        raise ValueError('verification metadata changed during reuse')
+                    after_base = prepublication(root, selected)
+                    if after_base != base:
+                        raise ValueError('main changed after freeze; explicit reconciliation required')
+                    bound = bind_publication(state, reused, identity['commit'], frozen, base)
+                atomic(state / 'receipt.json', {'status': 'PASS', 'scope': reused['details']['scope'],
+                        'inputs': before, 'commit': identity['commit'], 'validation_id': reused['validation_id'],
+                        'report': reused['evidence']['report']['path'],
+                        'report_sha256': reused['evidence']['report']['sha256'], 'reuse_reason': reason, **bound})
+                return
             atomic(state / 'receipt.json', {'status': 'RUNNING', 'identity': identity})
             # Announced under the per-issue execution lock, before the Gate starts.
             attempt = ledger.begin(LEDGER, identity)
@@ -341,12 +518,40 @@ def validate(issue):
             run, report, approval, scope = run_gate(root, state, before, identity['commit'])
             details = {'issue': issue, 'scope': scope, 'run': str(run), 'execution_version': approval.get('execution_version'),
                        'parents': commit_parents(root, identity['commit'])}
-            validation_id = ledger.record_pass(LEDGER, attempt, identity, retained_evidence(run, report, approval), details)
-            atomic(state / 'receipt.json', {'status': 'PASS', 'scope': scope, 'inputs': before, 'commit': identity['commit'],
+            evidence = retained_evidence(run, report, approval)
+            if frozen is not None:
+                if verification_context(root, before, selected)[1] != frozen:
+                    raise ValueError('verification metadata changed during complete Gate')
+                atomic(run / 'verification-inputs.json', frozen)
+                evidence['verification-inputs.json'] = str(run / 'verification-inputs.json')
+                details['verification_inputs'] = frozen
+                evidence['backend-measurements'] = str(validation.measurement_evidence(evidence, run))
+                for name in reviewed['required_evidence']:
+                    if name not in evidence:
+                        candidate = run / name
+                        if not candidate.resolve().is_relative_to(run) or candidate.resolve() != candidate:
+                            raise ValueError('unsafe verification payload: ' + name)
+                        evidence[name] = str(candidate)
+            validation_id = ledger.record_pass(LEDGER, attempt, identity, evidence, details)
+            concluded = True
+            receipt = {'status': 'PASS', 'scope': scope, 'inputs': before, 'commit': identity['commit'],
                                             'identity': identity, 'attempt': attempt, 'validation_id': validation_id,
-                                            'report': str(report), 'report_sha256': ledger.file_digest(report)})
+                                            'report': str(report), 'report_sha256': ledger.file_digest(report),
+                                            'reuse_reason': reason}
+            atomic(state / 'receipt.json', receipt)
+            if selected:
+                with validation.phase(state, 'publication-reconciliation'):
+                    if prepublication(root, selected) != base:
+                        raise ValueError('main changed after freeze; verification retained, reconcile explicitly')
+                    record = ledger.verify(LEDGER, validation_id, identity)
+                    validation.reusable(record, frozen, reviewed)
+                    receipt |= bind_publication(state, record, identity['commit'], frozen, base)
+                    atomic(state / 'receipt.json', receipt)
         except Exception as error:
-            conclude_failure(state, attempt, identity, error)
+            if concluded:
+                atomic(state / 'receipt.json', receipt | {'status': 'BLOCKED', 'error': str(error)})
+            else:
+                conclude_failure(state, attempt, identity, error)
             raise
 
 
